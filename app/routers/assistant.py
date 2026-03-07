@@ -17,7 +17,13 @@ from app.services.barcode import generate_sku
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
 
-SYSTEM_PROMPT = """You are the Bowenstreet Market vendor assistant. Bowenstreet Market is a vendor mall at 2837 Bowen St, Oshkosh WI 54901 with over 120 vendors selling handcrafted, vintage, and antique goods.
+SYSTEM_PROMPT = """You are the Bowenstreet Market assistant. Bowenstreet Market is a vendor mall at 2837 Bowen St, Oshkosh WI 54901 with over 120 vendors selling handcrafted, vintage, and antique goods.
+
+ADMIN/CASHIER CONTEXT:
+If the user is an admin or cashier (not a vendor), inventory tool calls require knowing which vendor to act on.
+For list_items: you may list all items across all vendors — do not require a vendor filter.
+For add_item, edit_item, archive_item: if a vendor is not clear from the conversation, ask "Which vendor's items should I manage?" before proceeding.
+Admins can also answer questions about the system, vendor management, reports, and POS operations.
 
 You can take real actions in the system — adding, editing, and archiving items directly through conversation.
 
@@ -76,6 +82,7 @@ TOOLS = [
                 "type": "object",
                 "properties": {
                     "name": {"type": "string", "description": "Item name"},
+                    "vendor_id": {"type": "integer", "description": "Vendor ID — required when acting on behalf of a specific vendor (admin/cashier use)"},
                     "category": {"type": "string", "description": "Category such as Jewelry, Furniture, Vintage, Art, Handcrafted, Clothing, Books, Decor"},
                     "price": {"type": "number", "description": "Regular price in dollars"},
                     "description": {"type": "string", "description": "Item description"},
@@ -137,6 +144,7 @@ TOOLS = [
                 "type": "object",
                 "properties": {
                     "status": {"type": "string", "description": "Filter by status: active, sold, removed. Default active."},
+                    "vendor_id": {"type": "integer", "description": "Filter by vendor ID. Omit to list all items (admin only)."},
                     "category": {"type": "string", "description": "Filter by category name"},
                     "search": {"type": "string", "description": "Search by item name"},
                 },
@@ -180,11 +188,17 @@ async def _execute_tool(
     Returns (result_text, action_taken, item_id).
     """
 
+    is_vendor = vendor.role == "vendor"
+
     if tool_name == "add_item":
-        sku = await generate_sku(vendor.id, db)
+        # For admin/cashier, vendor_id must be in tool_args; fall back to own id for vendors
+        target_vendor_id = tool_args.get("vendor_id") if not is_vendor else vendor.id
+        if not target_vendor_id:
+            return "ERROR: vendor_id is required for admin/cashier to add an item. Please specify which vendor.", None, None
+        sku = await generate_sku(target_vendor_id, db)
         barcode_val = uuid.uuid4().hex[:12].upper()
         item = Item(
-            vendor_id=vendor.id,
+            vendor_id=target_vendor_id,
             sku=sku,
             barcode=barcode_val,
             name=tool_args["name"],
@@ -210,9 +224,10 @@ async def _execute_tool(
 
     if tool_name == "edit_item":
         item_id = tool_args["item_id"]
-        row = await db.execute(
-            select(Item).where(Item.id == item_id, Item.vendor_id == vendor.id)
-        )
+        q = select(Item).where(Item.id == item_id)
+        if is_vendor:
+            q = q.where(Item.vendor_id == vendor.id)
+        row = await db.execute(q)
         item = row.scalar_one_or_none()
         if not item:
             return f"ERROR: Item ID {item_id} not found or does not belong to you.", None, None
@@ -242,9 +257,10 @@ async def _execute_tool(
 
     if tool_name == "archive_item":
         item_id = tool_args["item_id"]
-        row = await db.execute(
-            select(Item).where(Item.id == item_id, Item.vendor_id == vendor.id)
-        )
+        q = select(Item).where(Item.id == item_id)
+        if is_vendor:
+            q = q.where(Item.vendor_id == vendor.id)
+        row = await db.execute(q)
         item = row.scalar_one_or_none()
         if not item:
             return f"ERROR: Item ID {item_id} not found or does not belong to you.", None, None
@@ -257,8 +273,15 @@ async def _execute_tool(
         status_filter = tool_args.get("status", "active")
         category_filter = tool_args.get("category")
         search_filter = tool_args.get("search")
+        arg_vendor_id = tool_args.get("vendor_id")
 
-        q = select(Item).where(Item.vendor_id == vendor.id)
+        q = select(Item)
+        # Vendors always see only their items; admin/cashier see all unless vendor_id specified
+        if is_vendor:
+            q = q.where(Item.vendor_id == vendor.id)
+        elif arg_vendor_id:
+            q = q.where(Item.vendor_id == arg_vendor_id)
+
         if status_filter:
             q = q.where(Item.status == status_filter)
         if category_filter:
@@ -287,17 +310,16 @@ async def _execute_tool(
         name = tool_args.get("name")
 
         if item_id:
-            row = await db.execute(
-                select(Item).where(Item.id == item_id, Item.vendor_id == vendor.id)
-            )
+            q = select(Item).where(Item.id == item_id)
+            if is_vendor:
+                q = q.where(Item.vendor_id == vendor.id)
+            row = await db.execute(q)
             item = row.scalar_one_or_none()
         elif name:
-            row = await db.execute(
-                select(Item).where(
-                    Item.vendor_id == vendor.id,
-                    Item.name.ilike(f"%{name}%"),
-                )
-            )
+            q = select(Item).where(Item.name.ilike(f"%{name}%"))
+            if is_vendor:
+                q = q.where(Item.vendor_id == vendor.id)
+            row = await db.execute(q)
             item = row.scalars().first()
         else:
             return "ERROR: Provide either item_id or name.", None, None
