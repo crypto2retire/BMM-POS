@@ -40,6 +40,8 @@
             const payload = await apiLogin(email, password);
             if (payload.role === "admin") {
                 window.location.href = "/admin/index.html";
+            } else if (payload.role === "cashier") {
+                window.location.href = "/pos/index.html";
             } else {
                 window.location.href = "/vendor/dashboard.html";
             }

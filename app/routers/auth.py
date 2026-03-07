@@ -66,6 +66,12 @@ async def require_admin(current_user: Vendor = Depends(get_current_user)) -> Ven
     return current_user
 
 
+async def require_cashier_or_admin(current_user: Vendor = Depends(get_current_user)) -> Vendor:
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cashier or admin access required")
+    return current_user
+
+
 @router.post("/login", response_model=Token)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),

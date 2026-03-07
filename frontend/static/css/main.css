@@ -258,3 +258,41 @@ tbody tr:hover { background: #FAFAFA; }
     .form-row { grid-template-columns: 1fr; }
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── Receipt Print Styles ──────────────────────────────────────── */
+@media print {
+    body * { visibility: hidden; }
+    .receipt-print-area,
+    .receipt-print-area * { visibility: visible; }
+    .receipt-print-area {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 80mm;
+        font-family: "Courier New", Courier, monospace;
+        font-size: 11px;
+        color: #000 !important;
+        background: #fff !important;
+        padding: 6mm 4mm;
+        line-height: 1.4;
+    }
+    .receipt-print-area .receipt-header { text-align: center; margin-bottom: 4mm; }
+    .receipt-print-area .receipt-header h3 { font-size: 14px; font-weight: 700; }
+    .receipt-print-area .receipt-header p { font-size: 10px; color: #333; }
+    .receipt-print-area .receipt-divider {
+        border: none;
+        border-top: 1px dashed #000;
+        margin: 2mm 0;
+    }
+    .receipt-print-area .receipt-line {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        padding: 1px 0;
+        color: #000;
+    }
+    .receipt-print-area .receipt-line .left { flex: 1; }
+    .receipt-print-area .receipt-line .right { text-align: right; min-width: 18mm; }
+    .receipt-print-area .receipt-total-line { font-weight: 700; font-size: 12px; }
+    .receipt-print-area .receipt-footer { text-align: center; font-size: 9px; margin-top: 4mm; color: #555; }
+}

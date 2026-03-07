@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from app.database import get_db
-from app.models.vendor import Vendor, VendorBalance
+from app.models.vendor import Vendor
 from app.schemas.vendor import VendorCreate, VendorUpdate, VendorResponse
 from app.routers.auth import get_current_user, require_admin, hash_password
 
@@ -67,10 +67,6 @@ async def create_vendor(
         zelle_handle=data.zelle_handle,
     )
     db.add(vendor)
-    await db.flush()
-
-    balance = VendorBalance(vendor_id=vendor.id, balance=0)
-    db.add(balance)
     await db.commit()
 
     result = await db.execute(

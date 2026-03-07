@@ -46,6 +46,17 @@ VENDORS_DATA = [
         "phone": None,
     },
     {
+        "name": "Jane Doe",
+        "email": "cashier@bowenstreetmarket.com",
+        "password": "cashier123",
+        "role": "cashier",
+        "booth_number": None,
+        "monthly_rent": 0,
+        "payout_method": "cash",
+        "zelle_handle": None,
+        "phone": None,
+    },
+    {
         "name": "Sarah Johnson",
         "email": "sarah@email.com",
         "password": "vendor123",
