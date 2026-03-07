@@ -190,11 +190,11 @@ async def seed():
 
 
 TEST_ACCOUNTS = [
-    {"name": "Nora",   "email": "nora@email.com",   "password": "vendor123", "role": "admin",  "booth_number": "TEST-1"},
-    {"name": "Sammy",  "email": "sammy@email.com",  "password": "vendor123", "role": "admin",  "booth_number": "TEST-2"},
-    {"name": "Ashley", "email": "ashley@email.com", "password": "vendor123", "role": "admin",  "booth_number": "TEST-3"},
-    {"name": "Anne",   "email": "anne@email.com",   "password": "vendor123", "role": "admin",  "booth_number": "TEST-4"},
-    {"name": "Paula",  "email": "paula@email.com",  "password": "vendor123", "role": "vendor", "booth_number": "TEST-5"},
+    {"name": "Nora",   "email": "nora@email.com",   "password": "vendor123", "role": "admin",  "booth_number": "TEST-1", "monthly_rent": 175},
+    {"name": "Sammy",  "email": "sammy@email.com",  "password": "vendor123", "role": "admin",  "booth_number": "TEST-2", "monthly_rent": 200},
+    {"name": "Ashley", "email": "ashley@email.com", "password": "vendor123", "role": "admin",  "booth_number": "TEST-3", "monthly_rent": 150},
+    {"name": "Anne",   "email": "anne@email.com",   "password": "vendor123", "role": "admin",  "booth_number": "TEST-4", "monthly_rent": 175},
+    {"name": "Paula",  "email": "paula@email.com",  "password": "vendor123", "role": "vendor", "booth_number": "TEST-5", "monthly_rent": 125},
 ]
 
 
@@ -213,7 +213,7 @@ async def seed_test_accounts():
                 password_hash=pwd_context.hash(acct["password"]),
                 role=acct["role"],
                 booth_number=acct["booth_number"],
-                monthly_rent=0,
+                monthly_rent=acct["monthly_rent"],
                 payout_method="zelle",
                 zelle_handle=None,
                 phone=None,

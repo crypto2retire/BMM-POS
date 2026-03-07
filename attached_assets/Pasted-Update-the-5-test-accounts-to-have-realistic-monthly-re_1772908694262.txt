@@ -1,0 +1,69 @@
+Update the 5 test accounts to have realistic monthly rent amounts so they can see the rent deduction and payout features during testing.
+
+STEP 1 — Update the accounts directly in the database
+
+Run these SQL UPDATE statements:
+
+UPDATE vendors SET monthly_rent = 175 WHERE email = 'nora@email.com';
+UPDATE vendors SET monthly_rent = 200 WHERE email = 'sammy@email.com';
+UPDATE vendors SET monthly_rent = 150 WHERE email = 'ashley@email.com';
+UPDATE vendors SET monthly_rent = 175 WHERE email = 'anne@email.com';
+UPDATE vendors SET monthly_rent = 125 WHERE email = 'paula@email.com';
+
+STEP 2 — Also update scripts/seed_dev.py
+
+Find the seed_test_accounts() function and update the monthly_rent values to match:
+- nora@email.com: monthly_rent = 175
+- sammy@email.com: monthly_rent = 200
+- ashley@email.com: monthly_rent = 150
+- anne@email.com: monthly_rent = 175
+- paula@email.com: monthly_rent = 125
+
+This way if the seed script is ever re-run the values will be correct.
+
+STEP 3 — Add some test items to each test account
+
+So they can see a realistic vendor dashboard, add 3 items per test vendor using these categories and realistic prices:
+
+Nora (booth TEST-1):
+- Hand-painted silk scarf, category: Art, price: 65.00
+- Vintage brass candlesticks (pair), category: Vintage, price: 48.00
+- Ceramic serving bowl, category: Handcrafted, price: 38.00
+
+Sammy (booth TEST-2):
+- Reclaimed wood shelf, category: Furniture, price: 95.00
+- Sterling silver ring size 7, category: Jewelry, price: 42.00
+- Handwoven table runner, category: Handcrafted, price: 35.00
+
+Ashley (booth TEST-3):
+- Vintage cast iron skillet, category: Vintage, price: 55.00
+- Beaded statement necklace, category: Jewelry, price: 78.00
+- Hand-poured soy candle set, category: Handcrafted, price: 28.00
+
+Anne (booth TEST-4):
+- Antique wooden dresser, category: Furniture, price: 285.00
+- Watercolor landscape print, category: Art, price: 45.00
+- Macrame wall hanging, category: Handcrafted, price: 62.00
+
+Paula (booth TEST-5):
+- Vintage glass perfume bottle, category: Vintage, price: 32.00
+- Knitted wool throw blanket, category: Handcrafted, price: 88.00
+- Pressed flower framed art, category: Art, price: 55.00
+
+For each item generate a SKU and barcode using the existing barcode service. Set status to active, quantity to 1.
+
+STEP 4 — Add a test balance to each vendor
+
+So the dashboard balance is not zero, add a starting balance to each test vendor:
+
+UPDATE vendor_balances SET balance = 312.50 WHERE vendor_id = (SELECT id FROM vendors WHERE email = 'nora@email.com');
+UPDATE vendor_balances SET balance = 428.00 WHERE vendor_id = (SELECT id FROM vendors WHERE email = 'sammy@email.com');
+UPDATE vendor_balances SET balance = 195.75 WHERE vendor_id = (SELECT id FROM vendors WHERE email = 'ashley@email.com');
+UPDATE vendor_balances SET balance = 540.00 WHERE vendor_id = (SELECT id FROM vendors WHERE email = 'anne@email.com');
+UPDATE vendor_balances SET balance = 88.00 WHERE vendor_id = (SELECT id FROM vendors WHERE email = 'paula@email.com');
+
+STEP 5 — Confirm
+
+Query and print:
+- Each test vendor name, email, monthly_rent, current balance, item count
+- Everything should match the values above
