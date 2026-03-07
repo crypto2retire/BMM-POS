@@ -126,6 +126,15 @@ async function apiFetchText(url) {
     return res.text();
 }
 
+async function apiChat(message, imageBase64 = null, imageMimeType = null) {
+    const body = { message };
+    if (imageBase64) {
+        body.image_base64 = imageBase64;
+        body.image_mime_type = imageMimeType;
+    }
+    return await apiPost('/api/v1/assistant/chat', body);
+}
+
 function requireAuth() {
     const token = sessionStorage.getItem('bmm_token');
     if (!token) {
