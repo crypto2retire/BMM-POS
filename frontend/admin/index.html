@@ -156,7 +156,7 @@
         <span class="store-name">Admin</span>
     </a>
     <div class="navbar-user">
-        <span>Administrator</span>
+        <span id="user-name">Administrator</span>
         <nav class="navbar-nav">
             <a href="/admin/index.html" class="active">Dashboard</a>
             <a href="/admin/vendors.html">Vendors</a>
@@ -290,6 +290,7 @@
             window.location.href = "/vendor/dashboard.html";
             return;
         }
+        document.getElementById('user-name').textContent = payload.name || 'Admin';
 
         try {
             const [vendors, items] = await Promise.all([
