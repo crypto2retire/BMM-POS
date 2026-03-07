@@ -434,6 +434,55 @@
         /* Error state */
         .scan-error { color: #F87171; font-size: 0.75rem; padding: 0 1rem 0.5rem; min-height: 20px; }
 
+        /* Item search */
+        .search-bar {
+            background: #3a3a3d;
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #555558;
+            position: relative;
+        }
+        .search-bar input {
+            width: 100%;
+            background: #44444A;
+            border: 2px solid #374151;
+            color: #F9FAFB;
+            padding: 0.45rem 0.75rem;
+            border-radius: 0;
+            font-size: 0.875rem;
+        }
+        .search-bar input:focus { outline: none; border-color: #A8A6A1; box-shadow: 0 0 0 3px rgba(168,166,161,0.2); }
+        .search-bar input::placeholder { color: #A8A6A1; }
+        .search-results {
+            position: absolute;
+            left: 1rem;
+            right: 1rem;
+            top: calc(100% - 2px);
+            background: #2C2C2F;
+            border: 1px solid #555558;
+            border-top: none;
+            z-index: 500;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .search-results.hidden { display: none; }
+        .search-result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.55rem 0.75rem;
+            border-bottom: 1px solid #3a3a3d;
+            cursor: pointer;
+            gap: 0.5rem;
+        }
+        .search-result-item:last-child { border-bottom: none; }
+        .search-result-item:hover { background: #374151; }
+        .search-result-left { flex: 1; min-width: 0; }
+        .search-result-name { font-size: 0.875rem; color: #F3F4F6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .search-result-meta { font-size: 0.72rem; color: #A8A6A1; margin-top: 1px; }
+        .search-result-price { font-size: 0.95rem; font-weight: 700; color: #F9FAFB; white-space: nowrap; }
+        .search-result-price.on-sale { color: #EF4444; }
+        .search-no-results { padding: 0.75rem; text-align: center; color: #A8A6A1; font-size: 0.85rem; }
+
         @media (max-width: 900px) {
             .pos-layout { grid-template-columns: 1fr 300px; }
         }
@@ -463,11 +512,21 @@
             <input
                 type="text"
                 id="barcode-input"
-                placeholder="Scan barcode or type SKU + Enter"
+                placeholder="Scan barcode + Enter to add instantly"
                 autocomplete="off"
                 autofocus
             >
             <button class="scan-btn" onclick="addByBarcode()">Add ↵</button>
+        </div>
+        <div class="search-bar">
+            <input
+                type="text"
+                id="search-input"
+                placeholder="Search by item name or SKU (3+ characters)…"
+                autocomplete="off"
+                oninput="onSearchInput(this.value)"
+            >
+            <div class="search-results hidden" id="search-results"></div>
         </div>
         <div class="scan-error" id="scan-error"></div>
         <div class="cart-area" id="cart-area">
@@ -623,12 +682,7 @@
 
         clearScanError();
         try {
-            const item = await apiGet(`/api/v1/items/barcode/${encodeURIComponent(barcode)}`);
-            if (item.status !== 'active') {
-                setScanError(`"${item.name}" is not available for sale`);
-                input.select();
-                return;
-            }
+            const item = await apiGet(`/api/v1/pos/barcode/${encodeURIComponent(barcode)}`);
             addToCart(item);
             input.value = '';
             input.focus();
@@ -644,6 +698,79 @@
     function clearScanError() {
         document.getElementById('scan-error').textContent = '';
     }
+
+    // ─── Name / SKU search ────────────────────────────────────────────────────
+    let searchTimer = null;
+
+    function onSearchInput(val) {
+        clearTimeout(searchTimer);
+        if (val.trim().length < 3) {
+            hideSearchResults();
+            return;
+        }
+        searchTimer = setTimeout(() => searchItems(val.trim()), 280);
+    }
+
+    async function searchItems(q) {
+        try {
+            const results = await apiGet(`/api/v1/pos/search?q=${encodeURIComponent(q)}`);
+            renderSearchResults(results);
+        } catch (err) {
+            hideSearchResults();
+        }
+    }
+
+    function renderSearchResults(items) {
+        const box = document.getElementById('search-results');
+        if (!items || items.length === 0) {
+            box.innerHTML = '<div class="search-no-results">No active items found</div>';
+            box.classList.remove('hidden');
+            return;
+        }
+        box.innerHTML = items.map(item => {
+            const onSale = item.active_price < item.price;
+            const priceHtml = onSale
+                ? `<span style="text-decoration:line-through;font-size:0.75rem;color:#6B7280;margin-right:4px">$${item.price.toFixed(2)}</span><span class="search-result-price on-sale">$${item.active_price.toFixed(2)}</span>`
+                : `<span class="search-result-price">$${item.active_price.toFixed(2)}</span>`;
+            const meta = [item.category, item.booth_number ? `Booth ${item.booth_number}` : null, `Qty: ${item.quantity}`].filter(Boolean).join(' · ');
+            return `<div class="search-result-item" onclick="addFromSearch(${item.id})">
+                <div class="search-result-left">
+                    <div class="search-result-name">${item.name}</div>
+                    <div class="search-result-meta">${meta}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">${priceHtml}</div>
+            </div>`;
+        }).join('');
+        box.classList.remove('hidden');
+
+        // Store items for lookup by id
+        box._items = items;
+    }
+
+    function hideSearchResults() {
+        const box = document.getElementById('search-results');
+        box.classList.add('hidden');
+        box.innerHTML = '';
+        box._items = null;
+    }
+
+    function addFromSearch(itemId) {
+        const box = document.getElementById('search-results');
+        const items = box._items;
+        if (!items) return;
+        const item = items.find(i => i.id === itemId);
+        if (!item) return;
+        addToCart(item);
+        document.getElementById('search-input').value = '';
+        hideSearchResults();
+        clearScanError();
+    }
+
+    // Close search dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        const bar = document.querySelector('.search-bar');
+        if (bar && !bar.contains(e.target)) hideSearchResults();
+    });
 
     // ─── Cart management ──────────────────────────────────────────────────────
     function addToCart(item) {

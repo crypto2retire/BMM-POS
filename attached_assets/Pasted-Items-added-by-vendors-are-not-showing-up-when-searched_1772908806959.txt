@@ -1,0 +1,76 @@
+Items added by vendors are not showing up when searched at the POS register. Diagnose and fix the connection between the items database and the POS search.
+
+STEP 1 — Diagnose the problem
+
+Check the following in order:
+
+1. Open frontend/pos/index.html and find the search function. What API endpoint is it calling to search for items? Print the exact URL and parameters being used.
+
+2. Open app/routers/items.py and find the GET /api/v1/items/ endpoint. Check:
+   - Does it filter by status? If so, what status values does it return?
+   - Does it filter by vendor_id? If so, would that exclude items from other vendors?
+   - Is there any other filter that might exclude valid items?
+
+3. Check if there is a separate barcode lookup endpoint: GET /api/v1/items/barcode/{barcode}
+   - Does it exist?
+   - Does it check item status?
+   - Does it require any specific role?
+
+4. Query the database directly and print:
+   - Total item count in the items table
+   - Count of items with status = 'active'
+   - First 5 active items with their id, name, barcode, sku, vendor_id, status
+
+STEP 2 — Fix the search endpoint
+
+The POS needs to search items by name across ALL vendors. Update or create a dedicated POS search endpoint:
+
+GET /api/v1/pos/search?q={search_term}
+
+This endpoint:
+- Requires cashier or admin role (any logged-in staff)
+- Searches items WHERE status = 'active' AND (name ILIKE '%{q}%' OR barcode = '{q}' OR sku ILIKE '%{q}%')
+- Returns up to 20 results
+- Each result includes: id, name, barcode, sku, price, active_price, sale_price, sale_start, sale_end, category, vendor_id, booth_number (from vendor), is_tax_exempt
+- booth_number comes from joining the vendors table on vendor_id
+- active_price logic: if today is between sale_start and sale_end and sale_price is not null, return sale_price, otherwise return price
+
+STEP 3 — Fix the barcode lookup endpoint
+
+GET /api/v1/pos/barcode/{barcode}
+
+This endpoint:
+- Requires cashier or admin role
+- Looks up item by exact barcode match WHERE status = 'active'
+- Returns same fields as search endpoint
+- Returns 404 with message "Item not found or not available" if no match
+
+STEP 4 — Update frontend/pos/index.html
+
+Find the search input and the barcode scanner input. Update them to use the new endpoints:
+
+For text search (typing in search box):
+- Call GET /api/v1/pos/search?q={searchTerm} when the vendor types 3 or more characters
+- Display results as clickable cards
+
+For barcode scanner (scanning a barcode):
+- The barcode scanner types the barcode value and presses Enter automatically
+- On Enter key in the barcode input field: call GET /api/v1/pos/barcode/{value}
+- If found: add item to cart immediately
+- If not found: show brief red error message "Item not found"
+
+STEP 5 — Wire the new pos router endpoints into app/main.py
+
+Make sure the new search and barcode endpoints are registered. They should already be in app/routers/pos.py — add them there if not.
+
+STEP 6 — Test end to end
+
+1. Log in as cashier
+2. Go to POS register
+3. Type "quilt" in the search box — should return any item with quilt in the name
+4. Type "scarf" — should return Nora's hand-painted silk scarf
+5. Type a full barcode number from the database — should return that exact item
+6. Add an item to the cart and verify the price shows correctly
+7. Complete a cash sale for $1 over the total — verify change is calculated
+
+Report what was broken, what was fixed, and confirm the test results.

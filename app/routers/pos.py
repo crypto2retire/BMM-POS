@@ -1,9 +1,10 @@
 import math
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_, func
 from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.routers.auth import get_current_user
@@ -30,6 +31,75 @@ def _get_active_price(item: Item) -> Decimal:
     ):
         return Decimal(str(item.sale_price))
     return Decimal(str(item.price))
+
+
+def _item_to_pos_dict(item: Item) -> dict:
+    active_price = _get_active_price(item)
+    return {
+        "id": item.id,
+        "name": item.name,
+        "barcode": item.barcode,
+        "sku": item.sku,
+        "price": float(item.price),
+        "active_price": float(active_price),
+        "sale_price": float(item.sale_price) if item.sale_price is not None else None,
+        "sale_start": item.sale_start.isoformat() if item.sale_start else None,
+        "sale_end": item.sale_end.isoformat() if item.sale_end else None,
+        "category": item.category,
+        "vendor_id": item.vendor_id,
+        "booth_number": item.vendor.booth_number if item.vendor else None,
+        "is_tax_exempt": item.is_tax_exempt,
+        "quantity": item.quantity,
+        "photo_urls": item.photo_urls,
+    }
+
+
+@router.get("/search")
+async def pos_search(
+    q: str = Query(..., min_length=1, description="Search term"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Cashier or admin access required")
+
+    term = f"%{q}%"
+    query = (
+        select(Item)
+        .options(selectinload(Item.vendor))
+        .where(
+            Item.status == "active",
+            or_(
+                Item.name.ilike(term),
+                Item.barcode == q,
+                Item.sku.ilike(term),
+            ),
+        )
+        .limit(20)
+    )
+    result = await db.execute(query)
+    items = result.scalars().all()
+    return [_item_to_pos_dict(i) for i in items]
+
+
+@router.get("/barcode/{barcode}")
+async def pos_barcode_lookup(
+    barcode: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Cashier or admin access required")
+
+    result = await db.execute(
+        select(Item)
+        .options(selectinload(Item.vendor))
+        .where(Item.barcode == barcode, Item.status == "active")
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found or not available")
+    return _item_to_pos_dict(item)
 
 
 @router.post("/sale", response_model=SaleResponse, status_code=status.HTTP_201_CREATED)
