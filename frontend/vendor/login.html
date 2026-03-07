@@ -37,10 +37,23 @@
         btn.disabled = true;
         btn.textContent = "Signing in...";
         try {
-            const payload = await apiLogin(email, password);
-            if (payload.role === "admin") {
+            const res = await fetch("/api/v1/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({ username: email, password: password }).toString(),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ detail: "Login failed" }));
+                throw new Error(err.detail || "Login failed");
+            }
+            const data = await res.json();
+            const token = data.access_token;
+            sessionStorage.setItem("bmm_token", token);
+            const payload = JSON.parse(atob(token.split(".")[1]));
+            const role = payload.role;
+            if (role === "admin") {
                 window.location.href = "/admin/index.html";
-            } else if (payload.role === "cashier") {
+            } else if (role === "cashier") {
                 window.location.href = "/pos/index.html";
             } else {
                 window.location.href = "/vendor/dashboard.html";

@@ -588,7 +588,8 @@
 
     // ─── Init ─────────────────────────────────────────────────────────────────
     function init() {
-        if (!requireAuth()) return;
+        const token = sessionStorage.getItem('bmm_token');
+        if (!token) { window.location.href = '/vendor/login.html'; return; }
         const payload = parseToken();
         if (!payload || !['admin', 'cashier'].includes(payload.role)) {
             showToast('Access denied. Cashier or Admin role required.', 'error');

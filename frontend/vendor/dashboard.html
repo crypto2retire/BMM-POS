@@ -93,7 +93,8 @@
     }
 
     async function loadDashboard() {
-        if (!requireAuth()) return;
+        const token = sessionStorage.getItem('bmm_token');
+        if (!token) { window.location.href = '/vendor/login.html'; return; }
         const payload = parseToken();
         document.getElementById("vendor-name").textContent = payload?.name || "Vendor";
 

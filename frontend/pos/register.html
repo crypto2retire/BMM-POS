@@ -837,7 +837,8 @@
 
     // ── Init ───────────────────────────────────────────────────────────
     function init() {
-        if (!requireAuth()) return;
+        const token = sessionStorage.getItem('bmm_token');
+        if (!token) { window.location.href = '/vendor/login.html'; return; }
         const payload = parseToken();
         if (!payload || (payload.role !== 'admin' && payload.role !== 'cashier')) {
             window.location.href = '/vendor/dashboard.html';
