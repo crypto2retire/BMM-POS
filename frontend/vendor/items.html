@@ -35,6 +35,68 @@
         @media (min-width: 768px) {
             .mobile-only { display:none !important; }
         }
+
+        /* ── In-form AI styles ──────────────────────────────── */
+        #ai-describe-btn {
+            background:#38383B; border:none; color:#fff;
+            font-size:0.82rem; padding:6px 14px; cursor:pointer;
+            display:inline-flex; align-items:center; gap:6px;
+            transition: background 0.15s;
+        }
+        #ai-describe-btn:hover { background:#555558; }
+        #ai-describe-btn:disabled { opacity:0.6; cursor:default; }
+
+        #ai-suggestion-panel {
+            background:var(--surface-2); border:1px solid var(--border);
+            padding:12px; margin-bottom:14px; font-size:0.85rem;
+        }
+        .ai-sugg-row {
+            display:flex; align-items:flex-start; gap:8px;
+            padding:6px 0; border-bottom:1px solid var(--border); font-size:0.82rem;
+        }
+        .ai-sugg-row:last-child { border-bottom:none; }
+        .ai-sugg-label {
+            font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em;
+            color:var(--text-light); white-space:nowrap; min-width:68px; padding-top:2px;
+        }
+        .ai-sugg-value { flex:1; color:var(--text); line-height:1.4; }
+        .ai-use-btn {
+            background:#38383B; border:none; color:#fff;
+            font-size:0.72rem; padding:3px 8px; cursor:pointer;
+            white-space:nowrap; flex-shrink:0; transition:background 0.15s;
+        }
+        .ai-use-btn:hover { background:#555558; }
+
+        /* ── Mini chat ──────────────────────────────────────── */
+        #mini-chat-section { border:1px solid var(--border); margin-bottom:12px; }
+        #mini-chat-toggle {
+            width:100%; background:var(--surface-2); border:none;
+            color:var(--text-light); font-size:0.82rem; padding:8px 12px;
+            text-align:left; cursor:pointer; display:flex;
+            justify-content:space-between; align-items:center; min-height:40px;
+        }
+        #mini-chat-toggle:hover { background:var(--surface); }
+        #mini-chat-messages {
+            max-height:180px; overflow-y:auto; padding:10px;
+            font-size:0.82rem; display:flex; flex-direction:column;
+            gap:6px; background:var(--surface);
+        }
+        .mc-msg-user {
+            align-self:flex-end; background:#555558; color:#fff;
+            padding:5px 10px; border-radius:10px 10px 2px 10px;
+            max-width:90%; line-height:1.4;
+        }
+        .mc-msg-assistant {
+            align-self:flex-start; background:var(--surface-2); color:var(--text);
+            padding:5px 10px; border-radius:10px 10px 10px 2px;
+            max-width:90%; line-height:1.4;
+        }
+        #mini-chat-input {
+            flex:1; background:var(--surface); border:1px solid var(--border);
+            color:var(--text); font-size:14px; padding:8px 10px; outline:none;
+            font-family:'Roboto',sans-serif;
+        }
+        #mini-chat-input:focus { border-color:var(--accent); }
     </style>
 </head>
 <body class="has-bottom-nav">
@@ -123,6 +185,45 @@
                     </div>
                 </div>
 
+                <!-- ── AI Describe button ───────────────────────── -->
+                <div id="ai-describe-wrap" style="display:none; margin-top:-4px; margin-bottom:14px; align-items:center; gap:8px">
+                    <button type="button" id="ai-describe-btn" onclick="analyzePhotoWithAI()">✨ Describe with AI</button>
+                    <span id="ai-describe-status" style="font-size:0.78rem; color:var(--text-light)"></span>
+                </div>
+
+                <!-- ── AI Suggestion panel ──────────────────────── -->
+                <div id="ai-suggestion-panel" style="display:none">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+                        <strong style="font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-light)">AI Suggestions</strong>
+                        <button type="button" onclick="dismissSuggestions()" style="background:none;border:none;color:var(--text-light);cursor:pointer;font-size:1rem;line-height:1;padding:2px 6px">✕</button>
+                    </div>
+                    <div id="ai-sugg-name" class="ai-sugg-row" style="display:none">
+                        <span class="ai-sugg-label">Name</span>
+                        <span class="ai-sugg-value" id="ai-sugg-name-val"></span>
+                        <button type="button" class="ai-use-btn" onclick="applySuggestion('name')">Use</button>
+                    </div>
+                    <div id="ai-sugg-category" class="ai-sugg-row" style="display:none">
+                        <span class="ai-sugg-label">Category</span>
+                        <span class="ai-sugg-value" id="ai-sugg-category-val"></span>
+                        <button type="button" class="ai-use-btn" onclick="applySuggestion('category')">Use</button>
+                    </div>
+                    <div id="ai-sugg-description" class="ai-sugg-row" style="display:none">
+                        <span class="ai-sugg-label">Description</span>
+                        <span class="ai-sugg-value" id="ai-sugg-description-val"></span>
+                        <button type="button" class="ai-use-btn" onclick="applySuggestion('description')">Use</button>
+                    </div>
+                    <div id="ai-sugg-price" class="ai-sugg-row" style="display:none">
+                        <span class="ai-sugg-label">Price range</span>
+                        <span class="ai-sugg-value" id="ai-sugg-price-val"></span>
+                    </div>
+                    <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border); display:flex; gap:8px">
+                        <button type="button" onclick="applyAllSuggestions()" id="ai-use-all-btn"
+                            style="background:#38383B;border:none;color:#fff;font-size:0.8rem;padding:6px 14px;cursor:pointer">Use all</button>
+                        <button type="button" onclick="dismissSuggestions()"
+                            style="background:none;border:1px solid var(--border);color:var(--text);font-size:0.8rem;padding:6px 14px;cursor:pointer">Dismiss</button>
+                    </div>
+                </div>
+
                 <!-- Vendor selector (admin/cashier only) -->
                 <div class="form-group" id="form-vendor-wrap" style="display:none">
                     <label class="form-label">Vendor *</label>
@@ -201,6 +302,31 @@
                         placeholder="Optional description…"></textarea>
                 </div>
 
+                <!-- ── Mini AI Chat ──────────────────────────────── -->
+                <div id="mini-chat-section">
+                    <button type="button" id="mini-chat-toggle" onclick="toggleMiniChat()">
+                        <span>💬 Ask the assistant</span>
+                        <span id="mini-chat-arrow">▾</span>
+                    </button>
+                    <div id="mini-chat-body" style="display:none">
+                        <div id="mini-chat-messages"></div>
+                        <div style="display:flex; gap:6px; padding:8px; border-top:1px solid var(--border); background:var(--surface-2); align-items:center">
+                            <button type="button" id="mini-chat-photo-btn" title="Send a photo"
+                                style="background:#4e4e54;border:none;color:#fff;font-size:0.85rem;cursor:pointer;min-height:36px;min-width:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                📷
+                                <input type="file" accept="image/*" capture="environment" id="mini-chat-photo-input" style="display:none">
+                            </button>
+                            <input type="text" id="mini-chat-input"
+                                placeholder="Ask about this item…"
+                                onkeydown="if(event.key==='Enter')sendMiniChat()">
+                            <button type="button" onclick="sendMiniChat()"
+                                style="background:#A8A6A1;border:none;color:#fff;font-size:0.85rem;cursor:pointer;min-height:36px;min-width:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                ➤
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="form-group" style="display:flex; gap:1.5rem; flex-wrap:wrap; padding-top:0.25rem">
                     <label class="form-check">
                         <input type="checkbox" id="f-is-online">
@@ -225,9 +351,14 @@
 <script>
     let editingId = null;
     let pendingPhotoFile = null;
+    let pendingPhotoBase64 = null;
+    let pendingPhotoMime = null;
     let currentRole = 'vendor';
     let allVendors = [];
     let selectedVendorId = null;
+    let aiSuggestions = {};
+    let miniChatOpen = false;
+    let miniChatBusy = false;
 
     // ── Nav helpers ────────────────────────────────────────────────────
     function handleLogout() { clearToken(); window.location.href = '/vendor/login.html'; }
@@ -253,22 +384,33 @@
         pendingPhotoFile = file;
         const reader = new FileReader();
         reader.onload = function(e) {
+            const dataUrl = e.target.result;
+            pendingPhotoBase64 = dataUrl.split(',')[1];
+            pendingPhotoMime = file.type;
             document.getElementById('photo-preview-container').innerHTML = `
                 <div class="photo-preview-wrap">
-                    <img src="${e.target.result}" alt="Preview">
+                    <img src="${dataUrl}" alt="Preview">
                     <button type="button" class="photo-preview-remove" onclick="clearPhotoPreview()">✕</button>
                 </div>
                 <div class="photo-upload-label" style="margin-top:4px">Tap to change photo</div>`;
+            document.getElementById('ai-describe-wrap').style.display = 'flex';
+            dismissSuggestions();
         };
         reader.readAsDataURL(file);
     }
 
     function clearPhotoPreview() {
         pendingPhotoFile = null;
+        pendingPhotoBase64 = null;
+        pendingPhotoMime = null;
         document.getElementById('f-photo').value = '';
         document.getElementById('photo-preview-container').innerHTML = `
             <div class="photo-upload-icon">📷</div>
             <div class="photo-upload-label">Tap to add photo<br><small style="opacity:0.6">Camera or gallery</small></div>`;
+        if (!editingId) {
+            document.getElementById('ai-describe-wrap').style.display = 'none';
+        }
+        dismissSuggestions();
     }
 
     function renderExistingPhotos(photoUrls) {
@@ -374,6 +516,8 @@
     function openModal(item = null) {
         editingId = item ? item.id : null;
         pendingPhotoFile = null;
+        pendingPhotoBase64 = null;
+        pendingPhotoMime = null;
         document.getElementById('modal-title').textContent = item ? 'Edit Item' : 'Add Item';
         document.getElementById('modal-alert').innerHTML = '';
         document.getElementById('f-name').value = item?.name || '';
@@ -391,6 +535,16 @@
         clearPhotoPreview();
         renderExistingPhotos(item?.photo_urls || []);
 
+        // AI button: always visible in edit mode, hidden in add mode until photo selected
+        document.getElementById('ai-describe-wrap').style.display = item ? 'flex' : 'none';
+        dismissSuggestions();
+
+        // Reset mini chat
+        document.getElementById('mini-chat-messages').innerHTML = '';
+        document.getElementById('mini-chat-body').style.display = 'none';
+        document.getElementById('mini-chat-arrow').textContent = '▾';
+        miniChatOpen = false;
+
         if (currentRole !== 'vendor') {
             const wrap = document.getElementById('form-vendor-wrap');
             wrap.style.display = 'block';
@@ -407,7 +561,209 @@
         document.getElementById('modal-overlay').classList.add('hidden');
         editingId = null;
         pendingPhotoFile = null;
+        pendingPhotoBase64 = null;
+        pendingPhotoMime = null;
+        dismissSuggestions();
+        document.getElementById('mini-chat-messages').innerHTML = '';
+        document.getElementById('mini-chat-body').style.display = 'none';
+        document.getElementById('mini-chat-arrow').textContent = '▾';
+        miniChatOpen = false;
     }
+
+    // ── In-form AI assistant ───────────────────────────────────────────
+
+    async function analyzePhotoWithAI() {
+        const token = sessionStorage.getItem('bmm_token');
+        const btn = document.getElementById('ai-describe-btn');
+        const statusEl = document.getElementById('ai-describe-status');
+        btn.disabled = true;
+        btn.textContent = '✨ Analyzing…';
+        statusEl.textContent = '';
+        dismissSuggestions();
+
+        const itemName = document.getElementById('f-name').value.trim();
+        const itemCat = document.getElementById('f-category').value;
+        const formContext = editingId && itemName
+            ? `The vendor is editing an item called "${itemName}" in the "${itemCat}" category. Suggest improvements or a fresh description.`
+            : 'The vendor is filling out the Add Item form. Analyze the photo and suggest item details.';
+
+        let message, body;
+        if (pendingPhotoBase64 && pendingPhotoMime) {
+            message = 'Analyze this item photo. Respond ONLY with valid JSON (no markdown, no code fences): {"name":"...","category":"...","description":"...","price_range":"$X-$Y"}. Category must be one of: Jewelry, Furniture, Vintage, Art, Handcrafted, Clothing, Books, Collectibles, Home Decor, Other.';
+            body = { message, form_context: formContext, image_base64: pendingPhotoBase64, image_mime_type: pendingPhotoMime };
+        } else {
+            message = `This item is called "${itemName}" in the "${itemCat}" category. Write an improved 2-3 sentence product description and confirm the best category. Respond ONLY with valid JSON: {"name":"...","category":"...","description":"...","price_range":"$X-$Y"}.`;
+            body = { message, form_context: formContext };
+        }
+
+        try {
+            const res = await fetch('/api/v1/assistant/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify(body),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'AI unavailable');
+            const sugg = parseAISuggestions(data.reply);
+            if (sugg) {
+                showSuggestions(sugg);
+            } else {
+                if (!miniChatOpen) toggleMiniChat();
+                showMiniChatMessage(data.reply, 'assistant');
+            }
+        } catch (e) {
+            statusEl.textContent = 'AI unavailable. Try again.';
+            setTimeout(() => { statusEl.textContent = ''; }, 3000);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = '✨ Describe with AI';
+        }
+    }
+
+    function parseAISuggestions(reply) {
+        const cleaned = reply.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (match) {
+            try {
+                const obj = JSON.parse(match[0]);
+                if (obj.name || obj.category || obj.description) return obj;
+            } catch (e) {}
+        }
+        return null;
+    }
+
+    function showSuggestions(sugg) {
+        aiSuggestions = sugg;
+        const fields = [
+            { key: 'name', rowId: 'ai-sugg-name', valId: 'ai-sugg-name-val' },
+            { key: 'category', rowId: 'ai-sugg-category', valId: 'ai-sugg-category-val' },
+            { key: 'description', rowId: 'ai-sugg-description', valId: 'ai-sugg-description-val' },
+            { key: 'price_range', rowId: 'ai-sugg-price', valId: 'ai-sugg-price-val' },
+        ];
+        fields.forEach(({ key, rowId, valId }) => {
+            const row = document.getElementById(rowId);
+            const valEl = document.getElementById(valId);
+            if (sugg[key] && row && valEl) {
+                valEl.textContent = sugg[key];
+                row.style.display = 'flex';
+            } else if (row) {
+                row.style.display = 'none';
+            }
+        });
+        document.getElementById('ai-suggestion-panel').style.display = 'block';
+    }
+
+    function dismissSuggestions() {
+        document.getElementById('ai-suggestion-panel').style.display = 'none';
+        aiSuggestions = {};
+    }
+
+    function applySuggestion(field) {
+        const val = aiSuggestions[field];
+        if (!val) return;
+        if (field === 'name') {
+            document.getElementById('f-name').value = val;
+        } else if (field === 'category') {
+            const sel = document.getElementById('f-category');
+            const opts = Array.from(sel.options);
+            const match = opts.find(o => o.value.toLowerCase() === val.toLowerCase()) ||
+                          opts.find(o => val.toLowerCase().includes(o.value.toLowerCase()) && o.value !== '');
+            if (match) sel.value = match.value;
+        } else if (field === 'description') {
+            document.getElementById('f-description').value = val;
+        }
+    }
+
+    function applyAllSuggestions() {
+        if (aiSuggestions.name) applySuggestion('name');
+        if (aiSuggestions.category) applySuggestion('category');
+        if (aiSuggestions.description) applySuggestion('description');
+        dismissSuggestions();
+    }
+
+    // ── Mini chat ──────────────────────────────────────────────────────
+
+    function toggleMiniChat() {
+        miniChatOpen = !miniChatOpen;
+        document.getElementById('mini-chat-body').style.display = miniChatOpen ? 'block' : 'none';
+        document.getElementById('mini-chat-arrow').textContent = miniChatOpen ? '▴' : '▾';
+        if (miniChatOpen) document.getElementById('mini-chat-input').focus();
+    }
+
+    function showMiniChatMessage(text, type) {
+        const msgs = document.getElementById('mini-chat-messages');
+        const el = document.createElement('div');
+        el.className = type === 'user' ? 'mc-msg-user' : 'mc-msg-assistant';
+        el.textContent = text;
+        msgs.appendChild(el);
+        msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    async function sendMiniChat() {
+        if (miniChatBusy) return;
+        const input = document.getElementById('mini-chat-input');
+        const msg = input.value.trim();
+        if (!msg) return;
+        miniChatBusy = true;
+        input.value = '';
+        showMiniChatMessage(msg, 'user');
+
+        const itemName = document.getElementById('f-name').value.trim();
+        const itemCat = document.getElementById('f-category').value;
+        let formContext = 'The vendor is filling out the Add Item form.';
+        if (editingId && itemName) {
+            formContext = `The vendor is editing an item called "${itemName}" in the "${itemCat}" category.`;
+        } else if (itemName) {
+            formContext = `The vendor is adding a new item called "${itemName}" to the "${itemCat}" category.`;
+        }
+
+        const token = sessionStorage.getItem('bmm_token');
+        try {
+            const res = await fetch('/api/v1/assistant/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ message: msg, form_context: formContext }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'Unavailable');
+            showMiniChatMessage(data.reply, 'assistant');
+        } catch (e) {
+            showMiniChatMessage('Assistant is not available right now.', 'assistant');
+        }
+        miniChatBusy = false;
+    }
+
+    // Mini chat photo button
+    document.getElementById('mini-chat-photo-btn').addEventListener('click', function () {
+        document.getElementById('mini-chat-photo-input').click();
+    });
+    document.getElementById('mini-chat-photo-input').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            const base64 = ev.target.result.split(',')[1];
+            const mime = file.type;
+            showMiniChatMessage('[Photo sent]', 'user');
+            const itemName = document.getElementById('f-name').value.trim();
+            const itemCat = document.getElementById('f-category').value;
+            const formContext = editingId && itemName
+                ? `The vendor is editing "${itemName}" in the "${itemCat}" category.`
+                : 'The vendor is filling out the Add Item form.';
+            const token = sessionStorage.getItem('bmm_token');
+            fetch('/api/v1/assistant/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ message: 'What is this item? Suggest a name, category, and description.', image_base64: base64, image_mime_type: mime, form_context: formContext }),
+            }).then(r => r.json()).then(data => {
+                showMiniChatMessage(data.reply || 'No response.', 'assistant');
+            }).catch(() => {
+                showMiniChatMessage('Assistant is not available right now.', 'assistant');
+            });
+        };
+        reader.readAsDataURL(file);
+        e.target.value = '';
+    });
 
     async function saveItem() {
         const name = document.getElementById('f-name').value.trim();

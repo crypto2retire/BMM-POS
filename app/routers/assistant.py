@@ -395,6 +395,10 @@ async def chat(
     action_taken: Optional[str] = None
     item_id: Optional[int] = None
 
+    # Prepend form context to system prompt if provided
+    if data.form_context:
+        messages[0]["content"] = SYSTEM_PROMPT + "\n\nCurrent context: " + data.form_context
+
     # Multi-round tool-calling loop (max 4 rounds to prevent runaway)
     for _round in range(4):
         body = await _call_openrouter(api_key, messages, include_tools=True)
