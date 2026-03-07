@@ -1,0 +1,114 @@
+Make the admin dashboard and POS register fully mobile-friendly. Staff use tablets and phones on the floor.
+
+STEP 1 — Update frontend/admin/index.html for mobile
+
+Navigation:
+- On mobile (under 768px): collapse the nav links into a hamburger menu (☰)
+- Tapping hamburger shows a dropdown menu with all nav links
+- Logo and hamburger on same row
+
+Summary cards:
+- Stack vertically on mobile, 2x2 grid on tablet, 4 across on desktop
+- Each card full width on mobile with large readable numbers
+- Minimum 60px tall, comfortable tap targets
+
+Vendors table:
+- Hide on mobile, replace with vendor cards
+- Each card shows: vendor name (large), booth number, balance, status badge
+- Cards are tappable rows with a chevron (›) on the right
+- Tapping a card expands it to show rent amount and item count
+
+General:
+- All text minimum 14px
+- No horizontal scrolling at 375px width
+- Padding 16px on mobile
+
+STEP 2 — Update frontend/admin/vendors.html for mobile
+
+Same hamburger nav as admin/index.html.
+
+Vendor table becomes cards on mobile — same card style as above.
+
+Add/Edit vendor form:
+- Full screen modal on mobile
+- Fields stacked single column
+- Save button fixed at bottom of screen
+- All inputs 16px font to prevent iOS zoom
+
+STEP 3 — Update frontend/pos/index.html for mobile
+
+The POS is the most important page to get right on tablet. Cashiers use it all day.
+
+Layout changes by screen size:
+
+Mobile (under 768px) — single column stacked layout:
+- Search bar at top, full width, large (48px tall), autofocus
+- Search results appear as a scrollable list below the search bar
+- Each result: item name, booth, price — full width card, 56px tall, easy to tap
+- Below results: cart section
+- Cart items as a list: item name left, price right, X button to remove
+- Subtotal, tax, total at bottom of cart
+- Payment buttons (Cash / Card) full width, 52px tall
+- Charge button full width, large, fixed at very bottom of screen
+
+Tablet (768px to 1024px) — two column layout:
+- Left column 55%: search and results
+- Right column 45%: cart, totals, payment
+- Both columns full height, right column scrollable
+
+Desktop (over 1024px):
+- Keep existing layout
+
+Search behavior on mobile:
+- Barcode scanner input: when a barcode value is entered and Enter is pressed, immediately add to cart with no extra taps required
+- Text search: show results after 2 characters, tap a result to add to cart
+- After adding an item: clear the search input and refocus it so cashier can scan the next item immediately
+
+Cart on mobile:
+- Show item count badge on a "Cart (3)" indicator at the top of the cart section
+- Quantities: show minus and plus buttons on each cart item (44px each) so cashier can adjust without removing and re-adding
+
+Cash payment on mobile:
+- Quick amount buttons: $5, $10, $20, $50, $100 — large, easy to tap
+- Manual entry field below quick buttons
+- Change due shown large and bold
+
+Receipt button after sale:
+- Full width, prominent
+- "New Sale" button also full width below it
+
+STEP 4 — Add a mobile bottom nav to admin pages
+
+On screens under 768px, show a fixed bottom nav bar on admin pages:
+- 🏠 Dashboard → /admin/index.html
+- 👥 Vendors → /admin/vendors.html  
+- 🏷️ Items → /vendor/items.html
+- 🖥️ POS → /pos/index.html
+
+Same style as the vendor bottom nav (fixed, bottom 0, full width, white background, border-top).
+
+STEP 5 — Update frontend/static/js/assistant-panel.js
+
+The floating assistant button is currently at bottom-right. On mobile POS page, move it to bottom: 80px so it clears the fixed Charge button. On admin pages move it to bottom: 70px to clear the bottom nav.
+
+STEP 6 — Test at these screen sizes:
+
+Admin dashboard at 375px:
+- No horizontal scroll
+- Cards stack vertically
+- Hamburger menu works
+- Bottom nav visible
+
+POS at 768px (tablet):
+- Two column layout
+- Search and cart both visible without scrolling
+- Barcode scan adds item immediately
+- Cash quick buttons visible
+
+POS at 375px (phone):
+- Single column
+- Search at top
+- Charge button always visible at bottom
+- Cart items show quantity controls
+
+Report any layout issues found.

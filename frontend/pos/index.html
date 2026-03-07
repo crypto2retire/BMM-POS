@@ -16,6 +16,49 @@
             gap: 0;
         }
 
+        /* ── Mobile overrides ─────────────────────────────────────────── */
+        @media (max-width: 767px) {
+            .pos-layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: 56px 1fr;
+                height: 100dvh;
+            }
+            .pos-navbar { grid-column: 1; }
+            .pos-left {
+                grid-column: 1;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .pos-right { display: none; }
+            .scanner-bar input { font-size: 16px; }
+            .search-bar input { font-size: 16px; }
+            .scanner-bar { padding: 0.6rem 0.75rem; }
+            .scanner-bar input { height: 48px; }
+            .scan-btn { height: 48px; }
+            .search-bar { padding: 0.4rem 0.75rem 0.5rem; }
+            .search-bar input { height: 44px; }
+            .search-result-item { min-height: 56px; }
+            .cart-area { padding: 0.5rem; }
+            /* Mobile bottom payment bar */
+            .mobile-pay-bar {
+                display: flex !important;
+                position: fixed;
+                bottom: 0; left: 0; right: 0;
+                padding: 0.5rem 0.75rem;
+                background: #2C2C2F;
+                border-top: 1px solid #555558;
+                gap: 0.5rem;
+                z-index: 50;
+            }
+            .cart-area { padding-bottom: 80px; }
+        }
+
+        /* ── Tablet (768-1023) ───────────────────────────────────────── */
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .pos-layout { grid-template-columns: 55% 45%; }
+            .pos-right { padding: 0.75rem; gap: 0.6rem; }
+        }
+
         /* Navbar spans full width */
         .pos-navbar {
             grid-column: 1 / -1;
@@ -530,10 +573,13 @@
         </div>
         <div class="scan-error" id="scan-error"></div>
         <div class="cart-area" id="cart-area">
+            <div id="mobile-cart-header" style="display:none;padding:0.4rem 0 0.5rem;font-size:0.8rem;color:#A8A6A1;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">
+                Cart · <span id="mobile-cart-count">0 items</span>
+            </div>
             <div class="cart-empty" id="cart-empty">
                 <div class="icon">🛒</div>
-                <span>Scan an item to begin</span>
-                <small style="color:#4B5563">Barcode scanner or type above</small>
+                <span>Scan or search an item to begin</span>
+                <small style="color:#4B5563">Barcode scanner or search above</small>
             </div>
             <table class="cart-table" id="cart-table" style="display:none">
                 <thead>
@@ -581,11 +627,13 @@
             <small>Amount Due</small>
             <span id="cash-total-display">$0.00</span>
         </div>
-        <div class="quick-cash">
+        <div class="quick-cash" style="flex-wrap:wrap;gap:0.4rem">
+            <button onclick="setTendered(5)">$5</button>
+            <button onclick="setTendered(10)">$10</button>
             <button onclick="setTendered(20)">$20</button>
             <button onclick="setTendered(50)">$50</button>
             <button onclick="setTendered(100)">$100</button>
-            <button onclick="setTendered(null, true)">Exact</button>
+            <button onclick="setTendered(null, true)" style="flex:1;min-width:60px">Exact</button>
         </div>
         <div class="form-group">
             <label class="form-label">Amount Tendered</label>
@@ -635,6 +683,20 @@
         <button class="print-receipt-btn" onclick="printReceipt()">🖨 Print Receipt</button>
         <button class="new-sale-btn" onclick="startNewSale()">New Sale →</button>
     </div>
+</div>
+
+<!-- Mobile fixed payment bar (hidden on desktop via CSS) -->
+<div class="mobile-pay-bar" id="mobile-pay-bar" style="display:none">
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
+        <div style="font-size:0.7rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.05em">Total</div>
+        <div style="font-size:1.25rem;font-weight:800;color:#F9FAFB" id="mobile-total">$0.00</div>
+    </div>
+    <button class="pay-btn cash" id="mobile-cash-btn" onclick="openCashModal()" disabled style="flex:1;max-width:140px;padding:0.75rem">
+        💵 Cash
+    </button>
+    <button class="pay-btn card" id="mobile-card-btn" onclick="startCardPayment()" disabled style="flex:1;max-width:140px;padding:0.75rem">
+        💳 Card
+    </button>
 </div>
 
 <!-- Toast container -->
@@ -704,7 +766,7 @@
 
     function onSearchInput(val) {
         clearTimeout(searchTimer);
-        if (val.trim().length < 3) {
+        if (val.trim().length < 2) {
             hideSearchResults();
             return;
         }
@@ -847,16 +909,24 @@
 
         clearScanError();
 
+        const mobileCashBtn = document.getElementById('mobile-cash-btn');
+        const mobileCardBtn = document.getElementById('mobile-card-btn');
+        const mobileTotal = document.getElementById('mobile-total');
+
         if (cart.length === 0) {
             empty.style.display = 'flex';
             table.style.display = 'none';
             cashBtn.disabled = true;
             cardBtn.disabled = true;
+            if (mobileCashBtn) mobileCashBtn.disabled = true;
+            if (mobileCardBtn) mobileCardBtn.disabled = true;
         } else {
             empty.style.display = 'none';
             table.style.display = 'table';
             cashBtn.disabled = false;
             cardBtn.disabled = false;
+            if (mobileCashBtn) mobileCashBtn.disabled = false;
+            if (mobileCardBtn) mobileCardBtn.disabled = false;
 
             tbody.innerHTML = cart.map(({ item, quantity }) => {
                 const activePrice = getActivePrice(item);
@@ -891,7 +961,13 @@
         document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
         document.getElementById('tax-amount').textContent = `$${taxAmount.toFixed(2)}`;
         document.getElementById('total-amount').textContent = `$${total.toFixed(2)}`;
-        document.getElementById('item-count').textContent = cart.reduce((s, c) => s + c.quantity, 0);
+        const itemCount = cart.reduce((s, c) => s + c.quantity, 0);
+        document.getElementById('item-count').textContent = itemCount;
+        if (mobileTotal) mobileTotal.textContent = `$${total.toFixed(2)}`;
+        const mobileCartHeader = document.getElementById('mobile-cart-header');
+        const mobileCartCount = document.getElementById('mobile-cart-count');
+        if (mobileCartHeader) mobileCartHeader.style.display = cart.length > 0 ? 'block' : 'none';
+        if (mobileCartCount) mobileCartCount.textContent = itemCount + ' item' + (itemCount !== 1 ? 's' : '');
     }
 
     // ─── Cash Payment Modal ────────────────────────────────────────────────────
@@ -1208,6 +1284,6 @@ ${cashLines}
     init();
 </script>
 <script src="/static/js/assistant-panel.js"></script>
-<script>initAssistantPanel('The user is a cashier at the POS register at Bowenstreet Market.', { buttonBottom: '120px' });</script>
+<script>initAssistantPanel('The user is a cashier at the POS register at Bowenstreet Market.', { buttonBottom: '80px' });</script>
 </body>
 </html>
