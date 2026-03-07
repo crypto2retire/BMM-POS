@@ -3,7 +3,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_, func
 from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models.item import Item
@@ -47,16 +47,29 @@ def item_to_response(item: Item) -> ItemResponse:
 async def list_items(
     status_filter: Optional[str] = Query(None, alias="status"),
     category: Optional[str] = Query(None),
+    q: Optional[str] = Query(None, description="Search by name or barcode"),
+    limit: Optional[int] = Query(None, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
     query = select(Item).options(selectinload(Item.vendor))
-    if current_user.role != "admin":
+    if current_user.role not in ("admin", "cashier"):
         query = query.where(Item.vendor_id == current_user.id)
     if status_filter:
         query = query.where(Item.status == status_filter)
     if category:
         query = query.where(Item.category == category)
+    if q:
+        term = f"%{q.lower()}%"
+        query = query.where(
+            or_(
+                func.lower(Item.name).like(term),
+                func.lower(Item.barcode).like(term),
+                func.lower(Item.sku).like(term),
+            )
+        )
+    if limit:
+        query = query.limit(limit)
 
     result = await db.execute(query)
     items = result.scalars().all()

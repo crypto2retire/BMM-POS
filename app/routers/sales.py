@@ -1,9 +1,10 @@
 from datetime import date
+import datetime as dt
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, func
 from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models.sale import Sale, SaleItem
@@ -214,6 +215,36 @@ async def list_sales(
         sales = result.scalars().all()
 
     return [sale_to_response(s) for s in sales]
+
+
+@router.get("/summary/today")
+async def sales_summary_today(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+
+    today = date.today()
+    tomorrow = today + dt.timedelta(days=1)
+
+    result = await db.execute(
+        select(
+            func.count(Sale.id).label("sale_count"),
+            func.coalesce(func.sum(Sale.total), 0).label("total_revenue"),
+            func.coalesce(func.sum(Sale.tax_amount), 0).label("total_tax"),
+        ).where(
+            Sale.created_at >= today,
+            Sale.created_at < tomorrow,
+        )
+    )
+    row = result.one()
+    return {
+        "date": str(today),
+        "sale_count": row.sale_count,
+        "total_revenue": float(row.total_revenue),
+        "total_tax": float(row.total_tax),
+    }
 
 
 @router.get("/{sale_id}", response_model=SaleResponse)

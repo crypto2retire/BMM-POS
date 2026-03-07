@@ -25,6 +25,8 @@ app/
     vendor.py     — Vendor, VendorBalance ORM models
     item.py       — Item ORM model
     sale.py       — Sale, SaleItem ORM models
+    rent.py       — RentPayment ORM model
+    payout.py     — Payout ORM model
   schemas/
     vendor.py     — VendorCreate, VendorUpdate, VendorResponse, Token
     item.py       — ItemCreate, ItemUpdate, ItemResponse (w/ computed active_price)
@@ -46,16 +48,17 @@ scripts/
 frontend/
   index.html              — Redirects to login
   static/css/main.css     — Full stylesheet (teal #1A6B5A, print @media for receipts)
-  static/js/api.js        — JWT fetch wrapper (window.name persistence)
+  static/js/api.js        — JWT fetch wrapper (sessionStorage persistence)
   vendor/
     login.html    — Login page (redirects by role: admin→/admin, cashier→/pos, vendor→/vendor)
     dashboard.html — Vendor stats: balance, items, booth
     items.html    — Item management with add/edit/delete/label
   admin/
-    index.html    — Admin dashboard with vendor/item stats + POS Terminal nav link
+    index.html    — Admin dashboard with vendor/item stats + Register + POS Terminal nav links
     vendors.html  — Admin vendor management (add/edit/suspend) with cashier role option
   pos/
     index.html    — Full employee POS terminal (barcode scanner, cart, cash/card payments, receipt)
+    register.html — Cash register: two-column layout, item search, cart, cash/card checkout
 ```
 
 ## API Routes
@@ -80,7 +83,10 @@ All routes prefixed with `/api/v1/`:
 | GET | /items/{id}/label | Auth | PDF label download |
 | POST | /sales/ | Auth | Create sale (checkout) |
 | GET | /sales/ | Auth | List sales (admin/cashier=all, vendor=own) |
+| GET | /sales/summary/today | Admin/Cashier | Today's sale count, revenue, tax |
 | GET | /sales/{id} | Auth | Get single sale |
+| POST | /pos/sale | Admin/Cashier | Cash register checkout (per-item tax exempt support) |
+| POST | /pos/payment-callback | Auth | Placeholder payment webhook |
 | POST | /pos/poynt/charge | Cashier/Admin | Initiate Poynt terminal charge |
 | GET | /pos/poynt/status/{id} | Cashier/Admin | Poll Poynt transaction status |
 
@@ -96,7 +102,7 @@ All routes prefixed with `/api/v1/`:
 
 ## Authentication & Roles
 
-JWT stored in `window.name` (persists across same-tab navigation, cleared on tab close). Not localStorage or sessionStorage. Tokens expire after 8 hours.
+JWT stored in `sessionStorage` under key `__bmm_token` (persists across same-tab navigation, cleared on tab close). Tokens expire after 8 hours.
 
 | Role | Access |
 |------|--------|
