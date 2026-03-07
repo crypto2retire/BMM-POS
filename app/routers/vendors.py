@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models.vendor import Vendor
 from app.schemas.vendor import VendorCreate, VendorUpdate, VendorResponse
-from app.routers.auth import get_current_user, require_admin, hash_password
+from app.routers.auth import get_current_user, require_admin, require_cashier_or_admin, hash_password
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
 
@@ -35,7 +35,7 @@ def vendor_to_response(vendor: Vendor) -> VendorResponse:
 @router.get("/", response_model=List[VendorResponse])
 async def list_vendors(
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_admin),
+    _: Vendor = Depends(require_cashier_or_admin),
 ):
     result = await db.execute(
         select(Vendor).options(selectinload(Vendor.balance))

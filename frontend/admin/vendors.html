@@ -14,10 +14,12 @@
         <span class="store-name">Admin</span>
     </a>
     <div class="navbar-user">
-        <span>Administrator</span>
+        <span id="user-name">Administrator</span>
         <nav class="navbar-nav">
-            <a href="/admin/index.html">Dashboard</a>
+            <a href="#" id="nav-home">Dashboard</a>
             <a href="/admin/vendors.html" class="active">Vendors</a>
+            <a href="/vendor/items.html">Items</a>
+            <a href="/admin/customers.html">Vendor Directory</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
     </div>
@@ -229,6 +231,8 @@
         }
     }
 
+    let isAdmin = false;
+
     async function loadVendors() {
         try {
             const vendors = await apiGet("/api/v1/vendors/");
@@ -248,8 +252,9 @@
                     <td>${statusBadge(v.status)}</td>
                     <td>
                         <div class="table-actions">
-                            <button class="btn btn-outline btn-sm" onclick='openModal(${JSON.stringify(v)})'>Edit</button>
-                            ${v.status === "active" ? `<button class="btn btn-danger btn-sm" onclick="suspendVendor(${v.id}, '${v.name.replace(/'/g, "\\'")}')">Suspend</button>` : ""}
+                            ${isAdmin ? `<button class="btn btn-outline btn-sm" onclick='openModal(${JSON.stringify(v)})'>Edit</button>` : ''}
+                            ${isAdmin && v.status === "active" ? `<button class="btn btn-danger btn-sm" onclick="suspendVendor(${v.id}, '${v.name.replace(/'/g, "\\'")}')">Suspend</button>` : ""}
+                            ${!isAdmin ? `<span class="badge badge-gray">Read Only</span>` : ''}
                         </div>
                     </td>
                 </tr>
@@ -263,9 +268,17 @@
         const token = sessionStorage.getItem('bmm_token');
         if (!token) { window.location.href = '/vendor/login.html'; return; }
         const payload = parseToken();
-        if (payload?.role !== "admin") {
-            window.location.href = "/vendor/dashboard.html";
+        if (!payload || !['admin', 'cashier'].includes(payload.role)) {
+            window.location.href = '/vendor/login.html';
             return;
+        }
+        isAdmin = payload.role === 'admin';
+        document.getElementById('user-name').textContent = payload.name || 'User';
+        document.getElementById('nav-home').href = isAdmin ? '/admin/index.html' : '/pos/index.html';
+        document.getElementById('nav-home').textContent = isAdmin ? 'Dashboard' : 'POS Terminal';
+        if (!isAdmin) {
+            document.getElementById('add-vendor-btn') && (document.getElementById('add-vendor-btn').style.display = 'none');
+            document.querySelector('.page-header .btn-primary').style.display = 'none';
         }
         await loadVendors();
     }

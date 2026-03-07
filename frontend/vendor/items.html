@@ -3,19 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Items — BMM-POS</title>
+    <title>Items — BMM-POS</title>
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+    <style>
+        .vendor-filter-bar { display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem; }
+        .vendor-filter-bar label { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-light); white-space:nowrap; }
+        .vendor-filter-bar select { min-width:200px; }
+        .label-btn-wrap { position:relative; display:inline-flex; }
+        .label-btn-wrap .ldd { display:none; position:absolute; top:100%; right:0; background:var(--surface-2); border:1px solid var(--border); z-index:200; min-width:140px; }
+        .label-btn-wrap .ldd button { display:block; width:100%; text-align:left; padding:0.45rem 0.75rem; background:none; border:none; color:var(--text); font-size:0.8rem; cursor:pointer; }
+        .label-btn-wrap .ldd button:hover { background:var(--primary-light); }
+        .label-btn-main { border-right:1px solid var(--border) !important; }
+        .label-btn-toggle { padding:0.3rem 0.4rem !important; }
+    </style>
 </head>
 <body>
 <nav class="navbar">
-    <a href="/vendor/dashboard.html" class="navbar-brand">
+    <a href="#" id="nav-brand" class="navbar-brand">
         <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
+        <span class="store-name" id="nav-role-label">Items</span>
     </a>
     <div class="navbar-user">
         <span id="vendor-name">Loading...</span>
         <nav class="navbar-nav">
-            <a href="/vendor/dashboard.html">Dashboard</a>
+            <a href="#" id="nav-dashboard">Dashboard</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
     </div>
@@ -23,8 +35,15 @@
 <div class="main-content">
     <div id="alert-container"></div>
     <div class="page-header">
-        <h1 class="page-title">My Items</h1>
-        <button class="btn btn-primary" onclick="openModal()">+ Add Item</button>
+        <h1 class="page-title" id="page-title">Items</h1>
+        <button class="btn btn-primary" id="add-item-btn" onclick="openModal()">+ Add Item</button>
+    </div>
+
+    <div id="vendor-filter-wrap" class="vendor-filter-bar" style="display:none">
+        <label>Viewing vendor:</label>
+        <select class="form-control" id="vendor-filter" onchange="onVendorChange()">
+            <option value="">All Vendors</option>
+        </select>
     </div>
 
     <div class="card">
@@ -33,24 +52,25 @@
                 <thead>
                     <tr>
                         <th>Name</th>
+                        <th id="th-vendor" style="display:none">Vendor</th>
                         <th>Category</th>
                         <th>Price</th>
                         <th>Active Price</th>
-                        <th>Sale Dates</th>
                         <th>Qty</th>
+                        <th>Label</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="items-table-body">
-                    <tr><td colspan="8" class="loading">Loading items...</td></tr>
+                    <tr><td colspan="9" class="loading">Loading items...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 
-<!-- Modal -->
+<!-- Add/Edit Modal -->
 <div class="modal-overlay hidden" id="modal-overlay">
     <div class="modal">
         <div class="modal-header">
@@ -60,6 +80,13 @@
         <div class="modal-body">
             <div id="modal-alert"></div>
             <form id="item-form">
+                <!-- Vendor selector (admin/cashier only) -->
+                <div class="form-group" id="form-vendor-wrap" style="display:none">
+                    <label class="form-label">Vendor *</label>
+                    <select class="form-control" id="f-vendor-id" required>
+                        <option value="">Select vendor</option>
+                    </select>
+                </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Item Name *</label>
@@ -111,12 +138,23 @@
                         <label class="form-label">Sale End</label>
                         <input class="form-control" type="date" id="f-sale-end">
                     </div>
-                    <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:0.25rem">
-                        <label class="form-check">
-                            <input type="checkbox" id="f-is-online">
-                            List Online
-                        </label>
+                    <div class="form-group">
+                        <label class="form-label">Label Type</label>
+                        <select class="form-control" id="f-label-style">
+                            <option value="standard">Standard PDF</option>
+                            <option value="dymo">Dymo LabelWriter</option>
+                        </select>
                     </div>
+                </div>
+                <div class="form-group" style="display:flex;align-items:center;gap:1rem;padding-top:0.25rem">
+                    <label class="form-check">
+                        <input type="checkbox" id="f-is-online">
+                        List Online
+                    </label>
+                    <label class="form-check">
+                        <input type="checkbox" id="f-is-tax-exempt">
+                        Tax Exempt
+                    </label>
                 </div>
             </form>
         </div>
@@ -130,72 +168,175 @@
 <script src="/static/js/api.js"></script>
 <script>
     let editingId = null;
+    let currentRole = 'vendor';
+    let allVendors = [];
+    let selectedVendorId = null;
 
     function handleLogout() {
         clearToken();
-        window.location.href = "/vendor/login.html";
+        window.location.href = '/vendor/login.html';
     }
 
-    function statusBadge(status) {
-        const map = { active: "badge-green", sold: "badge-blue", removed: "badge-red" };
-        return `<span class="badge ${map[status] || "badge-gray"}">${status}</span>`;
+    function statusBadge(s) {
+        const map = { active: 'badge-green', sold: 'badge-blue', removed: 'badge-red' };
+        return `<span class="badge ${map[s] || 'badge-gray'}">${s}</span>`;
     }
 
+    function labelBadge(style) {
+        return style === 'dymo'
+            ? `<span class="badge badge-blue">Dymo</span>`
+            : `<span class="badge badge-gray">PDF</span>`;
+    }
+
+    // ── Vendor filter ────────────────────────────────────────────────────────
+    async function loadVendors() {
+        try {
+            allVendors = await apiGet('/api/v1/vendors/');
+            const sel = document.getElementById('vendor-filter');
+            const fSel = document.getElementById('f-vendor-id');
+            allVendors.filter(v => v.role === 'vendor').forEach(v => {
+                sel.innerHTML += `<option value="${v.id}">${v.name} (${v.booth_number || 'No Booth'})</option>`;
+                fSel.innerHTML += `<option value="${v.id}">${v.name} (${v.booth_number || 'No Booth'})</option>`;
+            });
+        } catch (e) { /* ignore */ }
+    }
+
+    function onVendorChange() {
+        const val = document.getElementById('vendor-filter').value;
+        selectedVendorId = val ? parseInt(val) : null;
+        loadItems();
+    }
+
+    // ── Label dropdown ───────────────────────────────────────────────────────
+    function toggleLabelDropdown(event, id) {
+        event.stopPropagation();
+        document.querySelectorAll('.ldd').forEach(d => {
+            if (d.id !== `ldd-${id}`) d.style.display = 'none';
+        });
+        const ldd = document.getElementById(`ldd-${id}`);
+        ldd.style.display = ldd.style.display === 'block' ? 'none' : 'block';
+    }
+
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
+    });
+
+    async function printLabelAuto(id, style) {
+        if (style === 'dymo') {
+            await printDymoLabel(id);
+        } else {
+            printPdfLabel(id);
+        }
+    }
+
+    function printPdfLabel(id) {
+        document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
+        window.open(`/api/v1/items/${id}/label`, '_blank');
+    }
+
+    async function printDymoLabel(id) {
+        document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
+        try {
+            const xml = await apiFetchText(`/api/v1/items/${id}/dymo-label`);
+            const body = new URLSearchParams({ printerName: '', labelXml: xml, labelSetXml: '' });
+            const resp = await fetch('http://localhost:41951/DYMO/DLS/Printing/PrintLabel', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: body.toString(),
+            });
+            if (resp.ok) {
+                showAlert('alert-container', 'Label sent to Dymo printer.', 'success');
+            } else {
+                showAlert('alert-container', 'Dymo printer returned an error. Check that the printer is connected and ready.', 'error');
+            }
+        } catch (e) {
+            if (e.message && e.message.includes('fetch')) {
+                showAlert('alert-container', 'Dymo software is not running. Please open Dymo Connect on this computer.', 'error');
+            } else {
+                showAlert('alert-container', e.message || 'Dymo label failed.', 'error');
+            }
+        }
+    }
+
+    // ── Modal ────────────────────────────────────────────────────────────────
     function openModal(item = null) {
         editingId = item ? item.id : null;
-        document.getElementById("modal-title").textContent = item ? "Edit Item" : "Add Item";
-        document.getElementById("modal-alert").innerHTML = "";
-        document.getElementById("f-name").value = item?.name || "";
-        document.getElementById("f-category").value = item?.category || "";
-        document.getElementById("f-description").value = item?.description || "";
-        document.getElementById("f-price").value = item?.price || "";
-        document.getElementById("f-quantity").value = item?.quantity ?? 1;
-        document.getElementById("f-sale-price").value = item?.sale_price || "";
-        document.getElementById("f-sale-start").value = item?.sale_start || "";
-        document.getElementById("f-sale-end").value = item?.sale_end || "";
-        document.getElementById("f-is-online").checked = item?.is_online || false;
-        document.getElementById("modal-overlay").classList.remove("hidden");
+        document.getElementById('modal-title').textContent = item ? 'Edit Item' : 'Add Item';
+        document.getElementById('modal-alert').innerHTML = '';
+        document.getElementById('f-name').value = item?.name || '';
+        document.getElementById('f-category').value = item?.category || '';
+        document.getElementById('f-description').value = item?.description || '';
+        document.getElementById('f-price').value = item?.price || '';
+        document.getElementById('f-quantity').value = item?.quantity ?? 1;
+        document.getElementById('f-sale-price').value = item?.sale_price || '';
+        document.getElementById('f-sale-start').value = item?.sale_start || '';
+        document.getElementById('f-sale-end').value = item?.sale_end || '';
+        document.getElementById('f-is-online').checked = item?.is_online || false;
+        document.getElementById('f-is-tax-exempt').checked = item?.is_tax_exempt || false;
+        document.getElementById('f-label-style').value = item?.label_style || 'standard';
+        if (currentRole !== 'vendor') {
+            const vendorWrap = document.getElementById('form-vendor-wrap');
+            vendorWrap.style.display = 'block';
+            if (item) {
+                document.getElementById('f-vendor-id').value = item.vendor_id;
+                document.getElementById('f-vendor-id').disabled = true;
+            } else {
+                document.getElementById('f-vendor-id').disabled = false;
+                if (selectedVendorId) {
+                    document.getElementById('f-vendor-id').value = selectedVendorId;
+                }
+            }
+        }
+        document.getElementById('modal-overlay').classList.remove('hidden');
     }
 
     function closeModal() {
-        document.getElementById("modal-overlay").classList.add("hidden");
+        document.getElementById('modal-overlay').classList.add('hidden');
         editingId = null;
     }
 
     async function saveItem() {
-        const name = document.getElementById("f-name").value.trim();
-        const price = parseFloat(document.getElementById("f-price").value);
+        const name = document.getElementById('f-name').value.trim();
+        const price = parseFloat(document.getElementById('f-price').value);
         if (!name || isNaN(price)) {
-            showAlert("modal-alert", "Name and price are required.", "error");
+            showAlert('modal-alert', 'Name and price are required.', 'error');
             return;
         }
 
         const body = {
             name,
-            category: document.getElementById("f-category").value || null,
-            description: document.getElementById("f-description").value || null,
+            category: document.getElementById('f-category').value || null,
+            description: document.getElementById('f-description').value || null,
             price,
-            quantity: parseInt(document.getElementById("f-quantity").value) || 1,
-            sale_price: parseFloat(document.getElementById("f-sale-price").value) || null,
-            sale_start: document.getElementById("f-sale-start").value || null,
-            sale_end: document.getElementById("f-sale-end").value || null,
-            is_online: document.getElementById("f-is-online").checked,
+            quantity: parseInt(document.getElementById('f-quantity').value) || 1,
+            sale_price: parseFloat(document.getElementById('f-sale-price').value) || null,
+            sale_start: document.getElementById('f-sale-start').value || null,
+            sale_end: document.getElementById('f-sale-end').value || null,
+            is_online: document.getElementById('f-is-online').checked,
+            is_tax_exempt: document.getElementById('f-is-tax-exempt').checked,
+            label_style: document.getElementById('f-label-style').value,
         };
 
-        const btn = document.getElementById("save-btn");
+        if (currentRole !== 'vendor' && !editingId) {
+            const vid = document.getElementById('f-vendor-id').value;
+            if (!vid) { showAlert('modal-alert', 'Please select a vendor.', 'error'); return; }
+            body.vendor_id = parseInt(vid);
+        }
+
+        const btn = document.getElementById('save-btn');
         btn.disabled = true;
         try {
             if (editingId) {
                 await apiPut(`/api/v1/items/${editingId}`, body);
-                showAlert("alert-container", "Item updated successfully.", "success");
+                showAlert('alert-container', 'Item updated successfully.', 'success');
             } else {
-                await apiPost("/api/v1/items/", body);
-                showAlert("alert-container", "Item created successfully.", "success");
+                await apiPost('/api/v1/items/', body);
+                showAlert('alert-container', 'Item created successfully.', 'success');
             }
             closeModal();
             await loadItems();
         } catch (err) {
-            showAlert("modal-alert", err.message, "error");
+            showAlert('modal-alert', err.message, 'error');
         } finally {
             btn.disabled = false;
         }
@@ -205,65 +346,97 @@
         if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
         try {
             await apiDelete(`/api/v1/items/${id}`);
-            showAlert("alert-container", "Item removed.", "success");
+            showAlert('alert-container', 'Item removed.', 'success');
             await loadItems();
         } catch (err) {
-            showAlert("alert-container", err.message, "error");
+            showAlert('alert-container', err.message, 'error');
         }
     }
 
-    function printLabel(id) {
-        window.open(`/api/v1/items/${id}/label`, "_blank");
-    }
-
+    // ── Items table ──────────────────────────────────────────────────────────
     async function loadItems() {
         try {
-            const items = await apiGet("/api/v1/items/");
-            const tbody = document.getElementById("items-table-body");
-            const today = new Date().toISOString().split("T")[0];
+            let url = '/api/v1/items/';
+            if (currentRole !== 'vendor' && selectedVendorId) {
+                url += `?vendor_id=${selectedVendorId}`;
+            }
+            const items = await apiGet(url);
+            const tbody = document.getElementById('items-table-body');
+            const today = new Date().toISOString().split('T')[0];
+            const colSpan = currentRole !== 'vendor' ? 9 : 9;
 
             if (items.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No items yet. Click "Add Item" to get started.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" class="empty-state">No items found. Click "Add Item" to get started.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = items.map(item => {
                 const isOnSale = item.sale_price && item.sale_start && item.sale_end &&
                     item.sale_start <= today && today <= item.sale_end;
-                const activePrice = isOnSale ? item.sale_price : item.price;
                 const priceDisplay = isOnSale
                     ? `<span class="price-original">$${parseFloat(item.price).toFixed(2)}</span> <span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>`
                     : `$${parseFloat(item.price).toFixed(2)}`;
-                const saleDates = item.sale_start && item.sale_end
-                    ? `${item.sale_start} to ${item.sale_end}`
-                    : "—";
+                const vendorCell = currentRole !== 'vendor'
+                    ? `<td><small>${item.booth_number || '—'}</small></td>`
+                    : '';
+                const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+                const style = item.label_style || 'standard';
+                const labelBtnText = style === 'dymo' ? 'Dymo Label' : 'PDF Label';
                 return `<tr>
                     <td><strong>${item.name}</strong><br><small style="color:var(--text-light)">${item.sku}</small></td>
-                    <td>${item.category || "—"}</td>
+                    ${vendorCell}
+                    <td>${item.category || '—'}</td>
                     <td>$${parseFloat(item.price).toFixed(2)}</td>
                     <td>${priceDisplay}</td>
-                    <td><small>${saleDates}</small></td>
                     <td>${item.quantity}</td>
+                    <td>${labelBadge(style)}</td>
                     <td>${statusBadge(item.status)}</td>
                     <td>
                         <div class="table-actions">
-                            <button class="btn btn-outline btn-sm" onclick="openModal(${JSON.stringify(item).replace(/"/g, '&quot;')})">Edit</button>
-                            <button class="btn btn-secondary btn-sm" onclick="printLabel(${item.id})">Label</button>
+                            <button class="btn btn-outline btn-sm" onclick="openModal(${itemJson})">Edit</button>
+                            <div class="label-btn-wrap" onclick="event.stopPropagation()">
+                                <button class="btn btn-secondary btn-sm label-btn-main" onclick="printLabelAuto(${item.id}, '${style}')">${labelBtnText}</button>
+                                <button class="btn btn-secondary btn-sm label-btn-toggle" onclick="toggleLabelDropdown(event, ${item.id})">▾</button>
+                                <div class="ldd" id="ldd-${item.id}">
+                                    <button onclick="printPdfLabel(${item.id})">PDF Label</button>
+                                    <button onclick="printDymoLabel(${item.id})">Dymo Label</button>
+                                </div>
+                            </div>
                             <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id}, '${item.name.replace(/'/g, "\\'")}')">Delete</button>
                         </div>
                     </td>
                 </tr>`;
-            }).join("");
+            }).join('');
         } catch (err) {
-            showAlert("alert-container", err.message, "error");
+            showAlert('alert-container', err.message, 'error');
         }
     }
 
+    // ── Init ─────────────────────────────────────────────────────────────────
     async function init() {
         const token = sessionStorage.getItem('bmm_token');
         if (!token) { window.location.href = '/vendor/login.html'; return; }
         const payload = parseToken();
-        document.getElementById("vendor-name").textContent = payload?.name || "Vendor";
+        if (!payload) { window.location.href = '/vendor/login.html'; return; }
+
+        currentRole = payload.role;
+        document.getElementById('vendor-name').textContent = payload.name || 'User';
+
+        if (currentRole === 'admin' || currentRole === 'cashier') {
+            document.getElementById('nav-brand').href = currentRole === 'admin' ? '/admin/index.html' : '/pos/index.html';
+            document.getElementById('nav-role-label').textContent = currentRole === 'admin' ? 'Admin' : 'Cashier';
+            document.getElementById('nav-dashboard').href = currentRole === 'admin' ? '/admin/index.html' : '/pos/index.html';
+            document.getElementById('nav-dashboard').textContent = currentRole === 'admin' ? 'Dashboard' : 'POS Terminal';
+            document.getElementById('vendor-filter-wrap').style.display = 'flex';
+            document.getElementById('th-vendor').style.display = '';
+            document.getElementById('page-title').textContent = currentRole === 'admin' ? 'All Items' : 'Item Management';
+            await loadVendors();
+        } else {
+            document.getElementById('nav-brand').href = '/vendor/dashboard.html';
+            document.getElementById('nav-dashboard').href = '/vendor/dashboard.html';
+            document.getElementById('page-title').textContent = 'My Items';
+        }
+
         await loadItems();
     }
 

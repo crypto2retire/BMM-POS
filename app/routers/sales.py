@@ -2,7 +2,7 @@ from datetime import date
 import datetime as dt
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 from sqlalchemy.orm import selectinload
@@ -184,11 +184,13 @@ async def create_sale(
 
 @router.get("/", response_model=List[SaleResponse])
 async def list_sales(
+    vendor_id: Optional[int] = Query(None),
+    limit: Optional[int] = Query(200, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
     if current_user.role in ("admin", "cashier"):
-        result = await db.execute(
+        q = (
             select(Sale)
             .options(
                 selectinload(Sale.cashier),
@@ -196,8 +198,11 @@ async def list_sales(
                 selectinload(Sale.items).selectinload(SaleItem.vendor),
             )
             .order_by(Sale.created_at.desc())
-            .limit(200)
         )
+        if vendor_id:
+            q = q.join(SaleItem, SaleItem.sale_id == Sale.id).where(SaleItem.vendor_id == vendor_id).distinct()
+        q = q.limit(limit)
+        result = await db.execute(q)
         sales = result.scalars().all()
     else:
         result = await db.execute(

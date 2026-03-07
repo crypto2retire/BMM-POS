@@ -114,6 +114,18 @@ function apiDelete(url) {
     return apiFetch('DELETE', url, undefined);
 }
 
+async function apiFetchText(url) {
+    const token = sessionStorage.getItem('bmm_token');
+    const headers = {};
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(url, { method: 'GET', headers });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    return res.text();
+}
+
 function requireAuth() {
     const token = sessionStorage.getItem('bmm_token');
     if (!token) {

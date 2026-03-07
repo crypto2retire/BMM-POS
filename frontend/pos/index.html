@@ -450,6 +450,8 @@
         </div>
         <div class="pos-navbar-right">
             <span id="cashier-name">Loading...</span>
+            <a href="/admin/customers.html">Vendors</a>
+            <a href="/vendor/items.html">Items</a>
             <a href="/admin/index.html" id="admin-link" style="display:none">Admin</a>
             <button class="nav-link" onclick="handleLogout()">Logout</button>
         </div>
@@ -981,7 +983,78 @@
     }
 
     function printReceipt() {
-        window.print();
+        const sale = currentSale;
+        if (!sale) return;
+        const payload = parseToken();
+        const cashierName = payload?.name || 'Cashier';
+        const now = new Date(sale.created_at || Date.now());
+        const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+        let itemRows = '';
+        for (const li of (sale.line_items || [])) {
+            const boothStr = li.booth_number ? `<div style="font-size:10px;color:#666;margin-left:8px">Booth: ${li.booth_number}</div>` : '';
+            itemRows += `<div style="margin:4px 0">
+                <div style="display:flex;justify-content:space-between">
+                    <span style="flex:1">${li.item_name}</span>
+                    <span style="min-width:70px;text-align:right">$${parseFloat(li.line_total).toFixed(2)}</span>
+                </div>
+                <div style="font-size:10px;color:#666">${li.quantity > 1 ? `${li.quantity} × $${parseFloat(li.unit_price).toFixed(2)}` : ''}${boothStr ? ' ' : ''}${boothStr}</div>
+            </div>`;
+        }
+
+        let cashLines = '';
+        if (sale.payment_method === 'cash' && sale.cash_tendered != null) {
+            cashLines = `
+                <div style="display:flex;justify-content:space-between;margin:2px 0"><span>Tendered</span><span>$${parseFloat(sale.cash_tendered).toFixed(2)}</span></div>
+                <div style="display:flex;justify-content:space-between;margin:2px 0"><span>Change</span><span>$${parseFloat(sale.change_given || 0).toFixed(2)}</span></div>`;
+        }
+
+        const taxPct = (parseFloat(sale.tax_rate || 0.055) * 100).toFixed(1);
+        const html = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Receipt #${sale.id}</title>
+<style>
+@page { margin: 0; size: 80mm auto; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Courier New", Courier, monospace; font-size: 12px; width: 80mm; margin: 4mm auto; color: #000; background: #fff; }
+.center { text-align: center; }
+.bold { font-weight: bold; }
+.divider { border: none; border-top: 1px dashed #000; margin: 4px 0; }
+.row { display: flex; justify-content: space-between; margin: 2px 0; }
+.total-row { font-size: 14px; font-weight: bold; }
+.small { font-size: 10px; color: #555; }
+.spacer { height: 6mm; }
+</style></head>
+<body>
+<div class="center bold" style="font-size:16px;letter-spacing:1px">BOWENSTREET MARKET</div>
+<div class="center small">2837 Bowen St, Oshkosh WI 54901</div>
+<div class="spacer"></div>
+<div>${dateStr} at ${timeStr}</div>
+<div>Cashier: ${cashierName}</div>
+<div>Sale #${sale.id}</div>
+<div class="divider"></div>
+${itemRows}
+<div class="divider"></div>
+<div class="row"><span>Subtotal</span><span>$${parseFloat(sale.subtotal).toFixed(2)}</span></div>
+<div class="row"><span>Tax (${taxPct}%)</span><span>$${parseFloat(sale.tax_amount).toFixed(2)}</span></div>
+<div class="divider"></div>
+<div class="row total-row"><span>TOTAL</span><span>$${parseFloat(sale.total).toFixed(2)}</span></div>
+<div class="row"><span>Payment</span><span>${(sale.payment_method || '').toUpperCase()}</span></div>
+${cashLines}
+<div class="divider"></div>
+<div class="spacer"></div>
+<div class="center">Thank you for shopping at</div>
+<div class="center bold">Bowenstreet Market!</div>
+<div class="center small">bowenstreetmarket.com</div>
+<div class="spacer"></div>
+<div class="spacer"></div>
+<div class="spacer"></div>
+<script>window.onload = function(){ window.print(); }<\/script>
+</body></html>`;
+
+        const win = window.open('', '_blank', 'width=360,height=600,toolbar=0,menubar=0');
+        win.document.write(html);
+        win.document.close();
     }
 
     function startNewSale() {

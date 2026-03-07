@@ -18,6 +18,7 @@ class ItemCreate(BaseModel):
     sale_end: Optional[date] = None
     barcode: Optional[str] = None
     vendor_id: Optional[int] = None
+    label_style: str = "standard"
 
 
 class ItemUpdate(BaseModel):
@@ -33,6 +34,7 @@ class ItemUpdate(BaseModel):
     sale_start: Optional[date] = None
     sale_end: Optional[date] = None
     status: Optional[str] = None
+    label_style: Optional[str] = None
 
 
 class ItemResponse(BaseModel):
@@ -52,6 +54,7 @@ class ItemResponse(BaseModel):
     sale_start: Optional[date] = None
     sale_end: Optional[date] = None
     status: str
+    label_style: str = "standard"
     created_at: datetime
     active_price: Optional[Decimal] = None
     booth_number: Optional[str] = None

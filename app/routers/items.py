@@ -11,7 +11,7 @@ from app.models.vendor import Vendor
 from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse
 from app.routers.auth import get_current_user
 from app.services.barcode import generate_sku
-from app.services.labels import generate_label_pdf
+from app.services.labels import generate_label_pdf, generate_dymo_xml
 
 router = APIRouter(prefix="/items", tags=["items"])
 
@@ -20,7 +20,7 @@ def item_to_response(item: Item) -> ItemResponse:
     booth_number = None
     if item.vendor:
         booth_number = item.vendor.booth_number
-    resp = ItemResponse(
+    return ItemResponse(
         id=item.id,
         vendor_id=item.vendor_id,
         sku=item.sku,
@@ -37,10 +37,10 @@ def item_to_response(item: Item) -> ItemResponse:
         sale_start=item.sale_start,
         sale_end=item.sale_end,
         status=item.status,
+        label_style=item.label_style or "standard",
         created_at=item.created_at,
         booth_number=booth_number,
     )
-    return resp
 
 
 @router.get("/", response_model=List[ItemResponse])
@@ -48,6 +48,7 @@ async def list_items(
     status_filter: Optional[str] = Query(None, alias="status"),
     category: Optional[str] = Query(None),
     q: Optional[str] = Query(None, description="Search by name or barcode"),
+    vendor_id: Optional[int] = Query(None, description="Filter by vendor (admin/cashier only)"),
     limit: Optional[int] = Query(None, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
@@ -55,6 +56,8 @@ async def list_items(
     query = select(Item).options(selectinload(Item.vendor))
     if current_user.role not in ("admin", "cashier"):
         query = query.where(Item.vendor_id == current_user.id)
+    elif vendor_id:
+        query = query.where(Item.vendor_id == vendor_id)
     if status_filter:
         query = query.where(Item.status == status_filter)
     if category:
@@ -86,7 +89,7 @@ async def create_item(
         vendor_id = current_user.id
     else:
         if not data.vendor_id:
-            raise HTTPException(status_code=400, detail="vendor_id is required for admin")
+            raise HTTPException(status_code=400, detail="vendor_id is required for admin/cashier")
         vendor_id = data.vendor_id
 
     sku = await generate_sku(vendor_id, db)
@@ -119,6 +122,7 @@ async def create_item(
         sale_price=data.sale_price,
         sale_start=data.sale_start,
         sale_end=data.sale_end,
+        label_style=data.label_style or "standard",
     )
     db.add(item)
     await db.commit()
@@ -158,7 +162,7 @@ async def get_item_label(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    if current_user.role != "admin" and item.vendor_id != current_user.id:
+    if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     pdf_bytes = generate_label_pdf(item)
@@ -166,6 +170,30 @@ async def get_item_label(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={"Content-Disposition": f'inline; filename="label_{item_id}.pdf"'},
+    )
+
+
+@router.get("/{item_id}/dymo-label")
+async def get_dymo_label(
+    item_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id)
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    xml = generate_dymo_xml(item)
+    return Response(
+        content=xml,
+        media_type="text/xml",
+        headers={"Content-Disposition": f'inline; filename="label_{item_id}.xml"'},
     )
 
 
@@ -182,7 +210,7 @@ async def get_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    if current_user.role != "admin" and item.vendor_id != current_user.id:
+    if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     return item_to_response(item)
@@ -202,7 +230,7 @@ async def update_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    if current_user.role != "admin" and item.vendor_id != current_user.id:
+    if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     update_data = data.model_dump(exclude_none=True)
@@ -212,7 +240,7 @@ async def update_item(
     await db.commit()
 
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id)
+        select(Item).options(selectinload(Item.vendor)).where(Item.id == item.id)
     )
     item = result.scalar_one()
     return item_to_response(item)
@@ -229,7 +257,7 @@ async def delete_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    if current_user.role != "admin" and item.vendor_id != current_user.id:
+    if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
     item.status = "removed"
