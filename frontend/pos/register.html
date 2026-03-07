@@ -40,7 +40,7 @@
             transition: border-color 0.15s;
             background: var(--bg);
         }
-        .search-bar-wrap input:focus { border-color: var(--primary); background: #fff; }
+        .search-bar-wrap input:focus { border-color: var(--primary); background: var(--surface-2); }
         .search-bar-wrap .search-hint {
             font-size: 0.75rem;
             color: var(--text-light);
@@ -78,7 +78,7 @@
         }
         .item-card:hover {
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(26,107,90,0.12);
+            box-shadow: 0 0 0 2px rgba(168,166,161,0.2);
             transform: translateY(-1px);
         }
         .item-card:active { transform: translateY(0); }
@@ -392,7 +392,7 @@
             color: var(--success);
             margin: 0.75rem 0;
             padding: 0.6rem;
-            background: #f0fdf4;
+            background: rgba(110,201,160,0.15);
             border-radius: var(--radius);
         }
         .receipt-actions {
@@ -427,11 +427,13 @@
             .receipt-card { box-shadow: none; width: 80mm; padding: 4mm; margin: 0; }
         }
     </style>
+    <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
 </head>
 <body>
 <nav class="navbar">
     <a href="/admin/index.html" class="navbar-brand">
-        BMM-POS <span class="store-name">Register</span>
+        <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
+        <span class="store-name">Register</span>
     </a>
     <div class="navbar-user">
         <span id="nav-cashier">—</span>

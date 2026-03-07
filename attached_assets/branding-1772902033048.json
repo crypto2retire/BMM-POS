@@ -1,0 +1,133 @@
+{
+  "colorScheme": "dark",
+  "fonts": [
+    {
+      "family": "Adobe Garamond Pro",
+      "role": "body"
+    },
+    {
+      "family": "Orpheus Pro",
+      "role": "heading"
+    },
+    {
+      "family": "Roboto",
+      "role": "body"
+    }
+  ],
+  "colors": {
+    "primary": "#FFFFFF",
+    "accent": "#A8A6A1",
+    "background": "#38383B",
+    "textPrimary": "#38383B",
+    "link": "#FFFFFF"
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Adobe Garamond Pro",
+      "heading": "Orpheus Pro"
+    },
+    "fontStacks": {
+      "heading": [
+        "orpheus-pro"
+      ],
+      "body": [
+        "sans-serif"
+      ],
+      "paragraph": [
+        "orpheus-pro"
+      ]
+    },
+    "fontSizes": {
+      "h1": "64px",
+      "h2": "35.2px",
+      "body": "44.8px"
+    }
+  },
+  "spacing": {
+    "baseUnit": 6,
+    "borderRadius": "0px"
+  },
+  "components": {
+    "buttonPrimary": {
+      "background": "#A8A6A1",
+      "textColor": "#FFFFFF",
+      "borderRadius": "0px",
+      "borderRadiusCorners": {
+        "topLeft": "0px",
+        "topRight": "0px",
+        "bottomRight": "0px",
+        "bottomLeft": "0px"
+      },
+      "shadow": "none"
+    },
+    "buttonSecondary": {
+      "background": "transparent",
+      "textColor": "#FAF9F6",
+      "borderColor": "#FAF9F6",
+      "borderRadius": "0px",
+      "borderRadiusCorners": {
+        "topLeft": "0px",
+        "topRight": "0px",
+        "bottomRight": "0px",
+        "bottomLeft": "0px"
+      },
+      "shadow": "none"
+    }
+  },
+  "images": {
+    "logo": "File saved at: attached_assets/logo.webp",
+    "favicon": "File saved at: attached_assets/favicon.webp",
+    "ogImage": "http://static1.squarespace.com/static/6579e20713525b05c1409882/t/6599da681ec5a17087af8177/1704581736217/375834518_197903326637725_3034468064890084748_n.jpg?format=1500w",
+    "logoHref": "File saved at: attached_assets/logoHref.html",
+    "logoAlt": "Bowenstreet Market"
+  },
+  "__llm_logo_reasoning": {
+    "selectedIndex": 1,
+    "reasoning": "Selected #0 because it is visible, located in the header, links to the homepage, and matches the brand name 'Bowenstreet Market'.",
+    "confidence": 0.95,
+    "source": "llm"
+  },
+  "__llm_button_reasoning": {
+    "primary": {
+      "index": 2,
+      "text": "Shop Now",
+      "reasoning": "Button #2 'Shop Now' is likely the primary CTA due to its action-oriented text and distinct color, which aligns with typical e-commerce goals."
+    },
+    "secondary": {
+      "index": 4,
+      "text": "Take a Class",
+      "reasoning": "Button #4 'Take a Class' is selected as secondary due to its transparent background, differentiating it from the primary button's color group."
+    },
+    "confidence": 0.9
+  },
+  "personality": {
+    "tone": "modern",
+    "energy": "medium",
+    "targetAudience": "consumers interested in handmade and artisanal products"
+  },
+  "designSystem": {
+    "framework": "custom",
+    "componentLibrary": ""
+  },
+  "confidence": {
+    "buttons": 0.9,
+    "colors": 0.9,
+    "overall": 0.9
+  },
+  "__llm_metadata": {
+    "logoSelection": {
+      "llmCalled": true,
+      "llmSucceeded": true,
+      "finalSource": "llm",
+      "rawLogoSelection": {
+        "selectedLogoIndex": 0,
+        "selectedLogoReasoning": "Selected #0 because it is visible, located in the header, links to the homepage, and matches the brand name 'Bowenstreet Market'.",
+        "confidence": 0.95
+      }
+    },
+    "buttonClassification": {
+      "llmCalled": true,
+      "llmSucceeded": true
+    }
+  }
+}

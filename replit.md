@@ -47,7 +47,9 @@ scripts/
   seed_dev.py     — Creates admin + cashier + 3 vendors + 15 items with sale prices
 frontend/
   index.html              — Redirects to login
-  static/css/main.css     — Full stylesheet (teal #1A6B5A, print @media for receipts)
+  static/css/main.css     — Full stylesheet (Bowenstreet Market brand: dark #38383B, accent #A8A6A1, EB Garamond headings, Roboto body, 0px radius, print @media for receipts)
+  static/images/logo.webp  — Official Bowenstreet Market logo (white emblem)
+  static/images/favicon.webp — Favicon
   static/js/api.js        — JWT fetch wrapper (sessionStorage persistence)
   vendor/
     login.html    — Login page (redirects by role: admin→/admin, cashier→/pos, vendor→/vendor)
@@ -102,7 +104,7 @@ All routes prefixed with `/api/v1/`:
 
 ## Authentication & Roles
 
-JWT stored in `sessionStorage` under key `__bmm_token` (persists across same-tab navigation, cleared on tab close). Tokens expire after 8 hours.
+JWT stored in `sessionStorage` under key `bmm_token` (persists across same-tab navigation, cleared on tab close). Tokens expire after 8 hours.
 
 | Role | Access |
 |------|--------|
