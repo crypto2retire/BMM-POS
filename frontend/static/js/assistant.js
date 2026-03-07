@@ -156,6 +156,54 @@
         font-style: italic;
     }
 
+    /* Action banner */
+    #bmm-action-banner {
+        display: none;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: #2d5a3d;
+        border-bottom: 1px solid #3a7a52;
+        font-size: 0.8rem;
+        color: #a8e6bc;
+        flex-shrink: 0;
+        animation: bmm-fade-in 0.3s ease;
+    }
+    #bmm-action-banner.show { display: flex; }
+    @keyframes bmm-fade-in {
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Quick-action suggestion chips */
+    #bmm-chips {
+        display: flex;
+        gap: 0.4rem;
+        padding: 0.5rem 0.75rem 0;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        flex-shrink: 0;
+        background: #3A3A3E;
+        border-top: 1px solid #555558;
+    }
+    #bmm-chips::-webkit-scrollbar { display: none; }
+    #bmm-chips.hidden { display: none; }
+    .bmm-chip {
+        background: #44444A;
+        border: 1px solid #666;
+        color: #e8e8e6;
+        font-size: 0.78rem;
+        padding: 0.3rem 0.65rem;
+        cursor: pointer;
+        white-space: nowrap;
+        border-radius: 12px;
+        transition: background 0.15s, border-color 0.15s;
+        font-family: 'Roboto', sans-serif;
+        line-height: 1.3;
+    }
+    .bmm-chip:hover { background: #555558; border-color: #A8A6A1; }
+
     #bmm-assistant-input-row {
         display: flex;
         gap: 0.4rem;
@@ -219,8 +267,15 @@
             </div>
             <button id="bmm-assistant-close" title="Close">✕</button>
         </div>
+        <div id="bmm-action-banner">✓ <span id="bmm-action-banner-text">Item saved</span></div>
         <div id="bmm-assistant-messages">
-            <div class="bmm-msg bmm-msg-assistant">Hi! I'm your Bowenstreet assistant. I can help you add items, write descriptions, understand your sales, or answer any questions about the system. What can I help you with?</div>
+            <div class="bmm-msg bmm-msg-assistant">Hi! I can add items, edit prices, archive listings, and show your inventory — all through conversation. What would you like to do?</div>
+        </div>
+        <div id="bmm-chips">
+            <button class="bmm-chip" data-msg="📦 Add an item">📦 Add an item</button>
+            <button class="bmm-chip" data-msg="✏️ Edit an item">✏️ Edit an item</button>
+            <button class="bmm-chip" data-msg="📋 Show my inventory">📋 Show my inventory</button>
+            <button class="bmm-chip" data-msg="💰 Set a sale price">💰 Set a sale price</button>
         </div>
         <div id="bmm-assistant-input-row">
             <button id="bmm-assistant-photo" title="Send a photo">
@@ -236,6 +291,8 @@
     // ── State ──────────────────────────────────────────────────────────────
     let isOpen = false;
     let isBusy = false;
+    let hasUserSentMessage = false;
+    let bannerTimer = null;
 
     // ── Helpers ────────────────────────────────────────────────────────────
     function openPanel() {
@@ -296,16 +353,39 @@
         if (el) el.remove();
     }
 
+    function hideChips() {
+        document.getElementById('bmm-chips').classList.add('hidden');
+    }
+
+    function showActionBanner(text) {
+        const banner = document.getElementById('bmm-action-banner');
+        document.getElementById('bmm-action-banner-text').textContent = text;
+        banner.classList.add('show');
+        if (bannerTimer) clearTimeout(bannerTimer);
+        bannerTimer = setTimeout(() => banner.classList.remove('show'), 4000);
+    }
+
+    function tryRefreshItems() {
+        if (typeof loadItems === 'function') {
+            loadItems();
+        }
+    }
+
     async function sendMessage(message, imageBase64 = null, imageMimeType = null) {
         if (isBusy || !message.trim()) return;
         isBusy = true;
+
+        if (!hasUserSentMessage) {
+            hasUserSentMessage = true;
+            hideChips();
+        }
 
         const input = document.getElementById('bmm-assistant-input');
         input.value = '';
         input.style.height = 'auto';
 
         addMessage(message, 'user');
-        const typing = showTyping();
+        showTyping();
 
         const token = sessionStorage.getItem('bmm_token');
         const body = { message };
@@ -333,6 +413,19 @@
             } else {
                 const data = await res.json();
                 addMessage(data.reply, 'assistant');
+
+                if (data.action_taken) {
+                    if (data.action_taken === 'item_added') {
+                        showActionBanner('Item added ✓');
+                        tryRefreshItems();
+                    } else if (data.action_taken === 'item_edited') {
+                        showActionBanner('Item updated ✓');
+                        tryRefreshItems();
+                    } else if (data.action_taken === 'item_archived') {
+                        showActionBanner('Item archived ✓');
+                        tryRefreshItems();
+                    }
+                }
             }
         } catch (e) {
             removeTyping();
@@ -371,6 +464,12 @@
 
     document.getElementById('bmm-assistant-input').addEventListener('input', function () {
         autoResize(this);
+    });
+
+    document.getElementById('bmm-chips').addEventListener('click', (e) => {
+        const chip = e.target.closest('.bmm-chip');
+        if (!chip) return;
+        sendMessage(chip.dataset.msg);
     });
 
     const photoInput = document.querySelector('#bmm-assistant-photo input');
