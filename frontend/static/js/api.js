@@ -2,19 +2,18 @@ let _token = null;
 
 (function () {
     try {
-        const data = JSON.parse(window.name || "{}");
-        if (data && data.__bmm_token) _token = data.__bmm_token;
+        _token = sessionStorage.getItem("__bmm_token") || null;
     } catch (e) {}
 })();
 
 function _persistToken() {
     try {
-        const data = JSON.parse(window.name || "{}");
-        data.__bmm_token = _token;
-        window.name = JSON.stringify(data);
-    } catch (e) {
-        window.name = JSON.stringify({ __bmm_token: _token });
-    }
+        if (_token) {
+            sessionStorage.setItem("__bmm_token", _token);
+        } else {
+            sessionStorage.removeItem("__bmm_token");
+        }
+    } catch (e) {}
 }
 
 function getToken() {
@@ -24,12 +23,8 @@ function getToken() {
 function clearToken() {
     _token = null;
     try {
-        const data = JSON.parse(window.name || "{}");
-        delete data.__bmm_token;
-        window.name = JSON.stringify(data);
-    } catch (e) {
-        window.name = "{}";
-    }
+        sessionStorage.removeItem("__bmm_token");
+    } catch (e) {}
 }
 
 function parseToken() {
