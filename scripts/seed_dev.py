@@ -189,5 +189,56 @@ async def seed():
         print("="*60 + "\n")
 
 
+TEST_ACCOUNTS = [
+    {"name": "Nora",   "email": "nora@email.com",   "password": "vendor123", "role": "admin",  "booth_number": "TEST-1"},
+    {"name": "Sammy",  "email": "sammy@email.com",  "password": "vendor123", "role": "admin",  "booth_number": "TEST-2"},
+    {"name": "Ashley", "email": "ashley@email.com", "password": "vendor123", "role": "admin",  "booth_number": "TEST-3"},
+    {"name": "Anne",   "email": "anne@email.com",   "password": "vendor123", "role": "admin",  "booth_number": "TEST-4"},
+    {"name": "Paula",  "email": "paula@email.com",  "password": "vendor123", "role": "vendor", "booth_number": "TEST-5"},
+]
+
+
+async def seed_test_accounts():
+    results = []
+    async with AsyncSessionLocal() as db:
+        for acct in TEST_ACCOUNTS:
+            existing = await db.execute(select(Vendor).where(Vendor.email == acct["email"]))
+            if existing.scalar_one_or_none():
+                results.append((acct["email"], acct["role"], "already exists"))
+                continue
+
+            vendor = Vendor(
+                name=acct["name"],
+                email=acct["email"],
+                password_hash=pwd_context.hash(acct["password"]),
+                role=acct["role"],
+                booth_number=acct["booth_number"],
+                monthly_rent=0,
+                payout_method="zelle",
+                zelle_handle=None,
+                phone=None,
+                status="active",
+            )
+            db.add(vendor)
+            await db.flush()
+            results.append((acct["email"], acct["role"], "created"))
+
+        await db.commit()
+
+    print("\n" + "=" * 55)
+    print("  TEST ACCOUNTS SUMMARY")
+    print("=" * 55)
+    print(f"  {'Email':<28} {'Role':<8} {'Status'}")
+    print("-" * 55)
+    for email, role, status in results:
+        print(f"  {email:<28} {role:<8} {status}")
+    print("=" * 55 + "\n")
+
+
+async def main():
+    await seed()
+    await seed_test_accounts()
+
+
 if __name__ == "__main__":
-    asyncio.run(seed())
+    asyncio.run(main())
