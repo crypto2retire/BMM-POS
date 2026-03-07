@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>POS Terminal — BMM-POS</title>
     <link rel="stylesheet" href="/static/css/main.css">
+    <script src="https://unpkg.com/@zxing/browser@latest/umd/index.min.js"></script>
     <style>
         body { background: #38383B; }
 
@@ -474,6 +475,72 @@
         .new-sale-btn { width: 100%; background: #4e4e54; color: #F3F4F6; border: none; padding: 0.65rem; border-radius: 0; cursor: pointer; font-size: 0.875rem; margin-top: 0.5rem; }
         .new-sale-btn:hover { background: #4B5563; }
 
+        /* Camera button — mobile only */
+        .camera-scan-btn {
+            display: none;
+            background: #4e4e54;
+            border: none;
+            color: #fff;
+            font-size: 1.25rem;
+            height: 48px;
+            width: 48px;
+            cursor: pointer;
+            flex-shrink: 0;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s;
+        }
+        .camera-scan-btn:hover { background: #555558; }
+        @media (max-width: 1023px) {
+            .camera-scan-btn { display: flex; }
+        }
+
+        /* Scanner overlay */
+        #scanner-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #000;
+            z-index: 600;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #scanner-video {
+            width: 100%;
+            max-width: 480px;
+            display: block;
+        }
+        .scanner-frame {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+        }
+        .scanner-line {
+            position: absolute;
+            top: 50%;
+            left: 0; right: 0;
+            height: 2px;
+            background: #00ff66;
+            transform: translateY(-50%);
+            box-shadow: 0 0 8px rgba(0,255,102,0.8);
+            animation: scan-pulse 1.5s ease-in-out infinite;
+        }
+        @keyframes scan-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        .scanner-corners::before, .scanner-corners::after {
+            content: '';
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            border-color: #00ff66;
+            border-style: solid;
+        }
+        .scanner-corners::before { top: 0; left: 0; border-width: 3px 0 0 3px; }
+        .scanner-corners::after { top: 0; right: 0; border-width: 3px 3px 0 0; }
+
         /* Error state */
         .scan-error { color: #F87171; font-size: 0.75rem; padding: 0 1rem 0.5rem; min-height: 20px; }
 
@@ -559,6 +626,7 @@
                 autocomplete="off"
                 autofocus
             >
+            <button class="camera-scan-btn" id="camera-scan-btn" onclick="startScanner()" title="Scan with camera" aria-label="Open camera scanner">📷</button>
             <button class="scan-btn" onclick="addByBarcode()">Add ↵</button>
         </div>
         <div class="search-bar">
@@ -685,6 +753,24 @@
     </div>
 </div>
 
+<!-- Camera scanner overlay -->
+<div id="scanner-overlay" style="display:none">
+    <div style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:1rem;z-index:10">
+        <span style="color:#fff;font-size:1rem;font-weight:600">Point camera at barcode</span>
+        <button onclick="stopScanner()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:1.1rem;width:44px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div class="scanner-frame scanner-corners">
+        <video id="scanner-video" autoplay muted playsinline></video>
+        <div class="scanner-line"></div>
+    </div>
+    <p style="color:rgba(255,255,255,0.6);font-size:0.85rem;margin-top:1.25rem;text-align:center;padding:0 1.5rem">
+        Hold steady over the barcode
+    </p>
+    <button onclick="stopScanner()" style="margin-top:1.5rem;background:#38383B;color:#fff;border:1px solid #555558;padding:0.75rem 2.5rem;font-size:1rem;cursor:pointer">
+        ✕ Cancel
+    </button>
+</div>
+
 <!-- Mobile fixed payment bar (hidden on desktop via CSS) -->
 <div class="mobile-pay-bar" id="mobile-pay-bar" style="display:none">
     <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
@@ -729,6 +815,7 @@
         document.getElementById('barcode-input').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') { e.preventDefault(); addByBarcode(); }
         });
+        checkCameraAvailable();
     }
 
     function handleLogout() {
@@ -1270,6 +1357,95 @@ ${cashLines}
         document.getElementById('barcode-input').focus();
         showToast('Ready for next sale', 'success');
     }
+
+    // ─── Camera barcode scanner ───────────────────────────────────────────────
+    let codeReader = null;
+    let scannerActive = false;
+
+    async function startScanner() {
+        const overlay = document.getElementById('scanner-overlay');
+        overlay.style.display = 'flex';
+        scannerActive = true;
+        clearScanError();
+
+        try {
+            if (typeof ZXingBrowser === 'undefined') {
+                throw new Error('Scanner library not loaded');
+            }
+            codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+
+            const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
+            if (!devices || devices.length === 0) {
+                throw new Error('No camera found');
+            }
+
+            const backCamera = devices.find(d =>
+                /back|rear|environment/i.test(d.label)
+            ) || devices[devices.length - 1];
+
+            const deviceId = backCamera ? backCamera.deviceId : undefined;
+
+            await codeReader.decodeFromVideoDevice(
+                deviceId,
+                'scanner-video',
+                (result, err) => {
+                    if (result && scannerActive) {
+                        stopScanner();
+                        handleBarcodeScanned(result.getText());
+                    }
+                }
+            );
+        } catch (err) {
+            stopScanner();
+            const msg = err.name === 'NotAllowedError'
+                ? 'Camera permission denied. You can type or scan manually into the barcode field.'
+                : (err.message.includes('No camera')
+                    ? 'No camera detected on this device.'
+                    : 'Camera not available. Please type the barcode instead.');
+            setScanError(msg);
+        }
+    }
+
+    function stopScanner() {
+        scannerActive = false;
+        if (codeReader) {
+            try { codeReader.reset(); } catch (_) {}
+            codeReader = null;
+        }
+        document.getElementById('scanner-overlay').style.display = 'none';
+    }
+
+    async function handleBarcodeScanned(barcode) {
+        try {
+            const item = await apiGet('/api/v1/pos/barcode/' + encodeURIComponent(barcode));
+            addToCart(item);
+            showToast('Added: ' + item.name, 'success');
+        } catch (err) {
+            setScanError('Item not found: ' + barcode);
+        }
+    }
+
+    async function checkCameraAvailable() {
+        const btn = document.getElementById('camera-scan-btn');
+        if (!btn) return;
+
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+            btn.style.display = 'none';
+            console.warn('Camera scanning requires HTTPS');
+            return;
+        }
+
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.enumerateDevices !== 'function') {
+            btn.style.display = 'none';
+        }
+        // Don't hide based on enumeration — devices may report empty before permission is granted.
+        // The CSS media query already hides the button on desktop.
+    }
+
+    // Close scanner overlay on Escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && scannerActive) stopScanner();
+    });
 
     // ─── Toast ────────────────────────────────────────────────────────────────
     function showToast(message, type = 'info') {

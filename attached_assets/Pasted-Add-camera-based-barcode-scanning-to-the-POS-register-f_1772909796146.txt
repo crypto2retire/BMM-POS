@@ -1,0 +1,147 @@
+Add camera-based barcode scanning to the POS register for mobile devices. When on a phone or tablet, cashiers should be able to tap a camera button to scan a barcode instead of typing it.
+
+STEP 1 — Add the ZXing barcode scanning library
+
+In frontend/pos/index.html, add this script in the <head>:
+<script src="https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.20.0/zxing-browser.min.js"></script>
+
+If that CDN path does not work, use the unpkg version:
+<script src="https://unpkg.com/@zxing/browser@latest/umd/index.min.js"></script>
+
+STEP 2 — Add the camera scanner UI
+
+In the search area of the POS, add a camera button next to the search/barcode input:
+- Button labeled 📷 on mobile, hidden on desktop (display none above 1024px)
+- Charcoal background, white text, 48px tall, square corners
+
+When the camera button is tapped, show a scanner overlay:
+- Full screen dark overlay (position fixed, top 0, left 0, width 100%, height 100%, background #000, z-index 500)
+- A <video> element centered in the overlay, showing the camera feed
+- A thin green horizontal line across the middle of the video (the scan target line)
+- A label at the top: "Point camera at barcode"
+- A close button (✕) in the top-right corner, 44px, white text
+- The overlay should feel like a native scanner app
+
+STEP 3 — Implement the scanning logic
+
+Add this JavaScript to handle scanning:
+```javascript
+let codeReader = null;
+let scannerActive = false;
+
+async function startScanner() {
+  // Show the overlay
+  document.getElementById('scanner-overlay').style.display = 'flex';
+  scannerActive = true;
+
+  try {
+    // Use ZXing to read barcodes from the camera
+    codeReader = new ZXingBrowser.BrowserMultiFormatReader();
+    
+    // Get available cameras, prefer the back camera
+    const devices = await ZXingBrowser.BrowserCodeReader.listVideoInputDevices();
+    const backCamera = devices.find(d => 
+      d.label.toLowerCase().includes('back') || 
+      d.label.toLowerCase().includes('rear') ||
+      d.label.toLowerCase().includes('environment')
+    ) || devices[devices.length - 1]; // fallback to last camera (usually back)
+    
+    const deviceId = backCamera ? backCamera.deviceId : undefined;
+    
+    await codeReader.decodeFromVideoDevice(
+      deviceId,
+      'scanner-video',
+      (result, error) => {
+        if (result && scannerActive) {
+          stopScanner();
+          handleBarcodeScanned(result.getText());
+        }
+      }
+    );
+  } catch (err) {
+    stopScanner();
+    showPosError('Camera not available. Please type the barcode instead.');
+  }
+}
+
+function stopScanner() {
+  scannerActive = false;
+  if (codeReader) {
+    codeReader.reset();
+    codeReader = null;
+  }
+  document.getElementById('scanner-overlay').style.display = 'none';
+}
+
+async function handleBarcodeScanned(barcode) {
+  // Same logic as typing a barcode and pressing Enter
+  try {
+    const item = await apiGet('/api/v1/pos/barcode/' + encodeURIComponent(barcode));
+    addToCart(item);
+    showPosSuccess('Item added: ' + item.name);
+  } catch (err) {
+    showPosError('Item not found: ' + barcode);
+  }
+}
+```
+
+STEP 4 — Add the scanner overlay HTML
+
+Add this HTML at the bottom of the page body:
+```html
+<div id="scanner-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000; z-index:500; flex-direction:column; align-items:center; justify-content:center;">
+  <div style="color:white; font-size:16px; padding:16px; text-align:center;">Point camera at barcode</div>
+  <div style="position:relative; width:100%; max-width:400px;">
+    <video id="scanner-video" style="width:100%; border-radius:0;"></video>
+    <div style="position:absolute; top:50%; left:0; right:0; height:2px; background:#00ff00; transform:translateY(-50%);"></div>
+  </div>
+  <button onclick="stopScanner()" style="margin-top:24px; background:#38383B; color:white; border:none; padding:12px 32px; font-size:16px; cursor:pointer;">✕ Cancel</button>
+</div>
+```
+
+STEP 5 — Handle camera permissions gracefully
+
+If the browser asks for camera permission and the user denies it:
+- Hide the overlay
+- Show a message: "Camera permission denied. You can type or scan manually into the barcode field."
+
+If the device has no camera:
+- Hide the camera button entirely
+- Detect this on page load:
+```javascript
+async function checkCameraAvailable() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const hasCamera = devices.some(d => d.kind === 'videoinput');
+    if (!hasCamera) {
+      document.getElementById('camera-scan-btn').style.display = 'none';
+    }
+  } catch {
+    document.getElementById('camera-scan-btn').style.display = 'none';
+  }
+}
+// Call on page load
+checkCameraAvailable();
+```
+
+STEP 6 — Make sure HTTPS is being used
+
+Camera access requires HTTPS. Replit preview URLs use HTTPS by default so this should work. Add a check:
+```javascript
+if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+  document.getElementById('camera-scan-btn').style.display = 'none';
+  console.warn('Camera scanning requires HTTPS');
+}
+```
+
+STEP 7 — Test on mobile
+
+Confirm:
+1. The 📷 button is visible on mobile (under 1024px)
+2. The 📷 button is hidden on desktop
+3. Tapping it opens the camera overlay
+4. Pointing at a Code 128 barcode triggers a scan
+5. The item is added to the cart automatically
+6. The overlay closes after a successful scan
+7. The cancel button closes the overlay without scanning
+8. If no camera, the button is hidden
