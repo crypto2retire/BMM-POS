@@ -7,25 +7,36 @@
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
 </head>
-<body>
+<body class="has-bottom-nav">
 <nav class="navbar">
     <a href="/vendor/dashboard.html" class="navbar-brand">
         <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
     </a>
     <div class="navbar-user">
         <span id="vendor-name">Loading...</span>
-        <nav class="navbar-nav">
+        <button class="nav-hamburger" id="hamburger-btn" onclick="toggleNav()" aria-label="Menu">☰</button>
+        <nav class="navbar-nav" id="main-nav">
+            <a href="/vendor/dashboard.html" class="active">Dashboard</a>
             <a href="/vendor/items.html">My Items</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
     </div>
 </nav>
+
 <div class="main-content">
     <div id="alert-container"></div>
+
+    <!-- Mobile CTA -->
+    <a href="/vendor/items.html" class="btn btn-primary btn-lg btn-full" id="mobile-add-btn"
+        style="display:none; margin-bottom:1rem; font-size:1rem; letter-spacing:0.08em">
+        + Add New Item
+    </a>
+
     <div class="page-header">
-        <h1 class="page-title">Vendor Dashboard</h1>
-        <a href="/vendor/items.html" class="btn btn-primary">Manage Items</a>
+        <h1 class="page-title">Dashboard</h1>
+        <a href="/vendor/items.html" class="btn btn-primary" id="desktop-manage-btn">Manage Items</a>
     </div>
+
     <div class="stats-grid">
         <div class="card">
             <div class="card-title">Current Balance</div>
@@ -40,7 +51,7 @@
             <div class="card-value" id="total-items">—</div>
         </div>
         <div class="card">
-            <div class="card-title">Booth Number</div>
+            <div class="card-title">Booth</div>
             <div class="card-value" id="booth-number">—</div>
         </div>
     </div>
@@ -50,7 +61,12 @@
             <h2 class="section-title">Recent Items</h2>
             <a href="/vendor/items.html" class="btn btn-outline btn-sm">View All</a>
         </div>
-        <div class="card">
+
+        <!-- Mobile card list -->
+        <div id="items-cards" style="display:none"></div>
+
+        <!-- Desktop table -->
+        <div class="card" id="items-table-wrap">
             <div class="table-wrapper">
                 <table>
                     <thead>
@@ -71,6 +87,23 @@
         </div>
     </div>
 </div>
+
+<!-- Bottom navigation (mobile only) -->
+<nav class="mobile-bottom-nav">
+    <a href="/vendor/dashboard.html" class="active">
+        <span class="nav-icon">🏠</span>
+        <span>Home</span>
+    </a>
+    <a href="/vendor/items.html">
+        <span class="nav-icon">🏷️</span>
+        <span>Items</span>
+    </a>
+    <button onclick="handleLogout()">
+        <span class="nav-icon">🚪</span>
+        <span>Logout</span>
+    </button>
+</nav>
+
 <script src="/static/js/api.js"></script>
 <script>
     function handleLogout() {
@@ -78,25 +111,106 @@
         window.location.href = "/vendor/login.html";
     }
 
+    function toggleNav() {
+        document.getElementById('main-nav').classList.toggle('open');
+    }
+
+    document.addEventListener('click', function(e) {
+        const nav = document.getElementById('main-nav');
+        const btn = document.getElementById('hamburger-btn');
+        if (!nav.contains(e.target) && !btn.contains(e.target)) {
+            nav.classList.remove('open');
+        }
+    });
+
     function statusBadge(status) {
         const map = { active: "badge-green", sold: "badge-blue", removed: "badge-red" };
         return `<span class="badge ${map[status] || "badge-gray"}">${status}</span>`;
     }
 
-    function formatPrice(item) {
+    function activePrice(item) {
         const today = new Date().toISOString().split("T")[0];
         if (item.sale_price && item.sale_start && item.sale_end &&
             item.sale_start <= today && today <= item.sale_end) {
-            return `<span class="price-original">$${parseFloat(item.price).toFixed(2)}</span>
-                    <span class="price-sale"> $${parseFloat(item.sale_price).toFixed(2)}</span>`;
+            return { isOnSale: true, display: `<span class="price-original">$${parseFloat(item.price).toFixed(2)}</span> <span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>` };
         }
-        return `$${parseFloat(item.price).toFixed(2)}`;
+        return { isOnSale: false, display: `$${parseFloat(item.price).toFixed(2)}` };
     }
+
+    function isMobile() { return window.innerWidth < 768; }
+
+    function renderItemCards(items) {
+        if (items.length === 0) {
+            return `<div class="card"><p class="empty-state">No items yet. <a href="/vendor/items.html">Add your first item</a>.</p></div>`;
+        }
+        return items.slice(0, 10).map(item => {
+            const ap = activePrice(item);
+            const photoHtml = (item.photo_urls && item.photo_urls.length)
+                ? `<img src="${item.photo_urls[0]}" alt="">`
+                : `🏷️`;
+            return `<div class="item-card">
+                <div class="item-card-top">
+                    <div class="item-card-photo">${photoHtml}</div>
+                    <div class="item-card-info">
+                        <div class="item-card-name">${item.name}</div>
+                        <div class="item-card-price">${ap.display}</div>
+                        <div class="item-card-meta">${item.category || '—'} &middot; Qty: ${item.quantity} &middot; ${statusBadge(item.status)}</div>
+                    </div>
+                </div>
+                <div class="item-card-actions">
+                    <a href="/vendor/items.html" class="btn btn-outline">Edit</a>
+                    <a href="/vendor/items.html" class="btn btn-secondary">Labels</a>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function renderItemTable(items) {
+        if (items.length === 0) {
+            return `<tr><td colspan="6" class="empty-state">No items yet. <a href="/vendor/items.html">Add your first item</a>.</td></tr>`;
+        }
+        return items.slice(0, 10).map(item => {
+            const ap = activePrice(item);
+            return `<tr>
+                <td><a href="/vendor/items.html">${item.name}</a></td>
+                <td>${item.category || "—"}</td>
+                <td>$${parseFloat(item.price).toFixed(2)}</td>
+                <td>${item.sale_price ? `<span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>` : "—"}</td>
+                <td>${statusBadge(item.status)}</td>
+                <td>${item.quantity}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function applyLayout(items) {
+        const mobile = isMobile();
+        const cardsEl = document.getElementById('items-cards');
+        const tableWrap = document.getElementById('items-table-wrap');
+        const mobileBtn = document.getElementById('mobile-add-btn');
+        const desktopBtn = document.getElementById('desktop-manage-btn');
+
+        if (mobile) {
+            cardsEl.style.display = 'block';
+            tableWrap.style.display = 'none';
+            mobileBtn.style.display = 'flex';
+            desktopBtn.style.display = 'none';
+            cardsEl.innerHTML = `<div class="item-cards-grid">${renderItemCards(items)}</div>`;
+        } else {
+            cardsEl.style.display = 'none';
+            tableWrap.style.display = 'block';
+            mobileBtn.style.display = 'none';
+            desktopBtn.style.display = '';
+            document.getElementById('items-table-body').innerHTML = renderItemTable(items);
+        }
+    }
+
+    let cachedItems = [];
 
     async function loadDashboard() {
         const token = sessionStorage.getItem('bmm_token');
         if (!token) { window.location.href = '/vendor/login.html'; return; }
         const payload = parseToken();
+        if (!payload || payload.role !== 'vendor') { window.location.href = '/vendor/login.html'; return; }
         document.getElementById("vendor-name").textContent = payload?.name || "Vendor";
 
         try {
@@ -108,28 +222,14 @@
             const active = items.filter(i => i.status === "active");
             document.getElementById("active-items").textContent = active.length;
             document.getElementById("total-items").textContent = items.length;
-
-            const tbody = document.getElementById("items-table-body");
-            const recent = items.slice(0, 10);
-            if (recent.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="empty-state">No items yet. <a href="/vendor/items.html">Add your first item</a>.</td></tr>`;
-            } else {
-                tbody.innerHTML = recent.map(item => `
-                    <tr>
-                        <td><a href="/vendor/items.html">${item.name}</a></td>
-                        <td>${item.category || "—"}</td>
-                        <td>$${parseFloat(item.price).toFixed(2)}</td>
-                        <td>${item.sale_price ? `<span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>` : "—"}</td>
-                        <td>${statusBadge(item.status)}</td>
-                        <td>${item.quantity}</td>
-                    </tr>
-                `).join("");
-            }
+            cachedItems = items;
+            applyLayout(items);
         } catch (err) {
             showAlert("alert-container", err.message, "error");
         }
     }
 
+    window.addEventListener('resize', () => applyLayout(cachedItems));
     loadDashboard();
 </script>
 </body>

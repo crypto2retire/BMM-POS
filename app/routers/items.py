@@ -1,6 +1,8 @@
 import uuid
+import os
+import shutil
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
@@ -12,6 +14,8 @@ from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse
 from app.routers.auth import get_current_user
 from app.services.barcode import generate_sku
 from app.services.labels import generate_label_pdf, generate_dymo_xml
+
+PHOTO_UPLOAD_DIR = "frontend/static/images/items"
 
 router = APIRouter(prefix="/items", tags=["items"])
 
@@ -239,6 +243,77 @@ async def update_item(
 
     await db.commit()
 
+    result = await db.execute(
+        select(Item).options(selectinload(Item.vendor)).where(Item.id == item.id)
+    )
+    item = result.scalar_one()
+    return item_to_response(item)
+
+
+@router.post("/{item_id}/photo", response_model=ItemResponse)
+async def upload_item_photo(
+    item_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id)
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    allowed = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    ext = os.path.splitext(file.filename or "photo.jpg")[1].lower() or ".jpg"
+    if ext not in allowed:
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+
+    os.makedirs(PHOTO_UPLOAD_DIR, exist_ok=True)
+    filename = f"{item_id}_{uuid.uuid4().hex[:10]}{ext}"
+    filepath = os.path.join(PHOTO_UPLOAD_DIR, filename)
+
+    with open(filepath, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    photo_url = f"/static/images/items/{filename}"
+    item.photo_urls = (item.photo_urls or []) + [photo_url]
+    await db.commit()
+
+    result = await db.execute(
+        select(Item).options(selectinload(Item.vendor)).where(Item.id == item.id)
+    )
+    item = result.scalar_one()
+    return item_to_response(item)
+
+
+@router.delete("/{item_id}/photo", response_model=ItemResponse)
+async def delete_item_photo(
+    item_id: int,
+    photo_url: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id)
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    urls = [u for u in (item.photo_urls or []) if u != photo_url]
+    item.photo_urls = urls if urls else None
+
+    filename = os.path.basename(photo_url)
+    filepath = os.path.join(PHOTO_UPLOAD_DIR, filename)
+    if os.path.exists(filepath):
+        os.remove(filepath)
+
+    await db.commit()
     result = await db.execute(
         select(Item).options(selectinload(Item.vendor)).where(Item.id == item.id)
     )

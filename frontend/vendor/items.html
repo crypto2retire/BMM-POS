@@ -7,18 +7,37 @@
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
     <style>
-        .vendor-filter-bar { display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem; }
-        .vendor-filter-bar label { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-light); white-space:nowrap; }
-        .vendor-filter-bar select { min-width:200px; }
+        /* label dropdown */
         .label-btn-wrap { position:relative; display:inline-flex; }
-        .label-btn-wrap .ldd { display:none; position:absolute; top:100%; right:0; background:var(--surface-2); border:1px solid var(--border); z-index:200; min-width:140px; }
-        .label-btn-wrap .ldd button { display:block; width:100%; text-align:left; padding:0.45rem 0.75rem; background:none; border:none; color:var(--text); font-size:0.8rem; cursor:pointer; }
-        .label-btn-wrap .ldd button:hover { background:var(--primary-light); }
+        .ldd { display:none; position:absolute; top:100%; right:0; background:var(--surface-2); border:1px solid var(--border); z-index:200; min-width:140px; }
+        .ldd button { display:block; width:100%; text-align:left; padding:0.5rem 0.75rem; background:none; border:none; color:var(--text); font-size:0.8rem; cursor:pointer; min-height:40px; }
+        .ldd button:hover { background:var(--primary-light); }
         .label-btn-main { border-right:1px solid var(--border) !important; }
-        .label-btn-toggle { padding:0.3rem 0.4rem !important; }
+        .label-btn-toggle { padding:0.3rem 0.5rem !important; min-width:36px; }
+
+        /* vendor filter bar */
+        .vendor-filter-bar { display:flex; align-items:center; gap:0.75rem; margin-bottom:1rem; flex-wrap:wrap; }
+        .vendor-filter-bar label { font-size:0.75rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-light); white-space:nowrap; }
+
+        /* photo gallery in card */
+        .item-card-photos { display:flex; gap:4px; padding:0 0.875rem 0.875rem; }
+        .item-card-photos img { width:48px; height:48px; object-fit:cover; cursor:pointer; border:1px solid var(--border); }
+        .item-card-photos .add-photo-btn {
+            width:48px; height:48px; border:1px dashed var(--border); background:none;
+            color:var(--text-light); font-size:1.2rem; cursor:pointer; display:flex;
+            align-items:center; justify-content:center; position:relative; overflow:hidden;
+        }
+        .item-card-photos .add-photo-btn input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+
+        @media (max-width: 767px) {
+            .desktop-only { display:none !important; }
+        }
+        @media (min-width: 768px) {
+            .mobile-only { display:none !important; }
+        }
     </style>
 </head>
-<body>
+<body class="has-bottom-nav">
 <nav class="navbar">
     <a href="#" id="nav-brand" class="navbar-brand">
         <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
@@ -26,51 +45,53 @@
     </a>
     <div class="navbar-user">
         <span id="vendor-name">Loading...</span>
-        <nav class="navbar-nav">
-            <a href="#" id="nav-dashboard">Dashboard</a>
+        <button class="nav-hamburger" id="hamburger-btn" onclick="toggleNav()" aria-label="Menu">☰</button>
+        <nav class="navbar-nav" id="main-nav">
+            <a href="#" id="nav-home">Dashboard</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
     </div>
 </nav>
+
 <div class="main-content">
     <div id="alert-container"></div>
+
     <div class="page-header">
         <h1 class="page-title" id="page-title">Items</h1>
-        <button class="btn btn-primary" id="add-item-btn" onclick="openModal()">+ Add Item</button>
+        <button class="btn btn-primary" onclick="openModal()">+ Add Item</button>
     </div>
 
+    <!-- vendor filter (admin/cashier) -->
     <div id="vendor-filter-wrap" class="vendor-filter-bar" style="display:none">
-        <label>Viewing vendor:</label>
-        <select class="form-control" id="vendor-filter" onchange="onVendorChange()">
+        <label>Vendor:</label>
+        <select class="form-control" id="vendor-filter" onchange="onVendorChange()" style="max-width:260px">
             <option value="">All Vendors</option>
         </select>
     </div>
 
-    <div class="card">
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th id="th-vendor" style="display:none">Vendor</th>
-                        <th>Category</th>
-                        <th>Price</th>
-                        <th>Active Price</th>
-                        <th>Qty</th>
-                        <th>Label</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="items-table-body">
-                    <tr><td colspan="9" class="loading">Loading items...</td></tr>
-                </tbody>
-            </table>
-        </div>
+    <!-- item cards grid -->
+    <div class="item-cards-grid" id="items-grid">
+        <div style="grid-column:1/-1" class="loading">Loading items…</div>
     </div>
 </div>
 
-<!-- Add/Edit Modal -->
+<!-- Bottom nav (vendor mobile) -->
+<nav class="mobile-bottom-nav" id="bottom-nav" style="display:none">
+    <a href="/vendor/dashboard.html">
+        <span class="nav-icon">🏠</span>
+        <span>Home</span>
+    </a>
+    <a href="/vendor/items.html" class="active">
+        <span class="nav-icon">🏷️</span>
+        <span>Items</span>
+    </a>
+    <button onclick="handleLogout()">
+        <span class="nav-icon">🚪</span>
+        <span>Logout</span>
+    </button>
+</nav>
+
+<!-- ── Add/Edit Modal ─────────────────────────────────────────────── -->
 <div class="modal-overlay hidden" id="modal-overlay">
     <div class="modal">
         <div class="modal-header">
@@ -79,64 +100,91 @@
         </div>
         <div class="modal-body">
             <div id="modal-alert"></div>
-            <form id="item-form">
+            <form id="item-form" onsubmit="return false">
+
+                <!-- Photo upload — first, prominent on mobile -->
+                <div class="form-group">
+                    <label class="form-label">Photo</label>
+                    <div class="photo-upload-area" id="photo-upload-area" onclick="triggerPhotoInput()">
+                        <div id="photo-preview-container">
+                            <div class="photo-upload-icon">📷</div>
+                            <div class="photo-upload-label">Tap to add photo<br><small style="opacity:0.6">Camera or gallery</small></div>
+                        </div>
+                        <input type="file"
+                            id="f-photo"
+                            accept="image/*"
+                            capture="environment"
+                            style="display:none"
+                            onchange="onPhotoSelected(event)">
+                    </div>
+                    <div id="existing-photos" style="display:none; margin-top:8px">
+                        <div style="font-size:0.7rem; color:var(--text-light); margin-bottom:4px">CURRENT PHOTOS</div>
+                        <div id="existing-photos-list" style="display:flex; gap:6px; flex-wrap:wrap"></div>
+                    </div>
+                </div>
+
                 <!-- Vendor selector (admin/cashier only) -->
                 <div class="form-group" id="form-vendor-wrap" style="display:none">
                     <label class="form-label">Vendor *</label>
-                    <select class="form-control" id="f-vendor-id" required>
+                    <select class="form-control" id="f-vendor-id">
                         <option value="">Select vendor</option>
                     </select>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Item Name *</label>
-                        <input class="form-control" type="text" id="f-name" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Category</label>
-                        <select class="form-control" id="f-category">
-                            <option value="">Select category</option>
-                            <option>Jewelry</option>
-                            <option>Furniture</option>
-                            <option>Vintage</option>
-                            <option>Art</option>
-                            <option>Handcrafted</option>
-                            <option>Clothing</option>
-                            <option>Books</option>
-                            <option>Collectibles</option>
-                            <option>Home Decor</option>
-                            <option>Other</option>
-                        </select>
-                    </div>
-                </div>
+
                 <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea class="form-control" id="f-description" rows="2"></textarea>
+                    <label class="form-label">Item Name *</label>
+                    <input class="form-control" type="text" id="f-name" required
+                        placeholder="e.g. Handmade Ceramic Mug" autocomplete="off">
                 </div>
+
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select class="form-control" id="f-category">
+                        <option value="">Select category</option>
+                        <option>Jewelry</option>
+                        <option>Furniture</option>
+                        <option>Vintage</option>
+                        <option>Art</option>
+                        <option>Handcrafted</option>
+                        <option>Clothing</option>
+                        <option>Books</option>
+                        <option>Collectibles</option>
+                        <option>Home Decor</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Price *</label>
-                        <input class="form-control" type="number" id="f-price" step="0.01" min="0" required>
+                        <input class="form-control" type="number" id="f-price"
+                            step="0.01" min="0" required
+                            placeholder="0.00" inputmode="decimal">
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Quantity</label>
-                        <input class="form-control" type="number" id="f-quantity" value="1" min="0">
-                    </div>
-                </div>
-                <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Sale Price</label>
-                        <input class="form-control" type="number" id="f-sale-price" step="0.01" min="0" placeholder="Leave blank for no sale">
+                        <input class="form-control" type="number" id="f-sale-price"
+                            step="0.01" min="0"
+                            placeholder="Leave blank" inputmode="decimal">
                     </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Sale Start</label>
                         <input class="form-control" type="date" id="f-sale-start">
                     </div>
-                </div>
-                <div class="form-row">
                     <div class="form-group">
                         <label class="form-label">Sale End</label>
                         <input class="form-control" type="date" id="f-sale-end">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Quantity</label>
+                        <input class="form-control" type="number" id="f-quantity"
+                            value="1" min="0" inputmode="numeric">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Label Type</label>
@@ -146,7 +194,14 @@
                         </select>
                     </div>
                 </div>
-                <div class="form-group" style="display:flex;align-items:center;gap:1rem;padding-top:0.25rem">
+
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="f-description" rows="3"
+                        placeholder="Optional description…"></textarea>
+                </div>
+
+                <div class="form-group" style="display:flex; gap:1.5rem; flex-wrap:wrap; padding-top:0.25rem">
                     <label class="form-check">
                         <input type="checkbox" id="f-is-online">
                         List Online
@@ -160,7 +215,7 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="saveItem()" id="save-btn">Save Item</button>
+            <button class="btn btn-primary btn-lg" onclick="saveItem()" id="save-btn">Save Item</button>
         </div>
     </div>
 </div>
@@ -168,66 +223,93 @@
 <script src="/static/js/api.js"></script>
 <script>
     let editingId = null;
+    let pendingPhotoFile = null;
     let currentRole = 'vendor';
     let allVendors = [];
     let selectedVendorId = null;
 
-    function handleLogout() {
-        clearToken();
-        window.location.href = '/vendor/login.html';
+    // ── Nav helpers ────────────────────────────────────────────────────
+    function handleLogout() { clearToken(); window.location.href = '/vendor/login.html'; }
+    function toggleNav() {
+        document.getElementById('main-nav').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+        const nav = document.getElementById('main-nav');
+        const btn = document.getElementById('hamburger-btn');
+        if (nav && btn && !nav.contains(e.target) && !btn.contains(e.target)) {
+            nav.classList.remove('open');
+        }
+    });
+
+    // ── Photo upload ───────────────────────────────────────────────────
+    function triggerPhotoInput() {
+        document.getElementById('f-photo').click();
     }
 
-    function statusBadge(s) {
-        const map = { active: 'badge-green', sold: 'badge-blue', removed: 'badge-red' };
-        return `<span class="badge ${map[s] || 'badge-gray'}">${s}</span>`;
+    function onPhotoSelected(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        pendingPhotoFile = file;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('photo-preview-container').innerHTML = `
+                <div class="photo-preview-wrap">
+                    <img src="${e.target.result}" alt="Preview">
+                    <button type="button" class="photo-preview-remove" onclick="clearPhotoPreview()">✕</button>
+                </div>
+                <div class="photo-upload-label" style="margin-top:4px">Tap to change photo</div>`;
+        };
+        reader.readAsDataURL(file);
     }
 
-    function labelBadge(style) {
-        return style === 'dymo'
-            ? `<span class="badge badge-blue">Dymo</span>`
-            : `<span class="badge badge-gray">PDF</span>`;
+    function clearPhotoPreview() {
+        pendingPhotoFile = null;
+        document.getElementById('f-photo').value = '';
+        document.getElementById('photo-preview-container').innerHTML = `
+            <div class="photo-upload-icon">📷</div>
+            <div class="photo-upload-label">Tap to add photo<br><small style="opacity:0.6">Camera or gallery</small></div>`;
     }
 
-    // ── Vendor filter ────────────────────────────────────────────────────────
-    async function loadVendors() {
+    function renderExistingPhotos(photoUrls) {
+        const wrap = document.getElementById('existing-photos');
+        const list = document.getElementById('existing-photos-list');
+        if (!photoUrls || photoUrls.length === 0) {
+            wrap.style.display = 'none';
+            return;
+        }
+        wrap.style.display = 'block';
+        list.innerHTML = photoUrls.map(url => `
+            <div style="position:relative">
+                <img src="${url}" style="width:56px;height:56px;object-fit:cover;border:1px solid var(--border)">
+                <button type="button" class="photo-preview-remove"
+                    onclick="removeExistingPhoto('${url.replace(/'/g, "\\'")}')"
+                    style="position:absolute;top:2px;right:2px">✕</button>
+            </div>`).join('');
+    }
+
+    async function removeExistingPhoto(url) {
+        if (!editingId) return;
         try {
-            allVendors = await apiGet('/api/v1/vendors/');
-            const sel = document.getElementById('vendor-filter');
-            const fSel = document.getElementById('f-vendor-id');
-            allVendors.filter(v => v.role === 'vendor').forEach(v => {
-                sel.innerHTML += `<option value="${v.id}">${v.name} (${v.booth_number || 'No Booth'})</option>`;
-                fSel.innerHTML += `<option value="${v.id}">${v.name} (${v.booth_number || 'No Booth'})</option>`;
-            });
-        } catch (e) { /* ignore */ }
+            const updated = await apiFetch('DELETE', `/api/v1/items/${editingId}/photo?photo_url=${encodeURIComponent(url)}`);
+            renderExistingPhotos(updated.photo_urls);
+            await loadItems();
+        } catch (e) {
+            showAlert('modal-alert', e.message, 'error');
+        }
     }
 
-    function onVendorChange() {
-        const val = document.getElementById('vendor-filter').value;
-        selectedVendorId = val ? parseInt(val) : null;
-        loadItems();
-    }
-
-    // ── Label dropdown ───────────────────────────────────────────────────────
+    // ── Label dropdown ─────────────────────────────────────────────────
     function toggleLabelDropdown(event, id) {
         event.stopPropagation();
         document.querySelectorAll('.ldd').forEach(d => {
             if (d.id !== `ldd-${id}`) d.style.display = 'none';
         });
         const ldd = document.getElementById(`ldd-${id}`);
-        ldd.style.display = ldd.style.display === 'block' ? 'none' : 'block';
+        if (ldd) ldd.style.display = ldd.style.display === 'block' ? 'none' : 'block';
     }
-
     document.addEventListener('click', () => {
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
     });
-
-    async function printLabelAuto(id, style) {
-        if (style === 'dymo') {
-            await printDymoLabel(id);
-        } else {
-            printPdfLabel(id);
-        }
-    }
 
     function printPdfLabel(id) {
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
@@ -247,20 +329,50 @@
             if (resp.ok) {
                 showAlert('alert-container', 'Label sent to Dymo printer.', 'success');
             } else {
-                showAlert('alert-container', 'Dymo printer returned an error. Check that the printer is connected and ready.', 'error');
+                showAlert('alert-container', 'Dymo printer error. Check the printer is connected.', 'error');
             }
         } catch (e) {
-            if (e.message && e.message.includes('fetch')) {
-                showAlert('alert-container', 'Dymo software is not running. Please open Dymo Connect on this computer.', 'error');
+            if (String(e).includes('fetch') || String(e).includes('Failed')) {
+                showAlert('alert-container', 'Dymo software is not running on this computer.', 'error');
             } else {
                 showAlert('alert-container', e.message || 'Dymo label failed.', 'error');
             }
         }
     }
 
-    // ── Modal ────────────────────────────────────────────────────────────────
+    async function printLabelAuto(id, style) {
+        if (style === 'dymo') await printDymoLabel(id);
+        else printPdfLabel(id);
+    }
+
+    // ── Inline photo upload on card ─────────────────────────────────────
+    async function uploadCardPhoto(id, input) {
+        const file = input.files[0];
+        if (!file) return;
+        const formData = new FormData();
+        formData.append('file', file);
+        const token = sessionStorage.getItem('bmm_token');
+        try {
+            const res = await fetch(`/api/v1/items/${id}/photo`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                body: formData,
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ detail: 'Upload failed' }));
+                throw new Error(err.detail || 'Upload failed');
+            }
+            showAlert('alert-container', 'Photo uploaded.', 'success');
+            await loadItems();
+        } catch (e) {
+            showAlert('alert-container', e.message, 'error');
+        }
+    }
+
+    // ── Modal ──────────────────────────────────────────────────────────
     function openModal(item = null) {
         editingId = item ? item.id : null;
+        pendingPhotoFile = null;
         document.getElementById('modal-title').textContent = item ? 'Edit Item' : 'Add Item';
         document.getElementById('modal-alert').innerHTML = '';
         document.getElementById('f-name').value = item?.name || '';
@@ -274,25 +386,26 @@
         document.getElementById('f-is-online').checked = item?.is_online || false;
         document.getElementById('f-is-tax-exempt').checked = item?.is_tax_exempt || false;
         document.getElementById('f-label-style').value = item?.label_style || 'standard';
+
+        clearPhotoPreview();
+        renderExistingPhotos(item?.photo_urls || []);
+
         if (currentRole !== 'vendor') {
-            const vendorWrap = document.getElementById('form-vendor-wrap');
-            vendorWrap.style.display = 'block';
-            if (item) {
-                document.getElementById('f-vendor-id').value = item.vendor_id;
-                document.getElementById('f-vendor-id').disabled = true;
-            } else {
-                document.getElementById('f-vendor-id').disabled = false;
-                if (selectedVendorId) {
-                    document.getElementById('f-vendor-id').value = selectedVendorId;
-                }
-            }
+            const wrap = document.getElementById('form-vendor-wrap');
+            wrap.style.display = 'block';
+            const sel = document.getElementById('f-vendor-id');
+            if (item) { sel.value = item.vendor_id; sel.disabled = true; }
+            else { sel.disabled = false; if (selectedVendorId) sel.value = selectedVendorId; }
         }
+
         document.getElementById('modal-overlay').classList.remove('hidden');
+        setTimeout(() => document.getElementById('f-name').focus(), 100);
     }
 
     function closeModal() {
         document.getElementById('modal-overlay').classList.add('hidden');
         editingId = null;
+        pendingPhotoFile = null;
     }
 
     async function saveItem() {
@@ -325,23 +438,43 @@
 
         const btn = document.getElementById('save-btn');
         btn.disabled = true;
+        btn.textContent = 'Saving…';
         try {
+            let savedItem;
             if (editingId) {
-                await apiPut(`/api/v1/items/${editingId}`, body);
-                showAlert('alert-container', 'Item updated successfully.', 'success');
+                savedItem = await apiPut(`/api/v1/items/${editingId}`, body);
+                showAlert('alert-container', 'Item updated.', 'success');
             } else {
-                await apiPost('/api/v1/items/', body);
-                showAlert('alert-container', 'Item created successfully.', 'success');
+                savedItem = await apiPost('/api/v1/items/', body);
+                showAlert('alert-container', 'Item created.', 'success');
             }
+
+            if (pendingPhotoFile && savedItem && savedItem.id) {
+                const formData = new FormData();
+                formData.append('file', pendingPhotoFile);
+                const token = sessionStorage.getItem('bmm_token');
+                try {
+                    await fetch(`/api/v1/items/${savedItem.id}/photo`, {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token },
+                        body: formData,
+                    });
+                } catch (photoErr) {
+                    showAlert('alert-container', 'Item saved but photo upload failed.', 'warning');
+                }
+            }
+
             closeModal();
             await loadItems();
         } catch (err) {
             showAlert('modal-alert', err.message, 'error');
         } finally {
             btn.disabled = false;
+            btn.textContent = 'Save Item';
         }
     }
 
+    // ── Delete ─────────────────────────────────────────────────────────
     async function deleteItem(id, name) {
         if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
         try {
@@ -353,66 +486,117 @@
         }
     }
 
-    // ── Items table ──────────────────────────────────────────────────────────
+    // ── Vendor filter ──────────────────────────────────────────────────
+    async function loadVendors() {
+        try {
+            allVendors = await apiGet('/api/v1/vendors/');
+            const sel = document.getElementById('vendor-filter');
+            const fSel = document.getElementById('f-vendor-id');
+            allVendors.filter(v => v.role === 'vendor').forEach(v => {
+                const opt = `<option value="${v.id}">${v.name} (${v.booth_number || 'No Booth'})</option>`;
+                sel.innerHTML += opt;
+                fSel.innerHTML += opt;
+            });
+        } catch (e) { /* ignore */ }
+    }
+
+    function onVendorChange() {
+        const val = document.getElementById('vendor-filter').value;
+        selectedVendorId = val ? parseInt(val) : null;
+        loadItems();
+    }
+
+    // ── Render items ───────────────────────────────────────────────────
+    function statusBadge(s) {
+        const map = { active: 'badge-green', sold: 'badge-blue', removed: 'badge-red' };
+        return `<span class="badge ${map[s] || 'badge-gray'}">${s}</span>`;
+    }
+
+    function labelBadge(style) {
+        return style === 'dymo'
+            ? `<span class="badge badge-blue">Dymo</span>`
+            : `<span class="badge badge-gray">PDF</span>`;
+    }
+
+    function renderItems(items) {
+        const grid = document.getElementById('items-grid');
+        const today = new Date().toISOString().split('T')[0];
+
+        if (items.length === 0) {
+            grid.innerHTML = `<div style="grid-column:1/-1" class="card">
+                <div class="empty-state">No items yet. Tap <strong>+ Add Item</strong> to get started.</div>
+            </div>`;
+            return;
+        }
+
+        grid.innerHTML = items.map(item => {
+            const isOnSale = item.sale_price && item.sale_start && item.sale_end &&
+                item.sale_start <= today && today <= item.sale_end;
+            const priceHtml = isOnSale
+                ? `<span class="price-original">$${parseFloat(item.price).toFixed(2)}</span> <span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>`
+                : `$${parseFloat(item.price).toFixed(2)}`;
+
+            const photoHtml = (item.photo_urls && item.photo_urls.length)
+                ? `<img src="${item.photo_urls[0]}" alt="">`
+                : `🏷️`;
+
+            const vendorMeta = currentRole !== 'vendor' && item.booth_number
+                ? ` &middot; Booth ${item.booth_number}` : '';
+
+            const style = item.label_style || 'standard';
+            const labelBtnText = style === 'dymo' ? 'Dymo' : 'Label';
+            const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+
+            return `<div class="item-card">
+                <div class="item-card-top">
+                    <div class="item-card-photo">${photoHtml}</div>
+                    <div class="item-card-info">
+                        <div class="item-card-name">${item.name}</div>
+                        <div class="item-card-price">${priceHtml}</div>
+                        <div class="item-card-meta">${item.category || '—'} &middot; Qty: ${item.quantity}${vendorMeta}</div>
+                        <div style="margin-top:4px">${statusBadge(item.status)} ${labelBadge(style)}</div>
+                    </div>
+                </div>
+                <div class="item-card-actions">
+                    <button class="btn btn-outline" onclick="openModal(${itemJson})">Edit</button>
+                    <div class="label-btn-wrap" onclick="event.stopPropagation()" style="flex:1;display:flex">
+                        <button class="btn btn-secondary label-btn-main" style="flex:1;border-radius:0"
+                            onclick="printLabelAuto(${item.id}, '${style}')">${labelBtnText}</button>
+                        <button class="btn btn-secondary label-btn-toggle"
+                            onclick="toggleLabelDropdown(event, ${item.id})">▾</button>
+                        <div class="ldd" id="ldd-${item.id}">
+                            <button onclick="printPdfLabel(${item.id})">PDF Label</button>
+                            <button onclick="printDymoLabel(${item.id})">Dymo Label</button>
+                        </div>
+                    </div>
+                    <button class="btn btn-danger" onclick="deleteItem(${item.id}, '${item.name.replace(/'/g, "\\'").replace(/"/g, '\\"')}')">Del</button>
+                </div>
+                <div class="item-card-photos">
+                    ${(item.photo_urls || []).slice(1).map(url =>
+                        `<img src="${url}" alt="" onclick="window.open('${url}','_blank')">`
+                    ).join('')}
+                    <button class="add-photo-btn" title="Add photo" type="button">
+                        <span style="pointer-events:none">+📷</span>
+                        <input type="file" accept="image/*" capture="environment"
+                            onchange="uploadCardPhoto(${item.id}, this)">
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
     async function loadItems() {
         try {
             let url = '/api/v1/items/';
-            if (currentRole !== 'vendor' && selectedVendorId) {
-                url += `?vendor_id=${selectedVendorId}`;
-            }
+            if (currentRole !== 'vendor' && selectedVendorId) url += `?vendor_id=${selectedVendorId}`;
             const items = await apiGet(url);
-            const tbody = document.getElementById('items-table-body');
-            const today = new Date().toISOString().split('T')[0];
-            const colSpan = currentRole !== 'vendor' ? 9 : 9;
-
-            if (items.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="empty-state">No items found. Click "Add Item" to get started.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = items.map(item => {
-                const isOnSale = item.sale_price && item.sale_start && item.sale_end &&
-                    item.sale_start <= today && today <= item.sale_end;
-                const priceDisplay = isOnSale
-                    ? `<span class="price-original">$${parseFloat(item.price).toFixed(2)}</span> <span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>`
-                    : `$${parseFloat(item.price).toFixed(2)}`;
-                const vendorCell = currentRole !== 'vendor'
-                    ? `<td><small>${item.booth_number || '—'}</small></td>`
-                    : '';
-                const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
-                const style = item.label_style || 'standard';
-                const labelBtnText = style === 'dymo' ? 'Dymo Label' : 'PDF Label';
-                return `<tr>
-                    <td><strong>${item.name}</strong><br><small style="color:var(--text-light)">${item.sku}</small></td>
-                    ${vendorCell}
-                    <td>${item.category || '—'}</td>
-                    <td>$${parseFloat(item.price).toFixed(2)}</td>
-                    <td>${priceDisplay}</td>
-                    <td>${item.quantity}</td>
-                    <td>${labelBadge(style)}</td>
-                    <td>${statusBadge(item.status)}</td>
-                    <td>
-                        <div class="table-actions">
-                            <button class="btn btn-outline btn-sm" onclick="openModal(${itemJson})">Edit</button>
-                            <div class="label-btn-wrap" onclick="event.stopPropagation()">
-                                <button class="btn btn-secondary btn-sm label-btn-main" onclick="printLabelAuto(${item.id}, '${style}')">${labelBtnText}</button>
-                                <button class="btn btn-secondary btn-sm label-btn-toggle" onclick="toggleLabelDropdown(event, ${item.id})">▾</button>
-                                <div class="ldd" id="ldd-${item.id}">
-                                    <button onclick="printPdfLabel(${item.id})">PDF Label</button>
-                                    <button onclick="printDymoLabel(${item.id})">Dymo Label</button>
-                                </div>
-                            </div>
-                            <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id}, '${item.name.replace(/'/g, "\\'")}')">Delete</button>
-                        </div>
-                    </td>
-                </tr>`;
-            }).join('');
+            renderItems(items);
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
         }
     }
 
-    // ── Init ─────────────────────────────────────────────────────────────────
+    // ── Init ───────────────────────────────────────────────────────────
     async function init() {
         const token = sessionStorage.getItem('bmm_token');
         if (!token) { window.location.href = '/vendor/login.html'; return; }
@@ -423,17 +607,21 @@
         document.getElementById('vendor-name').textContent = payload.name || 'User';
 
         if (currentRole === 'admin' || currentRole === 'cashier') {
-            document.getElementById('nav-brand').href = currentRole === 'admin' ? '/admin/index.html' : '/pos/index.html';
+            const homeHref = currentRole === 'admin' ? '/admin/index.html' : '/pos/index.html';
+            document.getElementById('nav-brand').href = homeHref;
             document.getElementById('nav-role-label').textContent = currentRole === 'admin' ? 'Admin' : 'Cashier';
-            document.getElementById('nav-dashboard').href = currentRole === 'admin' ? '/admin/index.html' : '/pos/index.html';
-            document.getElementById('nav-dashboard').textContent = currentRole === 'admin' ? 'Dashboard' : 'POS Terminal';
+            document.getElementById('nav-home').href = homeHref;
+            document.getElementById('nav-home').textContent = currentRole === 'admin' ? 'Admin Dashboard' : 'POS Terminal';
             document.getElementById('vendor-filter-wrap').style.display = 'flex';
-            document.getElementById('th-vendor').style.display = '';
-            document.getElementById('page-title').textContent = currentRole === 'admin' ? 'All Items' : 'Item Management';
+            document.getElementById('page-title').textContent = 'Item Management';
+            document.getElementById('bottom-nav').style.display = 'none';
+            document.body.classList.remove('has-bottom-nav');
             await loadVendors();
         } else {
             document.getElementById('nav-brand').href = '/vendor/dashboard.html';
-            document.getElementById('nav-dashboard').href = '/vendor/dashboard.html';
+            document.getElementById('nav-home').href = '/vendor/dashboard.html';
+            document.getElementById('nav-home').textContent = 'Dashboard';
+            document.getElementById('bottom-nav').style.display = '';
             document.getElementById('page-title').textContent = 'My Items';
         }
 

@@ -151,11 +151,29 @@ The workflow runs: `uvicorn app.main:app --host 0.0.0.0 --port 5000`
 - Login: `/vendor/login.html`
 - POS Terminal: `/pos/index.html`
 
+## Mobile Responsive Design
+
+All vendor pages are fully mobile-first responsive (375px/390px/768px/1024px):
+- **vendor/login.html** — full-width card on mobile, 48px button, keyboard-safe padding
+- **vendor/dashboard.html** — stats grid (2-col mobile, 4-col desktop); Recent Items switches from table to item cards on mobile; prominent "Add New Item" CTA; fixed bottom nav bar (🏠 Home / 🏷️ Items / 🚪 Logout)
+- **vendor/items.html** — always renders item cards grid (1-col mobile → 2-col tablet → 3-col desktop); form modal is full-screen slide-up on mobile; photo upload with `accept="image/*" capture="environment"` (opens camera on phones); hamburger nav on mobile
+- Inputs are `font-size: 16px` minimum on mobile (prevents iOS auto-zoom)
+- All tap targets ≥ 44px height
+- Bottom nav hidden for admin/cashier roles (not needed on those pages)
+
+## Photo Upload
+
+Item photos are stored in `frontend/static/images/items/` and served as static files.
+- `POST /api/v1/items/{id}/photo` — multipart upload, appends to `photo_urls` array
+- `DELETE /api/v1/items/{id}/photo?photo_url=...` — removes a photo from the array and deletes the file
+- Inline per-card photo upload button on items page (opens camera/gallery)
+- Photo thumbnail shown in item card top-left corner
+
 ## Key Behaviors
 
 - Vendors can only see/edit their own items
 - Admins can manage all vendors and items
-- Cashiers can operate POS but cannot manage vendors/items
+- Cashiers can read vendors list (read-only), manage items, access Vendor Directory
 - Sale pricing: active_price uses sale_price when today is between sale_start and sale_end
 - On sale completion: inventory is decremented, vendor balances are credited
 - SKU format: `BSM-{vendor_id:04d}-{sequence:06d}`
