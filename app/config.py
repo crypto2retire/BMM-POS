@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     tax_rate: float = 0.055
     store_name: str = "Bowenstreet Market"
     dymo_label_size: str = "30336"
-    anthropic_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

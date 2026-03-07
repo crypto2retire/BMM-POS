@@ -40,9 +40,12 @@ class ChatResponse(BaseModel):
 
 def _get_api_key() -> str:
     import os
-    key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     if not key:
-        raise HTTPException(status_code=503, detail="Assistant not configured")
+        raise HTTPException(
+            status_code=503,
+            detail="Assistant not configured. Please add your OpenRouter API key.",
+        )
     return key
 
 
@@ -54,35 +57,36 @@ async def chat(
     api_key = _get_api_key()
 
     if data.image_base64 and data.image_mime_type:
-        content = [
+        user_content = [
             {
-                "type": "image",
-                "source": {
-                    "type": "base64",
-                    "media_type": data.image_mime_type,
-                    "data": data.image_base64,
+                "type": "image_url",
+                "image_url": {
+                    "url": f"data:{data.image_mime_type};base64,{data.image_base64}"
                 },
             },
             {"type": "text", "text": data.message},
         ]
     else:
-        content = data.message
+        user_content = data.message
 
     payload = {
-        "model": "claude-opus-4-6",
+        "model": "google/gemini-2.0-flash",
         "max_tokens": 500,
-        "system": SYSTEM_PROMPT,
-        "messages": [{"role": "user", "content": content}],
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_content},
+        ],
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         try:
             resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
+                "https://openrouter.ai/api/v1/chat/completions",
                 headers={
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
+                    "Authorization": f"Bearer {api_key}",
+                    "HTTP-Referer": "https://bowenstreetmarket.com",
+                    "X-Title": "Bowenstreet Market POS",
+                    "Content-Type": "application/json",
                 },
                 json=payload,
             )
@@ -92,10 +96,13 @@ async def chat(
             raise HTTPException(status_code=502, detail=f"Network error: {e}")
 
     if resp.status_code == 401:
-        raise HTTPException(status_code=503, detail="Assistant not configured")
+        raise HTTPException(
+            status_code=503,
+            detail="Assistant not configured. Please add your OpenRouter API key.",
+        )
     if not resp.is_success:
         raise HTTPException(status_code=502, detail="Assistant unavailable")
 
     body = resp.json()
-    reply = body["content"][0]["text"]
+    reply = body["choices"][0]["message"]["content"]
     return ChatResponse(reply=reply)
