@@ -70,7 +70,7 @@ async def chat(
         user_content = data.message
 
     payload = {
-        "model": "google/gemini-2.0-flash",
+        "model": "google/gemini-2.0-flash-001",
         "max_tokens": 500,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
