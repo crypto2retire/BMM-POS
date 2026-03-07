@@ -1,10 +1,20 @@
-# Python-generated files
+.env
 __pycache__/
-*.py[oc]
-build/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
 dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
+build/
+.replit
+replit.nix
+venv/
+.venv/
+.cache/
+.upm/
+.pythonlibs/
+.local/
+attached_assets/
+uv.lock
+*.log
+gunicorn.ctl
