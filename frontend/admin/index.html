@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard — BMM-POS</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+<nav class="navbar">
+    <a href="/admin/index.html" class="navbar-brand">
+        BMM-POS <span class="store-name">Admin</span>
+    </a>
+    <div class="navbar-user">
+        <span>Administrator</span>
+        <nav class="navbar-nav">
+            <a href="/admin/index.html" class="active">Dashboard</a>
+            <a href="/admin/vendors.html">Vendors</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
+        </nav>
+    </div>
+</nav>
+<div class="main-content">
+    <div id="alert-container"></div>
+    <div class="page-header">
+        <h1 class="page-title">Admin Dashboard</h1>
+    </div>
+
+    <div class="stats-grid">
+        <div class="card">
+            <div class="card-title">Total Vendors</div>
+            <div class="card-value teal" id="total-vendors">—</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Active Vendors</div>
+            <div class="card-value green" id="active-vendors">—</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Total Items</div>
+            <div class="card-value" id="total-items">—</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Active Items</div>
+            <div class="card-value teal" id="active-items">—</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
+            <h2 class="section-title">All Vendors</h2>
+            <a href="/admin/vendors.html" class="btn btn-primary btn-sm">Manage Vendors</a>
+        </div>
+        <div class="card">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Booth</th>
+                            <th>Monthly Rent</th>
+                            <th>Balance</th>
+                            <th>Status</th>
+                            <th>Role</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vendors-table-body">
+                        <tr><td colspan="7" class="loading">Loading vendors...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="/static/js/api.js"></script>
+<script>
+    function handleLogout() {
+        clearToken();
+        window.location.href = "/vendor/login.html";
+    }
+
+    function statusBadge(s) {
+        return `<span class="badge ${s === 'active' ? 'badge-green' : 'badge-red'}">${s}</span>`;
+    }
+
+    function roleBadge(r) {
+        return `<span class="badge ${r === 'admin' ? 'badge-blue' : 'badge-gray'}">${r}</span>`;
+    }
+
+    async function loadDashboard() {
+        if (!requireAuth()) return;
+        const payload = parseToken();
+        if (payload?.role !== "admin") {
+            window.location.href = "/vendor/dashboard.html";
+            return;
+        }
+
+        try {
+            const [vendors, items] = await Promise.all([
+                apiGet("/api/v1/vendors/"),
+                apiGet("/api/v1/items/"),
+            ]);
+
+            document.getElementById("total-vendors").textContent = vendors.length;
+            document.getElementById("active-vendors").textContent = vendors.filter(v => v.status === "active").length;
+            document.getElementById("total-items").textContent = items.length;
+            document.getElementById("active-items").textContent = items.filter(i => i.status === "active").length;
+
+            const tbody = document.getElementById("vendors-table-body");
+            if (vendors.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No vendors found.</td></tr>`;
+            } else {
+                tbody.innerHTML = vendors.map(v => `
+                    <tr>
+                        <td><strong>${v.name}</strong></td>
+                        <td>${v.email}</td>
+                        <td>${v.booth_number || "—"}</td>
+                        <td>${v.monthly_rent ? `$${parseFloat(v.monthly_rent).toFixed(2)}` : "—"}</td>
+                        <td><strong>$${parseFloat(v.current_balance || 0).toFixed(2)}</strong></td>
+                        <td>${statusBadge(v.status)}</td>
+                        <td>${roleBadge(v.role)}</td>
+                    </tr>
+                `).join("");
+            }
+        } catch (err) {
+            showAlert("alert-container", err.message, "error");
+        }
+    }
+
+    loadDashboard();
+</script>
+</body>
+</html>

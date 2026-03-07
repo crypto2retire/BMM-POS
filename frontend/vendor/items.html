@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Items — BMM-POS</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+<nav class="navbar">
+    <a href="/vendor/dashboard.html" class="navbar-brand">
+        BMM-POS <span class="store-name">Bowenstreet Market</span>
+    </a>
+    <div class="navbar-user">
+        <span id="vendor-name">Loading...</span>
+        <nav class="navbar-nav">
+            <a href="/vendor/dashboard.html">Dashboard</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
+        </nav>
+    </div>
+</nav>
+<div class="main-content">
+    <div id="alert-container"></div>
+    <div class="page-header">
+        <h1 class="page-title">My Items</h1>
+        <button class="btn btn-primary" onclick="openModal()">+ Add Item</button>
+    </div>
+
+    <div class="card">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Price</th>
+                        <th>Active Price</th>
+                        <th>Sale Dates</th>
+                        <th>Qty</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="items-table-body">
+                    <tr><td colspan="8" class="loading">Loading items...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modal-title">Add Item</h3>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div id="modal-alert"></div>
+            <form id="item-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Item Name *</label>
+                        <input class="form-control" type="text" id="f-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Category</label>
+                        <select class="form-control" id="f-category">
+                            <option value="">Select category</option>
+                            <option>Jewelry</option>
+                            <option>Furniture</option>
+                            <option>Vintage</option>
+                            <option>Art</option>
+                            <option>Handcrafted</option>
+                            <option>Clothing</option>
+                            <option>Books</option>
+                            <option>Collectibles</option>
+                            <option>Home Decor</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="f-description" rows="2"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Price *</label>
+                        <input class="form-control" type="number" id="f-price" step="0.01" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Quantity</label>
+                        <input class="form-control" type="number" id="f-quantity" value="1" min="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Sale Price</label>
+                        <input class="form-control" type="number" id="f-sale-price" step="0.01" min="0" placeholder="Leave blank for no sale">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Sale Start</label>
+                        <input class="form-control" type="date" id="f-sale-start">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Sale End</label>
+                        <input class="form-control" type="date" id="f-sale-end">
+                    </div>
+                    <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:0.25rem">
+                        <label class="form-check">
+                            <input type="checkbox" id="f-is-online">
+                            List Online
+                        </label>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveItem()" id="save-btn">Save Item</button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/api.js"></script>
+<script>
+    let editingId = null;
+
+    function handleLogout() {
+        clearToken();
+        window.location.href = "/vendor/login.html";
+    }
+
+    function statusBadge(status) {
+        const map = { active: "badge-green", sold: "badge-blue", removed: "badge-red" };
+        return `<span class="badge ${map[status] || "badge-gray"}">${status}</span>`;
+    }
+
+    function openModal(item = null) {
+        editingId = item ? item.id : null;
+        document.getElementById("modal-title").textContent = item ? "Edit Item" : "Add Item";
+        document.getElementById("modal-alert").innerHTML = "";
+        document.getElementById("f-name").value = item?.name || "";
+        document.getElementById("f-category").value = item?.category || "";
+        document.getElementById("f-description").value = item?.description || "";
+        document.getElementById("f-price").value = item?.price || "";
+        document.getElementById("f-quantity").value = item?.quantity ?? 1;
+        document.getElementById("f-sale-price").value = item?.sale_price || "";
+        document.getElementById("f-sale-start").value = item?.sale_start || "";
+        document.getElementById("f-sale-end").value = item?.sale_end || "";
+        document.getElementById("f-is-online").checked = item?.is_online || false;
+        document.getElementById("modal-overlay").classList.remove("hidden");
+    }
+
+    function closeModal() {
+        document.getElementById("modal-overlay").classList.add("hidden");
+        editingId = null;
+    }
+
+    async function saveItem() {
+        const name = document.getElementById("f-name").value.trim();
+        const price = parseFloat(document.getElementById("f-price").value);
+        if (!name || isNaN(price)) {
+            showAlert("modal-alert", "Name and price are required.", "error");
+            return;
+        }
+
+        const body = {
+            name,
+            category: document.getElementById("f-category").value || null,
+            description: document.getElementById("f-description").value || null,
+            price,
+            quantity: parseInt(document.getElementById("f-quantity").value) || 1,
+            sale_price: parseFloat(document.getElementById("f-sale-price").value) || null,
+            sale_start: document.getElementById("f-sale-start").value || null,
+            sale_end: document.getElementById("f-sale-end").value || null,
+            is_online: document.getElementById("f-is-online").checked,
+        };
+
+        const btn = document.getElementById("save-btn");
+        btn.disabled = true;
+        try {
+            if (editingId) {
+                await apiPut(`/api/v1/items/${editingId}`, body);
+                showAlert("alert-container", "Item updated successfully.", "success");
+            } else {
+                await apiPost("/api/v1/items/", body);
+                showAlert("alert-container", "Item created successfully.", "success");
+            }
+            closeModal();
+            await loadItems();
+        } catch (err) {
+            showAlert("modal-alert", err.message, "error");
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    async function deleteItem(id, name) {
+        if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+        try {
+            await apiDelete(`/api/v1/items/${id}`);
+            showAlert("alert-container", "Item removed.", "success");
+            await loadItems();
+        } catch (err) {
+            showAlert("alert-container", err.message, "error");
+        }
+    }
+
+    function printLabel(id) {
+        window.open(`/api/v1/items/${id}/label`, "_blank");
+    }
+
+    async function loadItems() {
+        try {
+            const items = await apiGet("/api/v1/items/");
+            const tbody = document.getElementById("items-table-body");
+            const today = new Date().toISOString().split("T")[0];
+
+            if (items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No items yet. Click "Add Item" to get started.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = items.map(item => {
+                const isOnSale = item.sale_price && item.sale_start && item.sale_end &&
+                    item.sale_start <= today && today <= item.sale_end;
+                const activePrice = isOnSale ? item.sale_price : item.price;
+                const priceDisplay = isOnSale
+                    ? `<span class="price-original">$${parseFloat(item.price).toFixed(2)}</span> <span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>`
+                    : `$${parseFloat(item.price).toFixed(2)}`;
+                const saleDates = item.sale_start && item.sale_end
+                    ? `${item.sale_start} to ${item.sale_end}`
+                    : "—";
+                return `<tr>
+                    <td><strong>${item.name}</strong><br><small style="color:var(--text-light)">${item.sku}</small></td>
+                    <td>${item.category || "—"}</td>
+                    <td>$${parseFloat(item.price).toFixed(2)}</td>
+                    <td>${priceDisplay}</td>
+                    <td><small>${saleDates}</small></td>
+                    <td>${item.quantity}</td>
+                    <td>${statusBadge(item.status)}</td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="btn btn-outline btn-sm" onclick="openModal(${JSON.stringify(item).replace(/"/g, '&quot;')})">Edit</button>
+                            <button class="btn btn-secondary btn-sm" onclick="printLabel(${item.id})">Label</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteItem(${item.id}, '${item.name.replace(/'/g, "\\'")}')">Delete</button>
+                        </div>
+                    </td>
+                </tr>`;
+            }).join("");
+        } catch (err) {
+            showAlert("alert-container", err.message, "error");
+        }
+    }
+
+    async function init() {
+        if (!requireAuth()) return;
+        const payload = parseToken();
+        document.getElementById("vendor-name").textContent = payload?.name || "Vendor";
+        await loadItems();
+    }
+
+    init();
+</script>
+</body>
+</html>

@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Vendors — BMM-POS</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+<nav class="navbar">
+    <a href="/admin/index.html" class="navbar-brand">
+        BMM-POS <span class="store-name">Admin</span>
+    </a>
+    <div class="navbar-user">
+        <span>Administrator</span>
+        <nav class="navbar-nav">
+            <a href="/admin/index.html">Dashboard</a>
+            <a href="/admin/vendors.html" class="active">Vendors</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
+        </nav>
+    </div>
+</nav>
+<div class="main-content">
+    <div id="alert-container"></div>
+    <div class="page-header">
+        <h1 class="page-title">Manage Vendors</h1>
+        <button class="btn btn-primary" onclick="openModal()">+ Add Vendor</button>
+    </div>
+
+    <div class="card">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Booth</th>
+                        <th>Monthly Rent</th>
+                        <th>Balance</th>
+                        <th>Payout</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="vendors-table-body">
+                    <tr><td colspan="8" class="loading">Loading vendors...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay hidden" id="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title" id="modal-title">Add Vendor</h3>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div id="modal-alert"></div>
+            <form id="vendor-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Name *</label>
+                        <input class="form-control" type="text" id="f-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email *</label>
+                        <input class="form-control" type="email" id="f-email" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Password <span id="password-hint" style="color:var(--text-light)">(required for new)</span></label>
+                        <input class="form-control" type="password" id="f-password" placeholder="Min 8 characters">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input class="form-control" type="text" id="f-phone">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Booth Number</label>
+                        <input class="form-control" type="text" id="f-booth">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Monthly Rent</label>
+                        <input class="form-control" type="number" id="f-rent" step="0.01" min="0" value="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <select class="form-control" id="f-role">
+                            <option value="vendor">Vendor</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Status</label>
+                        <select class="form-control" id="f-status">
+                            <option value="active">Active</option>
+                            <option value="suspended">Suspended</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Payout Method</label>
+                        <select class="form-control" id="f-payout">
+                            <option value="zelle">Zelle</option>
+                            <option value="check">Check</option>
+                            <option value="cash">Cash</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Zelle Handle</label>
+                        <input class="form-control" type="text" id="f-zelle" placeholder="Phone or email">
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveVendor()" id="save-btn">Save Vendor</button>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/api.js"></script>
+<script>
+    let editingId = null;
+
+    function handleLogout() {
+        clearToken();
+        window.location.href = "/vendor/login.html";
+    }
+
+    function statusBadge(s) {
+        return `<span class="badge ${s === 'active' ? 'badge-green' : 'badge-red'}">${s}</span>`;
+    }
+
+    function openModal(vendor = null) {
+        editingId = vendor ? vendor.id : null;
+        document.getElementById("modal-title").textContent = vendor ? "Edit Vendor" : "Add Vendor";
+        document.getElementById("modal-alert").innerHTML = "";
+        document.getElementById("f-name").value = vendor?.name || "";
+        document.getElementById("f-email").value = vendor?.email || "";
+        document.getElementById("f-password").value = "";
+        document.getElementById("f-phone").value = vendor?.phone || "";
+        document.getElementById("f-booth").value = vendor?.booth_number || "";
+        document.getElementById("f-rent").value = vendor?.monthly_rent || 0;
+        document.getElementById("f-role").value = vendor?.role || "vendor";
+        document.getElementById("f-status").value = vendor?.status || "active";
+        document.getElementById("f-payout").value = vendor?.payout_method || "zelle";
+        document.getElementById("f-zelle").value = vendor?.zelle_handle || "";
+        document.getElementById("password-hint").textContent = vendor ? "(leave blank to keep unchanged)" : "(required for new)";
+        document.getElementById("modal-overlay").classList.remove("hidden");
+    }
+
+    function closeModal() {
+        document.getElementById("modal-overlay").classList.add("hidden");
+        editingId = null;
+    }
+
+    async function saveVendor() {
+        const name = document.getElementById("f-name").value.trim();
+        const email = document.getElementById("f-email").value.trim();
+        const password = document.getElementById("f-password").value;
+
+        if (!name || !email) {
+            showAlert("modal-alert", "Name and email are required.", "error");
+            return;
+        }
+        if (!editingId && !password) {
+            showAlert("modal-alert", "Password is required for new vendors.", "error");
+            return;
+        }
+        if (password && password.length < 8) {
+            showAlert("modal-alert", "Password must be at least 8 characters.", "error");
+            return;
+        }
+
+        const body = {
+            name,
+            email,
+            phone: document.getElementById("f-phone").value || null,
+            booth_number: document.getElementById("f-booth").value || null,
+            monthly_rent: parseFloat(document.getElementById("f-rent").value) || 0,
+            role: document.getElementById("f-role").value,
+            status: document.getElementById("f-status").value,
+            payout_method: document.getElementById("f-payout").value,
+            zelle_handle: document.getElementById("f-zelle").value || null,
+        };
+        if (password) body.password = password;
+
+        const btn = document.getElementById("save-btn");
+        btn.disabled = true;
+        try {
+            if (editingId) {
+                await apiPut(`/api/v1/vendors/${editingId}`, body);
+                showAlert("alert-container", "Vendor updated successfully.", "success");
+            } else {
+                await apiPost("/api/v1/vendors/", body);
+                showAlert("alert-container", "Vendor created successfully.", "success");
+            }
+            closeModal();
+            await loadVendors();
+        } catch (err) {
+            showAlert("modal-alert", err.message, "error");
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    async function suspendVendor(id, name) {
+        if (!confirm(`Suspend "${name}"?`)) return;
+        try {
+            await apiDelete(`/api/v1/vendors/${id}`);
+            showAlert("alert-container", `${name} has been suspended.`, "success");
+            await loadVendors();
+        } catch (err) {
+            showAlert("alert-container", err.message, "error");
+        }
+    }
+
+    async function loadVendors() {
+        try {
+            const vendors = await apiGet("/api/v1/vendors/");
+            const tbody = document.getElementById("vendors-table-body");
+            if (vendors.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="empty-state">No vendors found.</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = vendors.map(v => `
+                <tr>
+                    <td><strong>${v.name}</strong></td>
+                    <td>${v.email}</td>
+                    <td>${v.booth_number || "—"}</td>
+                    <td>${v.monthly_rent ? `$${parseFloat(v.monthly_rent).toFixed(2)}` : "—"}</td>
+                    <td><strong>$${parseFloat(v.current_balance || 0).toFixed(2)}</strong></td>
+                    <td>${v.payout_method || "—"}${v.zelle_handle ? `<br><small>${v.zelle_handle}</small>` : ""}</td>
+                    <td>${statusBadge(v.status)}</td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="btn btn-outline btn-sm" onclick='openModal(${JSON.stringify(v)})'>Edit</button>
+                            ${v.status === "active" ? `<button class="btn btn-danger btn-sm" onclick="suspendVendor(${v.id}, '${v.name.replace(/'/g, "\\'")}')">Suspend</button>` : ""}
+                        </div>
+                    </td>
+                </tr>
+            `).join("");
+        } catch (err) {
+            showAlert("alert-container", err.message, "error");
+        }
+    }
+
+    async function init() {
+        if (!requireAuth()) return;
+        const payload = parseToken();
+        if (payload?.role !== "admin") {
+            window.location.href = "/vendor/dashboard.html";
+            return;
+        }
+        await loadVendors();
+    }
+
+    init();
+</script>
+</body>
+</html>
