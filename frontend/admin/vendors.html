@@ -7,145 +7,65 @@
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
     <style>
-        /* ── Hamburger nav ───────────────────────────────────────────── */
-        .hamburger-btn {
-            display: none;
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.25rem 0.5rem;
-            line-height: 1;
-        }
-        .mobile-nav-dropdown {
-            display: none;
-            position: fixed;
-            top: 56px;
-            left: 0; right: 0;
-            background: #2C2C2F;
-            border-bottom: 1px solid #555558;
-            z-index: 1000;
-            flex-direction: column;
-            padding: 0.5rem 0;
-        }
-        .mobile-nav-dropdown.open { display: flex; }
-        .mobile-nav-dropdown a {
-            color: rgba(255,255,255,0.85);
-            text-decoration: none;
-            padding: 0.85rem 1.25rem;
-            font-size: 1rem;
-            border-bottom: 1px solid #3a3a3d;
-        }
-        .mobile-nav-dropdown a:last-child { border-bottom: none; }
-        .mobile-nav-dropdown a:hover, .mobile-nav-dropdown a.active { color: #fff; background: rgba(255,255,255,0.08); }
-
         /* ── Mobile vendor cards ─────────────────────────────────────── */
         .vendor-cards { display: none; flex-direction: column; gap: 0.75rem; }
         .vendor-card {
-            background: #44444A;
-            border: 1px solid #555558;
+            background: var(--surface);
+            border: 1px solid var(--border);
             padding: 1rem;
+            transition: border-color 0.2s;
         }
+        .vendor-card:hover { border-color: var(--warm-border); }
         .vendor-card-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 0.75rem;
         }
-        .vendor-card-name { font-size: 1rem; font-weight: 700; color: #F9FAFB; }
-        .vendor-card-sub { font-size: 0.8rem; color: #A8A6A1; margin-top: 2px; }
+        .vendor-card-name {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+        .vendor-card-sub { font-size: 0.78rem; color: var(--text-light); margin-top: 3px; }
         .vendor-card-right { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
-        .vendor-card-balance { font-size: 1rem; font-weight: 700; color: #F9FAFB; }
-        .vendor-card-chevron { color: #A8A6A1; font-size: 1.1rem; cursor: pointer; }
+        .vendor-card-balance {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+        .vendor-card-chevron { color: var(--text-light); font-size: 1rem; cursor: pointer; }
         .vendor-card-detail {
             margin-top: 0.75rem;
             padding-top: 0.75rem;
-            border-top: 1px solid #555558;
+            border-top: 1px solid rgba(255,255,255,0.06);
             font-size: 0.85rem;
-            color: #d8d6d2;
+            color: var(--text);
         }
         .vendor-card-detail.collapsed { display: none; }
         .vendor-card-meta { display: flex; gap: 1.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
         .vendor-card-meta span { display: flex; flex-direction: column; }
-        .vendor-card-meta label { font-size: 0.72rem; color: #A8A6A1; text-transform: uppercase; margin-bottom: 2px; }
+        .vendor-card-meta label {
+            font-size: 0.62rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 2px;
+        }
         .vendor-card-actions { display: flex; gap: 0.5rem; }
 
-        /* ── Mobile form ─────────────────────────────────────────────── */
-        .form-control { font-size: 16px !important; }
-
-        /* ── Mobile modal ────────────────────────────────────────────── */
         @media (max-width: 767px) {
-            .modal-overlay { align-items: flex-end; padding: 0; }
-            .modal {
-                width: 100%;
-                max-width: 100%;
-                max-height: 92vh;
-                border-radius: 0;
-                display: flex;
-                flex-direction: column;
-            }
-            .modal-body {
-                flex: 1;
-                overflow-y: auto;
-                -webkit-overflow-scrolling: touch;
-                padding-bottom: 1rem;
-            }
+            .main-content { padding-bottom: 70px; }
+            .table-wrapper { display: none; }
+            .vendor-cards { display: flex; }
             .modal-footer {
                 position: sticky;
                 bottom: 0;
-                background: #44444A;
-                border-top: 1px solid #555558;
-                padding: 0.875rem 1rem;
-                display: flex;
-                gap: 0.75rem;
+                background: var(--surface);
+                border-top: 1px solid var(--border);
             }
-            .modal-footer .btn { flex: 1; padding: 0.875rem; font-size: 1rem; }
-            .form-row { grid-template-columns: 1fr !important; }
-        }
-
-        /* ── Admin bottom nav ────────────────────────────────────────── */
-        .admin-bottom-nav {
-            display: none;
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            height: 58px;
-            background: #2C2C2F;
-            border-top: 1px solid #374151;
-            z-index: 100;
-            justify-content: space-around;
-            align-items: center;
-        }
-        .admin-bottom-nav a {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            color: #A8A6A1;
-            text-decoration: none;
-            font-size: 0.65rem;
-            padding: 0.4rem 0.75rem;
-            flex: 1;
-            text-align: center;
-        }
-        .admin-bottom-nav a .nav-icon { font-size: 1.3rem; line-height: 1; }
-        .admin-bottom-nav a.active { color: #fff; }
-        .admin-bottom-nav a:hover { color: #d8d6d2; }
-
-        /* ── Mobile responsive ───────────────────────────────────────── */
-        @media (max-width: 767px) {
-            .hamburger-btn { display: block; }
-            .navbar-nav { display: none; }
-            .navbar-user > span { display: none; }
-
-            .main-content { padding: 1rem; padding-bottom: 70px; }
-
-            .table-wrapper { display: none; }
-            .vendor-cards { display: flex; }
-
-            .admin-bottom-nav { display: flex; }
-
-            .page-header { flex-wrap: wrap; gap: 0.75rem; }
         }
     </style>
 </head>

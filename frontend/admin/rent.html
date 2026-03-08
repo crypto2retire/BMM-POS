@@ -7,102 +7,90 @@
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
     <style>
-        .hamburger-btn {
-            display: none;
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.25rem 0.5rem;
-            line-height: 1;
-        }
-        .mobile-nav-dropdown {
-            display: none;
-            position: fixed;
-            top: 56px;
-            left: 0; right: 0;
-            background: #2C2C2F;
-            border-bottom: 1px solid #555558;
-            z-index: 1000;
-            flex-direction: column;
-            padding: 0.5rem 0;
-        }
-        .mobile-nav-dropdown.open { display: flex; }
-        .mobile-nav-dropdown a {
-            color: rgba(255,255,255,0.85);
-            text-decoration: none;
-            padding: 0.85rem 1.25rem;
-            font-size: 1rem;
-            border-bottom: 1px solid #3a3a3d;
-        }
-        .mobile-nav-dropdown a:last-child { border-bottom: none; }
-        .mobile-nav-dropdown a:hover, .mobile-nav-dropdown a.active { color: #fff; background: rgba(255,255,255,0.08); }
-
         .rent-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
             gap: 1rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 2rem;
         }
         .rent-stat-card {
-            background: #44444A;
-            border: 1px solid #555558;
-            padding: 1.25rem 1.5rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.35rem 1.4rem;
+            transition: border-color 0.25s, box-shadow 0.25s;
         }
-        .rent-stat-title { font-size: 0.75rem; color: #A8A6A1; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
-        .rent-stat-value { font-size: 1.75rem; font-weight: 700; color: #fff; }
+        .rent-stat-card:hover { border-color: var(--warm-border); box-shadow: var(--shadow-warm); }
+        .rent-stat-title {
+            font-size: 0.62rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            margin-bottom: 0.55rem;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 400;
+        }
+        .rent-stat-value {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 2.4rem;
+            font-weight: 500;
+            color: var(--text);
+            line-height: 1;
+            letter-spacing: -0.01em;
+        }
 
         .status-badge {
             display: inline-block;
-            padding: 3px 10px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
+            padding: 2px 9px;
+            font-size: 0.6rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
+            border: 1px solid transparent;
+            font-family: 'Roboto', sans-serif;
         }
-        .status-current { background: #1e4d2b; color: #4ade80; border: 1px solid #2a6e3f; }
-        .status-due     { background: #4d3d10; color: #facc15; border: 1px solid #7a5f1a; }
-        .status-overdue { background: #4d1a1a; color: #f87171; border: 1px solid #7a2222; }
+        .status-current { background: rgba(123,196,160,0.1); color: #7BC4A0; border-color: rgba(123,196,160,0.25); }
+        .status-due     { background: rgba(232,192,112,0.1); color: #e8c070; border-color: rgba(232,192,112,0.25); }
+        .status-overdue { background: rgba(200,112,112,0.1); color: #c87070; border-color: rgba(200,112,112,0.25); }
 
         .flag-icon { font-size: 1rem; }
         .flag-btn {
             background: none;
-            border: 1px solid #555558;
-            color: #A8A6A1;
+            border: 1px solid var(--border);
+            color: var(--text-light);
             cursor: pointer;
             padding: 3px 8px;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             transition: border-color 0.2s, color 0.2s;
+            font-family: 'Roboto', sans-serif;
         }
-        .flag-btn:hover { border-color: #A8A6A1; color: #fff; }
-        .flag-btn.flagged { border-color: #f87171; color: #f87171; }
+        .flag-btn:hover { border-color: var(--text-light); color: var(--text); }
+        .flag-btn.flagged { border-color: #c87070; color: #c87070; }
 
         .search-bar {
             display: flex;
             gap: 0.5rem;
-            margin-bottom: 1rem;
+            margin-bottom: 1.25rem;
             align-items: center;
         }
         .search-bar input {
             flex: 1;
             max-width: 340px;
-            background: #44444A;
-            border: 1px solid #555558;
-            color: #fff;
-            padding: 0.5rem 0.75rem;
-            font-size: 0.9rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.55rem 0.85rem;
+            font-size: 0.875rem;
+            font-family: 'Roboto', sans-serif;
+            transition: border-color 0.15s;
         }
-        .search-bar input::placeholder { color: #888; }
-        .search-bar input:focus { outline: none; border-color: #A8A6A1; }
+        .search-bar input::placeholder { color: var(--text-light); opacity: 0.6; }
+        .search-bar input:focus { outline: none; border-color: var(--gold-dim); box-shadow: 0 0 0 2px rgba(201,169,110,0.12); }
 
         .vendor-name-cell { display: flex; align-items: center; gap: 0.5rem; }
 
         @media (max-width: 767px) {
-            .hamburger-btn { display: block; }
-            .navbar-nav { display: none; }
-            .navbar-user > span { display: none; }
-            .rent-stat-value { font-size: 1.4rem; }
+            .rent-stat-value { font-size: 1.9rem; }
+            .main-content { padding-bottom: 70px; }
         }
     </style>
 </head>

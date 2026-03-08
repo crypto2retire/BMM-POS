@@ -7,143 +7,105 @@
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
     <style>
-        /* ── Hamburger nav ───────────────────────────────────────────── */
-        .hamburger-btn {
-            display: none;
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 0.25rem 0.5rem;
-            line-height: 1;
-        }
-        .mobile-nav-dropdown {
-            display: none;
-            position: fixed;
-            top: 56px;
-            left: 0; right: 0;
-            background: #2C2C2F;
-            border-bottom: 1px solid #555558;
-            z-index: 1000;
-            flex-direction: column;
-            padding: 0.5rem 0;
-        }
-        .mobile-nav-dropdown.open { display: flex; }
-        .mobile-nav-dropdown a {
-            color: rgba(255,255,255,0.85);
-            text-decoration: none;
-            padding: 0.85rem 1.25rem;
-            font-size: 1rem;
-            border-bottom: 1px solid #3a3a3d;
-        }
-        .mobile-nav-dropdown a:last-child { border-bottom: none; }
-        .mobile-nav-dropdown a:hover, .mobile-nav-dropdown a.active { color: #fff; background: rgba(255,255,255,0.08); }
-
         /* ── Stats cards ─────────────────────────────────────────────── */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 1rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 2rem;
         }
         .stat-card {
-            background: #44444A;
-            border: 1px solid #555558;
-            padding: 1.25rem 1rem;
-            min-height: 80px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.35rem 1.25rem;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            transition: border-color 0.25s, box-shadow 0.25s;
         }
-        .stat-title { font-size: 0.8rem; color: #A8A6A1; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
-        .stat-value { font-size: 2rem; font-weight: 700; color: #F9FAFB; margin-top: 0.25rem; }
-        .stat-value.teal { color: #2DD4BF; }
-        .stat-value.green { color: #4ADE80; }
+        .stat-card:hover { border-color: var(--warm-border); box-shadow: var(--shadow-warm); }
+        .stat-title {
+            font-size: 0.62rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            font-weight: 400;
+            font-family: 'Roboto', sans-serif;
+        }
+        .stat-value {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 2.4rem;
+            font-weight: 500;
+            color: var(--text);
+            margin-top: 0.5rem;
+            line-height: 1;
+            letter-spacing: -0.01em;
+        }
+        .stat-value.teal  { color: var(--gold); }
+        .stat-value.green { color: var(--success); }
 
         /* ── Mobile vendor cards ─────────────────────────────────────── */
         .vendor-cards { display: none; flex-direction: column; gap: 0.75rem; }
         .vendor-card {
-            background: #44444A;
-            border: 1px solid #555558;
+            background: var(--surface);
+            border: 1px solid var(--border);
             padding: 1rem;
             cursor: pointer;
+            transition: border-color 0.2s;
         }
+        .vendor-card:hover { border-color: var(--warm-border); }
         .vendor-card-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 0.75rem;
         }
-        .vendor-card-name { font-size: 1rem; font-weight: 700; color: #F9FAFB; }
-        .vendor-card-sub { font-size: 0.8rem; color: #A8A6A1; margin-top: 2px; }
+        .vendor-card-name {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+        .vendor-card-sub { font-size: 0.78rem; color: var(--text-light); margin-top: 3px; }
         .vendor-card-right { display: flex; align-items: center; gap: 0.5rem; }
-        .vendor-card-balance { font-size: 1rem; font-weight: 700; color: #F9FAFB; }
-        .vendor-card-chevron { color: #A8A6A1; font-size: 1.1rem; }
+        .vendor-card-balance {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.15rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+        .vendor-card-chevron { color: var(--text-light); font-size: 1rem; }
         .vendor-card-detail {
-            display: none;
-            margin-top: 0.75rem;
-            padding-top: 0.75rem;
-            border-top: 1px solid #555558;
-            font-size: 0.85rem;
-            color: #d8d6d2;
             display: flex;
             gap: 1.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            font-size: 0.85rem;
+            color: var(--text);
         }
         .vendor-card-detail.collapsed { display: none; }
         .vendor-card-detail span { display: flex; flex-direction: column; }
-        .vendor-card-detail label { font-size: 0.72rem; color: #A8A6A1; text-transform: uppercase; margin-bottom: 2px; }
-
-        /* ── Admin bottom nav ────────────────────────────────────────── */
-        .admin-bottom-nav {
-            display: none;
-            position: fixed;
-            bottom: 0; left: 0; right: 0;
-            height: 58px;
-            background: #2C2C2F;
-            border-top: 1px solid #374151;
-            z-index: 100;
-            justify-content: space-around;
-            align-items: center;
+        .vendor-card-detail label {
+            font-size: 0.62rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 2px;
         }
-        .admin-bottom-nav a {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2px;
-            color: #A8A6A1;
-            text-decoration: none;
-            font-size: 0.65rem;
-            padding: 0.4rem 0.75rem;
-            flex: 1;
-            text-align: center;
-        }
-        .admin-bottom-nav a .nav-icon { font-size: 1.3rem; line-height: 1; }
-        .admin-bottom-nav a.active { color: #fff; }
-        .admin-bottom-nav a:hover { color: #d8d6d2; }
 
         /* ── Mobile responsive ───────────────────────────────────────── */
         @media (max-width: 767px) {
-            .hamburger-btn { display: block; }
-            .navbar-nav { display: none; }
-            .navbar-user > span { display: none; }
-
-            .main-content { padding: 1rem; padding-bottom: 70px; }
-
+            .main-content { padding-bottom: 70px; }
             .stats-grid { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-            .stat-card { min-height: 70px; padding: 0.875rem 0.75rem; }
-            .stat-value { font-size: 1.6rem; }
-
+            .stat-card { padding: 0.9rem 0.85rem; }
+            .stat-value { font-size: 1.9rem; }
             .table-wrapper { display: none; }
             .vendor-cards { display: flex; }
-
-            .admin-bottom-nav { display: flex; }
         }
-
         @media (min-width: 768px) and (max-width: 1023px) {
             .stats-grid { grid-template-columns: repeat(2, 1fr); }
         }
-
         @media (min-width: 1024px) {
             .stats-grid { grid-template-columns: repeat(4, 1fr); }
         }
