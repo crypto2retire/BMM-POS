@@ -355,7 +355,7 @@ async def _call_openrouter(
     include_tools: bool = True,
 ) -> dict:
     payload: dict = {
-        "model": "openai/gpt-4o-mini",
+        "model": "google/gemini-2.0-flash",
         "max_tokens": 500,
         "messages": messages,
     }
