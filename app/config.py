@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     store_name: str = "Bowenstreet Market"
     dymo_label_size: str = "30336"
     openrouter_api_key: Optional[str] = None
+    square_access_token: Optional[str] = None
+    square_location_id: Optional[str] = None
+    square_application_id: Optional[str] = None
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
