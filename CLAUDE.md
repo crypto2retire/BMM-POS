@@ -7,7 +7,7 @@
 
 **Bowenstreet Market**
 - Address: 2837 Bowen St, Oshkosh, WI 54901
-- Website: bowenstreetmarket.com (Wix-hosted)
+- Website: www.bowenstreetmm.com
 - 120+ vendors selling handcrafted, vintage, and antique goods
 - 70 vendors receiving monthly payouts
 - Replacing: Ricochet POS (bowenstreet.ricoconsign.com) — $159–$199/month
