@@ -222,6 +222,12 @@
     flex-wrap: wrap;
   }
 
+  .card-tax {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 0.02em;
+  }
+
   .price-original {
     font-size: 1.05rem;
     color: var(--text);
@@ -500,7 +506,7 @@
 </header>
 
 <div class="pickup-notice">
-  In-store pickup only &nbsp;·&nbsp; No shipping &nbsp;·&nbsp; Items held for 48 hours after reservation
+  In-store pickup only &nbsp;·&nbsp; No shipping &nbsp;·&nbsp; All sales are final. No returns or refunds.
 </div>
 
 <div class="search-wrap">
@@ -547,7 +553,7 @@
 
       <p class="modal-notice">
         Payment is required to reserve this item. You'll be redirected to our secure checkout.
-        We'll hold the item for 48 hours after payment.
+        All sales are final. No returns or refunds.
       </p>
 
       <div class="modal-error" id="modal-error"></div>
@@ -614,6 +620,10 @@
     const isReserved = reservedIds.has(item.id);
     const hasSale    = item.sale_price != null;
 
+    const TAX_RATE   = 0.05;
+    const basePrice  = hasSale ? parseFloat(item.sale_price) : parseFloat(item.price);
+    const totalPrice = basePrice * (1 + TAX_RATE);
+
     const priceHtml = hasSale
       ? `<span class="price-original struck">$${fmt(item.price)}</span>
          <span class="price-sale">$${fmt(item.sale_price)}</span>
@@ -632,6 +642,7 @@
           ${item.booth_number ? ' &nbsp;·&nbsp; Booth ' + escHtml(item.booth_number) : ''}
         </div>
         <div class="card-pricing">${priceHtml}</div>
+        <div class="card-tax">+ 5% tax &nbsp;·&nbsp; Total: $${fmt(totalPrice)}</div>
         <div class="card-desc">${escHtml(item.description || '')}</div>
       </div>
       <div class="card-footer">

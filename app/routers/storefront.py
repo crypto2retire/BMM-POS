@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.config import settings
 from app.database import get_db
 from app.models.item import Item
 from app.models.reservation import Reservation
@@ -91,7 +92,7 @@ async def create_payment(
         and item.sale_start <= today <= item.sale_end
     )
     display_price = float(item.sale_price) if sale_active else float(item.price)
-    price_cents = round(display_price * 100)
+    price_cents = round(display_price * (1 + settings.tax_rate) * 100)
 
     try:
         reservation = Reservation(
