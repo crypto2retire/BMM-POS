@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bowenstreet Market — Online Shop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #38383B;
+    --bg-card:  #2E2E31;
+    --bg-dark:  #232325;
+    --accent:   #A8A6A1;
+    --accent-lt:#C5C3BE;
+    --text:     #FFFFFF;
+    --text-dim: #A8A6A1;
+    --sale:     #D4A96A;
+    --border:   #4A4A4D;
+    --danger:   #C06060;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Roboto', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── HEADER ── */
+  .site-header {
+    background: var(--bg-dark);
+    border-bottom: 1px solid var(--border);
+    padding: 2.5rem 1.5rem 2rem;
+    text-align: center;
+  }
+
+  .site-header h1 {
+    font-family: 'EB Garamond', serif;
+    font-size: clamp(2rem, 5vw, 3.4rem);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--text);
+    line-height: 1.1;
+  }
+
+  .tagline {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.05rem;
+    color: var(--accent);
+    letter-spacing: 0.18em;
+    margin-top: 0.4rem;
+  }
+
+  .store-meta {
+    margin-top: 0.9rem;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.2rem 1.4rem;
+  }
+
+  .store-meta span { white-space: nowrap; }
+
+  /* ── PICKUP NOTICE ── */
+  .pickup-notice {
+    background: var(--bg-dark);
+    border-top: 1px solid var(--border);
+    padding: 0.65rem 1.5rem;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* ── SEARCH BAR ── */
+  .search-wrap {
+    max-width: 560px;
+    margin: 2.2rem auto 0;
+    padding: 0 1.5rem;
+  }
+
+  .search-wrap form {
+    display: flex;
+    gap: 0;
+  }
+
+  .search-wrap input {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-right: none;
+    color: var(--text);
+    font-family: 'Roboto', sans-serif;
+    font-size: 0.9rem;
+    padding: 0.7rem 1rem;
+    outline: none;
+    border-radius: 0;
+    transition: border-color 0.2s;
+  }
+
+  .search-wrap input::placeholder { color: var(--text-dim); }
+  .search-wrap input:focus { border-color: var(--accent); }
+
+  .search-wrap button {
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: var(--bg-dark);
+    font-family: 'Roboto', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.7rem 1.3rem;
+    cursor: pointer;
+    border-radius: 0;
+    letter-spacing: 0.05em;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+
+  .search-wrap button:hover { background: var(--accent-lt); }
+
+  .search-clear {
+    display: none;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'Roboto', sans-serif;
+    font-size: 0.82rem;
+    padding: 0.7rem 1rem;
+    cursor: pointer;
+    border-radius: 0;
+  }
+
+  /* ── MAIN ── */
+  main {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.4rem;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    min-height: 1.5rem;
+  }
+
+  /* ── GRID ── */
+  .item-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+
+  @media (max-width: 900px) {
+    .item-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media (max-width: 540px) {
+    .item-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── ITEM CARD ── */
+  .item-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    transition: border-color 0.2s, transform 0.15s;
+  }
+
+  .item-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .card-body {
+    padding: 1.25rem 1.25rem 0.9rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+  }
+
+  .card-name {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.2rem;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.25;
+  }
+
+  .card-vendor {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+  }
+
+  .card-vendor strong {
+    color: var(--accent-lt);
+    font-weight: 400;
+  }
+
+  .card-pricing {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .price-original {
+    font-size: 1.05rem;
+    color: var(--text);
+    font-weight: 400;
+  }
+
+  .price-original.struck {
+    text-decoration: line-through;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+
+  .price-sale {
+    font-size: 1.15rem;
+    color: var(--sale);
+    font-weight: 400;
+  }
+
+  .sale-badge {
+    font-size: 0.7rem;
+    background: var(--sale);
+    color: var(--bg-dark);
+    padding: 0.15rem 0.45rem;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+    align-self: center;
+  }
+
+  .card-desc {
+    font-size: 0.83rem;
+    color: var(--text-dim);
+    line-height: 1.55;
+    flex: 1;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+  }
+
+  .card-footer {
+    padding: 0 1.25rem 1.25rem;
+  }
+
+  /* ── BUTTONS ── */
+  .btn-reserve {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Roboto', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    padding: 0.65rem 1rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    border-radius: 0;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .btn-reserve:hover:not(:disabled) {
+    background: var(--accent);
+    color: var(--bg-dark);
+  }
+
+  .btn-reserve:disabled {
+    border-color: var(--border);
+    color: var(--border);
+    cursor: default;
+  }
+
+  .btn-reserve.reserved {
+    border-color: #6A9D6A;
+    color: #6A9D6A;
+    letter-spacing: 0.1em;
+  }
+
+  /* ── EMPTY / LOADING ── */
+  .state-msg {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-dim);
+    font-family: 'EB Garamond', serif;
+    font-size: 1.3rem;
+    font-style: italic;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 1.2rem;
+    height: 1.2rem;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 0.5rem;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── MODAL OVERLAY ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    width: 100%;
+    max-width: 420px;
+    padding: 2rem;
+    position: relative;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 0.9rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 1.3rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.2rem 0.4rem;
+    transition: color 0.2s;
+  }
+
+  .modal-close:hover { color: var(--text); }
+
+  .modal h2 {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.45rem;
+    font-weight: 500;
+    margin-bottom: 0.3rem;
+  }
+
+  .modal-item-name {
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    margin-bottom: 1.5rem;
+    font-style: italic;
+  }
+
+  .modal label {
+    display: block;
+    font-size: 0.78rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.35rem;
+    margin-top: 1rem;
+  }
+
+  .modal label:first-of-type { margin-top: 0; }
+
+  .modal input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Roboto', sans-serif;
+    font-size: 0.92rem;
+    padding: 0.65rem 0.9rem;
+    outline: none;
+    border-radius: 0;
+    transition: border-color 0.2s;
+  }
+
+  .modal input:focus { border-color: var(--accent); }
+
+  .modal-notice {
+    margin-top: 1.1rem;
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  .modal-error {
+    margin-top: 0.9rem;
+    font-size: 0.8rem;
+    color: var(--danger);
+    display: none;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1.4rem;
+  }
+
+  .btn-primary {
+    flex: 1;
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    color: var(--bg-dark);
+    font-family: 'Roboto', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    padding: 0.7rem 1rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    border-radius: 0;
+    transition: background 0.2s;
+  }
+
+  .btn-primary:hover:not(:disabled) { background: var(--accent-lt); }
+  .btn-primary:disabled { opacity: 0.5; cursor: default; }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: 'Roboto', sans-serif;
+    font-size: 0.85rem;
+    padding: 0.7rem 1.1rem;
+    cursor: pointer;
+    border-radius: 0;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .btn-ghost:hover { border-color: var(--accent); color: var(--text); }
+
+  /* ── SUCCESS STATE IN MODAL ── */
+  .modal-success {
+    display: none;
+    text-align: center;
+    padding: 0.5rem 0;
+  }
+
+  .modal-success .check {
+    font-size: 2.5rem;
+    color: #6A9D6A;
+    display: block;
+    margin-bottom: 0.75rem;
+  }
+
+  .modal-success p {
+    font-size: 0.88rem;
+    color: var(--text-dim);
+    line-height: 1.55;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    text-align: center;
+    padding: 1.5rem;
+    font-size: 0.76rem;
+    color: var(--text-dim);
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1>Bowenstreet Market</h1>
+  <p class="tagline">Handcrafted &nbsp;•&nbsp; Vintage &nbsp;•&nbsp; Antique</p>
+  <div class="store-meta">
+    <span>📍 2837 Bowen St, Oshkosh, WI 54901</span>
+    <span>🕐 Tue–Sat 10am–6pm &nbsp;|&nbsp; Sun 11am–4pm</span>
+    <span>📞 (920) 555-0100</span>
+  </div>
+</header>
+
+<div class="pickup-notice">
+  In-store pickup only &nbsp;·&nbsp; No shipping &nbsp;·&nbsp; Items held for 48 hours after reservation
+</div>
+
+<div class="search-wrap">
+  <form id="search-form">
+    <input
+      type="search"
+      id="search-input"
+      placeholder="Search items…"
+      autocomplete="off"
+      aria-label="Search items"
+    >
+    <button type="submit">Search</button>
+    <button type="button" class="search-clear" id="search-clear">✕ Clear</button>
+  </form>
+</div>
+
+<main>
+  <div class="status-bar">
+    <span id="status-text"></span>
+  </div>
+  <div class="item-grid" id="item-grid">
+    <div class="state-msg"><span class="spinner"></span> Loading items…</div>
+  </div>
+</main>
+
+<footer>
+  &copy; 2026 Bowenstreet Market &nbsp;·&nbsp; 2837 Bowen St, Oshkosh WI 54901
+</footer>
+
+<!-- Reserve Modal -->
+<div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+
+    <div id="modal-form-body">
+      <h2 id="modal-title">Reserve for Pickup</h2>
+      <p class="modal-item-name" id="modal-item-name"></p>
+
+      <label for="input-name">Your Name</label>
+      <input type="text" id="input-name" placeholder="Jane Smith" autocomplete="name">
+
+      <label for="input-phone">Phone Number</label>
+      <input type="tel" id="input-phone" placeholder="(920) 555-0000" autocomplete="tel">
+
+      <p class="modal-notice">
+        We'll hold this item for 48 hours. Stop in at your convenience to complete your purchase.
+        No payment is taken online.
+      </p>
+
+      <div class="modal-error" id="modal-error"></div>
+
+      <div class="modal-actions">
+        <button class="btn-ghost" id="modal-cancel">Cancel</button>
+        <button class="btn-primary" id="modal-submit">Reserve Item</button>
+      </div>
+    </div>
+
+    <div class="modal-success" id="modal-success">
+      <span class="check">✓</span>
+      <p id="modal-success-msg"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const API_ITEMS   = '/api/v1/storefront/items';
+  const API_RESERVE = '/api/v1/storefront/reserve';
+
+  let pendingItemId   = null;
+  let pendingItemName = null;
+  let reservedIds     = new Set();
+
+  // ── Load items ────────────────────────────────────────────────────
+  async function loadItems(search) {
+    const grid   = document.getElementById('item-grid');
+    const status = document.getElementById('status-text');
+
+    grid.innerHTML = '<div class="state-msg"><span class="spinner"></span> Loading items\u2026</div>';
+    status.textContent = '';
+
+    let url = API_ITEMS;
+    if (search) url += '?search=' + encodeURIComponent(search);
+
+    try {
+      const res  = await fetch(url);
+      const data = await res.json();
+
+      if (!Array.isArray(data) || data.length === 0) {
+        grid.innerHTML = '<div class="state-msg">No items found' + (search ? ' for "' + escHtml(search) + '"' : '') + '.</div>';
+        status.textContent = '';
+        return;
+      }
+
+      status.textContent = data.length + ' item' + (data.length === 1 ? '' : 's') + (search ? ' matching "' + search + '"' : ' available');
+      grid.innerHTML = '';
+      data.forEach(item => grid.appendChild(buildCard(item)));
+    } catch (err) {
+      grid.innerHTML = '<div class="state-msg">Could not load items. Please try again.</div>';
+    }
+  }
+
+  // ── Build card ────────────────────────────────────────────────────
+  function buildCard(item) {
+    const card = document.createElement('div');
+    card.className = 'item-card';
+
+    const isReserved = reservedIds.has(item.id);
+    const hasSale    = item.sale_price != null;
+
+    const priceHtml = hasSale
+      ? `<span class="price-original struck">$${fmt(item.price)}</span>
+         <span class="price-sale">$${fmt(item.sale_price)}</span>
+         <span class="sale-badge">SALE</span>`
+      : `<span class="price-original">$${fmt(item.price)}</span>`;
+
+    const btnClass  = isReserved ? 'btn-reserve reserved' : 'btn-reserve';
+    const btnLabel  = isReserved ? 'Reserved \u2713' : 'Reserve for Pickup';
+    const btnDisabled = isReserved ? ' disabled' : '';
+
+    card.innerHTML = `
+      <div class="card-body">
+        <div class="card-name">${escHtml(item.name)}</div>
+        <div class="card-vendor">
+          <strong>${escHtml(item.vendor_name || 'Bowenstreet Market')}</strong>
+          ${item.booth_number ? ' &nbsp;·&nbsp; Booth ' + escHtml(item.booth_number) : ''}
+        </div>
+        <div class="card-pricing">${priceHtml}</div>
+        <div class="card-desc">${escHtml(item.description || '')}</div>
+      </div>
+      <div class="card-footer">
+        <button class="${btnClass}" data-id="${item.id}" data-name="${escAttr(item.name)}"${btnDisabled}>
+          ${btnLabel}
+        </button>
+      </div>
+    `;
+
+    card.querySelector('.btn-reserve').addEventListener('click', function () {
+      if (!this.disabled) openModal(item.id, item.name);
+    });
+
+    return card;
+  }
+
+  // ── Modal ─────────────────────────────────────────────────────────
+  function openModal(itemId, itemName) {
+    pendingItemId   = itemId;
+    pendingItemName = itemName;
+
+    document.getElementById('modal-item-name').textContent = itemName;
+    document.getElementById('input-name').value  = '';
+    document.getElementById('input-phone').value = '';
+    document.getElementById('modal-error').style.display = 'none';
+    document.getElementById('modal-error').textContent    = '';
+    document.getElementById('modal-form-body').style.display = 'block';
+    document.getElementById('modal-success').style.display   = 'none';
+    document.getElementById('modal-submit').disabled = false;
+
+    document.getElementById('modal-overlay').classList.add('open');
+    document.getElementById('input-name').focus();
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+    pendingItemId   = null;
+    pendingItemName = null;
+  }
+
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-overlay').addEventListener('click', function (e) {
+    if (e.target === this) closeModal();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  // ── Submit reservation ─────────────────────────────────────────────
+  document.getElementById('modal-submit').addEventListener('click', async function () {
+    const name  = document.getElementById('input-name').value.trim();
+    const phone = document.getElementById('input-phone').value.trim();
+    const errEl = document.getElementById('modal-error');
+
+    if (!name) {
+      errEl.textContent    = 'Please enter your name.';
+      errEl.style.display  = 'block';
+      document.getElementById('input-name').focus();
+      return;
+    }
+    if (!phone) {
+      errEl.textContent    = 'Please enter your phone number.';
+      errEl.style.display  = 'block';
+      document.getElementById('input-phone').focus();
+      return;
+    }
+
+    errEl.style.display = 'none';
+    this.disabled = true;
+    this.textContent = 'Reserving\u2026';
+
+    try {
+      const res  = await fetch(API_RESERVE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_id: pendingItemId, customer_name: name, customer_phone: phone }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        errEl.textContent   = data.detail || 'This item is no longer available.';
+        errEl.style.display = 'block';
+        this.disabled    = false;
+        this.textContent = 'Reserve Item';
+        return;
+      }
+
+      // Mark as reserved in our local set so card updates
+      reservedIds.add(pendingItemId);
+
+      // Update the card button immediately
+      const btn = document.querySelector(`.btn-reserve[data-id="${pendingItemId}"]`);
+      if (btn) {
+        btn.textContent = 'Reserved \u2713';
+        btn.classList.add('reserved');
+        btn.disabled = true;
+      }
+
+      // Show success state in modal
+      document.getElementById('modal-form-body').style.display = 'none';
+      document.getElementById('modal-success-msg').textContent  = data.message;
+      document.getElementById('modal-success').style.display    = 'block';
+
+    } catch (err) {
+      errEl.textContent   = 'Network error. Please try again.';
+      errEl.style.display = 'block';
+      this.disabled    = false;
+      this.textContent = 'Reserve Item';
+    }
+  });
+
+  // ── Search ────────────────────────────────────────────────────────
+  const searchInput  = document.getElementById('search-input');
+  const searchClear  = document.getElementById('search-clear');
+  let   searchDebounce = null;
+
+  document.getElementById('search-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const q = searchInput.value.trim();
+    loadItems(q || null);
+    searchClear.style.display = q ? 'block' : 'none';
+  });
+
+  searchInput.addEventListener('input', function () {
+    clearTimeout(searchDebounce);
+    const q = this.value.trim();
+    searchClear.style.display = q ? 'block' : 'none';
+    searchDebounce = setTimeout(() => loadItems(q || null), 350);
+  });
+
+  searchClear.addEventListener('click', function () {
+    searchInput.value     = '';
+    this.style.display    = 'none';
+    loadItems(null);
+  });
+
+  // ── Helpers ───────────────────────────────────────────────────────
+  function fmt(n) { return Number(n).toFixed(2); }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function escAttr(str) { return escHtml(str); }
+
+  // ── Init ──────────────────────────────────────────────────────────
+  loadItems(null);
+})();
+</script>
+</body>
+</html>
