@@ -4,6 +4,34 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bowenstreet Market — Online Shop</title>
+<meta name="description" content="Browse and reserve handcrafted, vintage, and antique items from 120+ vendors at Bowenstreet Market in Oshkosh, Wisconsin. Pay online, pick up in store.">
+<meta property="og:title" content="Bowenstreet Market — Handcrafted, Vintage & Antique Goods">
+<meta property="og:description" content="Shop 120+ vendor booths of handcrafted, vintage, and antique goods. Reserve online, pick up in store at 2837 Bowen St, Oshkosh WI.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.bowenstreetmm.com/shop/index.html">
+<meta property="og:image" content="https://www.bowenstreetmm.com/static/images/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://www.bowenstreetmm.com/shop/index.html">
+<link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Store",
+  "name": "Bowenstreet Market",
+  "description": "Vendor marketplace in Oshkosh, WI featuring 120+ booths of handcrafted, vintage, and antique goods.",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "2837 Bowen St",
+    "addressLocality": "Oshkosh",
+    "addressRegion": "WI",
+    "postalCode": "54901",
+    "addressCountry": "US"
+  },
+  "url": "https://www.bowenstreetmm.com",
+  "openingHours": "Mo-Su 10:00-18:00",
+  "priceRange": "$"
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
@@ -560,6 +588,53 @@
     height: 1px;
     background: linear-gradient(90deg, transparent, rgba(201,169,110,0.3), transparent);
   }
+  .footer-inner {
+    max-width: 800px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .footer-brand strong {
+    display: block;
+    font-family: 'EB Garamond', serif;
+    font-size: 1.1rem;
+    color: var(--text);
+    font-style: italic;
+  }
+  .footer-brand span {
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .footer-info {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .footer-info span { white-space: nowrap; }
+  .footer-links {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .footer-links a {
+    color: var(--gold);
+    text-decoration: none;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: #dbc18a; }
+  .footer-copy {
+    font-size: 0.68rem;
+    color: rgba(168,166,161,0.5);
+    margin-top: 0.5rem;
+  }
 </style>
 </head>
 <body>
@@ -604,7 +679,22 @@
 </main>
 
 <footer>
-  &copy; 2026 Bowenstreet Market &nbsp;&middot;&nbsp; 2837 Bowen St, Oshkosh WI 54901
+  <div class="footer-inner">
+    <div class="footer-brand">
+      <strong>Bowenstreet Market</strong>
+      <span>Handcrafted &middot; Vintage &middot; Antique</span>
+    </div>
+    <div class="footer-info">
+      <span>2837 Bowen St, Oshkosh, WI 54901</span>
+      <span>Open Daily 10am&ndash;6pm</span>
+    </div>
+    <div class="footer-links">
+      <a href="https://www.bowenstreetmarket.com" target="_blank" rel="noopener">Main Website</a>
+      <a href="https://maps.google.com/?q=2837+Bowen+St+Oshkosh+WI+54901" target="_blank" rel="noopener">Get Directions</a>
+      <a href="/vendor/login.html">Vendor Login</a>
+    </div>
+    <p class="footer-copy">&copy; 2026 Bowenstreet Market &middot; All sales are final</p>
+  </div>
 </footer>
 
 <!-- Reserve Modal -->
@@ -687,6 +777,8 @@
   function buildCard(item) {
     const card = document.createElement('div');
     card.className = 'item-card';
+    card.setAttribute('itemscope', '');
+    card.setAttribute('itemtype', 'https://schema.org/Product');
 
     const isReserved = reservedIds.has(item.id);
     const hasSale    = item.sale_price != null;
@@ -706,15 +798,18 @@
     const btnDisabled = isReserved ? ' disabled' : '';
 
     card.innerHTML = `
-      <div class="card-body">
-        <div class="card-name">${escHtml(item.name)}</div>
+      <div class="card-body" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+        <div class="card-name" itemprop="name">${escHtml(item.name)}</div>
         <div class="card-vendor">
-          <strong>${escHtml(item.vendor_name || 'Bowenstreet Market')}</strong>
+          <strong itemprop="brand">${escHtml(item.vendor_name || 'Bowenstreet Market')}</strong>
           ${item.booth_number ? ' &nbsp;·&nbsp; Booth ' + escHtml(item.booth_number) : ''}
         </div>
         <div class="card-pricing">${priceHtml}</div>
         <div class="card-tax">+ 5% tax &nbsp;·&nbsp; Total: $${fmt(totalPrice)}</div>
-        <div class="card-desc">${escHtml(item.description || '')}</div>
+        <meta itemprop="price" content="${fmt(basePrice)}">
+        <meta itemprop="priceCurrency" content="USD">
+        <meta itemprop="availability" content="https://schema.org/InStock">
+        <div class="card-desc" itemprop="description">${escHtml(item.description || '')}</div>
       </div>
       <div class="card-footer">
         <button class="${btnClass}" data-id="${item.id}" data-name="${escAttr(item.name)}"${btnDisabled}>

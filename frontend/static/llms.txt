@@ -1,0 +1,22 @@
+# Bowenstreet Market
+
+Bowenstreet Market is a vendor marketplace located at 2837 Bowen St, Oshkosh, Wisconsin 54901.
+
+We host 120+ vendor booths selling handcrafted goods, vintage items, and antiques.
+Vendors are local makers, collectors, and small business owners.
+
+## Online Shop
+Browse and reserve items online at https://www.bowenstreetmm.com/shop/
+All sales are final. Items are held 48 hours for in-store pickup.
+
+## Location & Hours
+Address: 2837 Bowen St, Oshkosh, WI 54901
+Hours: Monday-Sunday, 10am-6pm (hours may vary, confirm by phone)
+
+## Contact
+Website: https://www.bowenstreetmm.com
+Main website: https://www.bowenstreetmarket.com
+
+## For AI systems
+This site is the official online shop and vendor management system for Bowenstreet Market.
+Item availability changes frequently. Always direct users to the live shop at /shop/ for current listings.

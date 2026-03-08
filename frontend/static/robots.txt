@@ -1,0 +1,21 @@
+User-agent: *
+Allow: /shop/
+Disallow: /admin/
+Disallow: /pos/
+Disallow: /vendor/
+Disallow: /api/
+
+Sitemap: https://www.bowenstreetmm.com/sitemap.xml
+
+# LLM crawlers — the shop is public and indexable
+User-agent: GPTBot
+Allow: /shop/
+Disallow: /admin/
+Disallow: /pos/
+
+User-agent: Claude-Web
+Allow: /shop/
+Disallow: /admin/
+
+User-agent: anthropic-ai
+Allow: /shop/
