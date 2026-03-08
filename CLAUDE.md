@@ -154,7 +154,7 @@ sudo -u postgres psql -d bmm_pos -f /var/www/bmm-pos/migrations/001_initial_sche
 | Labels — PDF | ReportLab (2.25×1.25" Zebra) |
 | Labels — Dymo | Dymo LabelWriter 450 (XML via local web service) |
 | Receipt printer | Star TSP100III (thermal, 80mm, browser print) |
-| AI assistant | OpenRouter → google/gemini-2.0-flash |
+| AI assistant | OpenRouter → google/gemini-2.0-flash-001 |
 | Payments | GoDaddy Poynt Payment Bridge (stubbed, Phase 4) |
 | Payouts | Zelle manual (Phase 1), ACH planned (Phase 2) |
 | Hosting | DigitalOcean droplet |

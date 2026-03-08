@@ -269,6 +269,13 @@
 
         async function sendMessage(message, imageBase64, imageMimeType) {
             if (isBusy || !message.trim()) return;
+
+            var token = sessionStorage.getItem('bmm_token');
+            if (!token) {
+                addMessage('Please log in to use the assistant.', 'error');
+                return;
+            }
+
             isBusy = true;
 
             if (!hasUserSentMessage) {
@@ -283,8 +290,8 @@
             addMessage(message, 'user');
             showTyping();
 
-            var token = sessionStorage.getItem('bmm_token');
             var body = { message: message };
+            console.log('[Assistant] token present:', true, '| message:', message);
             if (PANEL_CONTEXT) body.form_context = PANEL_CONTEXT;
             if (imageBase64) {
                 body.image_base64 = imageBase64;

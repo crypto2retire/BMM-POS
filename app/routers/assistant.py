@@ -355,7 +355,7 @@ async def _call_openrouter(
     include_tools: bool = True,
 ) -> dict:
     payload: dict = {
-        "model": "google/gemini-2.0-flash",
+        "model": "google/gemini-2.0-flash-001",
         "max_tokens": 500,
         "messages": messages,
     }
@@ -423,7 +423,21 @@ async def chat(
 
     # Multi-round tool-calling loop (max 4 rounds to prevent runaway)
     for _round in range(4):
-        body = await _call_openrouter(api_key, messages, include_tools=True)
+        try:
+            body = await _call_openrouter(api_key, messages, include_tools=True)
+        except HTTPException as exc:
+            return AssistantChatResponse(
+                reply=f"Assistant error: {exc.detail}",
+                action_taken=action_taken,
+                item_id=item_id,
+            )
+        except Exception as exc:
+            return AssistantChatResponse(
+                reply="Assistant is temporarily unavailable. Please try again.",
+                action_taken=action_taken,
+                item_id=item_id,
+            )
+
         choice = body["choices"][0]
         assistant_message = choice["message"]
         finish_reason = choice.get("finish_reason", "")
@@ -449,7 +463,11 @@ async def chat(
             except (json.JSONDecodeError, KeyError):
                 tool_args = {}
 
-            result_text, at, iid = await _execute_tool(tool_name, tool_args, current_user, db)
+            try:
+                result_text, at, iid = await _execute_tool(tool_name, tool_args, current_user, db)
+            except Exception as exc:
+                result_text = f"ERROR: Tool '{tool_name}' failed — {exc}"
+                at, iid = None, None
 
             if at:
                 action_taken = at
@@ -463,6 +481,11 @@ async def chat(
             })
 
     # Fallback: force a final reply without tools
-    body_final = await _call_openrouter(api_key, messages, include_tools=False)
-    reply = body_final["choices"][0]["message"].get("content") or ""
+    try:
+        body_final = await _call_openrouter(api_key, messages, include_tools=False)
+        reply = body_final["choices"][0]["message"].get("content") or ""
+    except Exception:
+        # Return whatever tool results we accumulated as a plain summary
+        tool_results = [m["content"] for m in messages if m.get("role") == "tool"]
+        reply = "\n".join(tool_results) if tool_results else "Sorry, I couldn't complete that request."
     return AssistantChatResponse(reply=reply, action_taken=action_taken, item_id=item_id)
