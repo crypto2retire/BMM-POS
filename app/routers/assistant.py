@@ -70,7 +70,13 @@ WRITING DESCRIPTIONS:
 - Do NOT use the words "unique", "amazing", or "beautiful"
 
 PHOTO ANALYSIS:
-If given a photo, identify the item type, suggest a name, category, price range based on typical resale values, and write a description. Then ask if they want to add it."""
+If given a photo, identify the item type, suggest a name, category, price range based on typical resale values, and write a description. Then ask if they want to add it.
+
+EFFICIENCY RULES:
+- When the user is editing an item they just discussed and the item ID is already in the conversation context, call edit_item directly without calling list_items first.
+- Only call list_items when you genuinely do not know the item ID.
+- After executing a tool, respond directly to the user without making an additional API call if the result is straightforward (e.g. confirming what was just done).
+- Keep the number of round trips minimal. Combine tool calls when possible."""
 
 TOOLS = [
     {
@@ -362,7 +368,7 @@ async def _call_openrouter(
     if include_tools:
         payload["tools"] = TOOLS
 
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=60.0) as client:
         try:
             resp = await client.post(
                 "https://openrouter.ai/api/v1/chat/completions",
@@ -417,9 +423,14 @@ async def chat(
     action_taken: Optional[str] = None
     item_id: Optional[int] = None
 
-    # Prepend form context to system prompt if provided
+    # Prepend form context and last known item ID to system prompt if provided
+    extra = ""
     if data.form_context:
-        messages[0]["content"] = SYSTEM_PROMPT + "\n\nCurrent context: " + data.form_context
+        extra += "\n\nCurrent context: " + data.form_context
+    if data.last_item_id:
+        extra += f"\n\nLast item discussed: item_id={data.last_item_id}. Use this ID directly for any edit or archive action on that item without calling list_items first."
+    if extra:
+        messages[0]["content"] = SYSTEM_PROMPT + extra
 
     # Multi-round tool-calling loop (max 4 rounds to prevent runaway)
     for _round in range(4):

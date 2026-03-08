@@ -96,6 +96,11 @@
             '    0%,60%,100% { transform:translateY(0); }',
             '    30% { transform:translateY(-5px); }',
             '}',
+            '.bmm-typing-text {',
+            '    align-self:flex-start; background:#3A3A3E; color:#A8A6A1;',
+            '    border-radius:14px 14px 14px 2px; padding:0.6rem 1rem;',
+            '    font-size:0.8rem; font-style:italic;',
+            '}',
             '.bmm-msg-error {',
             '    align-self:center; color:#e07070; font-size:0.8rem; font-style:italic;',
             '}',
@@ -191,6 +196,8 @@
         var isBusy = false;
         var hasUserSentMessage = false;
         var bannerTimer = null;
+        var thinkingTimer = null;
+        var lastItemId = null;
 
         // ── Helpers ────────────────────────────────────────────────────
         function openPanel() {
@@ -247,6 +254,7 @@
         }
 
         function removeTyping() {
+            if (thinkingTimer) { clearTimeout(thinkingTimer); thinkingTimer = null; }
             var el = document.getElementById('bmm-typing-indicator');
             if (el) el.remove();
         }
@@ -290,9 +298,18 @@
             addMessage(message, 'user');
             showTyping();
 
+            thinkingTimer = setTimeout(function () {
+                var indicator = document.getElementById('bmm-typing-indicator');
+                if (indicator) {
+                    indicator.className = 'bmm-typing-text';
+                    indicator.textContent = 'Working on it\u2026';
+                }
+            }, 5000);
+
             var body = { message: message };
             console.log('[Assistant] token present:', true, '| message:', message);
             if (PANEL_CONTEXT) body.form_context = PANEL_CONTEXT;
+            if (lastItemId) body.last_item_id = lastItemId;
             if (imageBase64) {
                 body.image_base64 = imageBase64;
                 body.image_mime_type = imageMimeType;
@@ -321,6 +338,8 @@
                     var data = await res.json();
                     addMessage(data.reply, 'assistant');
 
+                    if (data.item_id) lastItemId = data.item_id;
+
                     if (data.action_taken) {
                         if (data.action_taken === 'item_added') {
                             showActionBanner('Item added \u2713');
@@ -329,6 +348,7 @@
                             showActionBanner('Item updated \u2713');
                             tryRefreshItems();
                         } else if (data.action_taken === 'item_archived') {
+                            lastItemId = null;
                             showActionBanner('Item archived \u2713');
                             tryRefreshItems();
                         }
