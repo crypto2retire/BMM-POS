@@ -47,10 +47,17 @@ async def pay_rent(
             redirect_url=redirect_url,
         )
         return {"payment_url": result["url"]}
+    except HTTPException:
+        raise
     except ValueError as exc:
         raise HTTPException(status_code=503, detail=str(exc))
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail="Rent payment could not be initiated. Please try again or contact the office.",
+        )
 
 
 @router.post("/rent-confirmed")

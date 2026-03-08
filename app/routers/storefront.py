@@ -93,20 +93,20 @@ async def create_payment(
     display_price = float(item.sale_price) if sale_active else float(item.price)
     price_cents = round(display_price * 100)
 
-    reservation = Reservation(
-        item_id=body.item_id,
-        customer_name=body.customer_name,
-        customer_phone=body.customer_phone,
-        amount_paid=display_price,
-        status="pending",
-    )
-    db.add(reservation)
-    await db.flush()
-    reservation_id = reservation.id
-
-    redirect_url = f"https://www.bowenstreetmm.com/shop/index.html?payment=success&ref={reservation_id}"
-
     try:
+        reservation = Reservation(
+            item_id=body.item_id,
+            customer_name=body.customer_name,
+            customer_phone=body.customer_phone,
+            amount_paid=display_price,
+            status="pending",
+        )
+        db.add(reservation)
+        await db.flush()
+        reservation_id = reservation.id
+
+        redirect_url = f"https://www.bowenstreetmm.com/shop/index.html?payment=success&ref={reservation_id}"
+
         from app.services.square import create_payment_link
         result = await create_payment_link(
             name=item.name,
@@ -116,12 +116,20 @@ async def create_payment(
         reservation.square_payment_id = result.get("payment_link_id", "")
         await db.commit()
         return {"payment_url": result["url"], "reservation_id": reservation_id}
+    except HTTPException:
+        raise
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(status_code=503, detail=str(exc))
     except RuntimeError as exc:
         await db.rollback()
         raise HTTPException(status_code=502, detail=str(exc))
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Checkout could not be started. Please try again or call the store at (920) 555-0100.",
+        )
 
 
 @router.post("/payment-confirmed")
