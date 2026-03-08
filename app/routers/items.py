@@ -7,6 +7,8 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
 from sqlalchemy.orm import selectinload
+from PIL import Image
+import io
 from app.database import get_db
 from app.models.item import Item
 from app.models.vendor import Vendor
@@ -16,6 +18,10 @@ from app.services.barcode import generate_sku
 from app.services.labels import generate_label_pdf, generate_dymo_xml
 
 PHOTO_UPLOAD_DIR = "frontend/static/images/items"
+IMAGE_UPLOAD_DIR = "frontend/static/uploads/items"
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
+ALLOWED_IMAGE_TYPES = {".jpg", ".jpeg", ".png", ".webp"}
+MAX_IMAGE_DIMENSION = 800
 
 router = APIRouter(prefix="/items", tags=["items"])
 
@@ -42,6 +48,7 @@ def item_to_response(item: Item) -> ItemResponse:
         sale_end=item.sale_end,
         status=item.status,
         label_style=item.label_style or "standard",
+        image_path=item.image_path,
         created_at=item.created_at,
         booth_number=booth_number,
     )
@@ -319,6 +326,48 @@ async def delete_item_photo(
     )
     item = result.scalar_one()
     return item_to_response(item)
+
+
+@router.post("/{item_id}/upload-image")
+async def upload_item_image(
+    item_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id)
+    )
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    ext = os.path.splitext(file.filename or "photo.jpg")[1].lower()
+    if ext not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Only jpg, jpeg, png, webp files are allowed")
+
+    contents = await file.read()
+    if len(contents) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=400, detail="File size must be under 5MB")
+
+    img = Image.open(io.BytesIO(contents))
+    img = img.convert("RGB")
+    w, h = img.size
+    if max(w, h) > MAX_IMAGE_DIMENSION:
+        ratio = MAX_IMAGE_DIMENSION / max(w, h)
+        img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+
+    os.makedirs(IMAGE_UPLOAD_DIR, exist_ok=True)
+    save_path = os.path.join(IMAGE_UPLOAD_DIR, f"{item_id}.jpg")
+    img.save(save_path, "JPEG", quality=85)
+
+    image_path = f"/static/uploads/items/{item_id}.jpg"
+    item.image_path = image_path
+    await db.commit()
+
+    return {"success": True, "image_path": image_path}
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)

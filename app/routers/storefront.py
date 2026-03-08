@@ -69,6 +69,7 @@ async def storefront_items(
             "description": item.description,
             "vendor_name": item.vendor.name if item.vendor else "Bowenstreet Market",
             "booth_number": item.vendor.booth_number if item.vendor else None,
+            "image_path": item.image_path,
         })
     return result
 

@@ -26,6 +26,7 @@ class Item(Base):
     sale_end: Mapped[Optional[date]] = mapped_column(Date)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     label_style: Mapped[str] = mapped_column(String(20), nullable=False, default="standard")
+    image_path: Mapped[Optional[str]] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=datetime.utcnow)
 
     vendor: Mapped["Vendor"] = relationship("Vendor", back_populates="items")

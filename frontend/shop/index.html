@@ -635,6 +635,109 @@
     color: rgba(168,166,161,0.5);
     margin-top: 0.5rem;
   }
+
+  /* ── CARD IMAGE ── */
+  .card-image {
+      width: 100%;
+      aspect-ratio: 4/3;
+      overflow: hidden;
+      background: rgba(255,255,255,0.03);
+  }
+  .card-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+  }
+  .card-image-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      opacity: 0.15;
+  }
+
+  /* ── SHOP TOOLBAR ── */
+  .shop-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.6rem;
+      flex-wrap: wrap;
+  }
+  .filter-chips { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+  .chip {
+      padding: 0.35rem 0.85rem;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-family: 'Roboto', sans-serif;
+      font-size: 0.68rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+  }
+  .chip:hover { border-color: var(--gold); color: var(--text); }
+  .chip.active { background: rgba(201,169,110,0.15); border-color: var(--gold); color: var(--gold); }
+  .shop-controls { display: flex; align-items: center; gap: 0.6rem; }
+  .shop-sort {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'Roboto', sans-serif;
+      font-size: 0.78rem;
+      padding: 0.45rem 0.75rem;
+      cursor: pointer;
+  }
+  .view-toggle { display: flex; gap: 0; }
+  .view-toggle button {
+      padding: 0.45rem 0.65rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background 0.15s, color 0.15s;
+  }
+  .view-toggle button:first-child { border-right: none; }
+  .view-toggle button.active { background: rgba(201,169,110,0.15); color: var(--gold); border-color: var(--gold); }
+
+  /* ── LIST VIEW ── */
+  .item-grid.list-view {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+  }
+  .item-list-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.8rem 1rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-bottom: none;
+      transition: background 0.15s;
+  }
+  .item-list-row:last-child { border-bottom: 1px solid var(--border); }
+  .item-list-row:hover { background: rgba(201,169,110,0.04); }
+  .list-photo { width: 60px; height: 60px; flex-shrink: 0; overflow: hidden; background: rgba(255,255,255,0.03); }
+  .list-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .list-info { flex: 1; min-width: 0; }
+  .list-name { font-family: 'EB Garamond', serif; font-size: 1.1rem; font-weight: 500; }
+  .list-desc { font-size: 0.78rem; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list-vendor { font-size: 0.68rem; color: var(--text-dim); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 2px; }
+  .list-price { text-align: right; min-width: 100px; flex-shrink: 0; }
+  .list-action { flex-shrink: 0; }
+
+  @media (max-width: 540px) {
+      .item-list-row { gap: 0.6rem; padding: 0.6rem 0.75rem; }
+      .list-photo { width: 48px; height: 48px; }
+      .list-desc { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -670,6 +773,29 @@
 </div>
 
 <main>
+  <div class="shop-toolbar">
+      <div class="filter-chips" id="filter-chips">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="sale">On Sale</button>
+          <button class="chip" data-filter="under25">Under $25</button>
+          <button class="chip" data-filter="25to100">$25–$100</button>
+          <button class="chip" data-filter="over100">Over $100</button>
+      </div>
+      <div class="shop-controls">
+          <select id="sort-select" class="shop-sort">
+              <option value="name-az">Name A–Z</option>
+              <option value="name-za">Name Z–A</option>
+              <option value="price-low">Price: Low to High</option>
+              <option value="price-high">Price: High to Low</option>
+              <option value="newest">Newest First</option>
+              <option value="sale-first">On Sale First</option>
+          </select>
+          <div class="view-toggle">
+              <button id="view-grid-btn" class="active" title="Grid view">▦</button>
+              <button id="view-list-btn" title="List view">☰</button>
+          </div>
+      </div>
+  </div>
   <div class="status-bar">
     <span id="status-text"></span>
   </div>
@@ -744,6 +870,11 @@
   let pendingItemName = null;
   let reservedIds     = new Set();
 
+  let allItems      = [];
+  let currentView   = 'grid';
+  let activeFilters = new Set(['all']);
+  let currentSort   = 'name-az';
+
   // ── Load items ────────────────────────────────────────────────────
   async function loadItems(search) {
     const grid   = document.getElementById('item-grid');
@@ -760,16 +891,72 @@
       const data = await res.json();
 
       if (!Array.isArray(data) || data.length === 0) {
+        allItems = [];
         grid.innerHTML = '<div class="state-msg">No items found' + (search ? ' for "' + escHtml(search) + '"' : '') + '.</div>';
         status.textContent = '';
         return;
       }
 
-      status.textContent = data.length + ' item' + (data.length === 1 ? '' : 's') + (search ? ' matching "' + search + '"' : ' available');
-      grid.innerHTML = '';
-      data.forEach(item => grid.appendChild(buildCard(item)));
+      allItems = data;
+      applyFiltersAndRender();
     } catch (err) {
       grid.innerHTML = '<div class="state-msg">Could not load items. Please try again.</div>';
+    }
+  }
+
+  // ── Filter, sort, render ───────────────────────────────────────────
+  function applyFiltersAndRender() {
+    let items = [...allItems];
+
+    // Apply filters
+    if (!activeFilters.has('all')) {
+      items = items.filter(function (item) {
+        const price = item.sale_price != null ? parseFloat(item.sale_price) : parseFloat(item.price);
+        let pass = false;
+        if (activeFilters.has('sale') && item.sale_price != null) pass = true;
+        if (activeFilters.has('under25') && price < 25) pass = true;
+        if (activeFilters.has('25to100') && price >= 25 && price <= 100) pass = true;
+        if (activeFilters.has('over100') && price > 100) pass = true;
+        return pass;
+      });
+    }
+
+    // Apply sort
+    items.sort(function (a, b) {
+      switch (currentSort) {
+        case 'name-az':    return a.name.localeCompare(b.name);
+        case 'name-za':    return b.name.localeCompare(a.name);
+        case 'price-low':  return parseFloat(a.price) - parseFloat(b.price);
+        case 'price-high': return parseFloat(b.price) - parseFloat(a.price);
+        case 'newest':     return (b.id || 0) - (a.id || 0);
+        case 'sale-first':
+          var aS = a.sale_price != null ? 0 : 1;
+          var bS = b.sale_price != null ? 0 : 1;
+          return aS - bS || a.name.localeCompare(b.name);
+        default: return 0;
+      }
+    });
+
+    const grid   = document.getElementById('item-grid');
+    const status = document.getElementById('status-text');
+
+    if (items.length === 0) {
+      grid.className = 'item-grid';
+      grid.innerHTML = '<div class="state-msg">No items match your filters.</div>';
+      status.textContent = allItems.length + ' item' + (allItems.length === 1 ? '' : 's') + ' available';
+      return;
+    }
+
+    status.textContent = items.length + ' item' + (items.length === 1 ? '' : 's') + (items.length < allItems.length ? ' (filtered)' : ' available');
+
+    if (currentView === 'list') {
+      grid.className = 'item-grid list-view';
+      grid.innerHTML = '';
+      items.forEach(function (item) { grid.appendChild(buildListRow(item)); });
+    } else {
+      grid.className = 'item-grid';
+      grid.innerHTML = '';
+      items.forEach(function (item) { grid.appendChild(buildCard(item)); });
     }
   }
 
@@ -797,7 +984,12 @@
     const btnLabel  = isReserved ? 'Reserved \u2713' : 'Pay &amp; Reserve';
     const btnDisabled = isReserved ? ' disabled' : '';
 
+    const imageHtml = item.image_path
+      ? `<div class="card-image"><img src="${item.image_path}" alt="${escAttr(item.name)}"></div>`
+      : `<div class="card-image"><div class="card-image-placeholder">\uD83C\uDFF7\uFE0F</div></div>`;
+
     card.innerHTML = `
+      ${imageHtml}
       <div class="card-body" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
         <div class="card-name" itemprop="name">${escHtml(item.name)}</div>
         <div class="card-vendor">
@@ -823,6 +1015,49 @@
     });
 
     return card;
+  }
+
+  // ── Build list row ─────────────────────────────────────────────────
+  function buildListRow(item) {
+    const row = document.createElement('div');
+    row.className = 'item-list-row';
+
+    const isReserved = reservedIds.has(item.id);
+    const hasSale    = item.sale_price != null;
+    const TAX_RATE   = 0.05;
+    const basePrice  = hasSale ? parseFloat(item.sale_price) : parseFloat(item.price);
+    const totalPrice = basePrice * (1 + TAX_RATE);
+
+    const imageHtml = item.image_path
+      ? `<img src="${item.image_path}" alt="">`
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;opacity:0.15">\uD83C\uDFF7\uFE0F</div>`;
+
+    const priceHtml = hasSale
+      ? `<span class="price-original struck" style="font-size:0.85rem">$${fmt(item.price)}</span><br><span class="price-sale" style="font-size:1.1rem">$${fmt(item.sale_price)}</span>`
+      : `<span class="price-original" style="font-size:1.1rem">$${fmt(item.price)}</span>`;
+
+    const btnClass    = isReserved ? 'btn-reserve reserved' : 'btn-reserve';
+    const btnLabel    = isReserved ? 'Reserved \u2713' : 'Pay &amp; Reserve';
+    const btnDisabled = isReserved ? ' disabled' : '';
+
+    row.innerHTML = `
+      <div class="list-photo">${imageHtml}</div>
+      <div class="list-info">
+        <div class="list-name">${escHtml(item.name)}</div>
+        <div class="list-desc">${escHtml(item.description || '')}</div>
+        <div class="list-vendor">${escHtml(item.vendor_name || 'Bowenstreet Market')}${item.booth_number ? ' \u00B7 Booth ' + escHtml(item.booth_number) : ''}</div>
+      </div>
+      <div class="list-price">${priceHtml}<div class="card-tax" style="font-size:0.65rem;margin-top:2px">Total: $${fmt(totalPrice)}</div></div>
+      <div class="list-action">
+        <button class="${btnClass}" style="white-space:nowrap;padding:0.5rem 1rem" data-id="${item.id}" data-name="${escAttr(item.name)}"${btnDisabled}>${btnLabel}</button>
+      </div>
+    `;
+
+    row.querySelector('.btn-reserve').addEventListener('click', function () {
+      if (!this.disabled) openModal(item.id, item.name);
+    });
+
+    return row;
   }
 
   // ── Modal ─────────────────────────────────────────────────────────
@@ -992,6 +1227,52 @@
   }
 
   function escAttr(str) { return escHtml(str); }
+
+  // ── Toolbar: filter chips ────────────────────────────────────────
+  document.getElementById('filter-chips').addEventListener('click', function (e) {
+    var chip = e.target.closest('.chip');
+    if (!chip) return;
+    var filter = chip.dataset.filter;
+
+    if (filter === 'all') {
+      activeFilters.clear();
+      activeFilters.add('all');
+    } else {
+      activeFilters.delete('all');
+      if (activeFilters.has(filter)) {
+        activeFilters.delete(filter);
+      } else {
+        activeFilters.add(filter);
+      }
+      if (activeFilters.size === 0) activeFilters.add('all');
+    }
+
+    document.querySelectorAll('.chip').forEach(function (c) {
+      c.classList.toggle('active', activeFilters.has(c.dataset.filter));
+    });
+
+    applyFiltersAndRender();
+  });
+
+  // ── Toolbar: sort ──────────────────────────────────────────────────
+  document.getElementById('sort-select').addEventListener('change', function () {
+    currentSort = this.value;
+    applyFiltersAndRender();
+  });
+
+  // ── Toolbar: view toggle ──────────────────────────────────────────
+  document.getElementById('view-grid-btn').addEventListener('click', function () {
+    currentView = 'grid';
+    this.classList.add('active');
+    document.getElementById('view-list-btn').classList.remove('active');
+    applyFiltersAndRender();
+  });
+  document.getElementById('view-list-btn').addEventListener('click', function () {
+    currentView = 'list';
+    this.classList.add('active');
+    document.getElementById('view-grid-btn').classList.remove('active');
+    applyFiltersAndRender();
+  });
 
   // ── Init ──────────────────────────────────────────────────────────
   handlePaymentReturn();

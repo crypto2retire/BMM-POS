@@ -125,6 +125,47 @@
             font-family:'Roboto',sans-serif; transition:border-color 0.15s;
         }
         #mini-chat-input:focus { border-color:var(--gold-dim); }
+
+        /* View toolbar */
+        .items-toolbar { display:flex; align-items:center; gap:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap; }
+        .items-toolbar .search-input { flex:1; min-width:180px; }
+        .view-toggle { display:flex; gap:0; }
+        .view-toggle button {
+            padding:0.4rem 0.8rem; background:var(--surface-2); border:1px solid var(--border);
+            color:var(--text-light); font-size:0.72rem; cursor:pointer; letter-spacing:0.06em;
+            font-family:'Roboto',sans-serif; transition:background 0.15s, color 0.15s;
+        }
+        .view-toggle button.active { background:var(--gold-dim); color:var(--gold); border-color:var(--gold-dim); }
+        .view-toggle button:first-child { border-right:none; }
+
+        /* List view table */
+        .items-list-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+        .items-list-table th {
+            text-align:left; padding:0.5rem 0.6rem; font-size:0.65rem; text-transform:uppercase;
+            letter-spacing:0.1em; color:var(--text-light); border-bottom:1px solid var(--border);
+            cursor:pointer; user-select:none; white-space:nowrap;
+        }
+        .items-list-table th:hover { color:var(--gold); }
+        .items-list-table th .sort-arrow { font-size:0.6rem; margin-left:4px; opacity:0.5; }
+        .items-list-table th.sorted .sort-arrow { opacity:1; color:var(--gold); }
+        .items-list-table td { padding:0.35rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:middle; }
+        .items-list-table td img { width:40px; height:40px; object-fit:cover; display:block; }
+        .items-list-table .sku-cell { font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--text-light); }
+        .items-list-table .actions-cell { white-space:nowrap; display:flex; gap:4px; }
+        .items-list-table .actions-cell button { padding:0.25rem 0.5rem; font-size:0.68rem; }
+
+        /* Pagination */
+        .pagination-bar { display:flex; align-items:center; justify-content:space-between; margin-top:1rem; font-size:0.78rem; color:var(--text-light); }
+        .pagination-bar button {
+            padding:0.35rem 0.8rem; background:var(--surface-2); border:1px solid var(--border);
+            color:var(--text-light); cursor:pointer; font-size:0.72rem; font-family:'Roboto',sans-serif;
+            transition:background 0.15s;
+        }
+        .pagination-bar button:hover:not(:disabled) { background:var(--gold-dim); color:var(--gold); }
+        .pagination-bar button:disabled { opacity:0.3; cursor:default; }
+
+        /* Image path preview in modal */
+        .image-path-preview { width:120px; height:120px; object-fit:cover; border:1px solid var(--border); margin-bottom:8px; }
     </style>
 </head>
 <body class="has-bottom-nav">
@@ -159,6 +200,16 @@
         <select class="form-control" id="vendor-filter" onchange="onVendorChange()" style="max-width:260px">
             <option value="">All Vendors</option>
         </select>
+    </div>
+
+    <!-- items toolbar: search + view toggle -->
+    <div class="items-toolbar" id="items-toolbar">
+        <input type="text" class="form-control search-input" id="items-search"
+            placeholder="Search by name or SKU…" oninput="onSearchInput()" autocomplete="off">
+        <div class="view-toggle">
+            <button id="view-grid-btn" onclick="setView('grid')">Grid</button>
+            <button id="view-list-btn" onclick="setView('list')">List</button>
+        </div>
     </div>
 
     <!-- item cards grid -->
@@ -391,6 +442,15 @@
     let miniChatOpen = false;
     let miniChatBusy = false;
 
+    // View toggle, search, sort, pagination state
+    let allItems = [];
+    let currentView = localStorage.getItem('bmm_items_view') || 'grid';
+    let searchTerm = '';
+    let sortColumn = 'name';
+    let sortDirection = 'asc';
+    let currentPage = 1;
+    const PAGE_SIZE = 50;
+
     // ── Nav helpers ────────────────────────────────────────────────────
     function handleLogout() { clearToken(); window.location.href = '/vendor/login.html'; }
     function toggleNav() {
@@ -536,6 +596,16 @@
                 const err = await res.json().catch(() => ({ detail: 'Upload failed' }));
                 throw new Error(err.detail || 'Upload failed');
             }
+            // Also upload via the new upload-image endpoint
+            const formData2 = new FormData();
+            formData2.append('file', file);
+            try {
+                await fetch(`/api/v1/items/${id}/upload-image`, {
+                    method: 'POST',
+                    headers: { 'Authorization': 'Bearer ' + token },
+                    body: formData2,
+                });
+            } catch (e2) { /* best effort */ }
             showAlert('alert-container', 'Photo uploaded.', 'success');
             await loadItems();
         } catch (e) {
@@ -564,6 +634,13 @@
         document.getElementById('f-label-style').value = item?.label_style || 'standard';
 
         clearPhotoPreview();
+        // Show image_path preview if available
+        const previewContainer = document.getElementById('photo-preview-container');
+        if (item && item.image_path) {
+            previewContainer.innerHTML = `
+                <img src="${item.image_path}" alt="Current photo" class="image-path-preview">
+                <div class="photo-upload-label" style="margin-top:4px">Tap to change photo</div>`;
+        }
         renderExistingPhotos(item?.photo_urls || []);
 
         // AI button: always visible in edit mode, hidden in add mode until photo selected
@@ -838,6 +915,7 @@
             }
 
             if (pendingPhotoFile && savedItem && savedItem.id) {
+                btn.textContent = 'Uploading photo…';
                 const formData = new FormData();
                 formData.append('file', pendingPhotoFile);
                 const token = sessionStorage.getItem('bmm_token');
@@ -850,6 +928,16 @@
                 } catch (photoErr) {
                     showAlert('alert-container', 'Item saved but photo upload failed.', 'warning');
                 }
+                // Also upload via the new upload-image endpoint
+                try {
+                    const formData2 = new FormData();
+                    formData2.append('file', pendingPhotoFile);
+                    await fetch(`/api/v1/items/${savedItem.id}/upload-image`, {
+                        method: 'POST',
+                        headers: { 'Authorization': 'Bearer ' + token },
+                        body: formData2,
+                    });
+                } catch (e2) { /* best effort */ }
             }
 
             closeModal();
@@ -906,8 +994,81 @@
             : `<span class="badge badge-gray">PDF</span>`;
     }
 
-    function renderItems(items) {
+    // ── View toggle ────────────────────────────────────────────────────
+    function setView(view) {
+        currentView = view;
+        localStorage.setItem('bmm_items_view', view);
+        document.getElementById('view-grid-btn').classList.toggle('active', view === 'grid');
+        document.getElementById('view-list-btn').classList.toggle('active', view === 'list');
+        currentPage = 1;
+        displayItems();
+    }
+
+    function onSearchInput() {
+        searchTerm = document.getElementById('items-search').value.trim().toLowerCase();
+        currentPage = 1;
+        displayItems();
+    }
+
+    function setSort(col) {
+        if (sortColumn === col) {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            sortColumn = col;
+            sortDirection = 'asc';
+        }
+        displayItems();
+    }
+
+    function getFilteredItems() {
+        if (!searchTerm) return allItems.slice();
+        return allItems.filter(item => {
+            const name = (item.name || '').toLowerCase();
+            const sku = (item.sku || '').toLowerCase();
+            return name.includes(searchTerm) || sku.includes(searchTerm);
+        });
+    }
+
+    function getSortedItems(items) {
+        return items.sort((a, b) => {
+            let va, vb;
+            if (sortColumn === 'name') { va = (a.name || '').toLowerCase(); vb = (b.name || '').toLowerCase(); }
+            else if (sortColumn === 'price') { va = parseFloat(a.price) || 0; vb = parseFloat(b.price) || 0; }
+            else if (sortColumn === 'status') { va = a.status || ''; vb = b.status || ''; }
+            else { va = ''; vb = ''; }
+            if (va < vb) return sortDirection === 'asc' ? -1 : 1;
+            if (va > vb) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
+    function displayItems() {
+        const filtered = getFilteredItems();
+        const sorted = getSortedItems(filtered);
+
         const grid = document.getElementById('items-grid');
+        if (currentView === 'list') {
+            grid.className = '';
+            renderListView(sorted, grid);
+        } else {
+            grid.className = 'item-cards-grid';
+            renderGridView(sorted, grid);
+        }
+    }
+
+    function getItemPhotoHtml(item, size) {
+        const src = item.image_path
+            ? item.image_path
+            : (item.photo_urls && item.photo_urls.length) ? item.photo_urls[0] : null;
+        if (src) {
+            if (size) return `<img src="${src}" alt="" style="width:${size}px;height:${size}px;object-fit:cover">`;
+            return `<img src="${src}" alt="">`;
+        }
+        if (size) return `<span style="font-size:1rem;opacity:0.4;display:inline-flex;align-items:center;justify-content:center;width:${size}px;height:${size}px">&#x1F4F7;</span>`;
+        return `<span style="font-size:1.8rem;opacity:0.4">&#x1F4F7;</span>`;
+    }
+
+    function renderGridView(items, grid) {
         const today = new Date().toISOString().split('T')[0];
 
         if (items.length === 0) {
@@ -924,9 +1085,7 @@
                 ? `<span class="price-original">$${parseFloat(item.price).toFixed(2)}</span> <span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>`
                 : `$${parseFloat(item.price).toFixed(2)}`;
 
-            const photoHtml = (item.photo_urls && item.photo_urls.length)
-                ? `<img src="${item.photo_urls[0]}" alt="">`
-                : `🏷️`;
+            const photoHtml = getItemPhotoHtml(item);
 
             const vendorMeta = currentRole !== 'vendor' && item.booth_number
                 ? ` &middot; Booth ${item.booth_number}` : '';
@@ -964,7 +1123,7 @@
                         `<img src="${url}" alt="" onclick="window.open('${url}','_blank')">`
                     ).join('')}
                     <button class="add-photo-btn" title="Add photo" type="button">
-                        <span style="pointer-events:none">+📷</span>
+                        <span style="pointer-events:none">+&#x1F4F7;</span>
                         <input type="file" accept="image/*" capture="environment"
                             onchange="uploadCardPhoto(${item.id}, this)">
                     </button>
@@ -973,12 +1132,90 @@
         }).join('');
     }
 
+    function renderListView(items, grid) {
+        const today = new Date().toISOString().split('T')[0];
+        const total = items.length;
+
+        if (total === 0) {
+            grid.innerHTML = `<div class="card"><div class="empty-state">No items match your search.</div></div>`;
+            return;
+        }
+
+        const totalPages = Math.ceil(total / PAGE_SIZE);
+        if (currentPage > totalPages) currentPage = totalPages;
+        const start = (currentPage - 1) * PAGE_SIZE;
+        const end = Math.min(start + PAGE_SIZE, total);
+        const pageItems = items.slice(start, end);
+
+        function sortArrow(col) {
+            const cls = sortColumn === col ? 'sorted' : '';
+            const arrow = sortColumn === col ? (sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '&#9650;';
+            return `class="${cls}" onclick="setSort('${col}')"`;
+        }
+
+        let html = `<table class="items-list-table">
+            <thead><tr>
+                <th style="cursor:default">Photo</th>
+                <th ${sortArrow('name')}>Name <span class="sort-arrow">${sortColumn === 'name' ? (sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '&#9650;'}</span></th>
+                <th style="cursor:default">SKU</th>
+                <th ${sortArrow('price')}>Price <span class="sort-arrow">${sortColumn === 'price' ? (sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '&#9650;'}</span></th>
+                <th style="cursor:default">Sale Price</th>
+                <th ${sortArrow('status')}>Status <span class="sort-arrow">${sortColumn === 'status' ? (sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '&#9650;'}</span></th>
+                <th style="cursor:default">Actions</th>
+            </tr></thead><tbody>`;
+
+        pageItems.forEach(item => {
+            const isOnSale = item.sale_price && item.sale_start && item.sale_end &&
+                item.sale_start <= today && today <= item.sale_end;
+            const priceHtml = `$${parseFloat(item.price).toFixed(2)}`;
+            const salePriceHtml = isOnSale
+                ? `<span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>`
+                : (item.sale_price ? `$${parseFloat(item.sale_price).toFixed(2)}` : '&mdash;');
+
+            const photoHtml = getItemPhotoHtml(item, 40);
+            const style = item.label_style || 'standard';
+            const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+
+            html += `<tr>
+                <td>${photoHtml}</td>
+                <td>${item.name}</td>
+                <td class="sku-cell">${item.sku || '&mdash;'}</td>
+                <td>${priceHtml}</td>
+                <td>${salePriceHtml}</td>
+                <td>${statusBadge(item.status)}</td>
+                <td><div class="actions-cell">
+                    <button class="btn btn-outline" onclick="openModal(${itemJson})">Edit</button>
+                    <button class="btn btn-secondary" onclick="printLabelAuto(${item.id}, '${style}')">Label</button>
+                    <button class="btn btn-danger" onclick="deleteItem(${item.id}, '${item.name.replace(/'/g, "\\'").replace(/"/g, '\\"')}')">Del</button>
+                </div></td>
+            </tr>`;
+        });
+
+        html += `</tbody></table>`;
+
+        // Pagination bar
+        html += `<div class="pagination-bar">
+            <span>Showing ${start + 1}&ndash;${end} of ${total} items</span>
+            <div style="display:flex;gap:6px">
+                <button onclick="changePage(-1)" ${currentPage <= 1 ? 'disabled' : ''}>Prev</button>
+                <button onclick="changePage(1)" ${currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+            </div>
+        </div>`;
+
+        grid.innerHTML = html;
+    }
+
+    function changePage(delta) {
+        currentPage += delta;
+        displayItems();
+    }
+
     async function loadItems() {
         try {
             let url = '/api/v1/items/';
             if (currentRole !== 'vendor' && selectedVendorId) url += `?vendor_id=${selectedVendorId}`;
-            const items = await apiGet(url);
-            renderItems(items);
+            allItems = await apiGet(url);
+            displayItems();
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
         }
@@ -1012,6 +1249,9 @@
             document.getElementById('bottom-nav').style.display = '';
             document.getElementById('page-title').textContent = 'My Items';
         }
+
+        // Initialize view toggle
+        setView(currentView);
 
         await loadItems();
     }

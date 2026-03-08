@@ -55,6 +55,7 @@ class ItemResponse(BaseModel):
     sale_end: Optional[date] = None
     status: str
     label_style: str = "standard"
+    image_path: Optional[str] = None
     created_at: datetime
     active_price: Optional[Decimal] = None
     booth_number: Optional[str] = None
