@@ -27,7 +27,7 @@ async def storefront_items(
     q = (
         select(Item)
         .options(selectinload(Item.vendor))
-        .where(Item.status == "active", Item.is_online == True)
+        .where(Item.status == "active", Item.is_online.is_(True))
         .order_by(Item.name)
     )
     if search:
