@@ -433,7 +433,10 @@
             } else {
                 tbody.innerHTML = vendors.map(v => `
                     <tr>
-                        <td><strong>${v.name}</strong></td>
+                        <td>
+                            ${v.rent_flagged ? '<span title="Rent overdue" style="color:#f87171;margin-right:4px;">🚩</span>' : ''}
+                            <strong>${v.name}</strong>
+                        </td>
                         <td>${v.email}</td>
                         <td>${v.booth_number || "—"}</td>
                         <td>${v.monthly_rent ? `$${parseFloat(v.monthly_rent).toFixed(2)}` : "—"}</td>
@@ -459,7 +462,10 @@
                     <div class="vendor-card">
                         <div class="vendor-card-header" onclick="toggleCardDetail(${v.id})">
                             <div>
-                                <div class="vendor-card-name">${v.name}</div>
+                                <div class="vendor-card-name">
+                                    ${v.rent_flagged ? '<span style="color:#f87171;margin-right:4px;" title="Rent overdue">🚩</span>' : ''}
+                                    ${v.name}
+                                </div>
                                 <div class="vendor-card-sub">${v.email} · Booth ${v.booth_number || '—'}</div>
                             </div>
                             <div class="vendor-card-right">

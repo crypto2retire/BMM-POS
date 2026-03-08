@@ -1,0 +1,25 @@
+from datetime import datetime
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import String, Numeric, Integer, TIMESTAMP, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.database import Base
+
+
+class Reservation(Base):
+    __tablename__ = "reservations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    item_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("items.id"), nullable=True)
+    customer_name: Mapped[Optional[str]] = mapped_column(String(200))
+    customer_phone: Mapped[Optional[str]] = mapped_column(String(50))
+    square_payment_id: Mapped[Optional[str]] = mapped_column(String(200))
+    amount_paid: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, default=datetime.utcnow
+    )
+
+    item: Mapped[Optional["Item"]] = relationship("Item")

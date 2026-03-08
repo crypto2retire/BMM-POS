@@ -27,6 +27,7 @@ def vendor_to_response(vendor: Vendor) -> VendorResponse:
         payout_method=vendor.payout_method,
         zelle_handle=vendor.zelle_handle,
         status=vendor.status,
+        rent_flagged=vendor.rent_flagged,
         created_at=vendor.created_at,
         current_balance=balance,
     )

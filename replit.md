@@ -37,10 +37,13 @@ app/
     items.py      — CRUD for items (vendor self-service + admin)
     sales.py      — POS checkout, sale history
     pos.py        — Poynt terminal charge + status polling endpoints
+    rent.py       — Vendor rent payment via Square (POST /vendor/pay-rent, /vendor/rent-confirmed)
+    admin.py      — Admin rent status (GET /admin/rent-status) + vendor flag toggle
   services/
     barcode.py    — SKU generation (BSM-XXXX-YYYYYY) + barcode PNG
     labels.py     — PDF label generation (single + batch)
     poynt.py      — GoDaddy Poynt Cloud API (RSA JWT + order/transaction calls)
+    square.py     — Square Checkout API helper (create_payment_link)
 migrations/
   001_initial_schema.sql — All tables, indexes, trigger
 scripts/
@@ -53,11 +56,14 @@ frontend/
   static/js/api.js        — JWT fetch wrapper (sessionStorage persistence)
   vendor/
     login.html    — Login page (redirects by role: admin→/admin, cashier→/pos, vendor→/vendor)
-    dashboard.html — Vendor stats: balance, items, booth
+    dashboard.html — Vendor stats: balance, items, booth + Pay Rent with Card section
     items.html    — Item management with add/edit/delete/label
   admin/
-    index.html    — Admin dashboard with vendor/item stats + Register + POS Terminal nav links
-    vendors.html  — Admin vendor management (add/edit/suspend) with cashier role option
+    index.html    — Admin dashboard with vendor/item stats + Rent link
+    vendors.html  — Admin vendor management (add/edit/suspend); shows 🚩 for flagged vendors
+    rent.html     — Rent status dashboard: all vendors, CURRENT/DUE/OVERDUE badges, flag/unflag buttons
+  shop/
+    index.html    — Public storefront: browse items, "Pay & Reserve" → Square checkout
   pos/
     index.html    — Full employee POS terminal (barcode scanner, cart, cash/card payments, receipt)
     register.html — Cash register: two-column layout, item search, cart, cash/card checkout
@@ -99,8 +105,10 @@ All routes prefixed with `/api/v1/`:
 - `items` — Inventory with sale price and date range support
 - `sales` — POS transaction headers (subtotal, tax, total, payment_method, cash_tendered, change_given)
 - `sale_items` — Line items per sale (linked to item + vendor)
-- `rent_payments` — Monthly rent tracking
+- `rent_payments` — Monthly rent tracking (method: "square" for online payments)
+- `reservations` — Square-paid shop reservations (status: pending → confirmed)
 - `payouts` — Vendor payout records
+- `vendors.rent_flagged` — Boolean flag for vendors 30+ days overdue on rent
 
 ## Authentication & Roles
 

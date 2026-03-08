@@ -546,15 +546,15 @@
       <input type="tel" id="input-phone" placeholder="(920) 555-0000" autocomplete="tel">
 
       <p class="modal-notice">
-        We'll hold this item for 48 hours. Stop in at your convenience to complete your purchase.
-        No payment is taken online.
+        Payment is required to reserve this item. You'll be redirected to our secure checkout.
+        We'll hold the item for 48 hours after payment.
       </p>
 
       <div class="modal-error" id="modal-error"></div>
 
       <div class="modal-actions">
         <button class="btn-ghost" id="modal-cancel">Cancel</button>
-        <button class="btn-primary" id="modal-submit">Reserve Item</button>
+        <button class="btn-primary" id="modal-submit">Pay &amp; Reserve</button>
       </div>
     </div>
 
@@ -569,8 +569,9 @@
 (function () {
   'use strict';
 
-  const API_ITEMS   = '/api/v1/storefront/items';
-  const API_RESERVE = '/api/v1/storefront/reserve';
+  const API_ITEMS          = '/api/v1/storefront/items';
+  const API_CREATE_PAYMENT = '/api/v1/storefront/create-payment';
+  const API_CONFIRM        = '/api/v1/storefront/payment-confirmed';
 
   let pendingItemId   = null;
   let pendingItemName = null;
@@ -680,7 +681,7 @@
     if (e.key === 'Escape') closeModal();
   });
 
-  // ── Submit reservation ─────────────────────────────────────────────
+  // ── Submit reservation (Square payment) ───────────────────────────
   document.getElementById('modal-submit').addEventListener('click', async function () {
     const name  = document.getElementById('input-name').value.trim();
     const phone = document.getElementById('input-phone').value.trim();
@@ -701,10 +702,10 @@
 
     errEl.style.display = 'none';
     this.disabled = true;
-    this.textContent = 'Reserving\u2026';
+    this.textContent = 'Processing\u2026';
 
     try {
-      const res  = await fetch(API_RESERVE, {
+      const res  = await fetch(API_CREATE_PAYMENT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ item_id: pendingItemId, customer_name: name, customer_phone: phone }),
@@ -712,36 +713,70 @@
       const data = await res.json();
 
       if (!res.ok) {
-        errEl.textContent   = data.detail || 'This item is no longer available.';
+        errEl.textContent   = data.detail || 'Unable to start checkout. Please try again.';
         errEl.style.display = 'block';
         this.disabled    = false;
-        this.textContent = 'Reserve Item';
+        this.textContent = 'Pay \u0026 Reserve';
         return;
       }
 
-      // Mark as reserved in our local set so card updates
-      reservedIds.add(pendingItemId);
-
-      // Update the card button immediately
-      const btn = document.querySelector(`.btn-reserve[data-id="${pendingItemId}"]`);
-      if (btn) {
-        btn.textContent = 'Reserved \u2713';
-        btn.classList.add('reserved');
-        btn.disabled = true;
-      }
-
-      // Show success state in modal
-      document.getElementById('modal-form-body').style.display = 'none';
-      document.getElementById('modal-success-msg').textContent  = data.message;
-      document.getElementById('modal-success').style.display    = 'block';
+      // Redirect to Square checkout
+      window.location.href = data.payment_url;
 
     } catch (err) {
       errEl.textContent   = 'Network error. Please try again.';
       errEl.style.display = 'block';
       this.disabled    = false;
-      this.textContent = 'Reserve Item';
+      this.textContent = 'Pay \u0026 Reserve';
     }
   });
+
+  // ── Handle return from Square (payment confirmation) ───────────────
+  async function handlePaymentReturn() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') !== 'success') return;
+    const ref = params.get('ref');
+    if (!ref) return;
+
+    // Clean URL without reloading
+    history.replaceState({}, '', '/shop/index.html');
+
+    try {
+      const res  = await fetch(API_CONFIRM, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reservation_id: parseInt(ref, 10) }),
+      });
+      const data = await res.json();
+      showBanner(
+        res.ok
+          ? (data.message || 'Payment confirmed! Your item has been reserved.')
+          : (data.detail || 'Payment received but confirmation failed. Please call the store.'),
+        res.ok ? 'success' : 'error'
+      );
+    } catch (_) {
+      showBanner('Payment received. Please call us to confirm your reservation.', 'error');
+    }
+  }
+
+  function showBanner(msg, type) {
+    const banner = document.createElement('div');
+    banner.style.cssText = [
+      'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:9999',
+      'padding:1rem 1.5rem', 'text-align:center', 'font-weight:500',
+      type === 'success'
+        ? 'background:#2a6e3f;color:#fff;'
+        : 'background:#7a2222;color:#fff;',
+    ].join(';');
+    banner.textContent = msg;
+    const close = document.createElement('button');
+    close.textContent = ' ✕';
+    close.style.cssText = 'background:none;border:none;color:inherit;cursor:pointer;margin-left:1rem;font-size:1rem;';
+    close.onclick = () => banner.remove();
+    banner.appendChild(close);
+    document.body.prepend(banner);
+    if (type === 'success') setTimeout(() => banner.remove(), 10000);
+  }
 
   // ── Search ────────────────────────────────────────────────────────
   const searchInput  = document.getElementById('search-input');
@@ -782,6 +817,7 @@
   function escAttr(str) { return escHtml(str); }
 
   // ── Init ──────────────────────────────────────────────────────────
+  handlePaymentReturn();
   loadItems(null);
 })();
 </script>

@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.database import AsyncSessionLocal
-from app.routers import auth, vendors, items, sales, pos, assistant, storefront
+from app.routers import auth, vendors, items, sales, pos, assistant, storefront, rent, admin
 
 
 @asynccontextmanager
@@ -61,5 +61,7 @@ app.include_router(sales.router, prefix="/api/v1")
 app.include_router(pos.router, prefix="/api/v1")
 app.include_router(assistant.router, prefix="/api/v1")
 app.include_router(storefront.router, prefix="/api/v1")
+app.include_router(rent.router, prefix="/api/v1")
+app.include_router(admin.router, prefix="/api/v1")
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rent Status — BMM-POS</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+    <style>
+        .hamburger-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            line-height: 1;
+        }
+        .mobile-nav-dropdown {
+            display: none;
+            position: fixed;
+            top: 56px;
+            left: 0; right: 0;
+            background: #2C2C2F;
+            border-bottom: 1px solid #555558;
+            z-index: 1000;
+            flex-direction: column;
+            padding: 0.5rem 0;
+        }
+        .mobile-nav-dropdown.open { display: flex; }
+        .mobile-nav-dropdown a {
+            color: rgba(255,255,255,0.85);
+            text-decoration: none;
+            padding: 0.85rem 1.25rem;
+            font-size: 1rem;
+            border-bottom: 1px solid #3a3a3d;
+        }
+        .mobile-nav-dropdown a:last-child { border-bottom: none; }
+        .mobile-nav-dropdown a:hover, .mobile-nav-dropdown a.active { color: #fff; background: rgba(255,255,255,0.08); }
+
+        .rent-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .rent-stat-card {
+            background: #44444A;
+            border: 1px solid #555558;
+            padding: 1.25rem 1.5rem;
+        }
+        .rent-stat-title { font-size: 0.75rem; color: #A8A6A1; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+        .rent-stat-value { font-size: 1.75rem; font-weight: 700; color: #fff; }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .status-current { background: #1e4d2b; color: #4ade80; border: 1px solid #2a6e3f; }
+        .status-due     { background: #4d3d10; color: #facc15; border: 1px solid #7a5f1a; }
+        .status-overdue { background: #4d1a1a; color: #f87171; border: 1px solid #7a2222; }
+
+        .flag-icon { font-size: 1rem; }
+        .flag-btn {
+            background: none;
+            border: 1px solid #555558;
+            color: #A8A6A1;
+            cursor: pointer;
+            padding: 3px 8px;
+            font-size: 0.8rem;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .flag-btn:hover { border-color: #A8A6A1; color: #fff; }
+        .flag-btn.flagged { border-color: #f87171; color: #f87171; }
+
+        .search-bar {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        .search-bar input {
+            flex: 1;
+            max-width: 340px;
+            background: #44444A;
+            border: 1px solid #555558;
+            color: #fff;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+        }
+        .search-bar input::placeholder { color: #888; }
+        .search-bar input:focus { outline: none; border-color: #A8A6A1; }
+
+        .vendor-name-cell { display: flex; align-items: center; gap: 0.5rem; }
+
+        @media (max-width: 767px) {
+            .hamburger-btn { display: block; }
+            .navbar-nav { display: none; }
+            .navbar-user > span { display: none; }
+            .rent-stat-value { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="/admin/index.html" class="navbar-brand">
+        <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
+    </a>
+    <div class="navbar-user">
+        <span id="user-name">Administrator</span>
+        <nav class="navbar-nav">
+            <a href="/admin/index.html">Dashboard</a>
+            <a href="/admin/vendors.html">Vendors</a>
+            <a href="/admin/rent.html" class="active">Rent</a>
+            <a href="/vendor/items.html">Items</a>
+            <a href="/admin/customers.html">Vendor Directory</a>
+            <a href="/pos/index.html">POS Terminal</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
+        </nav>
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+    </div>
+</nav>
+
+<div class="mobile-nav-dropdown" id="mobile-nav">
+    <a href="/admin/index.html">🏠 Dashboard</a>
+    <a href="/admin/vendors.html">👥 Vendors</a>
+    <a href="/admin/rent.html" class="active">💳 Rent</a>
+    <a href="/vendor/items.html">🏷️ Items</a>
+    <a href="/admin/customers.html">📋 Vendor Directory</a>
+    <a href="/pos/index.html">🖥️ POS Terminal</a>
+    <a href="#" onclick="handleLogout()">🚪 Logout</a>
+</div>
+
+<div class="main-content">
+    <div id="alert-container"></div>
+    <div class="page-header">
+        <h1 class="page-title">Rent Status</h1>
+        <span id="month-label" style="color:#A8A6A1;font-size:0.95rem;"></span>
+    </div>
+
+    <div class="rent-stats">
+        <div class="rent-stat-card">
+            <div class="rent-stat-title">Collected This Month</div>
+            <div class="rent-stat-value green" id="stat-collected">—</div>
+        </div>
+        <div class="rent-stat-card">
+            <div class="rent-stat-title">Current</div>
+            <div class="rent-stat-value" style="color:#4ade80" id="stat-current">—</div>
+        </div>
+        <div class="rent-stat-card">
+            <div class="rent-stat-title">Due</div>
+            <div class="rent-stat-value" style="color:#facc15" id="stat-due">—</div>
+        </div>
+        <div class="rent-stat-card">
+            <div class="rent-stat-title">Overdue</div>
+            <div class="rent-stat-value" style="color:#f87171" id="stat-overdue">—</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="Filter by vendor name or booth…" oninput="filterTable()">
+        </div>
+        <div class="card">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Vendor</th>
+                            <th>Booth</th>
+                            <th>Monthly Rent</th>
+                            <th>Last Payment</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rent-table-body">
+                        <tr><td colspan="6" class="loading">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="/static/js/api.js"></script>
+<script>
+    let allVendors = [];
+
+    function handleLogout() {
+        clearToken();
+        window.location.href = '/vendor/login.html';
+    }
+
+    function toggleMobileNav() {
+        document.getElementById('mobile-nav').classList.toggle('open');
+    }
+
+    document.addEventListener('click', function(e) {
+        const nav = document.getElementById('mobile-nav');
+        const btn = document.getElementById('hamburger-btn');
+        if (nav.classList.contains('open') && !nav.contains(e.target) && e.target !== btn) {
+            nav.classList.remove('open');
+        }
+    });
+
+    function statusBadge(status) {
+        const map = {
+            current: '<span class="status-badge status-current">CURRENT</span>',
+            due:     '<span class="status-badge status-due">DUE</span>',
+            overdue: '<span class="status-badge status-overdue">OVERDUE</span>',
+        };
+        return map[status] || `<span class="status-badge">${status}</span>`;
+    }
+
+    function flagBtn(v) {
+        const cls   = v.rent_flagged ? 'flag-btn flagged' : 'flag-btn';
+        const label = v.rent_flagged ? '🚩 Unflag' : '⚑ Flag';
+        return `<button class="${cls}" onclick="toggleFlag(${v.id}, this)">${label}</button>`;
+    }
+
+    function renderRows(vendors) {
+        const tbody = document.getElementById('rent-table-body');
+        if (vendors.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No vendors found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = vendors.map(v => `
+            <tr>
+                <td>
+                    <div class="vendor-name-cell">
+                        ${v.rent_flagged ? '<span class="flag-icon" title="Flagged overdue">🚩</span>' : ''}
+                        <strong>${v.name}</strong>
+                    </div>
+                </td>
+                <td>${v.booth_number}</td>
+                <td>$${v.monthly_rent.toFixed(2)}</td>
+                <td>${v.last_payment_date || '—'}</td>
+                <td>${statusBadge(v.status)}</td>
+                <td>${flagBtn(v)}</td>
+            </tr>
+        `).join('');
+    }
+
+    function filterTable() {
+        const q = document.getElementById('search-input').value.trim().toLowerCase();
+        const filtered = q
+            ? allVendors.filter(v =>
+                v.name.toLowerCase().includes(q) ||
+                v.booth_number.toLowerCase().includes(q))
+            : allVendors;
+        renderRows(filtered);
+    }
+
+    async function toggleFlag(vendorId, btn) {
+        btn.disabled = true;
+        try {
+            const data = await apiPost(`/api/v1/admin/vendors/${vendorId}/flag`, {});
+            const v = allVendors.find(x => x.id === vendorId);
+            if (v) {
+                v.rent_flagged = data.rent_flagged;
+                btn.className   = data.rent_flagged ? 'flag-btn flagged' : 'flag-btn';
+                btn.textContent = data.rent_flagged ? '🚩 Unflag' : '⚑ Flag';
+                const nameCell = btn.closest('tr').querySelector('.vendor-name-cell');
+                if (nameCell) {
+                    const existing = nameCell.querySelector('.flag-icon');
+                    if (data.rent_flagged && !existing) {
+                        const span = document.createElement('span');
+                        span.className = 'flag-icon';
+                        span.title = 'Flagged overdue';
+                        span.textContent = '🚩';
+                        nameCell.prepend(span);
+                    } else if (!data.rent_flagged && existing) {
+                        existing.remove();
+                    }
+                }
+            }
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    async function loadRentStatus() {
+        const token = sessionStorage.getItem('bmm_token');
+        if (!token) { window.location.href = '/admin/login.html'; return; }
+        const payload = parseToken();
+        if (!payload || (payload.role !== 'admin' && payload.role !== 'cashier')) {
+            window.location.href = '/admin/login.html';
+            return;
+        }
+        document.getElementById('user-name').textContent = payload.name || 'Administrator';
+
+        try {
+            const data = await apiGet('/api/v1/admin/rent-status');
+            allVendors = data.vendors;
+
+            document.getElementById('month-label').textContent = data.month_label;
+            document.getElementById('stat-collected').textContent = `$${data.total_collected_this_month.toFixed(2)}`;
+            document.getElementById('stat-current').textContent  = allVendors.filter(v => v.status === 'current').length;
+            document.getElementById('stat-due').textContent      = allVendors.filter(v => v.status === 'due').length;
+            document.getElementById('stat-overdue').textContent  = allVendors.filter(v => v.status === 'overdue').length;
+
+            renderRows(allVendors);
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+            document.getElementById('rent-table-body').innerHTML =
+                '<tr><td colspan="6" class="empty-state">Failed to load rent data.</td></tr>';
+        }
+    }
+
+    loadRentStatus();
+</script>
+</body>
+</html>

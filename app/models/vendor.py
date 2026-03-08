@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
-from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey
+from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -21,6 +21,7 @@ class Vendor(Base):
     payout_method: Mapped[Optional[str]] = mapped_column(String(20), default="zelle")
     zelle_handle: Mapped[Optional[str]] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+    rent_flagged: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=datetime.utcnow)
 
     balance: Mapped[Optional["VendorBalance"]] = relationship("VendorBalance", back_populates="vendor", uselist=False)

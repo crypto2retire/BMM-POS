@@ -56,6 +56,26 @@
         </div>
     </div>
 
+    <div class="section" id="pay-rent-section">
+        <div class="section-header">
+            <h2 class="section-title">Rent</h2>
+        </div>
+        <div class="card" style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;padding:1.25rem 1.5rem;">
+            <div>
+                <div class="card-title" style="font-size:0.8rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Monthly Rent</div>
+                <div class="card-value" id="rent-amount" style="font-size:1.5rem;font-weight:700;">—</div>
+            </div>
+            <div style="flex:1;min-width:180px;">
+                <div class="card-title" style="font-size:0.8rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Status</div>
+                <div id="rent-status-badge" style="font-size:0.9rem;">—</div>
+            </div>
+            <div>
+                <button class="btn btn-primary" id="pay-rent-btn" onclick="payRent()">Pay Rent with Card</button>
+                <div id="pay-rent-error" style="color:#C06060;font-size:0.85rem;margin-top:6px;display:none;"></div>
+            </div>
+        </div>
+    </div>
+
     <div class="section">
         <div class="section-header">
             <h2 class="section-title">Recent Items</h2>
@@ -219,6 +239,12 @@
             const vendor = await apiGet(`/api/v1/vendors/${payload.sub}`);
             document.getElementById("booth-number").textContent = vendor.booth_number || "N/A";
             document.getElementById("balance").textContent = `$${parseFloat(vendor.current_balance || 0).toFixed(2)}`;
+            const rent = parseFloat(vendor.monthly_rent || 0);
+            document.getElementById("rent-amount").textContent = `$${rent.toFixed(2)}/mo`;
+            if (rent <= 0) {
+                document.getElementById("pay-rent-btn").style.display = 'none';
+                document.getElementById("rent-status-badge").textContent = 'No rent configured';
+            }
 
             const items = await apiGet("/api/v1/items/");
             const active = items.filter(i => i.status === "active");
@@ -232,6 +258,37 @@
     }
 
     window.addEventListener('resize', () => applyLayout(cachedItems));
+
+    async function checkRentReturn() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('rent_paid') !== 'success') return;
+        history.replaceState({}, '', '/vendor/dashboard.html');
+        try {
+            await apiPost('/api/v1/vendor/rent-confirmed', {});
+            showAlert('alert-container', 'Rent payment confirmed. Thank you!', 'success');
+        } catch (err) {
+            showAlert('alert-container', 'Payment received. Contact the office if you need confirmation.', 'warning');
+        }
+    }
+
+    async function payRent() {
+        const btn = document.getElementById('pay-rent-btn');
+        const errEl = document.getElementById('pay-rent-error');
+        btn.disabled = true;
+        btn.textContent = 'Redirecting\u2026';
+        errEl.style.display = 'none';
+        try {
+            const data = await apiPost('/api/v1/vendor/pay-rent', {});
+            window.location.href = data.payment_url;
+        } catch (err) {
+            errEl.textContent = err.message || 'Unable to start payment. Please try again.';
+            errEl.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Pay Rent with Card';
+        }
+    }
+
+    checkRentReturn();
     loadDashboard();
 </script>
 </body>

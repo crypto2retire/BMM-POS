@@ -50,6 +50,7 @@ class VendorResponse(BaseModel):
     payout_method: Optional[str] = None
     zelle_handle: Optional[str] = None
     status: str
+    rent_flagged: bool = False
     created_at: datetime
     current_balance: Optional[Decimal] = None
 
