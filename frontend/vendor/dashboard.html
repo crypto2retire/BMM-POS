@@ -239,7 +239,9 @@
         const token = sessionStorage.getItem('bmm_token');
         if (!token) { window.location.href = '/vendor/login.html'; return; }
         const payload = parseToken();
-        if (!payload || payload.role !== 'vendor') { window.location.href = '/vendor/login.html'; return; }
+        const isVendorRole = payload.role === 'vendor';
+        const hasBoothAccess = isVendorRole || payload.is_vendor;
+        if (!payload || !hasBoothAccess) { window.location.href = '/vendor/login.html'; return; }
         document.getElementById("vendor-name").textContent = payload?.name || "Vendor";
 
         try {

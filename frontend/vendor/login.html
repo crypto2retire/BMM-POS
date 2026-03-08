@@ -33,6 +33,64 @@
             transition: color 0.2s;
         }
         .login-footer a:hover { color: var(--gold); }
+
+        /* ── Choice screen ──────────────────────────────── */
+        .choice-screen { display: none; }
+        .choice-screen.active { display: block; }
+        .choice-greeting {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.3rem;
+            text-align: center;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+        .choice-sub {
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.8rem;
+            color: var(--text-light);
+            text-align: center;
+            margin-bottom: 1.75rem;
+            letter-spacing: 0.04em;
+        }
+        .choice-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .choice-btn {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.1rem 1.25rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            cursor: pointer;
+            transition: border-color 0.25s, box-shadow 0.25s;
+            text-decoration: none;
+        }
+        .choice-btn:hover {
+            border-color: var(--warm-border);
+            box-shadow: var(--shadow-warm);
+            color: var(--text);
+        }
+        .choice-icon {
+            font-size: 1.6rem;
+            flex-shrink: 0;
+            width: 2.2rem;
+            text-align: center;
+        }
+        .choice-label {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        .choice-desc {
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 2px;
+        }
     </style>
 </head>
 <body>
@@ -44,6 +102,8 @@
         </div>
         <div class="login-subtitle">Handcrafted &middot; Vintage &middot; Antique</div>
         <div id="alert-container"></div>
+
+        <!-- Login form -->
         <form id="login-form">
             <div class="form-group">
                 <label class="form-label" for="email">Email Address</label>
@@ -59,6 +119,29 @@
             </div>
             <button class="btn btn-primary btn-lg btn-full" type="submit" id="login-btn">Sign In</button>
         </form>
+
+        <!-- Choice screen (shown when admin/cashier also has a booth) -->
+        <div class="choice-screen" id="choice-screen">
+            <div class="choice-greeting" id="choice-greeting">Welcome back</div>
+            <div class="choice-sub">Where would you like to go?</div>
+            <div class="choice-buttons">
+                <a href="#" class="choice-btn" id="choice-admin">
+                    <span class="choice-icon">&#128202;</span>
+                    <div>
+                        <div class="choice-label" id="choice-admin-label">Admin Dashboard</div>
+                        <div class="choice-desc">Manage vendors, reports, and settings</div>
+                    </div>
+                </a>
+                <a href="/vendor/dashboard.html" class="choice-btn" id="choice-booth">
+                    <span class="choice-icon">&#127991;&#65039;</span>
+                    <div>
+                        <div class="choice-label">My Booth</div>
+                        <div class="choice-desc">View your items, sales, and balance</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
         <div class="login-footer">
             <a href="/shop/index.html">Browse Our Shop</a>
         </div>
@@ -87,13 +170,35 @@
             const token = data.access_token;
             sessionStorage.setItem("bmm_token", token);
             const payload = JSON.parse(atob(token.split(".")[1]));
-            const role = payload.role;
-            if (role === "admin") {
-                window.location.href = "/admin/index.html";
-            } else if (role === "cashier") {
-                window.location.href = "/pos/index.html";
+
+            if (data.redirect === "choose") {
+                // Show choice screen
+                document.getElementById("login-form").style.display = "none";
+                document.getElementById("choice-screen").classList.add("active");
+                document.getElementById("choice-greeting").textContent = `Welcome back, ${payload.name || 'there'}`;
+
+                // Set admin link based on role
+                const adminLink = document.getElementById("choice-admin");
+                const adminLabel = document.getElementById("choice-admin-label");
+                if (payload.role === "admin") {
+                    adminLink.href = "/admin/index.html";
+                    adminLabel.textContent = "Admin Dashboard";
+                } else {
+                    adminLink.href = "/pos/index.html";
+                    adminLabel.textContent = "POS Terminal";
+                    document.querySelector("#choice-admin .choice-desc").textContent = "Ring up sales at the register";
+                }
+            } else if (data.redirect) {
+                window.location.href = data.redirect;
             } else {
-                window.location.href = "/vendor/dashboard.html";
+                // Fallback to role-based redirect
+                if (payload.role === "admin") {
+                    window.location.href = "/admin/index.html";
+                } else if (payload.role === "cashier") {
+                    window.location.href = "/pos/index.html";
+                } else {
+                    window.location.href = "/vendor/dashboard.html";
+                }
             }
         } catch (err) {
             showAlert("alert-container", err.message, "error");

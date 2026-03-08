@@ -21,6 +21,7 @@ class Vendor(Base):
     payout_method: Mapped[Optional[str]] = mapped_column(String(20), default="zelle")
     zelle_handle: Mapped[Optional[str]] = mapped_column(String(255))
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+    is_vendor: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     rent_flagged: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("false"))
     notes: Mapped[Optional[str]] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=datetime.utcnow)

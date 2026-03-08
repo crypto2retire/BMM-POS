@@ -339,22 +339,32 @@
                         <input class="form-control" type="text" id="e-phone">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Booth Number</label>
-                        <input class="form-control" type="text" id="e-booth">
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Monthly Rent</label>
-                        <input class="form-control" type="number" id="e-rent" step="0.01" min="0">
-                    </div>
-                    <div class="form-group">
                         <label class="form-label">Role</label>
-                        <select class="form-control" id="e-role">
+                        <select class="form-control" id="e-role" onchange="toggleBoothFields()">
                             <option value="vendor">Vendor</option>
                             <option value="cashier">Cashier</option>
                             <option value="admin">Admin</option>
                         </select>
+                    </div>
+                </div>
+                <div class="form-row" id="e-vendor-flag-row">
+                    <div class="form-group form-full">
+                        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem;color:var(--text);">
+                            <input type="checkbox" id="e-is-vendor" onchange="toggleBoothFields()">
+                            This person also has a vendor booth
+                        </label>
+                    </div>
+                </div>
+                <div id="e-booth-fields">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Booth Number</label>
+                            <input class="form-control" type="text" id="e-booth">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Monthly Rent</label>
+                            <input class="form-control" type="number" id="e-rent" step="0.01" min="0">
+                        </div>
                     </div>
                 </div>
                 <div class="form-row">
@@ -549,6 +559,24 @@
         return `<span class="role-badge ${cls}">${r}</span>`;
     }
 
+    function toggleBoothFields() {
+        const role = document.getElementById('e-role').value;
+        const flagRow = document.getElementById('e-vendor-flag-row');
+        const boothFields = document.getElementById('e-booth-fields');
+        const checkbox = document.getElementById('e-is-vendor');
+
+        if (role === 'vendor') {
+            // Pure vendors always have a booth — hide the checkbox, show booth fields
+            flagRow.style.display = 'none';
+            boothFields.style.display = 'block';
+            checkbox.checked = false;
+        } else {
+            // Admin/cashier — show checkbox, toggle booth fields based on it
+            flagRow.style.display = '';
+            boothFields.style.display = checkbox.checked ? 'block' : 'none';
+        }
+    }
+
     /* ── Grid view ───────────────────────────────────────── */
 
     function filterTable() {
@@ -675,6 +703,7 @@
         document.getElementById('e-booth').value = v.booth_number || '';
         document.getElementById('e-rent').value = v.monthly_rent || 0;
         document.getElementById('e-role').value = v.role || 'vendor';
+        document.getElementById('e-is-vendor').checked = !!v.is_vendor;
         document.getElementById('e-status').value = v.status || 'active';
         document.getElementById('e-payout').value = v.payout_method || 'zelle';
         document.getElementById('e-zelle').value = v.zelle_handle || '';
@@ -689,6 +718,8 @@
             statusBtn.textContent = 'Activate';
             statusBtn.className = 'btn btn-outline btn-sm';
         }
+
+        toggleBoothFields();
 
         document.getElementById('view-grid').classList.add('hidden');
         document.getElementById('view-detail').classList.add('active');
@@ -710,13 +741,18 @@
             return;
         }
 
+        const role = document.getElementById('e-role').value;
+        const isVendorChecked = document.getElementById('e-is-vendor').checked;
+        const isVendor = role === 'vendor' ? true : isVendorChecked;
+
         const body = {
             name,
             email,
             phone: document.getElementById('e-phone').value || null,
             booth_number: document.getElementById('e-booth').value || null,
             monthly_rent: parseFloat(document.getElementById('e-rent').value) || 0,
-            role: document.getElementById('e-role').value,
+            role,
+            is_vendor: isVendor,
             status: document.getElementById('e-status').value,
             payout_method: document.getElementById('e-payout').value,
             zelle_handle: document.getElementById('e-zelle').value || null,

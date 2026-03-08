@@ -24,6 +24,7 @@ def vendor_to_response(vendor: Vendor) -> VendorResponse:
         monthly_rent=vendor.monthly_rent,
         rent_due_day=vendor.rent_due_day,
         role=vendor.role,
+        is_vendor=vendor.is_vendor,
         payout_method=vendor.payout_method,
         zelle_handle=vendor.zelle_handle,
         status=vendor.status,
@@ -56,6 +57,7 @@ async def create_vendor(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    is_vendor = data.is_vendor or data.role == "vendor"
     vendor = Vendor(
         name=data.name,
         email=data.email,
@@ -65,6 +67,7 @@ async def create_vendor(
         monthly_rent=data.monthly_rent,
         rent_due_day=data.rent_due_day,
         role=data.role,
+        is_vendor=is_vendor,
         payout_method=data.payout_method,
         zelle_handle=data.zelle_handle,
     )

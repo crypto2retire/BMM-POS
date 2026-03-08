@@ -12,6 +12,7 @@ class VendorCreate(BaseModel):
     booth_number: Optional[str] = None
     monthly_rent: Decimal = Decimal("0")
     role: str = "vendor"
+    is_vendor: bool = False
     payout_method: str = "zelle"
     zelle_handle: Optional[str] = None
     rent_due_day: int = 27
@@ -32,6 +33,7 @@ class VendorUpdate(BaseModel):
     monthly_rent: Optional[Decimal] = None
     rent_due_day: Optional[int] = None
     role: Optional[str] = None
+    is_vendor: Optional[bool] = None
     payout_method: Optional[str] = None
     zelle_handle: Optional[str] = None
     status: Optional[str] = None
@@ -47,6 +49,7 @@ class VendorResponse(BaseModel):
     monthly_rent: Decimal
     rent_due_day: int
     role: str
+    is_vendor: bool = False
     payout_method: Optional[str] = None
     zelle_handle: Optional[str] = None
     status: str
@@ -61,3 +64,5 @@ class VendorResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+    redirect: Optional[str] = None
+    options: Optional[list] = None

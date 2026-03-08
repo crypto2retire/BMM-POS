@@ -88,8 +88,27 @@ async def login(
     if vendor.status != "active":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is suspended")
 
-    token = create_access_token({"sub": str(vendor.id), "role": vendor.role, "name": vendor.name})
-    return Token(access_token=token, token_type="bearer")
+    token = create_access_token({
+        "sub": str(vendor.id),
+        "role": vendor.role,
+        "name": vendor.name,
+        "is_vendor": vendor.is_vendor,
+    })
+
+    if vendor.role == "vendor":
+        redirect = "/vendor/dashboard.html"
+        options = None
+    elif vendor.role in ("admin", "cashier") and vendor.is_vendor:
+        redirect = "choose"
+        options = ["dashboard", "booth"]
+    elif vendor.role == "admin":
+        redirect = "/admin/index.html"
+        options = None
+    else:
+        redirect = "/pos/index.html"
+        options = None
+
+    return Token(access_token=token, token_type="bearer", redirect=redirect, options=options)
 
 
 @router.post("/logout")
