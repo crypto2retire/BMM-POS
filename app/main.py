@@ -8,13 +8,35 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from app.database import AsyncSessionLocal
+from app.database import AsyncSessionLocal, engine, Base
 from app.routers import auth, vendors, items, sales, pos, assistant, storefront, rent, admin
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Test DB connection on startup so any error surfaces immediately in logs
+    # Ensure all models are registered with Base.metadata before create_all
+    import app.models  # noqa: F401
+
+    # Create any missing tables (safe to run on every startup — skips existing tables)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print("BMM-POS: database schema OK", file=sys.stderr, flush=True)
+    except Exception as e:
+        print(f"BMM-POS: schema create_all FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
+    # Add columns that create_all won't add to existing tables
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(text(
+                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
+                "rent_flagged BOOLEAN NOT NULL DEFAULT false"
+            ))
+            await session.commit()
+    except Exception as e:
+        print(f"BMM-POS: column migration FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
+    # Verify connectivity
     try:
         async with AsyncSessionLocal() as session:
             await session.execute(text("SELECT 1"))
