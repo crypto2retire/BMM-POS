@@ -30,6 +30,7 @@ def vendor_to_response(vendor: Vendor) -> VendorResponse:
         rent_flagged=vendor.rent_flagged,
         created_at=vendor.created_at,
         current_balance=balance,
+        notes=vendor.notes,
     )
 
 
@@ -118,10 +119,7 @@ async def update_vendor(
     for field, value in update_data.items():
         if current_user.role != "admin" and field in restricted_fields:
             continue
-        if field == "password":
-            vendor.password_hash = hash_password(value)
-        else:
-            setattr(vendor, field, value)
+        setattr(vendor, field, value)
 
     await db.commit()
     await db.refresh(vendor)
@@ -145,3 +143,24 @@ async def delete_vendor(
         raise HTTPException(status_code=404, detail="Vendor not found")
     vendor.status = "suspended"
     await db.commit()
+
+
+@router.post("/{vendor_id}/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(
+    vendor_id: int,
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    _: Vendor = Depends(require_admin),
+):
+    new_password = data.get("new_password", "")
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    vendor.password_hash = hash_password(new_password)
+    await db.commit()
+    return {"success": True, "message": f"Password reset for {vendor.name}"}

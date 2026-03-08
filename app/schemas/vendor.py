@@ -27,7 +27,6 @@ class VendorCreate(BaseModel):
 class VendorUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
-    password: Optional[str] = None
     phone: Optional[str] = None
     booth_number: Optional[str] = None
     monthly_rent: Optional[Decimal] = None
@@ -36,6 +35,7 @@ class VendorUpdate(BaseModel):
     payout_method: Optional[str] = None
     zelle_handle: Optional[str] = None
     status: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class VendorResponse(BaseModel):
@@ -53,6 +53,7 @@ class VendorResponse(BaseModel):
     rent_flagged: bool = False
     created_at: datetime
     current_balance: Optional[Decimal] = None
+    notes: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
