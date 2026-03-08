@@ -1,3 +1,4 @@
+import sys
 import uuid
 
 import httpx
@@ -18,6 +19,25 @@ def _location_id() -> str:
 
 def _application_id() -> str:
     return settings.square_application_id or ""
+
+
+def _parse_square_error(body: str) -> str:
+    try:
+        import json
+        data = json.loads(body)
+        errors = data.get("errors", [])
+        if errors:
+            code = errors[0].get("code", "")
+            detail = errors[0].get("detail", "")
+            if code == "INVALID_VALUE" and "location" in detail.lower():
+                return "Square location ID is misconfigured. Please contact the store."
+            if code == "UNAUTHORIZED":
+                return "Square access token is invalid. Please contact the store."
+            if detail:
+                return f"Payment service error: {detail}"
+    except Exception:
+        pass
+    return "Payment service returned an unexpected error. Please contact the store."
 
 
 async def create_payment_link(name: str, price_cents: int, redirect_url: str) -> dict:
@@ -48,8 +68,9 @@ async def create_payment_link(name: str, price_cents: int, redirect_url: str) ->
         )
 
     if resp.status_code != 200:
-        body = resp.text
-        raise RuntimeError(f"Square API error {resp.status_code}: {body}")
+        raw = resp.text
+        print(f"BMM-POS Square API error {resp.status_code}: {raw}", file=sys.stderr, flush=True)
+        raise RuntimeError(_parse_square_error(raw))
 
     data = resp.json()
     link = data["payment_link"]
