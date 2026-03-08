@@ -1,6 +1,7 @@
 import json
 import os
 import uuid
+from datetime import date
 from typing import Optional
 
 import httpx
@@ -33,6 +34,7 @@ CAPABILITIES:
 - Archive items that are sold or no longer available (use archive_item tool)
 - List and search inventory (use list_items tool)
 - Look up item details (use get_item tool)
+- Apply a sale to ALL items at once (use apply_sale_to_all_items tool) — useful for storewide or weekend sales
 - Write product descriptions and suggest categories
 - Analyze photos to suggest item details
 
@@ -168,6 +170,35 @@ TOOLS = [
                     "item_id": {"type": "integer", "description": "Item ID"},
                     "name": {"type": "string", "description": "Item name to search for"},
                 },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "apply_sale_to_all_items",
+            "description": "Apply a sale price to all active items in the vendor's inventory at once. Use when a vendor wants to put everything on sale.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "discount_type": {
+                        "type": "string",
+                        "description": "Type of discount: 'percent' for percentage off, 'fixed' for fixed dollar amount off, 'set_price' to set a specific sale price for all items",
+                    },
+                    "discount_value": {
+                        "type": "number",
+                        "description": "The discount amount. If percent: 0-100. If fixed: dollar amount off. If set_price: the new price for all items.",
+                    },
+                    "sale_start": {
+                        "type": "string",
+                        "description": "Sale start date in YYYY-MM-DD format",
+                    },
+                    "sale_end": {
+                        "type": "string",
+                        "description": "Sale end date in YYYY-MM-DD format",
+                    },
+                },
+                "required": ["discount_type", "discount_value", "sale_start", "sale_end"],
             },
         },
     },
@@ -351,6 +382,64 @@ async def _execute_tool(
             f"  Description: {item.description or 'None'}"
         )
         return result, None, item.id
+
+    if tool_name == "apply_sale_to_all_items":
+        if not is_vendor:
+            return "ERROR: apply_sale_to_all_items can only be used by vendors acting on their own inventory.", None, None
+
+        discount_type = tool_args.get("discount_type")
+        discount_value = float(tool_args.get("discount_value", 0))
+        sale_start_str = tool_args.get("sale_start")
+        sale_end_str = tool_args.get("sale_end")
+
+        try:
+            sale_start_date = date.fromisoformat(sale_start_str)
+            sale_end_date = date.fromisoformat(sale_end_str)
+        except (ValueError, TypeError):
+            return "ERROR: Invalid date format. Use YYYY-MM-DD.", None, None
+
+        if sale_end_date < sale_start_date:
+            return "ERROR: Sale end date must be on or after the start date.", None, None
+
+        rows = await db.execute(
+            select(Item).where(
+                Item.vendor_id == vendor.id,
+                Item.status == "active",
+            )
+        )
+        items = rows.scalars().all()
+
+        if not items:
+            return "You don't have any active items to put on sale.", None, None
+
+        updated = 0
+        skipped = 0
+        for item in items:
+            if discount_type == "percent":
+                sale_price = round(float(item.price) * (1 - discount_value / 100), 2)
+            elif discount_type == "fixed":
+                sale_price = round(float(item.price) - discount_value, 2)
+            elif discount_type == "set_price":
+                sale_price = round(discount_value, 2)
+            else:
+                skipped += 1
+                continue
+
+            if sale_price <= 0:
+                skipped += 1
+                continue
+
+            item.sale_price = sale_price
+            item.sale_start = sale_start_date
+            item.sale_end = sale_end_date
+            updated += 1
+
+        await db.commit()
+
+        msg = f"SUCCESS: Applied sale to {updated} item(s) from {sale_start_str} to {sale_end_str}."
+        if skipped:
+            msg += f" {skipped} item(s) skipped (price would be $0 or less)."
+        return msg, "items_on_sale", None
 
     return f"ERROR: Unknown tool '{tool_name}'.", None, None
 

@@ -351,6 +351,9 @@
                             lastItemId = null;
                             showActionBanner('Item archived \u2713');
                             tryRefreshItems();
+                        } else if (data.action_taken === 'items_on_sale') {
+                            showActionBanner('Sale applied to all items \u2713');
+                            tryRefreshItems();
                         }
                     }
                 }
