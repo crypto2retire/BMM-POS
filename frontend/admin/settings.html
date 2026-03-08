@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Store Settings — BMM-POS</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+    <style>
+        .page-subtitle {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-style: italic;
+            font-size: 0.95rem;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-top: 0.25rem;
+            letter-spacing: 0.01em;
+        }
+
+        .settings-section { margin-bottom: 2rem; }
+
+        .section-heading {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-style: italic;
+            font-size: 1.25rem;
+            color: var(--text);
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            font-size: 0.68rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 400;
+        }
+
+        .form-group input {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.6rem 0.75rem;
+            font-size: 0.9rem;
+            font-family: 'Roboto', sans-serif;
+            border-radius: 0;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus {
+            border-color: var(--gold);
+        }
+
+        .form-group .helper-text {
+            font-size: 0.72rem;
+            color: var(--text-light);
+            font-style: italic;
+        }
+
+        .card {
+            padding: 1.5rem;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 1.25rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+
+        @media (max-width: 767px) {
+            .main-content { padding-bottom: 70px; }
+            .settings-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <a href="/admin/index.html" class="navbar-brand">
+        <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
+        <span class="store-name">Admin</span>
+    </a>
+    <div class="navbar-user">
+        <span id="user-name">Administrator</span>
+        <nav class="navbar-nav">
+            <a href="/admin/index.html">Dashboard</a>
+            <a href="/admin/vendors.html">Vendors</a>
+            <a href="/admin/rent.html">Rent</a>
+            <a href="/vendor/items.html">Items</a>
+            <a href="/admin/customers.html">Vendor Directory</a>
+            <a href="/admin/settings.html" class="active">Settings</a>
+            <a href="/pos/index.html">POS Terminal</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
+        </nav>
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
+    </div>
+</nav>
+
+<div class="mobile-nav-dropdown" id="mobile-nav">
+    <a href="/admin/index.html">Dashboard</a>
+    <a href="/admin/vendors.html">Vendors</a>
+    <a href="/admin/rent.html">Rent</a>
+    <a href="/vendor/items.html">Items</a>
+    <a href="/admin/customers.html">Vendor Directory</a>
+    <a href="/admin/settings.html" class="active">Settings</a>
+    <a href="/pos/index.html">POS Terminal</a>
+    <a href="#" onclick="handleLogout()">Logout</a>
+</div>
+
+<div class="main-content">
+    <div id="alert-container"></div>
+    <div class="page-header">
+        <h1 class="page-title">Store Settings</h1>
+        <p class="page-subtitle">Configure store information and system preferences</p>
+    </div>
+
+    <!-- Section 1: Store Information -->
+    <div class="settings-section">
+        <h2 class="section-heading">Store Information</h2>
+        <div class="card">
+            <div class="settings-grid">
+                <div class="form-group">
+                    <label for="store_name">Store Name</label>
+                    <input type="text" id="store_name">
+                </div>
+                <div class="form-group">
+                    <label for="store_phone">Phone</label>
+                    <input type="text" id="store_phone">
+                </div>
+                <div class="form-group">
+                    <label for="store_address">Address</label>
+                    <input type="text" id="store_address">
+                </div>
+                <div class="form-group">
+                    <label for="store_email">Email</label>
+                    <input type="email" id="store_email">
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary btn-sm" onclick="saveSection('store-info')">Save Store Info</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 2: Store Hours -->
+    <div class="settings-section">
+        <h2 class="section-heading">Store Hours</h2>
+        <div class="card">
+            <div class="settings-grid">
+                <div class="form-group">
+                    <label for="hours_monday">Monday</label>
+                    <input type="text" id="hours_monday">
+                </div>
+                <div class="form-group">
+                    <label for="hours_tuesday">Tuesday</label>
+                    <input type="text" id="hours_tuesday">
+                </div>
+                <div class="form-group">
+                    <label for="hours_wednesday">Wednesday</label>
+                    <input type="text" id="hours_wednesday">
+                </div>
+                <div class="form-group">
+                    <label for="hours_thursday">Thursday</label>
+                    <input type="text" id="hours_thursday">
+                </div>
+                <div class="form-group">
+                    <label for="hours_friday">Friday</label>
+                    <input type="text" id="hours_friday">
+                </div>
+                <div class="form-group">
+                    <label for="hours_saturday">Saturday</label>
+                    <input type="text" id="hours_saturday">
+                </div>
+                <div class="form-group">
+                    <label for="hours_sunday">Sunday</label>
+                    <input type="text" id="hours_sunday">
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary btn-sm" onclick="saveSection('hours')">Save Hours</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Tax & Fees -->
+    <div class="settings-section">
+        <h2 class="section-heading">Tax &amp; Fees</h2>
+        <div class="card">
+            <div class="settings-grid">
+                <div class="form-group">
+                    <label for="tax_rate">Tax Rate (%)</label>
+                    <input type="number" id="tax_rate" step="0.1" min="0" max="100">
+                    <span class="helper-text">Enter as percentage (e.g. 5.5 for 5.5%)</span>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary btn-sm" onclick="saveSection('tax')">Save Tax Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 4: Billing -->
+    <div class="settings-section">
+        <h2 class="section-heading">Billing</h2>
+        <div class="card">
+            <div class="settings-grid">
+                <div class="form-group">
+                    <label for="rent_due_day">Rent Due Day</label>
+                    <input type="number" id="rent_due_day" min="1" max="28">
+                </div>
+                <div class="form-group">
+                    <label for="payout_day">Payout Day</label>
+                    <input type="number" id="payout_day" min="1" max="28">
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary btn-sm" onclick="saveSection('billing')">Save Billing Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 5: Square Payments -->
+    <div class="settings-section">
+        <h2 class="section-heading">Square Payments</h2>
+        <div class="card">
+            <div class="settings-grid">
+                <div class="form-group">
+                    <label for="square_application_id">Application ID</label>
+                    <input type="text" id="square_application_id">
+                </div>
+                <div class="form-group">
+                    <label for="square_location_id">Location ID</label>
+                    <input type="text" id="square_location_id">
+                </div>
+                <div class="form-group full-width">
+                    <label for="square_access_token">Access Token</label>
+                    <input type="password" id="square_access_token">
+                    <span class="helper-text">Token is masked for security</span>
+                </div>
+            </div>
+            <div class="card-footer">
+                <button class="btn btn-primary btn-sm" onclick="saveSection('square')">Save Square Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mobile bottom nav -->
+<nav class="admin-bottom-nav">
+    <a href="/admin/index.html">
+        <span class="nav-icon">&#127968;</span>Dashboard
+    </a>
+    <a href="/admin/vendors.html">
+        <span class="nav-icon">&#128101;</span>Vendors
+    </a>
+    <a href="/admin/rent.html">
+        <span class="nav-icon">&#128179;</span>Rent
+    </a>
+    <a href="/vendor/items.html">
+        <span class="nav-icon">&#127991;&#65039;</span>Items
+    </a>
+    <a href="/admin/settings.html" class="active">
+        <span class="nav-icon">&#9881;&#65039;</span>Settings
+    </a>
+</nav>
+
+<script src="/static/js/api.js"></script>
+<script>
+    let loadedSettings = {};
+    let originalSquareToken = '';
+
+    function toggleMobileNav() {
+        document.getElementById('mobile-nav').classList.toggle('open');
+    }
+
+    document.addEventListener('click', function(e) {
+        const nav = document.getElementById('mobile-nav');
+        const btn = document.getElementById('hamburger-btn');
+        if (nav.classList.contains('open') && !nav.contains(e.target) && e.target !== btn) {
+            nav.classList.remove('open');
+        }
+    });
+
+    function handleLogout() {
+        clearToken();
+        window.location.href = "/vendor/login.html";
+    }
+
+    function populateFields(data) {
+        loadedSettings = data;
+
+        // Store info
+        document.getElementById('store_name').value = data.store_name || '';
+        document.getElementById('store_address').value = data.store_address || '';
+        document.getElementById('store_phone').value = data.store_phone || '';
+        document.getElementById('store_email').value = data.store_email || '';
+
+        // Hours
+        const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+        days.forEach(d => {
+            const el = document.getElementById('hours_' + d);
+            if (el) el.value = data['hours_' + d] || '';
+        });
+
+        // Tax - convert decimal to percentage for display
+        const taxVal = parseFloat(data.tax_rate || '0');
+        document.getElementById('tax_rate').value = (taxVal * 100).toFixed(1);
+
+        // Billing
+        document.getElementById('rent_due_day').value = data.rent_due_day || '27';
+        document.getElementById('payout_day').value = data.payout_day || '1';
+
+        // Square
+        document.getElementById('square_application_id').value = data.square_application_id || '';
+        document.getElementById('square_location_id').value = data.square_location_id || '';
+        originalSquareToken = data.square_access_token || '';
+        if (originalSquareToken) {
+            document.getElementById('square_access_token').value = '********';
+        }
+    }
+
+    function getSectionPayload(section) {
+        switch (section) {
+            case 'store-info':
+                return {
+                    store_name: document.getElementById('store_name').value,
+                    store_address: document.getElementById('store_address').value,
+                    store_phone: document.getElementById('store_phone').value,
+                    store_email: document.getElementById('store_email').value,
+                };
+            case 'hours':
+                const payload = {};
+                const days = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
+                days.forEach(d => {
+                    payload['hours_' + d] = document.getElementById('hours_' + d).value;
+                });
+                return payload;
+            case 'tax': {
+                const pct = parseFloat(document.getElementById('tax_rate').value) || 0;
+                return { tax_rate: (pct / 100).toString() };
+            }
+            case 'billing':
+                return {
+                    rent_due_day: document.getElementById('rent_due_day').value,
+                    payout_day: document.getElementById('payout_day').value,
+                };
+            case 'square': {
+                const p = {
+                    square_application_id: document.getElementById('square_application_id').value,
+                    square_location_id: document.getElementById('square_location_id').value,
+                };
+                const tokenField = document.getElementById('square_access_token').value;
+                // Only save token if it was actually changed (not the placeholder)
+                if (tokenField !== '********') {
+                    p.square_access_token = tokenField;
+                }
+                return p;
+            }
+            default:
+                return {};
+        }
+    }
+
+    async function saveSection(section) {
+        const payload = getSectionPayload(section);
+        try {
+            await apiPost('/api/v1/admin/settings', payload);
+            showAlert('alert-container', 'Settings saved successfully.', 'success');
+            // Update local cache
+            Object.assign(loadedSettings, payload);
+            if (section === 'square' && payload.square_access_token) {
+                originalSquareToken = payload.square_access_token;
+                document.getElementById('square_access_token').value = '********';
+            }
+        } catch (err) {
+            showAlert('alert-container', 'Failed to save: ' + err.message, 'error');
+        }
+    }
+
+    async function loadSettings() {
+        const token = sessionStorage.getItem('bmm_token');
+        if (!token) { window.location.href = '/vendor/login.html'; return; }
+        const payload = parseToken();
+        if (payload?.role !== 'admin') {
+            window.location.href = '/vendor/dashboard.html';
+            return;
+        }
+        document.getElementById('user-name').textContent = payload.name || 'Admin';
+
+        try {
+            const data = await apiGet('/api/v1/admin/settings');
+            populateFields(data);
+        } catch (err) {
+            showAlert('alert-container', 'Failed to load settings: ' + err.message, 'error');
+        }
+    }
+
+    loadSettings();
+</script>
+<script src="/static/js/assistant-panel.js"></script>
+<script>initAssistantPanel('The user is an admin at Bowenstreet Market.', { buttonBottom: '70px' });</script>
+</body>
+</html>

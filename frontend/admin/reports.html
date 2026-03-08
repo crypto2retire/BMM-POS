@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports — BMM-POS</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+    <style>
+        /* ── Tab navigation ──────────────────────────────────────── */
+        .tab-nav {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .tab-btn {
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            padding: 0.75rem 1.25rem;
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-light);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: color 0.2s, border-color 0.2s;
+        }
+        .tab-btn:hover { color: var(--text); }
+        .tab-btn.active {
+            color: var(--gold);
+            border-bottom-color: var(--gold);
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ── Date range controls ─────────────────────────────────── */
+        .date-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+            flex-wrap: wrap;
+        }
+        .date-preset-btn {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            padding: 0.4rem 0.85rem;
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s, background 0.2s;
+        }
+        .date-preset-btn:hover { border-color: var(--warm-border); color: var(--text); }
+        .date-preset-btn.active {
+            background: var(--gold);
+            color: #1e1e20;
+            border-color: var(--gold);
+        }
+        .date-input {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.4rem 0.6rem;
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.8rem;
+        }
+        .date-input:focus { border-color: var(--gold); outline: none; }
+
+        /* ── Stats cards ─────────────────────────────────────────── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .stats-grid.two-col { grid-template-columns: repeat(2, 1fr); }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+        .stat-card:hover { border-color: var(--warm-border); box-shadow: var(--shadow-warm); }
+        .stat-title {
+            font-size: 0.62rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            font-weight: 400;
+            font-family: 'Roboto', sans-serif;
+        }
+        .stat-value {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 2.2rem;
+            font-weight: 500;
+            color: var(--text);
+            margin-top: 0.4rem;
+            line-height: 1;
+        }
+        .stat-value.gold { color: var(--gold); }
+        .stat-value.green { color: var(--success); }
+
+        /* ── Table styling ───────────────────────────────────────── */
+        .report-table-wrap {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            overflow-x: auto;
+        }
+        .report-table-wrap table { width: 100%; border-collapse: collapse; }
+        .report-table-wrap th {
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.62rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-light);
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            white-space: nowrap;
+        }
+        .report-table-wrap th.sortable { cursor: pointer; user-select: none; }
+        .report-table-wrap th.sortable:hover { color: var(--gold); }
+        .report-table-wrap td {
+            padding: 0.65rem 1rem;
+            font-size: 0.85rem;
+            color: var(--text);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            white-space: nowrap;
+        }
+        .report-table-wrap tbody tr:hover { background: rgba(201,169,110,0.04); }
+
+        /* ── Export button ────────────────────────────────────────── */
+        .export-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 0.75rem;
+        }
+        .btn-export {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            padding: 0.45rem 1rem;
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .btn-export:hover { border-color: var(--gold); color: var(--gold); }
+
+        /* ── Month picker ────────────────────────────────────────── */
+        .month-controls { margin-bottom: 1.25rem; }
+        .month-input {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.4rem 0.6rem;
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.8rem;
+        }
+        .month-input:focus { border-color: var(--gold); outline: none; }
+
+        /* ── Action button in tables ─────────────────────────────── */
+        .btn-pickup {
+            background: var(--gold);
+            border: none;
+            color: #1e1e20;
+            padding: 0.3rem 0.7rem;
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-pickup:hover { opacity: 0.85; }
+        .btn-pickup:disabled { opacity: 0.4; cursor: default; }
+
+        /* ── Page subtitle ───────────────────────────────────────── */
+        .page-subtitle {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-style: italic;
+            font-size: 0.95rem;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-top: 0.25rem;
+            letter-spacing: 0.01em;
+        }
+
+        /* ── Empty / loading states ──────────────────────────────── */
+        .empty-msg {
+            text-align: center;
+            color: var(--text-light);
+            padding: 2rem 1rem;
+            font-size: 0.85rem;
+        }
+
+        /* ── Badge ───────────────────────────────────────────────── */
+        .badge-status {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 500;
+        }
+        .badge-paid { background: rgba(74,222,128,0.15); color: #4ade80; }
+        .badge-outstanding { background: rgba(251,191,36,0.15); color: #fbbf24; }
+        .badge-pending { background: rgba(251,191,36,0.15); color: #fbbf24; }
+        .badge-completed { background: rgba(74,222,128,0.15); color: #4ade80; }
+        .badge-cancelled { background: rgba(248,113,113,0.15); color: #f87171; }
+
+        /* ── Mobile responsive ───────────────────────────────────── */
+        @media (max-width: 767px) {
+            .main-content { padding-bottom: 70px; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .stats-grid.two-col { grid-template-columns: 1fr; }
+            .tab-btn { padding: 0.6rem 0.8rem; font-size: 0.6rem; }
+            .date-controls { gap: 0.4rem; }
+            .date-preset-btn { padding: 0.35rem 0.6rem; font-size: 0.6rem; }
+        }
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .stats-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <a href="/admin/index.html" class="navbar-brand">
+        <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
+        <span class="store-name">Admin</span>
+    </a>
+    <div class="navbar-user">
+        <span id="user-name">Administrator</span>
+        <nav class="navbar-nav">
+            <a href="/admin/index.html">Dashboard</a>
+            <a href="/admin/vendors.html">Vendors</a>
+            <a href="/admin/rent.html">Rent</a>
+            <a href="/vendor/items.html">Items</a>
+            <a href="/admin/customers.html">Vendor Directory</a>
+            <a href="/admin/reports.html" class="active">Reports</a>
+            <a href="/pos/index.html">POS Terminal</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
+        </nav>
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
+    </div>
+</nav>
+
+<div class="mobile-nav-dropdown" id="mobile-nav">
+    <a href="/admin/index.html">Dashboard</a>
+    <a href="/admin/vendors.html">Vendors</a>
+    <a href="/admin/rent.html">Rent</a>
+    <a href="/vendor/items.html">Items</a>
+    <a href="/admin/customers.html">Vendor Directory</a>
+    <a href="/admin/reports.html" class="active">Reports</a>
+    <a href="/pos/index.html">POS Terminal</a>
+    <a href="#" onclick="handleLogout()">Logout</a>
+</div>
+
+<div class="main-content">
+    <div id="alert-container"></div>
+    <div class="page-header">
+        <h1 class="page-title">Reports</h1>
+        <p class="page-subtitle">Sales, vendor performance, rent, payouts &amp; reservations</p>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+        <button class="tab-btn active" onclick="switchTab('sales')">Sales</button>
+        <button class="tab-btn" onclick="switchTab('vendors')">Vendor Breakdown</button>
+        <button class="tab-btn" onclick="switchTab('rent')">Rent</button>
+        <button class="tab-btn" onclick="switchTab('payouts')">Payouts</button>
+        <button class="tab-btn" onclick="switchTab('reservations')">Online Reservations</button>
+    </div>
+
+    <!-- ══ TAB 1: SALES ══════════════════════════════════════════ -->
+    <div class="tab-panel active" id="panel-sales">
+        <div class="date-controls">
+            <button class="date-preset-btn active" onclick="setDatePreset('today','sales')">Today</button>
+            <button class="date-preset-btn" onclick="setDatePreset('week','sales')">This Week</button>
+            <button class="date-preset-btn" onclick="setDatePreset('month','sales')">This Month</button>
+            <button class="date-preset-btn" onclick="setDatePreset('custom','sales')">Custom</button>
+            <input type="date" class="date-input" id="sales-start" style="display:none">
+            <input type="date" class="date-input" id="sales-end" style="display:none">
+            <button class="date-preset-btn" id="sales-apply-btn" style="display:none" onclick="loadSalesReport()">Apply</button>
+        </div>
+
+        <div class="stats-grid" id="sales-stats">
+            <div class="stat-card">
+                <div class="stat-title">Total Transactions</div>
+                <div class="stat-value gold" id="sales-total-tx">&mdash;</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Total Revenue</div>
+                <div class="stat-value green" id="sales-total-rev">&mdash;</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Total Tax</div>
+                <div class="stat-value" id="sales-total-tax">&mdash;</div>
+            </div>
+        </div>
+
+        <div class="export-row">
+            <button class="btn-export" onclick="exportSalesCSV()">Export CSV</button>
+        </div>
+
+        <div class="report-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Cashier</th>
+                        <th>Items</th>
+                        <th>Subtotal</th>
+                        <th>Tax</th>
+                        <th>Total</th>
+                        <th>Payment</th>
+                    </tr>
+                </thead>
+                <tbody id="sales-tbody">
+                    <tr><td colspan="7" class="empty-msg">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ══ TAB 2: VENDOR BREAKDOWN ═══════════════════════════════ -->
+    <div class="tab-panel" id="panel-vendors">
+        <div class="date-controls">
+            <button class="date-preset-btn active" onclick="setDatePreset('today','vendors')">Today</button>
+            <button class="date-preset-btn" onclick="setDatePreset('week','vendors')">This Week</button>
+            <button class="date-preset-btn" onclick="setDatePreset('month','vendors')">This Month</button>
+            <button class="date-preset-btn" onclick="setDatePreset('custom','vendors')">Custom</button>
+            <input type="date" class="date-input" id="vendors-start" style="display:none">
+            <input type="date" class="date-input" id="vendors-end" style="display:none">
+            <button class="date-preset-btn" id="vendors-apply-btn" style="display:none" onclick="loadVendorsReport()">Apply</button>
+        </div>
+
+        <div class="export-row">
+            <button class="btn-export" onclick="exportVendorsCSV()">Export CSV</button>
+        </div>
+
+        <div class="report-table-wrap">
+            <table id="vendors-table">
+                <thead>
+                    <tr>
+                        <th class="sortable" onclick="sortVendorTable(0)">Vendor Name</th>
+                        <th class="sortable" onclick="sortVendorTable(1)">Booth</th>
+                        <th class="sortable" onclick="sortVendorTable(2)">Total Sales ($)</th>
+                        <th class="sortable" onclick="sortVendorTable(3)">Items Sold</th>
+                        <th class="sortable" onclick="sortVendorTable(4)">% of Revenue</th>
+                    </tr>
+                </thead>
+                <tbody id="vendors-tbody">
+                    <tr><td colspan="5" class="empty-msg">Select a date range to load data.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ══ TAB 3: RENT ═══════════════════════════════════════════ -->
+    <div class="tab-panel" id="panel-rent">
+        <div class="month-controls">
+            <input type="month" class="month-input" id="rent-month" onchange="loadRentReport()">
+        </div>
+
+        <div class="stats-grid two-col" id="rent-stats">
+            <div class="stat-card">
+                <div class="stat-title">Total Collected</div>
+                <div class="stat-value green" id="rent-collected">&mdash;</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Total Outstanding</div>
+                <div class="stat-value gold" id="rent-outstanding">&mdash;</div>
+            </div>
+        </div>
+
+        <div class="report-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vendor</th>
+                        <th>Booth</th>
+                        <th>Rent Amount</th>
+                        <th>Date Paid</th>
+                        <th>Method</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="rent-tbody">
+                    <tr><td colspan="6" class="empty-msg">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ══ TAB 4: PAYOUTS ════════════════════════════════════════ -->
+    <div class="tab-panel" id="panel-payouts">
+        <div class="report-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Vendor</th>
+                        <th>Period</th>
+                        <th>Gross Sales</th>
+                        <th>Rent Deducted</th>
+                        <th>Net Payout</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="payouts-tbody">
+                    <tr><td colspan="6" class="empty-msg">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ══ TAB 5: ONLINE RESERVATIONS ════════════════════════════ -->
+    <div class="tab-panel" id="panel-reservations">
+        <div class="report-table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Customer Name</th>
+                        <th>Phone</th>
+                        <th>Item</th>
+                        <th>Amount Paid</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="reservations-tbody">
+                    <tr><td colspan="7" class="empty-msg">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Mobile bottom nav -->
+<nav class="admin-bottom-nav">
+    <a href="/admin/index.html">
+        <span class="nav-icon">&#127968;</span>Dashboard
+    </a>
+    <a href="/admin/vendors.html">
+        <span class="nav-icon">&#128101;</span>Vendors
+    </a>
+    <a href="/admin/rent.html">
+        <span class="nav-icon">&#128179;</span>Rent
+    </a>
+    <a href="/admin/reports.html" class="active">
+        <span class="nav-icon">&#128202;</span>Reports
+    </a>
+    <a href="/pos/index.html">
+        <span class="nav-icon">&#128421;&#65039;</span>POS
+    </a>
+</nav>
+
+<script src="/static/js/api.js"></script>
+<script>
+    /* ── State ────────────────────────────────────────────────── */
+    let salesData = [];
+    let vendorsData = [];
+    let vendorSortCol = -1;
+    let vendorSortAsc = true;
+
+    /* ── Auth guard ──────────────────────────────────────────── */
+    (function() {
+        const token = sessionStorage.getItem('bmm_token');
+        if (!token) { window.location.href = '/vendor/login.html'; return; }
+        const payload = parseToken();
+        if (!payload || (payload.role !== 'admin' && payload.role !== 'cashier')) {
+            window.location.href = '/vendor/dashboard.html';
+            return;
+        }
+        document.getElementById('user-name').textContent = payload.name || 'Admin';
+    })();
+
+    /* ── Helpers ─────────────────────────────────────────────── */
+    function fmt$(n) { return '$' + Number(n).toFixed(2); }
+
+    function fmtDate(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function fmtDateTime(iso) {
+        if (!iso) return '';
+        const d = new Date(iso);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+            + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    }
+
+    function todayStr() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+
+    function mondayStr() {
+        const d = new Date();
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const mon = new Date(d.setDate(diff));
+        return mon.getFullYear() + '-' + String(mon.getMonth()+1).padStart(2,'0') + '-' + String(mon.getDate()).padStart(2,'0');
+    }
+
+    function firstOfMonthStr() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-01';
+    }
+
+    function currentMonthStr() {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+    }
+
+    function statusBadge(s) {
+        const cls = s === 'paid' || s === 'completed' ? 'badge-paid'
+            : s === 'outstanding' || s === 'pending' ? 'badge-outstanding'
+            : s === 'cancelled' ? 'badge-cancelled'
+            : 'badge-pending';
+        return '<span class="badge-status ' + cls + '">' + s + '</span>';
+    }
+
+    /* ── Mobile nav ──────────────────────────────────────────── */
+    function toggleMobileNav() {
+        document.getElementById('mobile-nav').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+        const nav = document.getElementById('mobile-nav');
+        const btn = document.getElementById('hamburger-btn');
+        if (nav.classList.contains('open') && !nav.contains(e.target) && e.target !== btn) {
+            nav.classList.remove('open');
+        }
+    });
+    function handleLogout() {
+        clearToken();
+        window.location.href = '/vendor/login.html';
+    }
+
+    /* ── Tab switching ───────────────────────────────────────── */
+    function switchTab(name) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('panel-' + name).classList.add('active');
+        // Mark the clicked button active
+        const btns = document.querySelectorAll('.tab-btn');
+        const tabNames = ['sales','vendors','rent','payouts','reservations'];
+        const idx = tabNames.indexOf(name);
+        if (idx >= 0) btns[idx].classList.add('active');
+
+        // Load data for the tab
+        if (name === 'sales') loadSalesReport();
+        else if (name === 'vendors') loadVendorsReport();
+        else if (name === 'rent') loadRentReport();
+        else if (name === 'payouts') loadPayoutsReport();
+        else if (name === 'reservations') loadReservationsReport();
+    }
+
+    /* ── Date preset logic ───────────────────────────────────── */
+    function setDatePreset(preset, section) {
+        const startEl = document.getElementById(section + '-start');
+        const endEl = document.getElementById(section + '-end');
+        const applyBtn = document.getElementById(section + '-apply-btn');
+        const btns = startEl.closest('.date-controls').querySelectorAll('.date-preset-btn');
+        btns.forEach(b => b.classList.remove('active'));
+        event.target.classList.add('active');
+
+        if (preset === 'custom') {
+            startEl.style.display = '';
+            endEl.style.display = '';
+            applyBtn.style.display = '';
+            return;
+        }
+
+        startEl.style.display = 'none';
+        endEl.style.display = 'none';
+        applyBtn.style.display = 'none';
+
+        const today = todayStr();
+        if (preset === 'today') {
+            startEl.value = today;
+            endEl.value = today;
+        } else if (preset === 'week') {
+            startEl.value = mondayStr();
+            endEl.value = today;
+        } else if (preset === 'month') {
+            startEl.value = firstOfMonthStr();
+            endEl.value = today;
+        }
+
+        if (section === 'sales') loadSalesReport();
+        else if (section === 'vendors') loadVendorsReport();
+    }
+
+    /* ── SALES REPORT ────────────────────────────────────────── */
+    async function loadSalesReport() {
+        const start = document.getElementById('sales-start').value || todayStr();
+        const end = document.getElementById('sales-end').value || todayStr();
+        try {
+            const data = await apiGet('/api/v1/admin/reports/sales?start=' + start + '&end=' + end);
+            salesData = data.sales || [];
+            const s = data.summary || {};
+            document.getElementById('sales-total-tx').textContent = s.total_transactions || 0;
+            document.getElementById('sales-total-rev').textContent = fmt$(s.total_revenue || 0);
+            document.getElementById('sales-total-tax').textContent = fmt$(s.total_tax || 0);
+
+            const tbody = document.getElementById('sales-tbody');
+            if (salesData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">No sales found for this period.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = salesData.map(s => '<tr>'
+                + '<td>' + fmtDateTime(s.date) + '</td>'
+                + '<td>' + (s.cashier_name || '') + '</td>'
+                + '<td>' + s.item_count + '</td>'
+                + '<td>' + fmt$(s.subtotal) + '</td>'
+                + '<td>' + fmt$(s.tax_amount) + '</td>'
+                + '<td><strong>' + fmt$(s.total) + '</strong></td>'
+                + '<td>' + s.payment_method + '</td>'
+                + '</tr>').join('');
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+        }
+    }
+
+    function exportSalesCSV() {
+        if (!salesData.length) return;
+        let csv = 'Date,Cashier,Items,Subtotal,Tax,Total,Payment Method\n';
+        salesData.forEach(s => {
+            csv += '"' + fmtDateTime(s.date) + '","' + (s.cashier_name||'') + '",' + s.item_count + ','
+                + s.subtotal.toFixed(2) + ',' + s.tax_amount.toFixed(2) + ',' + s.total.toFixed(2) + ','
+                + s.payment_method + '\n';
+        });
+        downloadCSV(csv, 'sales-report.csv');
+    }
+
+    /* ── VENDOR BREAKDOWN REPORT ─────────────────────────────── */
+    async function loadVendorsReport() {
+        const start = document.getElementById('vendors-start').value || todayStr();
+        const end = document.getElementById('vendors-end').value || todayStr();
+        try {
+            const data = await apiGet('/api/v1/admin/reports/vendors?start=' + start + '&end=' + end);
+            vendorsData = data.vendors || [];
+            renderVendorsTable();
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+        }
+    }
+
+    function renderVendorsTable() {
+        const tbody = document.getElementById('vendors-tbody');
+        if (vendorsData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">No vendor sales found for this period.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = vendorsData.map(v => '<tr>'
+            + '<td><strong>' + v.vendor_name + '</strong></td>'
+            + '<td>' + (v.booth_number || '') + '</td>'
+            + '<td>' + fmt$(v.total_sales) + '</td>'
+            + '<td>' + v.items_sold + '</td>'
+            + '<td>' + v.revenue_pct.toFixed(1) + '%</td>'
+            + '</tr>').join('');
+    }
+
+    function sortVendorTable(colIdx) {
+        if (vendorSortCol === colIdx) {
+            vendorSortAsc = !vendorSortAsc;
+        } else {
+            vendorSortCol = colIdx;
+            vendorSortAsc = true;
+        }
+        const keys = ['vendor_name','booth_number','total_sales','items_sold','revenue_pct'];
+        const key = keys[colIdx];
+        vendorsData.sort((a, b) => {
+            let va = a[key], vb = b[key];
+            if (typeof va === 'string') {
+                va = va.toLowerCase(); vb = (vb||'').toLowerCase();
+                return vendorSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+            }
+            return vendorSortAsc ? va - vb : vb - va;
+        });
+        renderVendorsTable();
+    }
+
+    function exportVendorsCSV() {
+        if (!vendorsData.length) return;
+        let csv = 'Vendor Name,Booth,Total Sales,Items Sold,% of Revenue\n';
+        vendorsData.forEach(v => {
+            csv += '"' + v.vendor_name + '","' + (v.booth_number||'') + '",'
+                + v.total_sales.toFixed(2) + ',' + v.items_sold + ',' + v.revenue_pct.toFixed(1) + '\n';
+        });
+        downloadCSV(csv, 'vendor-breakdown.csv');
+    }
+
+    /* ── RENT REPORT ─────────────────────────────────────────── */
+    async function loadRentReport() {
+        const month = document.getElementById('rent-month').value || currentMonthStr();
+        try {
+            const data = await apiGet('/api/v1/admin/reports/rent?month=' + month);
+            const s = data.summary || {};
+            document.getElementById('rent-collected').textContent = fmt$(s.total_collected || 0);
+            document.getElementById('rent-outstanding').textContent = fmt$(s.total_outstanding || 0);
+
+            const payments = data.payments || [];
+            const tbody = document.getElementById('rent-tbody');
+            if (payments.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">No rent data for this month.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = payments.map(p => '<tr>'
+                + '<td><strong>' + p.vendor_name + '</strong></td>'
+                + '<td>' + (p.booth_number || '') + '</td>'
+                + '<td>' + fmt$(p.rent_amount) + '</td>'
+                + '<td>' + (p.date_paid ? fmtDate(p.date_paid) : '') + '</td>'
+                + '<td>' + (p.method || '') + '</td>'
+                + '<td>' + statusBadge(p.status) + '</td>'
+                + '</tr>').join('');
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+        }
+    }
+
+    /* ── PAYOUTS REPORT ──────────────────────────────────────── */
+    async function loadPayoutsReport() {
+        try {
+            const data = await apiGet('/api/v1/admin/reports/payouts');
+            const payouts = data.payouts || [];
+            const tbody = document.getElementById('payouts-tbody');
+            if (payouts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">No payouts found.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = payouts.map(p => '<tr>'
+                + '<td><strong>' + p.vendor_name + '</strong></td>'
+                + '<td>' + (p.period_month || '') + '</td>'
+                + '<td>' + fmt$(p.gross_sales) + '</td>'
+                + '<td>' + fmt$(p.rent_deducted) + '</td>'
+                + '<td><strong>' + fmt$(p.net_payout) + '</strong></td>'
+                + '<td>' + statusBadge(p.status) + '</td>'
+                + '</tr>').join('');
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+        }
+    }
+
+    /* ── RESERVATIONS REPORT ─────────────────────────────────── */
+    async function loadReservationsReport() {
+        try {
+            const data = await apiGet('/api/v1/admin/reports/reservations');
+            const reservations = data.reservations || [];
+            const tbody = document.getElementById('reservations-tbody');
+            if (reservations.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">No reservations found.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = reservations.map(r => '<tr>'
+                + '<td><strong>' + (r.customer_name || '') + '</strong></td>'
+                + '<td>' + (r.customer_phone || '') + '</td>'
+                + '<td>' + (r.item_name || '') + '</td>'
+                + '<td>' + fmt$(r.amount_paid) + '</td>'
+                + '<td>' + fmtDate(r.date) + '</td>'
+                + '<td>' + statusBadge(r.status) + '</td>'
+                + '<td>' + (r.status !== 'completed'
+                    ? '<button class="btn-pickup" onclick="markPickedUp(' + r.id + ', this)">Mark Picked Up</button>'
+                    : '') + '</td>'
+                + '</tr>').join('');
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+        }
+    }
+
+    async function markPickedUp(id, btn) {
+        btn.disabled = true;
+        btn.textContent = 'Updating...';
+        try {
+            await apiPost('/api/v1/admin/reports/reservations/' + id + '/pickup', {});
+            showAlert('alert-container', 'Reservation marked as picked up.', 'success');
+            loadReservationsReport();
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Mark Picked Up';
+        }
+    }
+
+    /* ── CSV download helper ─────────────────────────────────── */
+    function downloadCSV(csvString, filename) {
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+
+    /* ── Init ────────────────────────────────────────────────── */
+    document.getElementById('sales-start').value = todayStr();
+    document.getElementById('sales-end').value = todayStr();
+    document.getElementById('vendors-start').value = todayStr();
+    document.getElementById('vendors-end').value = todayStr();
+    document.getElementById('rent-month').value = currentMonthStr();
+    loadSalesReport();
+</script>
+<script src="/static/js/assistant-panel.js"></script>
+<script>initAssistantPanel('The user is viewing reports at Bowenstreet Market.', { buttonBottom: '70px' });</script>
+</body>
+</html>
