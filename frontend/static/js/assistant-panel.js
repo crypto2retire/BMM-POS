@@ -303,10 +303,13 @@
 
                 removeTyping();
 
-                if (res.status === 503) {
-                    addMessage('Assistant is not available right now.', 'error');
-                } else if (!res.ok) {
-                    addMessage('Assistant is not available right now.', 'error');
+                if (!res.ok) {
+                    try {
+                        var errData = await res.json();
+                        addMessage(errData.detail || 'Assistant error. Please try again.', 'error');
+                    } catch (_) {
+                        addMessage('Assistant error (' + res.status + '). Please try again.', 'error');
+                    }
                 } else {
                     var data = await res.json();
                     addMessage(data.reply, 'assistant');
@@ -326,7 +329,7 @@
                 }
             } catch (e) {
                 removeTyping();
-                addMessage('Assistant is not available right now.', 'error');
+                addMessage('Connection error. Please check your network and try again.', 'error');
             }
 
             isBusy = false;
