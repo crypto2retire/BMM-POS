@@ -7,6 +7,17 @@
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
     <style>
+        /* ── Page subtitle ─────────────────────────────────────────── */
+        .page-subtitle {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-style: italic;
+            font-size: 0.95rem;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-top: 0.25rem;
+            letter-spacing: 0.01em;
+        }
+
         /* ── Mobile vendor cards ─────────────────────────────────────── */
         .vendor-cards { display: none; flex-direction: column; gap: 0.75rem; }
         .vendor-card {
@@ -84,25 +95,28 @@
             <a href="/admin/customers.html">Vendor Directory</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
-        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
     </div>
 </nav>
 
 <div class="mobile-nav-dropdown" id="mobile-nav">
-    <a href="/admin/index.html">🏠 Dashboard</a>
-    <a href="/admin/vendors.html" class="active">👥 Vendors</a>
-    <a href="/vendor/items.html">🏷️ Items</a>
-    <a href="/admin/customers.html">📋 Vendor Directory</a>
-    <a href="/pos/index.html">🖥️ POS Terminal</a>
-    <a href="#" onclick="handleLogout()">🚪 Logout</a>
+    <a href="/admin/index.html">Dashboard</a>
+    <a href="/admin/vendors.html" class="active">Vendors</a>
+    <a href="/vendor/items.html">Items</a>
+    <a href="/admin/customers.html">Vendor Directory</a>
+    <a href="/pos/index.html">POS Terminal</a>
+    <a href="#" onclick="handleLogout()">Logout</a>
 </div>
 
 <div class="main-content">
     <div id="alert-container"></div>
     <div class="page-header">
         <h1 class="page-title">Manage Vendors</h1>
+        <p class="page-subtitle">Add, edit, and manage all vendor accounts</p>
         <button class="btn btn-primary" onclick="openModal()">+ Add Vendor</button>
     </div>
+
+    <div class="ornament">&loz;</div>
 
     <div class="card">
         <div class="table-wrapper">
@@ -125,7 +139,7 @@
             </table>
         </div>
         <div class="vendor-cards" id="vendor-cards">
-            <div style="color:#A8A6A1;padding:1rem;text-align:center">Loading vendors…</div>
+            <div style="color:#A8A6A1;padding:1rem;text-align:center">Loading vendors&hellip;</div>
         </div>
     </div>
 </div>
@@ -135,7 +149,7 @@
     <div class="modal">
         <div class="modal-header">
             <h3 class="modal-title" id="modal-title">Add Vendor</h3>
-            <button class="modal-close" onclick="closeModal()">✕</button>
+            <button class="modal-close" onclick="closeModal()">&#10005;</button>
         </div>
         <div class="modal-body">
             <div id="modal-alert"></div>
@@ -213,16 +227,16 @@
 <!-- Mobile bottom nav -->
 <nav class="admin-bottom-nav">
     <a href="/admin/index.html">
-        <span class="nav-icon">🏠</span>Dashboard
+        <span class="nav-icon">&#127968;</span>Dashboard
     </a>
     <a href="/admin/vendors.html" class="active">
-        <span class="nav-icon">👥</span>Vendors
+        <span class="nav-icon">&#128101;</span>Vendors
     </a>
     <a href="/vendor/items.html">
-        <span class="nav-icon">🏷️</span>Items
+        <span class="nav-icon">&#127991;&#65039;</span>Items
     </a>
     <a href="/pos/index.html">
-        <span class="nav-icon">🖥️</span>POS
+        <span class="nav-icon">&#128421;&#65039;</span>POS
     </a>
 </nav>
 

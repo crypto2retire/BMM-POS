@@ -94,6 +94,17 @@
             margin-bottom: 2px;
         }
 
+        /* ── Page subtitle ─────────────────────────────────────────── */
+        .page-subtitle {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-style: italic;
+            font-size: 0.95rem;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-top: 0.25rem;
+            letter-spacing: 0.01em;
+        }
+
         /* ── Mobile responsive ───────────────────────────────────────── */
         @media (max-width: 767px) {
             .main-content { padding-bottom: 70px; }
@@ -128,44 +139,47 @@
             <a href="/pos/index.html">POS Terminal</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
-        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
     </div>
 </nav>
 
 <div class="mobile-nav-dropdown" id="mobile-nav">
-    <a href="/admin/index.html" class="active">🏠 Dashboard</a>
-    <a href="/admin/vendors.html">👥 Vendors</a>
-    <a href="/admin/rent.html">💳 Rent</a>
-    <a href="/vendor/items.html">🏷️ Items</a>
-    <a href="/admin/customers.html">📋 Vendor Directory</a>
-    <a href="/pos/index.html">🖥️ POS Terminal</a>
-    <a href="#" onclick="handleLogout()">🚪 Logout</a>
+    <a href="/admin/index.html" class="active">Dashboard</a>
+    <a href="/admin/vendors.html">Vendors</a>
+    <a href="/admin/rent.html">Rent</a>
+    <a href="/vendor/items.html">Items</a>
+    <a href="/admin/customers.html">Vendor Directory</a>
+    <a href="/pos/index.html">POS Terminal</a>
+    <a href="#" onclick="handleLogout()">Logout</a>
 </div>
 
 <div class="main-content">
     <div id="alert-container"></div>
     <div class="page-header">
         <h1 class="page-title">Admin Dashboard</h1>
+        <p class="page-subtitle">Overview of all vendors and items</p>
     </div>
 
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-title">Total Vendors</div>
-            <div class="stat-value teal" id="total-vendors">—</div>
+            <div class="stat-value teal" id="total-vendors">&mdash;</div>
         </div>
         <div class="stat-card">
             <div class="stat-title">Active Vendors</div>
-            <div class="stat-value green" id="active-vendors">—</div>
+            <div class="stat-value green" id="active-vendors">&mdash;</div>
         </div>
         <div class="stat-card">
             <div class="stat-title">Total Items</div>
-            <div class="stat-value" id="total-items">—</div>
+            <div class="stat-value" id="total-items">&mdash;</div>
         </div>
         <div class="stat-card">
             <div class="stat-title">Active Items</div>
-            <div class="stat-value teal" id="active-items">—</div>
+            <div class="stat-value teal" id="active-items">&mdash;</div>
         </div>
     </div>
+
+    <div class="ornament">&loz;</div>
 
     <div class="section">
         <div class="section-header">
@@ -192,7 +206,7 @@
                 </table>
             </div>
             <div class="vendor-cards" id="vendor-cards">
-                <div style="color:#A8A6A1;padding:1rem;text-align:center">Loading vendors…</div>
+                <div style="color:#A8A6A1;padding:1rem;text-align:center">Loading vendors&hellip;</div>
             </div>
         </div>
     </div>
@@ -201,19 +215,19 @@
 <!-- Mobile bottom nav -->
 <nav class="admin-bottom-nav">
     <a href="/admin/index.html" class="active">
-        <span class="nav-icon">🏠</span>Dashboard
+        <span class="nav-icon">&#127968;</span>Dashboard
     </a>
     <a href="/admin/vendors.html">
-        <span class="nav-icon">👥</span>Vendors
+        <span class="nav-icon">&#128101;</span>Vendors
     </a>
     <a href="/admin/rent.html">
-        <span class="nav-icon">💳</span>Rent
+        <span class="nav-icon">&#128179;</span>Rent
     </a>
     <a href="/vendor/items.html">
-        <span class="nav-icon">🏷️</span>Items
+        <span class="nav-icon">&#127991;&#65039;</span>Items
     </a>
     <a href="/pos/index.html">
-        <span class="nav-icon">🖥️</span>POS
+        <span class="nav-icon">&#128421;&#65039;</span>POS
     </a>
 </nav>
 

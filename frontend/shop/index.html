@@ -13,7 +13,7 @@
   :root {
     --bg:       #38383B;
     --bg-card:  #3a3a3e;
-    --bg-dark:  #232325;
+    --bg-dark:  #1a1a1c;
     --accent:   #A8A6A1;
     --accent-lt:#C5C3BE;
     --text:     #F0EDE8;
@@ -22,8 +22,8 @@
     --border:   #4A4A4D;
     --danger:   #c87070;
     --gold:     #C9A96E;
-    --gold-dim: rgba(201,169,110,0.18);
-    --warm-border: rgba(201,169,110,0.2);
+    --gold-dim: rgba(201,169,110,0.22);
+    --warm-border: rgba(201,169,110,0.22);
   }
 
   html { scroll-behavior: smooth; }
@@ -41,41 +41,55 @@
     font-family: 'Roboto', sans-serif;
     font-weight: 300;
     min-height: 100vh;
-    line-height: 1.6;
+    line-height: 1.7;
   }
 
   /* ── HEADER ── */
   .site-header {
-    background: #252527;
-    background-image: radial-gradient(ellipse at 50% 100%, rgba(201,169,110,0.07) 0%, transparent 65%);
-    border-bottom: 1px solid rgba(201,169,110,0.15);
-    padding: 3rem 1.5rem 2.25rem;
+    background: var(--bg-dark);
+    background-image: radial-gradient(ellipse at 50% 100%, rgba(201,169,110,0.08) 0%, transparent 65%);
+    border-top: 3px solid transparent;
+    border-image: repeating-linear-gradient(
+      90deg,
+      rgba(201,169,110,0.0) 0px,
+      rgba(201,169,110,0.25) 2px,
+      rgba(201,169,110,0.0) 4px
+    ) 3;
+    border-bottom: 1px solid rgba(201,169,110,0.12);
+    padding: 3.5rem 1.5rem 2.5rem;
     text-align: center;
     animation: fadeIn 0.5s ease;
   }
 
   .site-header h1 {
     font-family: 'EB Garamond', serif;
-    font-size: clamp(2.2rem, 5.5vw, 3.8rem);
+    font-size: clamp(2.4rem, 5.5vw, 4rem);
     font-weight: 500;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.04em;
     color: var(--text);
     line-height: 1.05;
     font-style: italic;
+  }
+
+  .header-ornament {
+    color: rgba(201,169,110,0.4);
+    font-size: 0.7rem;
+    letter-spacing: 0.4em;
+    margin: 0.5rem 0 0.3rem;
   }
 
   .tagline {
     font-family: 'Roboto', sans-serif;
     font-size: 0.68rem;
     color: var(--text-dim);
-    letter-spacing: 0.22em;
-    margin-top: 0.6rem;
+    letter-spacing: 0.25em;
+    margin-top: 0.3rem;
     text-transform: uppercase;
     font-weight: 300;
   }
 
   .store-meta {
-    margin-top: 1rem;
+    margin-top: 1.2rem;
     font-size: 0.8rem;
     color: var(--text-dim);
     display: flex;
@@ -88,18 +102,18 @@
 
   /* Decorative rule under header text */
   .header-rule {
-    width: 48px;
+    width: 56px;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(201,169,110,0.5), transparent);
-    margin: 1.1rem auto 0;
+    background: linear-gradient(90deg, transparent, rgba(201,169,110,0.55), transparent);
+    margin: 1.2rem auto 0;
   }
 
   /* ── PICKUP NOTICE ── */
   .pickup-notice {
-    background: rgba(201,169,110,0.05);
+    background: rgba(201,169,110,0.04);
     border-top: none;
-    border-bottom: 1px solid rgba(201,169,110,0.12);
-    padding: 0.6rem 1.5rem;
+    border-bottom: 1px solid rgba(201,169,110,0.10);
+    padding: 0.65rem 1.5rem;
     text-align: center;
     font-size: 0.68rem;
     color: var(--gold);
@@ -111,7 +125,7 @@
   /* ── SEARCH BAR ── */
   .search-wrap {
     max-width: 540px;
-    margin: 2.2rem auto 0;
+    margin: 2.4rem auto 0;
     padding: 0 1.5rem;
   }
 
@@ -122,27 +136,30 @@
     background: #44444A;
     border: 1px solid var(--border);
     border-right: none;
+    border-radius: 0;
     color: var(--text);
     font-family: 'Roboto', sans-serif;
     font-size: 0.9rem;
-    padding: 0.7rem 1rem;
+    font-weight: 300;
+    padding: 0.75rem 1rem;
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.25s;
   }
 
-  .search-wrap input::placeholder { color: var(--text-dim); opacity: 0.65; }
-  .search-wrap input:focus { border-color: rgba(201,169,110,0.4); }
+  .search-wrap input::placeholder { color: var(--text-dim); opacity: 0.6; }
+  .search-wrap input:focus { border-color: var(--gold-dim); box-shadow: inset 0 0 0 1px rgba(201,169,110,0.08); }
 
   .search-wrap button {
     background: var(--accent);
     border: 1px solid var(--accent);
+    border-radius: 0;
     color: #1e1e20;
     font-family: 'Roboto', sans-serif;
     font-size: 0.72rem;
     font-weight: 500;
-    padding: 0.7rem 1.3rem;
+    padding: 0.75rem 1.4rem;
     cursor: pointer;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     transition: background 0.2s;
     white-space: nowrap;
@@ -155,10 +172,11 @@
     display: none;
     background: transparent;
     border: 1px solid var(--border);
+    border-radius: 0;
     color: var(--text-dim);
     font-family: 'Roboto', sans-serif;
     font-size: 0.78rem;
-    padding: 0.7rem 1rem;
+    padding: 0.75rem 1rem;
     cursor: pointer;
     letter-spacing: 0.06em;
     transition: color 0.15s, border-color 0.15s;
@@ -169,7 +187,7 @@
   main {
     max-width: 1300px;
     margin: 0 auto;
-    padding: 2rem 1.5rem 4rem;
+    padding: 2.5rem 1.5rem 4.5rem;
     animation: fadeUp 0.35s ease;
   }
 
@@ -178,19 +196,19 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 1.4rem;
+    margin-bottom: 1.6rem;
     font-size: 0.78rem;
     color: var(--text-dim);
     min-height: 1.5rem;
     font-family: 'Roboto', sans-serif;
-    letter-spacing: 0.03em;
+    letter-spacing: 0.04em;
   }
 
   /* ── GRID ── */
   .item-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1.25rem;
+    gap: 1.4rem;
   }
 
   @media (max-width: 900px) { .item-grid { grid-template-columns: repeat(2, 1fr); } }
@@ -200,37 +218,38 @@
   .item-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
+    border-radius: 0;
     display: flex;
     flex-direction: column;
-    transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+    transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
   }
 
   .item-card:hover {
     border-color: var(--warm-border);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.35), 0 0 0 1px var(--warm-border);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px var(--warm-border);
     transform: translateY(-2px);
   }
 
   .card-body {
-    padding: 1.35rem 1.25rem 0.9rem;
+    padding: 1.5rem 1.3rem 1rem;
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
+    gap: 0.6rem;
   }
 
   .card-name {
     font-family: 'EB Garamond', serif;
-    font-size: 1.25rem;
+    font-size: 1.3rem;
     font-weight: 500;
     color: var(--text);
-    line-height: 1.2;
+    line-height: 1.25;
   }
 
   .card-vendor {
     font-size: 0.72rem;
     color: var(--text-dim);
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
   }
 
@@ -251,7 +270,7 @@
 
   .price-original {
     font-family: 'EB Garamond', serif;
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     color: var(--text);
     font-weight: 400;
   }
@@ -265,7 +284,7 @@
 
   .price-sale {
     font-family: 'EB Garamond', serif;
-    font-size: 1.25rem;
+    font-size: 1.3rem;
     color: var(--gold);
     font-weight: 400;
   }
@@ -274,9 +293,10 @@
     font-size: 0.6rem;
     background: rgba(201,169,110,0.15);
     color: var(--gold);
-    border: 1px solid rgba(201,169,110,0.25);
-    padding: 0.15rem 0.5rem;
-    letter-spacing: 0.08em;
+    border: 1px solid rgba(201,169,110,0.3);
+    border-radius: 0;
+    padding: 0.15rem 0.55rem;
+    letter-spacing: 0.1em;
     font-weight: 500;
     align-self: center;
     font-family: 'Roboto', sans-serif;
@@ -284,9 +304,9 @@
   }
 
   .card-desc {
-    font-size: 0.83rem;
+    font-size: 0.84rem;
     color: var(--text-dim);
-    line-height: 1.6;
+    line-height: 1.65;
     flex: 1;
     overflow: hidden;
     display: -webkit-box;
@@ -294,19 +314,20 @@
     -webkit-box-orient: vertical;
   }
 
-  .card-footer { padding: 0 1.25rem 1.25rem; }
+  .card-footer { padding: 0 1.3rem 1.3rem; }
 
   /* ── BUTTONS ── */
   .btn-reserve {
     width: 100%;
     background: transparent;
-    border: 1px solid rgba(168,166,161,0.4);
+    border: 1px solid rgba(168,166,161,0.35);
+    border-radius: 0;
     color: var(--text-dim);
     font-family: 'Roboto', sans-serif;
     font-size: 0.72rem;
     font-weight: 500;
-    letter-spacing: 0.13em;
-    padding: 0.7rem 1rem;
+    letter-spacing: 0.14em;
+    padding: 0.75rem 1rem;
     cursor: pointer;
     text-transform: uppercase;
     transition: background 0.2s, color 0.2s, border-color 0.2s;
@@ -334,10 +355,10 @@
   .state-msg {
     grid-column: 1 / -1;
     text-align: center;
-    padding: 4rem 2rem;
+    padding: 4.5rem 2rem;
     color: var(--text-dim);
     font-family: 'EB Garamond', serif;
-    font-size: 1.35rem;
+    font-size: 1.4rem;
     font-style: italic;
   }
 
@@ -360,7 +381,7 @@
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.75);
+    background: rgba(0,0,0,0.82);
     z-index: 100;
     align-items: center;
     justify-content: center;
@@ -372,11 +393,12 @@
 
   .modal {
     background: #44444A;
-    border: 1px solid rgba(201,169,110,0.2);
-    box-shadow: 0 24px 50px rgba(0,0,0,0.6);
+    border: 1px solid rgba(201,169,110,0.25);
+    border-radius: 0;
+    box-shadow: 0 28px 60px rgba(0,0,0,0.65);
     width: 100%;
     max-width: 420px;
-    padding: 2.25rem 2rem;
+    padding: 2.5rem 2rem;
     position: relative;
     animation: fadeUp 0.25s ease;
   }
@@ -387,6 +409,7 @@
     right: 1rem;
     background: none;
     border: none;
+    border-radius: 0;
     color: var(--text-dim);
     font-size: 1.2rem;
     cursor: pointer;
@@ -399,7 +422,7 @@
 
   .modal h2 {
     font-family: 'EB Garamond', serif;
-    font-size: 1.6rem;
+    font-size: 1.65rem;
     font-weight: 500;
     margin-bottom: 0.3rem;
     font-style: italic;
@@ -412,7 +435,7 @@
     margin-bottom: 1.75rem;
     font-style: italic;
     padding-bottom: 0.85rem;
-    border-bottom: 1px solid rgba(201,169,110,0.1);
+    border-bottom: 1px solid rgba(201,169,110,0.12);
   }
 
   .modal label {
@@ -433,6 +456,7 @@
     width: 100%;
     background: #3a3a3d;
     border: 1px solid #555558;
+    border-radius: 0;
     color: var(--text);
     font-family: 'Roboto', sans-serif;
     font-size: 0.92rem;
@@ -441,13 +465,13 @@
     transition: border-color 0.2s;
   }
 
-  .modal input:focus { border-color: rgba(201,169,110,0.4); }
+  .modal input:focus { border-color: rgba(201,169,110,0.45); }
 
   .modal-notice {
     margin-top: 1.1rem;
     font-size: 0.75rem;
     color: var(--text-dim);
-    line-height: 1.55;
+    line-height: 1.6;
     font-style: italic;
   }
 
@@ -468,11 +492,12 @@
     flex: 1;
     background: var(--accent);
     border: 1px solid var(--accent);
+    border-radius: 0;
     color: #1e1e20;
     font-family: 'Roboto', sans-serif;
     font-size: 0.72rem;
     font-weight: 500;
-    letter-spacing: 0.13em;
+    letter-spacing: 0.14em;
     padding: 0.75rem 1rem;
     cursor: pointer;
     text-transform: uppercase;
@@ -486,6 +511,7 @@
   .btn-ghost {
     background: transparent;
     border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 0;
     color: var(--text-dim);
     font-family: 'Roboto', sans-serif;
     font-size: 0.72rem;
@@ -511,17 +537,28 @@
   .modal-success p {
     font-size: 0.88rem;
     color: var(--text-dim);
-    line-height: 1.55;
+    line-height: 1.6;
   }
 
   /* ── FOOTER ── */
   footer {
     text-align: center;
-    padding: 1.5rem;
+    padding: 2rem 1.5rem 1.8rem;
     font-size: 0.74rem;
     color: var(--text-dim);
-    border-top: 1px solid rgba(201,169,110,0.1);
-    letter-spacing: 0.04em;
+    letter-spacing: 0.05em;
+    position: relative;
+  }
+
+  footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,169,110,0.3), transparent);
   }
 </style>
 </head>
@@ -529,17 +566,18 @@
 
 <header class="site-header">
   <h1>Bowenstreet Market</h1>
-  <p class="tagline">Handcrafted &nbsp;•&nbsp; Vintage &nbsp;•&nbsp; Antique</p>
+  <div class="header-ornament">&loz;&nbsp;&nbsp;&loz;&nbsp;&nbsp;&loz;</div>
+  <p class="tagline">Handcrafted &nbsp;&middot;&nbsp; Vintage &nbsp;&middot;&nbsp; Antique</p>
   <div class="store-meta">
-    <span>📍 2837 Bowen St, Oshkosh, WI 54901</span>
-    <span>🕐 Tue–Sat 10am–6pm &nbsp;|&nbsp; Sun 11am–4pm</span>
-    <span>📞 (920) 555-0100</span>
+    <span>2837 Bowen St, Oshkosh, WI 54901</span>
+    <span>Tue&ndash;Sat 10am&ndash;6pm &nbsp;|&nbsp; Sun 11am&ndash;4pm</span>
+    <span>(920) 555-0100</span>
   </div>
   <div class="header-rule"></div>
 </header>
 
 <div class="pickup-notice">
-  In-store pickup only &nbsp;·&nbsp; No shipping &nbsp;·&nbsp; All sales are final. No returns or refunds.
+  In-store pickup only &nbsp;&middot;&nbsp; No shipping &nbsp;&middot;&nbsp; All sales are final. No returns or refunds.
 </div>
 
 <div class="search-wrap">
@@ -547,12 +585,12 @@
     <input
       type="search"
       id="search-input"
-      placeholder="Search items…"
+      placeholder="Search items&#8230;"
       autocomplete="off"
       aria-label="Search items"
     >
     <button type="submit">Search</button>
-    <button type="button" class="search-clear" id="search-clear">✕ Clear</button>
+    <button type="button" class="search-clear" id="search-clear">&#10005; Clear</button>
   </form>
 </div>
 
@@ -561,18 +599,18 @@
     <span id="status-text"></span>
   </div>
   <div class="item-grid" id="item-grid">
-    <div class="state-msg"><span class="spinner"></span> Loading items…</div>
+    <div class="state-msg"><span class="spinner"></span> Loading items&#8230;</div>
   </div>
 </main>
 
 <footer>
-  &copy; 2026 Bowenstreet Market &nbsp;·&nbsp; 2837 Bowen St, Oshkosh WI 54901
+  &copy; 2026 Bowenstreet Market &nbsp;&middot;&nbsp; 2837 Bowen St, Oshkosh WI 54901
 </footer>
 
 <!-- Reserve Modal -->
 <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal">
-    <button class="modal-close" id="modal-close" aria-label="Close">✕</button>
+    <button class="modal-close" id="modal-close" aria-label="Close">&#10005;</button>
 
     <div id="modal-form-body">
       <h2 id="modal-title">Reserve for Pickup</h2>
@@ -598,7 +636,7 @@
     </div>
 
     <div class="modal-success" id="modal-success">
-      <span class="check">✓</span>
+      <span class="check">&#10003;</span>
       <p id="modal-success-msg"></p>
     </div>
   </div>

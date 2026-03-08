@@ -7,24 +7,46 @@
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
     <style>
+        /* ── Page subtitle ─────────────────────────────────────────── */
+        .page-subtitle {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-style: italic;
+            font-size: 0.95rem;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-top: 0.25rem;
+            letter-spacing: 0.01em;
+        }
+
         .search-bar { margin-bottom: 1rem; }
+        .search-bar .form-control {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            transition: border-color 0.15s;
+        }
+        .search-bar .form-control:focus {
+            border-color: var(--gold-dim);
+            box-shadow: 0 0 0 2px rgba(201,169,110,0.12);
+        }
         .vendor-row { cursor: pointer; }
-        .vendor-row:hover td { background: rgba(255,255,255,0.06) !important; }
+        .vendor-row:hover td { background: rgba(201,169,110,0.04) !important; }
         .vendor-expand { display:none; background: var(--surface-2); }
         .vendor-expand.open { display:table-row; }
         .expand-inner { padding: 1rem 1.5rem; }
         .expand-tabs { display:flex; gap:0.5rem; margin-bottom:1rem; border-bottom:1px solid var(--border); }
-        .expand-tab { background:none; border:none; color:var(--text-light); padding:0.5rem 1rem; cursor:pointer; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.06em; border-bottom:2px solid transparent; margin-bottom:-1px; }
-        .expand-tab.active { color:var(--text); border-bottom-color:var(--primary); }
+        .expand-tab { background:none; border:none; color:var(--text-light); padding:0.5rem 1rem; cursor:pointer; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.06em; border-bottom:2px solid transparent; margin-bottom:-1px; font-family: 'Roboto', sans-serif; }
+        .expand-tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+        .expand-tab:hover { color: var(--text); }
         .expand-panel { display:none; }
         .expand-panel.active { display:block; }
         .mini-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
         .mini-table th { padding:0.4rem 0.5rem; text-align:left; color:var(--text-light); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; border-bottom:1px solid var(--border); }
         .mini-table td { padding:0.4rem 0.5rem; border-bottom:1px solid rgba(255,255,255,0.05); }
         .mini-table tr:last-child td { border-bottom:none; }
-        .expand-arrow { display:inline-block; transition:transform 0.2s; }
+        .expand-arrow { display:inline-block; transition:transform 0.2s; color: var(--gold-dim); }
         .expand-arrow.open { transform:rotate(90deg); }
-        .balance-tag { font-weight:700; color:var(--success); }
+        .balance-tag { font-weight:700; color:var(--success); font-family: 'EB Garamond', serif; }
     </style>
 </head>
 <body>
@@ -46,8 +68,11 @@
     <div id="alert-container"></div>
     <div class="page-header">
         <h1 class="page-title">Vendor Directory</h1>
+        <p class="page-subtitle">Search and browse all vendor accounts and activity</p>
         <span id="vendor-count" class="badge badge-gray"></span>
     </div>
+
+    <div class="ornament">&loz;</div>
 
     <div class="card search-bar">
         <input class="form-control" type="text" id="search-input"
@@ -191,7 +216,7 @@
             const statusClass = v.status === 'active' ? 'badge-green' : 'badge-red';
             return `
             <tr class="vendor-main-row vendor-row" data-vid="${v.id}" data-search-text="${searchText}" onclick="toggleExpand(${v.id})">
-                <td><span class="expand-arrow" id="arrow-${v.id}">▶</span></td>
+                <td><span class="expand-arrow" id="arrow-${v.id}">&#9654;</span></td>
                 <td><strong>${v.name}</strong></td>
                 <td>${v.email}</td>
                 <td>${v.booth_number || '—'}</td>

@@ -11,7 +11,7 @@
         .label-btn-wrap { position:relative; display:inline-flex; }
         .ldd {
             display:none; position:absolute; top:100%; right:0;
-            background:var(--surface); border:1px solid rgba(201,169,110,0.2);
+            background:var(--surface); border:1px solid rgba(201,169,110,0.15);
             z-index:200; min-width:140px;
             box-shadow:0 8px 20px rgba(0,0,0,0.4);
         }
@@ -22,7 +22,7 @@
             min-height:40px; font-family:'Roboto',sans-serif;
             letter-spacing:0.04em; transition:background 0.12s;
         }
-        .ldd button:hover { background:rgba(201,169,110,0.08); color:var(--gold); }
+        .ldd button:hover { background:rgba(201,169,110,0.06); color:var(--gold); }
         .label-btn-main { border-right:1px solid var(--border) !important; }
         .label-btn-toggle { padding:0.3rem 0.5rem !important; min-width:36px; }
 
@@ -34,7 +34,7 @@
         .item-card-photos { display:flex; gap:4px; padding:0 1rem 1rem; }
         .item-card-photos img {
             width:48px; height:48px; object-fit:cover; cursor:pointer;
-            border:1px solid var(--border); transition:border-color 0.2s;
+            border:1px solid rgba(255,255,255,0.04); transition:border-color 0.2s;
         }
         .item-card-photos img:hover { border-color:var(--warm-border); }
         .item-card-photos .add-photo-btn {
@@ -142,6 +142,8 @@
         <h1 class="page-title" id="page-title">Items</h1>
         <button class="btn btn-primary" onclick="openModal()">+ Add Item</button>
     </div>
+
+    <div class="ornament">&loz;</div>
 
     <!-- vendor filter (admin/cashier) -->
     <div id="vendor-filter-wrap" class="vendor-filter-bar" style="display:none">
