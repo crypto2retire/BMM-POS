@@ -13,6 +13,7 @@ from app.models.vendor import Vendor, VendorBalance
 from app.schemas.sale import SaleCreate, SaleResponse, SaleItemResponse
 from app.routers.auth import get_current_user
 from app.config import settings
+from app.routers.settings import get_tax_rate
 
 router = APIRouter(prefix="/sales", tags=["sales"])
 
@@ -103,7 +104,8 @@ async def create_sale(
         resolved_lines.append((item, cart_item.quantity, unit_price, line_total))
 
     subtotal = sum(line[3] for line in resolved_lines).quantize(Decimal("0.01"), ROUND_HALF_UP)
-    tax_rate = Decimal(str(settings.tax_rate)).quantize(Decimal("0.0001"), ROUND_HALF_UP)
+    db_tax_rate = await get_tax_rate(db)
+    tax_rate = Decimal(str(db_tax_rate)).quantize(Decimal("0.0001"), ROUND_HALF_UP)
     tax_amount = (subtotal * tax_rate).quantize(Decimal("0.01"), ROUND_HALF_UP)
     total = (subtotal + tax_amount).quantize(Decimal("0.01"), ROUND_HALF_UP)
 

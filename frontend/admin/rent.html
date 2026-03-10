@@ -4,9 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rent Status — BMM-POS</title>
+    <meta name="description" content="Track monthly rent collection and vendor payment status at Bowenstreet Market.">
+    <meta property="og:title" content="Rent Status — Bowenstreet Market">
+    <meta property="og:description" content="Rent collection dashboard for Bowenstreet Market.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.bowenstreetmm.com/admin/rent.html">
+    <meta property="og:image" content="https://www.bowenstreetmm.com/static/images/og-image.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="https://www.bowenstreetmm.com/admin/rent.html">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
     <style>
+        /* ── Page subtitle ─────────────────────────────────────────── */
+        .page-subtitle {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-style: italic;
+            font-size: 0.95rem;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-top: 0.25rem;
+            letter-spacing: 0.01em;
+        }
+
         .rent-stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -99,6 +118,7 @@
 <nav class="navbar">
     <a href="/admin/index.html" class="navbar-brand">
         <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
+        <span class="store-name">Admin</span>
     </a>
     <div class="navbar-user">
         <span id="user-name">Administrator</span>
@@ -107,53 +127,58 @@
             <a href="/admin/vendors.html">Vendors</a>
             <a href="/admin/rent.html" class="active">Rent</a>
             <a href="/vendor/items.html">Items</a>
-            <a href="/admin/customers.html">Vendor Directory</a>
+            <a href="/admin/reports.html">Reports</a>
+            <a href="/admin/settings.html">Settings</a>
             <a href="/pos/index.html">POS Terminal</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
-        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">☰</button>
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
     </div>
 </nav>
 
 <div class="mobile-nav-dropdown" id="mobile-nav">
-    <a href="/admin/index.html">🏠 Dashboard</a>
-    <a href="/admin/vendors.html">👥 Vendors</a>
-    <a href="/admin/rent.html" class="active">💳 Rent</a>
-    <a href="/vendor/items.html">🏷️ Items</a>
-    <a href="/admin/customers.html">📋 Vendor Directory</a>
-    <a href="/pos/index.html">🖥️ POS Terminal</a>
-    <a href="#" onclick="handleLogout()">🚪 Logout</a>
+    <a href="/admin/index.html">Dashboard</a>
+    <a href="/admin/vendors.html">Vendors</a>
+    <a href="/admin/rent.html" class="active">Rent</a>
+    <a href="/vendor/items.html">Items</a>
+    <a href="/admin/reports.html">Reports</a>
+    <a href="/admin/settings.html">Settings</a>
+    <a href="/pos/index.html">POS Terminal</a>
+    <a href="#" onclick="handleLogout()">Logout</a>
 </div>
 
 <div class="main-content">
     <div id="alert-container"></div>
     <div class="page-header">
         <h1 class="page-title">Rent Status</h1>
+        <p class="page-subtitle">Track monthly rent collection and vendor payment status</p>
         <span id="month-label" style="color:#A8A6A1;font-size:0.95rem;"></span>
     </div>
 
     <div class="rent-stats">
         <div class="rent-stat-card">
             <div class="rent-stat-title">Collected This Month</div>
-            <div class="rent-stat-value green" id="stat-collected">—</div>
+            <div class="rent-stat-value green" id="stat-collected">&mdash;</div>
         </div>
         <div class="rent-stat-card">
             <div class="rent-stat-title">Current</div>
-            <div class="rent-stat-value" style="color:#4ade80" id="stat-current">—</div>
+            <div class="rent-stat-value" style="color:#4ade80" id="stat-current">&mdash;</div>
         </div>
         <div class="rent-stat-card">
             <div class="rent-stat-title">Due</div>
-            <div class="rent-stat-value" style="color:#facc15" id="stat-due">—</div>
+            <div class="rent-stat-value" style="color:#facc15" id="stat-due">&mdash;</div>
         </div>
         <div class="rent-stat-card">
             <div class="rent-stat-title">Overdue</div>
-            <div class="rent-stat-value" style="color:#f87171" id="stat-overdue">—</div>
+            <div class="rent-stat-value" style="color:#f87171" id="stat-overdue">&mdash;</div>
         </div>
     </div>
 
+    <div class="ornament">&loz;</div>
+
     <div class="section">
         <div class="search-bar">
-            <input type="text" id="search-input" placeholder="Filter by vendor name or booth…" oninput="filterTable()">
+            <input type="text" id="search-input" placeholder="Filter by vendor name or booth&hellip;" oninput="filterTable()">
         </div>
         <div class="card">
             <div class="table-wrapper">
@@ -169,13 +194,32 @@
                         </tr>
                     </thead>
                     <tbody id="rent-table-body">
-                        <tr><td colspan="6" class="loading">Loading…</td></tr>
+                        <tr><td colspan="6" class="loading">Loading&hellip;</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Mobile bottom nav -->
+<nav class="admin-bottom-nav">
+    <a href="/admin/index.html">
+        <span class="nav-icon">&#127968;</span>Dashboard
+    </a>
+    <a href="/admin/vendors.html">
+        <span class="nav-icon">&#128101;</span>Vendors
+    </a>
+    <a href="/admin/rent.html" class="active">
+        <span class="nav-icon">&#128179;</span>Rent
+    </a>
+    <a href="/vendor/items.html">
+        <span class="nav-icon">&#127991;&#65039;</span>Items
+    </a>
+    <a href="/pos/index.html">
+        <span class="nav-icon">&#128421;&#65039;</span>POS
+    </a>
+</nav>
 
 <script src="/static/js/api.js"></script>
 <script>

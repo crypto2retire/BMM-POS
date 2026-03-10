@@ -3,11 +3,158 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
-    <title>Login — BMM-POS</title>
+    <title>Login — Bowenstreet Market</title>
+    <meta name="description" content="Sign in to Bowenstreet Market POS — vendor portal, admin dashboard, and point of sale system for Oshkosh's premier antique marketplace.">
+    <meta property="og:title" content="Sign In — Bowenstreet Market">
+    <meta property="og:description" content="Vendor portal and POS system for Bowenstreet Market, Oshkosh WI.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.bowenstreetmm.com/vendor/login.html">
+    <meta property="og:image" content="https://www.bowenstreetmm.com/static/images/og-image.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="https://www.bowenstreetmm.com/vendor/login.html">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
     <style>
-        .login-page { padding-bottom: 0; }
+        .login-page {
+            padding-bottom: 0;
+            background: #F5F0E8;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            background: #EDE8DC;
+            box-shadow: 0 4px 24px rgba(90, 75, 50, 0.12);
+            border-top: 3px solid #C9A84C;
+            color: #2A2825;
+        }
+        .login-logo p {
+            color: #5a554d;
+        }
+        .login-masthead {
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+        .login-masthead-title {
+            font-family: 'EB Garamond', serif;
+            font-style: italic;
+            font-size: 2.2rem;
+            color: #2A2825;
+            margin: 0;
+            line-height: 1.2;
+        }
+        .login-subtitle {
+            font-family: 'EB Garamond', serif;
+            font-size: 0.95rem;
+            color: #5a554d;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-style: italic;
+            opacity: 0.85;
+        }
+        .login-footer {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(42, 40, 37, 0.08);
+        }
+        .login-footer a {
+            font-size: 0.68rem;
+            color: #5a554d;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            text-decoration: none;
+            font-family: 'Roboto', sans-serif;
+            transition: color 0.2s;
+        }
+        .login-footer a:hover { color: #C9A84C; }
+
+        /* Form overrides for light theme */
+        .login-card .form-label {
+            color: #5a554d;
+        }
+        .login-card .form-control {
+            background: #ffffff;
+            color: #2A2825;
+            border-color: rgba(42, 40, 37, 0.15);
+        }
+        .login-card .form-control::placeholder {
+            color: #a09a90;
+        }
+        .login-card .form-control:focus {
+            border-color: #C9A84C;
+            box-shadow: 0 0 0 2px rgba(201, 168, 76, 0.15);
+        }
+        .login-card .btn-primary {
+            background: #C9A84C;
+            color: #2A2825;
+            border: none;
+            font-weight: 600;
+        }
+        .login-card .btn-primary:hover {
+            background: #b8973e;
+            color: #2A2825;
+        }
+
+        /* ── Choice screen ──────────────────────────────── */
+        .choice-screen { display: none; }
+        .choice-screen.active { display: block; }
+        .choice-greeting {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.3rem;
+            text-align: center;
+            color: #2A2825;
+            margin-bottom: 0.5rem;
+        }
+        .choice-sub {
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.8rem;
+            color: #5a554d;
+            text-align: center;
+            margin-bottom: 1.75rem;
+            letter-spacing: 0.04em;
+        }
+        .choice-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .choice-btn {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.1rem 1.25rem;
+            background: #F5F0E8;
+            border: 1px solid rgba(42, 40, 37, 0.12);
+            color: #2A2825;
+            cursor: pointer;
+            transition: border-color 0.25s, box-shadow 0.25s;
+            text-decoration: none;
+        }
+        .choice-btn:hover {
+            border-color: #C9A84C;
+            box-shadow: 0 2px 12px rgba(201, 168, 76, 0.15);
+            color: #2A2825;
+        }
+        .choice-icon {
+            font-size: 1.6rem;
+            flex-shrink: 0;
+            width: 2.2rem;
+            text-align: center;
+        }
+        .choice-label {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #2A2825;
+        }
+        .choice-desc {
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.75rem;
+            color: #5a554d;
+            margin-top: 2px;
+        }
     </style>
 </head>
 <body>
@@ -15,9 +162,14 @@
     <div class="login-card">
         <div class="login-logo">
             <img src="/static/images/logo.webp" alt="Bowenstreet Market">
-            <p>Point of Sale System</p>
         </div>
+        <div class="login-masthead">
+            <h1 class="login-masthead-title">Bowenstreet Market</h1>
+        </div>
+        <div class="login-subtitle">Handcrafted &middot; Vintage &middot; Antique &middot; Oshkosh, WI</div>
         <div id="alert-container"></div>
+
+        <!-- Login form -->
         <form id="login-form">
             <div class="form-group">
                 <label class="form-label" for="email">Email Address</label>
@@ -28,11 +180,37 @@
             <div class="form-group">
                 <label class="form-label" for="password">Password</label>
                 <input class="form-control" type="password" id="password" name="password"
-                    placeholder="••••••••" required
+                    placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" required
                     autocomplete="current-password">
             </div>
             <button class="btn btn-primary btn-lg btn-full" type="submit" id="login-btn">Sign In</button>
         </form>
+
+        <!-- Choice screen (shown when admin/cashier also has a booth) -->
+        <div class="choice-screen" id="choice-screen">
+            <div class="choice-greeting" id="choice-greeting">Welcome back</div>
+            <div class="choice-sub">Where would you like to go?</div>
+            <div class="choice-buttons">
+                <a href="#" class="choice-btn" id="choice-admin">
+                    <span class="choice-icon">&#128202;</span>
+                    <div>
+                        <div class="choice-label" id="choice-admin-label">Admin Dashboard</div>
+                        <div class="choice-desc">Manage vendors, reports, and settings</div>
+                    </div>
+                </a>
+                <a href="/vendor/dashboard.html" class="choice-btn" id="choice-booth">
+                    <span class="choice-icon">&#127991;&#65039;</span>
+                    <div>
+                        <div class="choice-label">My Booth</div>
+                        <div class="choice-desc">View your items, sales, and balance</div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+        <div class="login-footer">
+            <a href="/shop/index.html">Browse Our Shop</a>
+        </div>
     </div>
 </div>
 <script src="/static/js/api.js"></script>
@@ -58,13 +236,35 @@
             const token = data.access_token;
             sessionStorage.setItem("bmm_token", token);
             const payload = JSON.parse(atob(token.split(".")[1]));
-            const role = payload.role;
-            if (role === "admin") {
-                window.location.href = "/admin/index.html";
-            } else if (role === "cashier") {
-                window.location.href = "/pos/index.html";
+
+            if (data.redirect === "choose") {
+                // Show choice screen
+                document.getElementById("login-form").style.display = "none";
+                document.getElementById("choice-screen").classList.add("active");
+                document.getElementById("choice-greeting").textContent = `Welcome back, ${payload.name || 'there'}`;
+
+                // Set admin link based on role
+                const adminLink = document.getElementById("choice-admin");
+                const adminLabel = document.getElementById("choice-admin-label");
+                if (payload.role === "admin") {
+                    adminLink.href = "/admin/index.html";
+                    adminLabel.textContent = "Admin Dashboard";
+                } else {
+                    adminLink.href = "/pos/index.html";
+                    adminLabel.textContent = "POS Terminal";
+                    document.querySelector("#choice-admin .choice-desc").textContent = "Ring up sales at the register";
+                }
+            } else if (data.redirect) {
+                window.location.href = data.redirect;
             } else {
-                window.location.href = "/vendor/dashboard.html";
+                // Fallback to role-based redirect
+                if (payload.role === "admin") {
+                    window.location.href = "/admin/index.html";
+                } else if (payload.role === "cashier") {
+                    window.location.href = "/pos/index.html";
+                } else {
+                    window.location.href = "/vendor/dashboard.html";
+                }
             }
         } catch (err) {
             showAlert("alert-container", err.message, "error");

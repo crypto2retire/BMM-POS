@@ -1,147 +1,132 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+
 from app.database import get_db
-from app.models.vendor import Vendor
-from app.schemas.vendor import VendorCreate, VendorUpdate, VendorResponse
-from app.routers.auth import get_current_user, require_admin, require_cashier_or_admin, hash_password
+from app.models.vendor import Vendor, VendorBalance
+from app.schemas.vendor import VendorCreate, VendorUpdate, VendorResponse, VendorBalanceResponse
+from app.routers.auth import get_current_user, require_role, get_password_hash
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
-
-
-def vendor_to_response(vendor: Vendor) -> VendorResponse:
-    balance = None
-    if vendor.balance:
-        balance = vendor.balance.balance
-    return VendorResponse(
-        id=vendor.id,
-        name=vendor.name,
-        email=vendor.email,
-        phone=vendor.phone,
-        booth_number=vendor.booth_number,
-        monthly_rent=vendor.monthly_rent,
-        rent_due_day=vendor.rent_due_day,
-        role=vendor.role,
-        payout_method=vendor.payout_method,
-        zelle_handle=vendor.zelle_handle,
-        status=vendor.status,
-        rent_flagged=vendor.rent_flagged,
-        created_at=vendor.created_at,
-        current_balance=balance,
-    )
-
 
 @router.get("/", response_model=List[VendorResponse])
 async def list_vendors(
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_role("admin"))
 ):
-    result = await db.execute(
-        select(Vendor).options(selectinload(Vendor.balance))
-    )
-    vendors = result.scalars().all()
-    return [vendor_to_response(v) for v in vendors]
+    result = await db.execute(select(Vendor).order_by(Vendor.name))
+    return result.scalars().all()
 
-
-@router.post("/", response_model=VendorResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=VendorResponse, status_code=201)
 async def create_vendor(
-    data: VendorCreate,
+    vendor: VendorCreate,
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_admin),
+    current_user: Vendor = Depends(require_role("admin"))
 ):
-    existing = await db.execute(select(Vendor).where(Vendor.email == data.email))
+    existing = await db.execute(select(Vendor).where(Vendor.email == vendor.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    vendor = Vendor(
-        name=data.name,
-        email=data.email,
-        password_hash=hash_password(data.password),
-        phone=data.phone,
-        booth_number=data.booth_number,
-        monthly_rent=data.monthly_rent,
-        rent_due_day=data.rent_due_day,
-        role=data.role,
-        payout_method=data.payout_method,
-        zelle_handle=data.zelle_handle,
+    db_vendor = Vendor(
+        name=vendor.name,
+        email=vendor.email,
+        phone=vendor.phone,
+        password_hash=get_password_hash(vendor.password),
+        booth_number=vendor.booth_number,
+        role=vendor.role,
+        is_vendor=vendor.is_vendor,
+        monthly_rent=vendor.monthly_rent,
+        commission_rate=vendor.commission_rate,
     )
-    db.add(vendor)
+    db.add(db_vendor)
     await db.commit()
-
-    result = await db.execute(
-        select(Vendor).options(selectinload(Vendor.balance)).where(Vendor.id == vendor.id)
-    )
-    vendor = result.scalar_one()
-    return vendor_to_response(vendor)
-
+    await db.refresh(db_vendor)
+    return db_vendor
 
 @router.get("/{vendor_id}", response_model=VendorResponse)
 async def get_vendor(
     vendor_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(get_current_user)
 ):
     if current_user.role != "admin" and current_user.id != vendor_id:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    result = await db.execute(
-        select(Vendor).options(selectinload(Vendor.balance)).where(Vendor.id == vendor_id)
-    )
+        raise HTTPException(status_code=403, detail="Not authorized")
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
-    return vendor_to_response(vendor)
-
+    return vendor
 
 @router.put("/{vendor_id}", response_model=VendorResponse)
 async def update_vendor(
     vendor_id: int,
-    data: VendorUpdate,
+    vendor_update: VendorUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
-):
-    if current_user.role != "admin" and current_user.id != vendor_id:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    result = await db.execute(
-        select(Vendor).options(selectinload(Vendor.balance)).where(Vendor.id == vendor_id)
-    )
-    vendor = result.scalar_one_or_none()
-    if not vendor:
-        raise HTTPException(status_code=404, detail="Vendor not found")
-
-    restricted_fields = {"role", "status", "monthly_rent", "rent_due_day", "booth_number"}
-
-    update_data = data.model_dump(exclude_none=True)
-    for field, value in update_data.items():
-        if current_user.role != "admin" and field in restricted_fields:
-            continue
-        if field == "password":
-            vendor.password_hash = hash_password(value)
-        else:
-            setattr(vendor, field, value)
-
-    await db.commit()
-    await db.refresh(vendor)
-
-    result = await db.execute(
-        select(Vendor).options(selectinload(Vendor.balance)).where(Vendor.id == vendor_id)
-    )
-    vendor = result.scalar_one()
-    return vendor_to_response(vendor)
-
-
-@router.delete("/{vendor_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_vendor(
-    vendor_id: int,
-    db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_admin),
+    current_user: Vendor = Depends(require_role("admin"))
 ):
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
-    vendor.status = "suspended"
+
+    update_data = vendor_update.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(vendor, key, value)
+
     await db.commit()
+    await db.refresh(vendor)
+    return vendor
+
+@router.post("/{vendor_id}/reset-password")
+async def reset_vendor_password(
+    vendor_id: int,
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_role("admin"))
+):
+    new_password = body.get("new_password")
+    if not new_password or len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    vendor.password_hash = get_password_hash(new_password)
+    await db.commit()
+    return {"detail": "Password reset successfully"}
+
+@router.delete("/{vendor_id}")
+async def delete_vendor(
+    vendor_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_role("admin"))
+):
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+    vendor.is_active = False
+    await db.commit()
+    return {"detail": "Vendor deactivated"}
+
+@router.get("/{vendor_id}/balance", response_model=VendorBalanceResponse)
+async def get_vendor_balance(
+    vendor_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user)
+):
+    if current_user.role not in ("admin", "cashier") and current_user.id != vendor_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    result = await db.execute(select(VendorBalance).where(VendorBalance.vendor_id == vendor_id))
+    balance = result.scalar_one_or_none()
+    if not balance:
+        balance = VendorBalance(vendor_id=vendor_id)
+        db.add(balance)
+        await db.commit()
+        await db.refresh(balance)
+    return balance

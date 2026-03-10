@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings — Bowenstreet Market</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">Bowenstreet Market</div>
+        <div class="nav-links">
+            <a href="/admin/index.html">Dashboard</a>
+            <a href="/admin/vendors.html">Vendors</a>
+            <a href="/admin/rent.html">Rent</a>
+            <a href="/admin/customers.html">Customers</a>
+            <a href="/admin/reports.html">Reports</a>
+            <a href="/admin/settings.html" class="active">Settings</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+        <select class="mobile-nav" onchange="if(this.value)window.location=this.value">
+            <option value="">Menu</option>
+            <option value="/admin/index.html">Dashboard</option>
+            <option value="/admin/vendors.html">Vendors</option>
+            <option value="/admin/rent.html">Rent</option>
+            <option value="/admin/customers.html">Customers</option>
+            <option value="/admin/reports.html">Reports</option>
+            <option value="/admin/settings.html" selected>Settings</option>
+        </select>
+    </nav>
+    <div class="container" style="margin-top:80px">
+        <h1 style="font-family:'EB Garamond',serif;font-style:italic;font-size:2rem;margin-bottom:0.2em">Store Settings</h1>
+        <p style="color:#999;margin-bottom:1.5em;font-size:0.95rem">Configure store parameters, tax rates, and business information</p>
+        <div class="ornament"></div>
+
+        <div id="settingsForm" class="card" style="max-width:700px">
+            <h2 style="font-family:'EB Garamond',serif;font-size:1.3rem;margin-bottom:1em">General Settings</h2>
+
+            <div class="form-group" style="margin-bottom:1em">
+                <label class="form-label">Store Name</label>
+                <input type="text" id="store_name" class="form-control" placeholder="Bowenstreet Market Mall">
+            </div>
+
+            <div class="form-group" style="margin-bottom:1em">
+                <label class="form-label">Store Address</label>
+                <input type="text" id="store_address" class="form-control" placeholder="2837 Bowen St, Oshkosh WI 54901">
+            </div>
+
+            <div class="form-group" style="margin-bottom:1em">
+                <label class="form-label">Store Phone</label>
+                <input type="tel" id="store_phone" class="form-control" placeholder="(920) 555-0100">
+            </div>
+
+            <div class="form-group" style="margin-bottom:1em">
+                <label class="form-label">Store Email</label>
+                <input type="email" id="store_email" class="form-control" placeholder="info@bowenstreetmarket.com">
+            </div>
+
+            <div class="ornament"></div>
+            <h2 style="font-family:'EB Garamond',serif;font-size:1.3rem;margin-bottom:1em">Tax & Financial</h2>
+
+            <div class="form-group" style="margin-bottom:1em">
+                <label class="form-label">Tax Rate (%)</label>
+                <input type="number" id="tax_rate" class="form-control" step="0.01" min="0" max="20" placeholder="5.0">
+            </div>
+
+            <div class="form-group" style="margin-bottom:1em">
+                <label class="form-label">Commission Rate (%)</label>
+                <input type="number" id="commission_rate" class="form-control" step="0.01" min="0" max="100" placeholder="10.0">
+                <small style="color:#999">Percentage deducted from vendor sales</small>
+            </div>
+
+            <div class="form-group" style="margin-bottom:1em">
+                <label class="form-label">Default Monthly Rent ($)</label>
+                <input type="number" id="default_rent" class="form-control" step="0.01" min="0" placeholder="200.00">
+            </div>
+
+            <div class="ornament"></div>
+            <h2 style="font-family:'EB Garamond',serif;font-size:1.3rem;margin-bottom:1em">Receipt & POS</h2>
+
+            <div class="form-group" style="margin-bottom:1em">
+                <label class="form-label">Receipt Header Text</label>
+                <textarea id="receipt_header" class="form-control" rows="3" placeholder="Thank you for shopping at Bowenstreet Market!"></textarea>
+            </div>
+
+            <div class="form-group" style="margin-bottom:1em">
+                <label class="form-label">Receipt Footer Text</label>
+                <textarea id="receipt_footer" class="form-control" rows="3" placeholder="Return policy: 30 days with receipt. No returns on sale items."></textarea>
+            </div>
+
+            <div class="form-group" style="margin-bottom:1em">
+                <label class="form-label">Return Policy (days)</label>
+                <input type="number" id="return_policy_days" class="form-control" min="0" max="365" placeholder="30">
+            </div>
+
+            <div style="margin-top:1.5em;display:flex;gap:1em">
+                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+                <button class="btn" style="background:transparent;border:1px solid #666;color:#ccc" onclick="loadSettings()">Reset</button>
+            </div>
+
+            <div id="saveStatus" style="margin-top:1em"></div>
+        </div>
+    </div>
+
+    <script>
+        const TOKEN = sessionStorage.getItem('bmm_token');
+        if (!TOKEN) window.location = '/vendor/login.html';
+
+        function logout() {
+            sessionStorage.removeItem('bmm_token');
+            window.location = '/vendor/login.html';
+        }
+
+        const SETTING_KEYS = [
+            'store_name', 'store_address', 'store_phone', 'store_email',
+            'tax_rate', 'commission_rate', 'default_rent',
+            'receipt_header', 'receipt_footer', 'return_policy_days'
+        ];
+
+        async function loadSettings() {
+            try {
+                const resp = await fetch('/api/settings', {
+                    headers: { 'Authorization': `Bearer ${TOKEN}` }
+                });
+                if (!resp.ok) throw new Error('Failed to load settings');
+                const settings = await resp.json();
+
+                for (const key of SETTING_KEYS) {
+                    const el = document.getElementById(key);
+                    if (el && settings[key] !== undefined && settings[key] !== null) {
+                        el.value = settings[key];
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading settings:', e);
+            }
+        }
+
+        async function saveSettings() {
+            const data = {};
+            for (const key of SETTING_KEYS) {
+                const el = document.getElementById(key);
+                if (el) data[key] = el.value;
+            }
+
+            try {
+                const resp = await fetch('/api/settings', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+                if (!resp.ok) throw new Error('Failed to save settings');
+
+                document.getElementById('saveStatus').innerHTML =
+                    '<span style="color:#4ecdc4">Settings saved successfully</span>';
+                setTimeout(() => document.getElementById('saveStatus').innerHTML = '', 3000);
+            } catch (e) {
+                document.getElementById('saveStatus').innerHTML =
+                    `<span style="color:#ff6b6b">${e.message}</span>`;
+            }
+        }
+
+        loadSettings();
+    </script>
+    <script src="/static/js/assistant-panel.js"></script>
+    <script>
+        if (typeof initAssistantPanel === 'function') {
+            initAssistantPanel('Admin settings page — store configuration, tax rates, receipt text, commission rates', { buttonBottom: '70px' });
+        }
+    </script>
+</body>
+</html>

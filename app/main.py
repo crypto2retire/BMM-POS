@@ -5,11 +5,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
+from pathlib import Path
 from sqlalchemy import text
 
 from app.database import AsyncSessionLocal, engine, Base
-from app.routers import auth, vendors, items, sales, pos, assistant, storefront, rent, admin
+from app.routers import auth, vendors, items, sales, pos, assistant, storefront, rent, admin, reports, settings
 
 
 @asynccontextmanager
@@ -31,6 +32,22 @@ async def lifespan(app: FastAPI):
             await session.execute(text(
                 "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
                 "rent_flagged BOOLEAN NOT NULL DEFAULT false"
+            ))
+            await session.execute(text(
+                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
+                "is_active BOOLEAN NOT NULL DEFAULT true"
+            ))
+            await session.execute(text(
+                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
+                "is_vendor BOOLEAN NOT NULL DEFAULT false"
+            ))
+            await session.execute(text(
+                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
+                "commission_rate NUMERIC(5,4) NOT NULL DEFAULT 0.1000"
+            ))
+            await session.execute(text(
+                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
+                "image_path VARCHAR(500)"
             ))
             await session.commit()
     except Exception as e:
@@ -85,5 +102,37 @@ app.include_router(assistant.router, prefix="/api/v1")
 app.include_router(storefront.router, prefix="/api/v1")
 app.include_router(rent.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(reports.router, prefix="/api/v1")
+app.include_router(settings.router, prefix="/api/v1")
+
+@app.get("/llms.txt", response_class=PlainTextResponse)
+async def llms_txt():
+    path = Path("frontend/static/llms.txt")
+    return PlainTextResponse(path.read_text())
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+async def robots_txt():
+    path = Path("frontend/static/robots.txt")
+    return PlainTextResponse(path.read_text())
+
+
+@app.get("/sitemap.xml", response_class=Response)
+async def sitemap_xml():
+    xml = '''<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://www.bowenstreetmm.com/shop/index.html</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://www.bowenstreetmm.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>'''
+    return Response(content=xml, media_type="application/xml")
+
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

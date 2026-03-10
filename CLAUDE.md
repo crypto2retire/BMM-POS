@@ -3,355 +3,209 @@
 
 ---
 
-## 🏪 Business Overview
+## 1 · Identity
 
-**Bowenstreet Market**
-- Address: 2837 Bowen St, Oshkosh, WI 54901
-- Website: www.bowenstreetmm.com
-- 120+ vendors selling handcrafted, vintage, and antique goods
-- 70 vendors receiving monthly payouts
-- Replacing: Ricochet POS (bowenstreet.ricoconsign.com) — $159–$199/month
-- Payment terminal: GoDaddy Poynt (no per-swipe fee)
-
----
-
-## 🖥️ Live Server
-
-| Item | Value |
-|------|-------|
-| **Server IP** | 138.68.239.233 |
-| **Live URL** | http://138.68.239.233/vendor/login.html |
-| **Provider** | DigitalOcean droplet |
-| **OS** | Ubuntu 24.04 |
-| **Web server** | Nginx |
-| **App path** | /var/www/bmm-pos |
-| **Service name** | bmm-pos |
-| **Python** | 3.12.3 |
-| **DB** | PostgreSQL 16 |
-| **DB name** | bmm_pos |
-| **DB user** | bmm_user |
+| field | value |
+|-------|-------|
+| **Project** | BMM-POS (Bowenstreet Market Mall – Point-of-Sale System) |
+| **Location** | 2837 Bowen St, Oshkosh WI 54901 |
+| **Concept** | 120-vendor antique / vintage / handcrafted mall |
+| **Stack** | Python 3 · FastAPI · PostgreSQL · SQLAlchemy (async) · JWT auth · plain HTML + vanilla JS |
+| **AI model** | `google/gemini-2.0-flash-001` via OpenRouter |
+| **Payments** | Square (reservations + vendor rent) |
+| **Repo** | `https://github.com/crypto2retire/BMM-POS` |
 
 ---
 
-## 🚀 Deployment Workflow
+## 2 · Environment
 
-### Making Changes (do this every time)
+| var | purpose | notes |
+|-----|---------|-------|
+| `DATABASE_URL` | Postgres connection string | auto-set by Replit |
+| `OPENROUTER_API_KEY` | AI chat (Gemini Flash via OpenRouter) | in Replit Secrets |
+| `ANTHROPIC_API_KEY` | reserved | in Replit Secrets |
+| `SQUARE_ACCESS_TOKEN` | Square API auth | in Replit Secrets |
+| `SQUARE_APPLICATION_ID` | Square app ID | in Replit Secrets |
+| `SQUARE_LOCATION_ID` | Square location | `G2KJFVAEVK3BZ` |
 
-**Step 1 — In Replit Shell, push changes to GitHub:**
+### Run command
 ```bash
-git add -A
-git commit -m "describe what changed"
-git push origin main
-```
-
-**Step 2 — In SSH session, deploy to live server:**
-```bash
-deploy
-```
-(This runs: `cd /var/www/bmm-pos && git pull origin main && systemctl restart bmm-pos && echo Done`)
-
-**Step 3 — If new database columns were added, run the migration:**
-```bash
-sudo -u postgres psql -d bmm_pos -c "ALTER TABLE items ADD COLUMN IF NOT EXISTS column_name TYPE DEFAULT value;"
+uvicorn app.main:app --host 0.0.0.0 --port 5000
 ```
 
 ---
 
-## 🔧 SSH Quick Reference
+## 3 · Credentials (dev / seed)
 
-**Connect to server:**
-```bash
-ssh root@138.68.239.233
-```
-
-**Common commands:**
-```bash
-# Deploy latest code
-deploy
-
-# Check app status
-systemctl status bmm-pos
-
-# Restart app
-systemctl restart bmm-pos
-
-# View live logs (last 50 lines)
-journalctl -u bmm-pos -n 50 --no-pager
-
-# Follow logs in real time
-journalctl -u bmm-pos -f
-
-# Check Nginx
-nginx -t
-systemctl reload nginx
-```
+| role | email | password |
+|------|-------|----------|
+| admin | `admin@bowenstreetmarket.com` | `admin123` |
+| cashier | `cashier@bowenstreetmarket.com` | `cashier123` |
 
 ---
 
-## 🗄️ Database Quick Reference
+## 4 · Token / Auth Rules
 
-**Connect to database:**
-```bash
-sudo -u postgres psql -d bmm_pos
-```
-
-**Useful queries:**
-```sql
--- List all vendors
-SELECT id, name, email, role, status, monthly_rent FROM vendors ORDER BY id;
-
--- Check vendor balances
-SELECT v.name, vb.balance FROM vendors v JOIN vendor_balances vb ON v.id = vb.vendor_id;
-
--- Count items by status
-SELECT status, count(*) FROM items GROUP BY status;
-
--- Grant permissions (run if permission errors appear)
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO bmm_user;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO bmm_user;
-```
-
-**Run a migration file:**
-```bash
-sudo -u postgres psql -d bmm_pos -f /var/www/bmm-pos/migrations/001_initial_schema.sql
-```
+- **Storage:** `sessionStorage.getItem('bmm_token')` — NEVER `localStorage` or `window.name`
+- **Login page:** `/vendor/login.html` (shared for all roles)
+- **Redirects after login:**
+  - `vendor` → `/vendor/dashboard.html`
+  - `cashier` → `/pos/index.html`
+  - `admin` → `/admin/index.html`
+  - `is_vendor` flag → user may choose vendor OR their role destination
 
 ---
 
-## 👤 Test Accounts
+## 5 · Design Language
 
-> ⚠️ These are TEST accounts. Delete all before go-live.
+| token | value |
+|-------|-------|
+| `--bg` | `#38383B` |
+| `--gold` | `#C9A96E` |
+| `--warm-border` | `rgba(201,169,110,0.22)` |
+| `--text` | `#F0EDE8` |
+| `--surface` | `#44444A` |
+| `--surface-2` | `#4e4e54` |
+| `--border` | `#555558` |
+| navbar bg | `#1e1e20` (darker than `--bg`) |
+| border-radius | `0px` everywhere |
+| heading font | EB Garamond italic |
+| body font | Roboto 300 |
 
-| Name | Email | Password | Role |
-|------|-------|----------|------|
-| Admin | admin@bowenstreetmarket.com | admin123 | admin |
-| Cashier | cashier@bowenstreetmarket.com | cashier123 | cashier |
-| Sarah Johnson | sarah@email.com | vendor123 | vendor |
-| Mike Chen | mike@email.com | vendor123 | vendor |
-| Linda Kowalski | linda@email.com | vendor123 | vendor |
-| Nora | nora@email.com | vendor123 | admin |
-| Sammy | sammy@email.com | vendor123 | admin |
-| Ashley | ashley@email.com | vendor123 | admin |
-| Anne | anne@email.com | vendor123 | admin |
-| Paula | paula@email.com | vendor123 | vendor |
-
-**Login redirects by role:**
-- admin → /admin/index.html
-- cashier → /pos/index.html
-- vendor → /vendor/dashboard.html
-
----
-
-## 🏗️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Backend | FastAPI (Python) |
-| Database | PostgreSQL (asyncpg + SQLAlchemy async) |
-| Frontend | Plain HTML + Vanilla JS (no frameworks) |
-| Auth | JWT via python-jose, bcrypt passwords |
-| Barcodes | python-barcode (Code 128) |
-| Labels — PDF | ReportLab (2.25×1.25" Zebra) |
-| Labels — Dymo | Dymo LabelWriter 450 (XML via local web service) |
-| Receipt printer | Star TSP100III (thermal, 80mm, browser print) |
-| AI assistant | OpenRouter → google/gemini-2.0-flash-001 |
-| Payments | GoDaddy Poynt Payment Bridge (stubbed, Phase 4) |
-| Payouts | Zelle manual (Phase 1), ACH planned (Phase 2) |
-| Hosting | DigitalOcean droplet |
-| Web server | Nginx + SSL |
-| GitHub repo | https://github.com/crypto2retire/BMM-POS |
+### Design pattern
+- Warm editorial / antique aesthetic
+- Gold accent borders and hover effects
+- Ornamental diamond dividers (`.ornament` class)
+- Ledger-style tables with gold header accents
+- Dark glass-like form inputs with gold focus glow
+- Gradient-enhanced primary buttons
 
 ---
 
-## 📁 Project Structure
+## 6 · SKU Format
 
 ```
-/var/www/bmm-pos/          ← Live server path
+BSM-{vendor_id:04d}-{seq:06d}
+```
+Example: `BSM-0012-000047`
+
+---
+
+## 7 · Tax Rate
+
+**5% (0.05)** — set in both the JavaScript `TAX_RATE` constant and the display label.
+
+---
+
+## 8 · Project Structure
+
+```
 app/
-  config.py                ← Settings (pydantic-settings)
-  database.py              ← Async SQLAlchemy engine
-  main.py                  ← FastAPI app, all routers wired
+  main.py              ← FastAPI app + lifespan (auto-creates tables/columns)
+  database.py          ← async engine + session
   models/
-    vendor.py              ← Vendor, VendorBalance ORM
-    item.py                ← Item ORM
-    sale.py                ← Sale, SaleItem ORM
-    rent.py                ← RentPayment ORM
-    payout.py              ← Payout ORM
+    __init__.py        ← re-exports all models + Base
+    vendor.py          ← Vendor, VendorBalance
+    item.py            ← Item (with photo_url, tags)
+    sale.py            ← Sale, SaleItem
+    rent.py            ← RentPayment
+    payout.py          ← Payout
+    customer.py        ← Customer
+    store_setting.py   ← StoreSetting (key/value config)
   schemas/
-    vendor.py              ← Pydantic schemas
-    item.py                ← Includes active_price computed field
-    sale.py                ← CartItem, SaleCreate, SaleResponse
-    assistant.py           ← AssistantChatRequest/Response
+    vendor.py item.py sale.py rent.py payout.py customer.py
   routers/
-    auth.py                ← POST /api/v1/auth/login, JWT
-    vendors.py             ← CRUD vendors
-    items.py               ← CRUD items, barcode lookup, labels
-    sales.py               ← Sale history
-    pos.py                 ← Checkout, barcode/search endpoints
-    assistant.py           ← AI chat, tool calling
-  services/
-    barcode.py             ← generate_sku(), generate_barcode_image()
-    labels.py              ← PDF labels, Dymo XML
-migrations/
-  001_initial_schema.sql   ← Full 8-table schema
-  002_add_label_style.sql  ← label_style column
-scripts/
-  seed_dev.py              ← Seeds all test accounts and items
+    auth.py            ← JWT login, role checks, token refresh
+    vendors.py         ← CRUD vendors + is_vendor flag
+    items.py           ← CRUD items + photo upload + search
+    pos.py             ← POS checkout flow
+    sales.py           ← Sales history + returns
+    rent.py            ← Rent tracking + Square payments
+    payouts.py         ← Vendor payout management
+    customers.py       ← Customer loyalty
+    storefront.py      ← Public shop API
+    ai.py              ← OpenRouter chat (Gemini Flash)
+    reports.py         ← Reporting endpoints (daily sales, vendor perf, top items, etc.)
+    settings.py        ← Store settings CRUD
 frontend/
-  static/
-    css/main.css           ← Bowenstreet brand styles
-    js/
-      api.js               ← JWT fetch wrapper (sessionStorage)
-      assistant-panel.js   ← Shared AI assistant panel
-  vendor/
-    login.html             ← All roles log in here
-    dashboard.html         ← Vendor dashboard (mobile-friendly)
-    items.html             ← Item management (mobile-friendly)
-  admin/
-    index.html             ← Admin dashboard
-    vendors.html           ← Vendor management
-    customers.html         ← Customer/vendor lookup (cashier access)
   pos/
-    index.html             ← POS register (mobile + camera scan)
+    index.html         ← POS terminal (scanner + cart + checkout)
+    register.html      ← Cash register / payment screen
+  vendor/
+    login.html         ← Shared login (all roles)
+    dashboard.html     ← Vendor dashboard
+    items.html         ← Vendor inventory management + photo upload
+  admin/
+    index.html         ← Admin dashboard
+    vendors.html       ← Vendor management + directory + edit + password reset
+    rent.html          ← Rent management
+    customers.html     ← Customer management
+    reports.html       ← Reporting suite
+    settings.html      ← Store settings panel
+  shop/
+    index.html         ← Public storefront
+  static/
+    css/main.css       ← Global styles
+    js/assistant-panel.js ← AI chat panel
+    llms.txt           ← LLM-friendly site description
+    robots.txt         ← Crawler rules
+    uploads/items/     ← Item photo uploads
 ```
 
 ---
 
-## 🗃️ Database Schema (8 Tables)
+## 9 · Key Technical Notes
 
-| Table | Key Fields |
-|-------|-----------|
-| vendors | id, name, email, password_hash, role, booth_number, monthly_rent, payout_method, zelle_handle, status |
-| vendor_balances | vendor_id (unique), balance |
-| items | id, vendor_id, sku, barcode, name, price, sale_price, sale_start, sale_end, status, label_style |
-| sales | id, cashier_id, subtotal, tax_rate, tax_amount, total, payment_method |
-| sale_items | sale_id, item_id, vendor_id, quantity, unit_price, line_total |
-| rent_payments | vendor_id, amount, period_month, status |
-| payouts | vendor_id, period_month, gross_sales, rent_deducted, net_payout, status |
-| payout_batches | (batch tracking for payout runs) |
-
-**Key rules:**
-- Tax rate: 5.5% (Winnebago County WI) — check is_tax_exempt per item
-- SKU format: BSM-{vendor_id:04d}-{sequence:06d}
-- Barcodes: Code 128, compatible with existing Ricochet barcodes
-- Sale prices activate/deactivate automatically by sale_start and sale_end dates
-- DB trigger auto-creates vendor_balance row on vendor insert
-- Soft deletes: items set to status='removed', vendors set to status='suspended'
+- **bcrypt must stay at 4.0.1** (pinned for compatibility)
+- **DB trigger** auto-creates `vendor_balances` row when a vendor is inserted
+- **Auto column creation:** `app/main.py` lifespan checks for missing columns and adds them automatically on startup
+- **AI assistant panel:** `initAssistantPanel(contextString, { buttonBottom: '...' })` — Admin: `70px`, POS/Vendor: `80px`
+- **Photo uploads:** Items support photo upload via `/api/items/{id}/photo` endpoint, stored in `frontend/static/uploads/items/`
+- **Vendor `is_vendor` flag:** Cashiers and admins can also have vendor booths; login page shows destination choice
 
 ---
 
-## 🔌 API Endpoints
+## 10 · Phase Completion Log
 
-**Auth**
-- POST /api/v1/auth/login — OAuth2 form (username=email, password)
-- POST /api/v1/auth/logout
+### Phase 1 — Core System ✅
+- FastAPI + PostgreSQL + SQLAlchemy async
+- JWT authentication (admin, cashier, vendor roles)
+- Full CRUD: vendors, items, sales, rent, payouts, customers
+- POS terminal with barcode scanning
+- Vendor portal with dashboard + inventory
+- Admin panel with all management pages
 
-**Vendors** (admin only for write)
-- GET/POST /api/v1/vendors/
-- GET/PUT/DELETE /api/v1/vendors/{id}
+### Phase 2 — Payments & Polish ✅
+- Square integration (rent payments + reservations)
+- Public shop page with cart + checkout
+- AI assistant (Gemini Flash via OpenRouter)
+- Cash register with receipt printing
+- Customer loyalty tracking
 
-**Items**
-- GET/POST /api/v1/items/
-- GET /api/v1/items/barcode/{barcode} — POS barcode lookup
-- GET/PUT/DELETE /api/v1/items/{id}
-- GET /api/v1/items/{id}/label — PDF label
-- GET /api/v1/items/{id}/dymo-label — Dymo XML
-
-**POS**
-- GET /api/v1/pos/search?q= — search items by name/barcode
-- GET /api/v1/pos/barcode/{barcode} — exact barcode lookup
-- POST /api/v1/pos/sale — checkout
-- POST /api/v1/pos/payment-callback — Poynt webhook (stub)
-
-**Sales**
-- GET /api/v1/sales/
-- GET /api/v1/sales/{id}
-- GET /api/v1/sales/summary/today
-
-**Assistant**
-- POST /api/v1/assistant/chat — AI chat with tool calling
-
-**Docs:** http://138.68.239.233/docs
+### Phase 3 — UX Redesign & Features ✅
+- Complete dark editorial redesign (all 11 pages)
+- Gold accent warm aesthetic
+- Ornamental dividers and ledger-style tables
+- Tax rate corrected to 5%
+- Mobile-responsive navigation
+- Reports page (daily sales, vendor performance, top items, hourly, payment methods, balances)
+- Settings page (store config, tax, commission, receipt text)
+- Vendor management expanded (directory, edit, password reset, is_vendor flag)
+- Item photo uploads
+- SEO: llms.txt, robots.txt, schema.org markup, OG tags
+- Vendor items page with list view, sort, search, pagination
 
 ---
 
-## 💰 Business Rules
+## 11 · Current State
 
-**Rent:**
-- Deducted from vendor balance on the 27th of each month
-- Field: vendors.rent_due_day (default 27)
+**All core features are built and functional.** The system is deployed and running.
 
-**Payouts:**
-- Processed on the 1st of each month
-- Method: Zelle (manual, ~15 min for 70 vendors)
-- System generates ready-to-send list
-- ACH direct deposit planned for Phase 2
-
-**Vendor roles:**
-- vendor — own items/dashboard only
-- cashier — POS + read vendors + full item management
-- admin — everything
-
----
-
-## 🤖 AI Assistant
-
-- Provider: OpenRouter
-- Model: google/gemini-2.0-flash
-- API key: OPENROUTER_API_KEY (in .env)
-- Available on: all pages (vendor, admin, POS)
-- Capabilities: add/edit/archive items via chat, photo analysis, description writing, SEO descriptions
-- Tool calling: add_item, edit_item, archive_item, list_items, get_item
-
----
-
-## 📋 Build Phases
-
-| Phase | Status | Scope |
-|-------|--------|-------|
-| 1 | ✅ Complete | Vendors, items, barcodes, labels, auth |
-| 2 | ✅ Complete | POS register, checkout, vendor balance updates |
-| 3 | ✅ Complete | Receipt printing, Dymo labels, mobile UI, AI assistant, cashier permissions |
-| 4 | 🔲 Pending | GoDaddy Poynt card payment integration |
-| 5 | 🔲 Pending | Auto rent deduction (27th), auto payout list (1st), email notifications |
-| 6 | 🔲 Pending | Tax reports, Wix website item listings |
-| 7 | 🔲 Pending | Side-by-side testing with Ricochet, staff training, cutover |
-
----
-
-## ⚠️ Known Migration Notes
-
-When deploying new code that adds database columns, always run the ALTER TABLE manually on the server:
-
-```bash
-# Example — adding a new column
-sudo -u postgres psql -d bmm_pos -c "ALTER TABLE table_name ADD COLUMN IF NOT EXISTS column_name TYPE DEFAULT value;"
-```
-
-**Columns added after initial schema:**
-- items.label_style VARCHAR(20) DEFAULT 'standard' — added manually March 2026
-
----
-
-## 🔐 Environment Variables (.env)
-
-```
-DATABASE_URL=postgresql+asyncpg://bmm_user:BmmPos2024Secure@localhost/bmm_pos
-SECRET_KEY=bowenstreet-production-secret-2024
-TAX_RATE=0.055
-STORE_NAME=Bowenstreet Market
-OPENROUTER_API_KEY=your-key-here
-```
-
----
-
-## 🎨 Brand
-
-- Primary background: #38383B (dark charcoal)
-- Accent: #A8A6A1 (warm gray)
-- Surface/card: #44444A
-- Text: white on dark, #374151 on light
-- Border radius: 0px (square corners throughout)
-- Headings: EB Garamond
-- Body: Roboto
-- Buttons: uppercase, tracked labels
+### Known items for future work:
+- Square webhook integration for real-time payment confirmation
+- Email notifications for vendors (balance updates, rent due)
+- Barcode label printing
+- Inventory alerts (low stock)
+- Vendor payout automation
+- Advanced analytics dashboards
+- Multi-location support

@@ -3,205 +3,164 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from app.config import settings
 from app.database import get_db
 from app.models.item import Item
-from app.models.reservation import Reservation
+from app.models.vendor import Vendor
 
-router = APIRouter(prefix="/storefront", tags=["storefront"])
+router = APIRouter(prefix="/storefront", tags=["shop"])
 
+class ShopItemResponse(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    price: float
+    sale_price: Optional[float]
+    category: Optional[str]
+    booth_location: Optional[str]
+    vendor_name: str
+    vendor_booth: Optional[str]
+    quantity: int
+    photo_url: Optional[str] = None
 
-class ReserveRequest(BaseModel):
-    item_id: int
-    customer_name: str
-    customer_phone: str
-
-
-class CreatePaymentRequest(BaseModel):
-    item_id: int
-    customer_name: str
-    customer_phone: str
-
-
-class ConfirmPaymentRequest(BaseModel):
-    reservation_id: int
-    square_payment_id: Optional[str] = None
-
+    class Config:
+        from_attributes = True
 
 @router.get("/items")
-async def storefront_items(
+async def get_shop_items(
+    db: AsyncSession = Depends(get_db),
     search: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db),
+    category: Optional[str] = Query(None),
+    vendor_id: Optional[int] = Query(None),
+    min_price: Optional[float] = Query(None),
+    max_price: Optional[float] = Query(None),
+    on_sale: Optional[bool] = Query(None),
+    sort: Optional[str] = Query("newest"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(24, ge=1, le=100),
 ):
-    q = (
-        select(Item)
-        .options(selectinload(Item.vendor))
-        .where(Item.status == "active", Item.is_online.is_(True))
-        .order_by(Item.name)
+    query = (
+        select(
+            Item.id,
+            Item.name,
+            Item.description,
+            Item.price,
+            Item.sale_price,
+            Item.category,
+            Item.booth_location,
+            Item.quantity,
+            Item.created_at,
+            Item.photo_url,
+            Vendor.name.label("vendor_name"),
+            Vendor.booth_number.label("vendor_booth"),
+        )
+        .join(Vendor, Item.vendor_id == Vendor.id)
+        .where(Item.is_active == True)
+        .where(Item.quantity > 0)
+        .where(Vendor.is_active == True)
     )
+
     if search:
-        q = q.where(Item.name.ilike(f"%{search}%"))
-
-    rows = await db.execute(q)
-    items = rows.scalars().all()
-
-    today = date.today()
-    result = []
-    for item in items:
-        sale_active = (
-            item.sale_price is not None
-            and item.sale_start is not None
-            and item.sale_end is not None
-            and item.sale_start <= today <= item.sale_end
+        pattern = f"%{search}%"
+        query = query.where(
+            or_(
+                Item.name.ilike(pattern),
+                Item.description.ilike(pattern),
+                Item.sku.ilike(pattern),
+                Item.category.ilike(pattern),
+                Vendor.name.ilike(pattern),
+            )
         )
-        result.append({
-            "id": item.id,
-            "name": item.name,
-            "price": float(item.price),
-            "sale_price": float(item.sale_price) if sale_active else None,
-            "sale_start": str(item.sale_start) if item.sale_start else None,
-            "sale_end": str(item.sale_end) if item.sale_end else None,
-            "description": item.description,
-            "vendor_name": item.vendor.name if item.vendor else "Bowenstreet Market",
-            "booth_number": item.vendor.booth_number if item.vendor else None,
+
+    if category:
+        query = query.where(Item.category == category)
+    if vendor_id:
+        query = query.where(Item.vendor_id == vendor_id)
+    if min_price is not None:
+        query = query.where(Item.price >= min_price)
+    if max_price is not None:
+        query = query.where(Item.price <= max_price)
+    if on_sale:
+        query = query.where(Item.sale_price.isnot(None))
+
+    # Sorting
+    if sort == "price_asc":
+        query = query.order_by(Item.price.asc())
+    elif sort == "price_desc":
+        query = query.order_by(Item.price.desc())
+    elif sort == "name":
+        query = query.order_by(Item.name.asc())
+    elif sort == "oldest":
+        query = query.order_by(Item.created_at.asc())
+    else:
+        query = query.order_by(Item.created_at.desc())
+
+    # Count total
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+
+    # Paginate
+    offset = (page - 1) * per_page
+    query = query.offset(offset).limit(per_page)
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    items = []
+    for row in rows:
+        items.append({
+            "id": row.id,
+            "name": row.name,
+            "description": row.description,
+            "price": float(row.price),
+            "sale_price": float(row.sale_price) if row.sale_price else None,
+            "category": row.category,
+            "booth_location": row.booth_location,
+            "vendor_name": row.vendor_name,
+            "vendor_booth": row.vendor_booth,
+            "quantity": row.quantity,
+            "photo_url": row.photo_url,
         })
-    return result
-
-
-@router.post("/create-payment")
-async def create_payment(
-    body: CreatePaymentRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    row = await db.execute(
-        select(Item).where(Item.id == body.item_id, Item.status == "active")
-    )
-    item = row.scalar_one_or_none()
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found or no longer available.")
-
-    today = date.today()
-    sale_active = (
-        item.sale_price is not None
-        and item.sale_start is not None
-        and item.sale_end is not None
-        and item.sale_start <= today <= item.sale_end
-    )
-    display_price = float(item.sale_price) if sale_active else float(item.price)
-    price_cents = round(display_price * (1 + settings.tax_rate) * 100)
-
-    try:
-        reservation = Reservation(
-            item_id=body.item_id,
-            customer_name=body.customer_name,
-            customer_phone=body.customer_phone,
-            amount_paid=display_price,
-            status="pending",
-        )
-        db.add(reservation)
-        await db.flush()
-        reservation_id = reservation.id
-
-        redirect_url = f"https://www.bowenstreetmm.com/shop/index.html?payment=success&ref={reservation_id}"
-
-        from app.services.square import create_payment_link
-        result = await create_payment_link(
-            name=item.name,
-            price_cents=price_cents,
-            redirect_url=redirect_url,
-        )
-        reservation.square_payment_id = result.get("payment_link_id", "")
-        await db.commit()
-        return {"payment_url": result["url"], "reservation_id": reservation_id}
-    except HTTPException:
-        raise
-    except ValueError as exc:
-        await db.rollback()
-        raise HTTPException(status_code=503, detail=str(exc))
-    except RuntimeError as exc:
-        await db.rollback()
-        raise HTTPException(status_code=502, detail=str(exc))
-    except Exception as exc:
-        await db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="Checkout could not be started. Please try again or call the store at (920) 555-0100.",
-        )
-
-
-@router.post("/payment-confirmed")
-async def payment_confirmed(
-    body: ConfirmPaymentRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    row = await db.execute(
-        select(Reservation).where(
-            Reservation.id == body.reservation_id,
-            Reservation.status == "pending",
-        )
-    )
-    reservation = row.scalar_one_or_none()
-    if not reservation:
-        raise HTTPException(status_code=404, detail="Reservation not found or already confirmed.")
-
-    item_row = await db.execute(
-        select(Item).where(Item.id == reservation.item_id)
-    )
-    item = item_row.scalar_one_or_none()
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found.")
-
-    if item.status not in ("active", "reserved"):
-        raise HTTPException(status_code=409, detail="Item is no longer available.")
-
-    item.status = "reserved"
-    reservation.status = "confirmed"
-    if body.square_payment_id:
-        reservation.square_payment_id = body.square_payment_id
-
-    await db.commit()
 
     return {
-        "success": True,
-        "message": (
-            f"Payment confirmed. '{item.name}' has been reserved for {reservation.customer_name}. "
-            "Please stop in to complete your purchase — we'll hold it for 48 hours."
-        ),
-        "item_name": item.name,
-        "customer_name": reservation.customer_name,
+        "items": items,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": (total + per_page - 1) // per_page,
     }
 
-
-@router.post("/reserve")
-async def reserve_item(
-    body: ReserveRequest,
-    db: AsyncSession = Depends(get_db),
-):
-    row = await db.execute(
-        select(Item).where(Item.id == body.item_id, Item.status == "active")
+@router.get("/categories")
+async def get_categories(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Item.category, func.count(Item.id))
+        .where(Item.is_active == True)
+        .where(Item.quantity > 0)
+        .where(Item.category.isnot(None))
+        .group_by(Item.category)
+        .order_by(Item.category)
     )
-    item = row.scalar_one_or_none()
-    if not item:
-        raise HTTPException(
-            status_code=404,
-            detail="Item not found or no longer available for reservation.",
+    return [{"name": row[0], "count": row[1]} for row in result.all()]
+
+@router.get("/vendors")
+async def get_shop_vendors(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(
+            Vendor.id,
+            Vendor.name,
+            Vendor.booth_number,
+            func.count(Item.id).label("item_count"),
         )
-
-    item.status = "reserved"
-    await db.commit()
-
-    return {
-        "success": True,
-        "message": (
-            f"'{item.name}' has been reserved for {body.customer_name}. "
-            "Please stop in to complete your purchase — we'll hold it for 48 hours."
-        ),
-        "item_id": item.id,
-        "item_name": item.name,
-        "customer_name": body.customer_name,
-        "customer_phone": body.customer_phone,
-    }
+        .outerjoin(Item, (Item.vendor_id == Vendor.id) & (Item.is_active == True) & (Item.quantity > 0))
+        .where(Vendor.is_active == True)
+        .where(or_(Vendor.role == "vendor", Vendor.is_vendor == True))
+        .group_by(Vendor.id, Vendor.name, Vendor.booth_number)
+        .order_by(Vendor.name)
+    )
+    return [
+        {"id": row.id, "name": row.name, "booth_number": row.booth_number, "item_count": row.item_count}
+        for row in result.all()
+    ]

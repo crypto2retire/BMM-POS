@@ -3,60 +3,57 @@ from decimal import Decimal
 from typing import Optional
 from pydantic import BaseModel, EmailStr, field_validator
 
-
 class VendorCreate(BaseModel):
     name: str
     email: EmailStr
-    password: str
     phone: Optional[str] = None
+    password: str
     booth_number: Optional[str] = None
-    monthly_rent: Decimal = Decimal("0")
     role: str = "vendor"
-    payout_method: str = "zelle"
-    zelle_handle: Optional[str] = None
-    rent_due_day: int = 27
+    is_vendor: bool = False
+    monthly_rent: Decimal = Decimal("200.00")
+    commission_rate: Decimal = Decimal("0.10")
 
-    @field_validator("password")
+    @field_validator('role')
     @classmethod
-    def password_min_length(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
+    def validate_role(cls, v):
+        if v not in ('vendor', 'cashier', 'admin'):
+            raise ValueError('role must be vendor, cashier, or admin')
         return v
-
 
 class VendorUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
-    password: Optional[str] = None
     phone: Optional[str] = None
     booth_number: Optional[str] = None
-    monthly_rent: Optional[Decimal] = None
-    rent_due_day: Optional[int] = None
     role: Optional[str] = None
-    payout_method: Optional[str] = None
-    zelle_handle: Optional[str] = None
-    status: Optional[str] = None
-
+    is_active: Optional[bool] = None
+    is_vendor: Optional[bool] = None
+    monthly_rent: Optional[Decimal] = None
+    commission_rate: Optional[Decimal] = None
 
 class VendorResponse(BaseModel):
     id: int
     name: str
     email: str
-    phone: Optional[str] = None
-    booth_number: Optional[str] = None
-    monthly_rent: Decimal
-    rent_due_day: int
+    phone: Optional[str]
+    booth_number: Optional[str]
     role: str
-    payout_method: Optional[str] = None
-    zelle_handle: Optional[str] = None
-    status: str
-    rent_flagged: bool = False
+    is_active: bool
+    is_vendor: bool = False
+    monthly_rent: Decimal
+    commission_rate: Decimal
     created_at: datetime
-    current_balance: Optional[Decimal] = None
 
-    model_config = {"from_attributes": True}
+    class Config:
+        from_attributes = True
 
+class VendorBalanceResponse(BaseModel):
+    vendor_id: int
+    balance: Decimal
+    total_sales: Decimal
+    total_commission: Decimal
+    total_payouts: Decimal
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+    class Config:
+        from_attributes = True

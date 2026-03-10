@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports — Bowenstreet Market</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">Bowenstreet Market</div>
+        <div class="nav-links">
+            <a href="/admin/index.html">Dashboard</a>
+            <a href="/admin/vendors.html">Vendors</a>
+            <a href="/admin/rent.html">Rent</a>
+            <a href="/admin/customers.html">Customers</a>
+            <a href="/admin/reports.html" class="active">Reports</a>
+            <a href="/admin/settings.html">Settings</a>
+            <a href="#" onclick="logout()">Logout</a>
+        </div>
+        <select class="mobile-nav" onchange="if(this.value)window.location=this.value">
+            <option value="">Menu</option>
+            <option value="/admin/index.html">Dashboard</option>
+            <option value="/admin/vendors.html">Vendors</option>
+            <option value="/admin/rent.html">Rent</option>
+            <option value="/admin/customers.html">Customers</option>
+            <option value="/admin/reports.html" selected>Reports</option>
+            <option value="/admin/settings.html">Settings</option>
+        </select>
+    </nav>
+    <div class="container" style="margin-top:80px">
+        <h1 style="font-family:'EB Garamond',serif;font-style:italic;font-size:2rem;margin-bottom:0.2em">Reports</h1>
+        <p style="color:#999;margin-bottom:1.5em;font-size:0.95rem">Sales analytics, vendor performance, and financial summaries</p>
+        <div class="ornament"></div>
+
+        <!-- Report Selector -->
+        <div class="card" style="margin-bottom:1.5em">
+            <div style="display:flex;flex-wrap:wrap;gap:0.75em;align-items:center">
+                <select id="reportType" class="form-control" style="max-width:250px" onchange="loadReport()">
+                    <option value="daily_sales">Daily Sales Summary</option>
+                    <option value="vendor_performance">Vendor Performance</option>
+                    <option value="top_items">Top Selling Items</option>
+                    <option value="hourly_sales">Hourly Sales Pattern</option>
+                    <option value="payment_methods">Payment Methods</option>
+                    <option value="vendor_balances">Vendor Balances</option>
+                </select>
+                <input type="date" id="reportDateFrom" class="form-control" style="max-width:180px">
+                <span style="color:#999">to</span>
+                <input type="date" id="reportDateTo" class="form-control" style="max-width:180px">
+                <button class="btn btn-primary" onclick="loadReport()">Generate</button>
+                <button class="btn" style="background:transparent;border:1px solid var(--gold);color:var(--gold)" onclick="exportCSV()">Export CSV</button>
+            </div>
+        </div>
+
+        <!-- Report Summary Cards -->
+        <div id="summaryCards" class="stats-grid" style="margin-bottom:1.5em"></div>
+
+        <!-- Report Table -->
+        <div class="card">
+            <div id="reportContent">
+                <p style="color:#999;text-align:center;padding:2em">Select a report and date range, then click Generate</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TOKEN = sessionStorage.getItem('bmm_token');
+        if (!TOKEN) window.location = '/vendor/login.html';
+
+        function logout() {
+            sessionStorage.removeItem('bmm_token');
+            window.location = '/vendor/login.html';
+        }
+
+        // Default dates: last 30 days
+        const today = new Date();
+        const thirtyAgo = new Date(today);
+        thirtyAgo.setDate(thirtyAgo.getDate() - 30);
+        document.getElementById('reportDateFrom').value = thirtyAgo.toISOString().split('T')[0];
+        document.getElementById('reportDateTo').value = today.toISOString().split('T')[0];
+
+        let currentReportData = [];
+
+        async function loadReport() {
+            const type = document.getElementById('reportType').value;
+            const from = document.getElementById('reportDateFrom').value;
+            const to = document.getElementById('reportDateTo').value;
+
+            try {
+                const resp = await fetch(`/api/reports/${type}?from_date=${from}&to_date=${to}`, {
+                    headers: { 'Authorization': `Bearer ${TOKEN}` }
+                });
+                if (!resp.ok) throw new Error('Failed to load report');
+                const data = await resp.json();
+                currentReportData = data.rows || [];
+                renderSummary(type, data);
+                renderTable(type, data);
+            } catch (e) {
+                document.getElementById('reportContent').innerHTML =
+                    `<p style="color:#ff6b6b;text-align:center;padding:2em">${e.message}</p>`;
+                document.getElementById('summaryCards').innerHTML = '';
+            }
+        }
+
+        function renderSummary(type, data) {
+            const el = document.getElementById('summaryCards');
+            if (!data.summary) { el.innerHTML = ''; return; }
+            const s = data.summary;
+            let cards = '';
+
+            if (type === 'daily_sales') {
+                cards = `
+                    <div class="stat-card"><div class="stat-value">$${(s.total_revenue||0).toFixed(2)}</div><div class="stat-label">Total Revenue</div></div>
+                    <div class="stat-card"><div class="stat-value">${s.total_transactions||0}</div><div class="stat-label">Transactions</div></div>
+                    <div class="stat-card"><div class="stat-value">${s.total_items_sold||0}</div><div class="stat-label">Items Sold</div></div>
+                    <div class="stat-card"><div class="stat-value">$${(s.avg_transaction||0).toFixed(2)}</div><div class="stat-label">Avg Transaction</div></div>
+                `;
+            } else if (type === 'vendor_performance') {
+                cards = `
+                    <div class="stat-card"><div class="stat-value">${s.active_vendors||0}</div><div class="stat-label">Active Vendors</div></div>
+                    <div class="stat-card"><div class="stat-value">$${(s.total_vendor_sales||0).toFixed(2)}</div><div class="stat-label">Total Vendor Sales</div></div>
+                    <div class="stat-card"><div class="stat-value">$${(s.avg_vendor_sales||0).toFixed(2)}</div><div class="stat-label">Avg per Vendor</div></div>
+                `;
+            } else if (type === 'top_items') {
+                cards = `
+                    <div class="stat-card"><div class="stat-value">${s.unique_items||0}</div><div class="stat-label">Unique Items Sold</div></div>
+                    <div class="stat-card"><div class="stat-value">${s.total_quantity||0}</div><div class="stat-label">Total Quantity</div></div>
+                    <div class="stat-card"><div class="stat-value">$${(s.total_item_revenue||0).toFixed(2)}</div><div class="stat-label">Total Revenue</div></div>
+                `;
+            } else if (type === 'payment_methods') {
+                cards = `
+                    <div class="stat-card"><div class="stat-value">${s.total_transactions||0}</div><div class="stat-label">Total Transactions</div></div>
+                    <div class="stat-card"><div class="stat-value">$${(s.total_amount||0).toFixed(2)}</div><div class="stat-label">Total Amount</div></div>
+                `;
+            } else if (type === 'vendor_balances') {
+                cards = `
+                    <div class="stat-card"><div class="stat-value">${s.total_vendors||0}</div><div class="stat-label">Total Vendors</div></div>
+                    <div class="stat-card"><div class="stat-value">$${(s.total_balance||0).toFixed(2)}</div><div class="stat-label">Total Owed</div></div>
+                    <div class="stat-card"><div class="stat-value">$${(s.avg_balance||0).toFixed(2)}</div><div class="stat-label">Avg Balance</div></div>
+                `;
+            }
+
+            el.innerHTML = cards;
+        }
+
+        function renderTable(type, data) {
+            const el = document.getElementById('reportContent');
+            if (!data.rows || data.rows.length === 0) {
+                el.innerHTML = '<p style="color:#999;text-align:center;padding:2em">No data found for this date range</p>';
+                return;
+            }
+
+            const cols = data.columns || Object.keys(data.rows[0]);
+            let html = '<div style="overflow-x:auto"><table class="table"><thead><tr>';
+            for (const col of cols) {
+                html += `<th>${col.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</th>`;
+            }
+            html += '</tr></thead><tbody>';
+
+            for (const row of data.rows) {
+                html += '<tr>';
+                for (const col of cols) {
+                    let val = row[col];
+                    if (typeof val === 'number' && col.match(/amount|revenue|sales|balance|total|avg|price/i)) {
+                        val = '$' + val.toFixed(2);
+                    }
+                    html += `<td>${val !== null && val !== undefined ? val : '-'}</td>`;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody></table></div>';
+            el.innerHTML = html;
+        }
+
+        function exportCSV() {
+            if (!currentReportData.length) { alert('No data to export'); return; }
+            const cols = Object.keys(currentReportData[0]);
+            let csv = cols.join(',') + '\n';
+            for (const row of currentReportData) {
+                csv += cols.map(c => {
+                    let v = row[c];
+                    if (v === null || v === undefined) v = '';
+                    if (typeof v === 'string' && (v.includes(',') || v.includes('"')))
+                        v = '"' + v.replace(/"/g, '""') + '"';
+                    return v;
+                }).join(',') + '\n';
+            }
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${document.getElementById('reportType').value}_${document.getElementById('reportDateFrom').value}.csv`;
+            a.click();
+        }
+
+        // Load initial report
+        loadReport();
+    </script>
+    <script src="/static/js/assistant-panel.js"></script>
+    <script>
+        if (typeof initAssistantPanel === 'function') {
+            initAssistantPanel('Admin reports page — sales analytics, vendor performance, top items, hourly sales, payment methods, vendor balances', { buttonBottom: '70px' });
+        }
+    </script>
+</body>
+</html>

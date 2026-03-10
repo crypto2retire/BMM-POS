@@ -17,6 +17,7 @@ from app.schemas.sale import (
 )
 from app.services import poynt
 from app.config import settings
+from app.routers.settings import get_tax_rate
 
 router = APIRouter(prefix="/pos", tags=["pos"])
 
@@ -138,7 +139,8 @@ async def pos_create_sale(
 
     subtotal = sum(lt for _, _, _, lt in resolved_lines).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
-    tax_rate = Decimal(str(settings.tax_rate)).quantize(Decimal("0.0001"), ROUND_HALF_UP)
+    db_tax_rate = await get_tax_rate(db)
+    tax_rate = Decimal(str(db_tax_rate)).quantize(Decimal("0.0001"), ROUND_HALF_UP)
     taxable_subtotal = sum(
         lt for item, _, _, lt in resolved_lines if not item.is_tax_exempt
     ).quantize(Decimal("0.01"), ROUND_HALF_UP)

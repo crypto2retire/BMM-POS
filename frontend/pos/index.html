@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>POS Terminal — BMM-POS</title>
+    <meta name="description" content="Point of sale register for Bowenstreet Market — ring up sales, scan barcodes, process payments.">
+    <meta property="og:title" content="POS Terminal — Bowenstreet Market">
+    <meta property="og:description" content="POS register for Bowenstreet Market.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.bowenstreetmm.com/pos/index.html">
+    <meta property="og:image" content="https://www.bowenstreetmm.com/static/images/og-image.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="https://www.bowenstreetmm.com/pos/index.html">
     <link rel="stylesheet" href="/static/css/main.css">
     <script src="https://unpkg.com/@zxing/browser@latest/umd/index.min.js"></script>
     <style>
@@ -51,7 +59,7 @@
                 position: fixed;
                 bottom: 0; left: 0; right: 0;
                 padding: 0.5rem 0.75rem;
-                background: #252527;
+                background: #1e1e20;
                 border-top: 1px solid rgba(201,169,110,0.15);
                 gap: 0.5rem;
                 z-index: 50;
@@ -68,7 +76,7 @@
         /* Navbar */
         .pos-navbar {
             grid-column: 1 / -1;
-            background: #252527;
+            background: #1e1e20;
             color: #F0EDE8;
             display: flex;
             align-items: center;
@@ -79,8 +87,8 @@
         }
         .pos-navbar-brand { display: flex; align-items: center; gap: 0.75rem; }
         .pos-navbar-brand span.label {
-            background: rgba(201,169,110,0.12);
-            border: 1px solid rgba(201,169,110,0.2);
+            background: rgba(201,169,110,0.15);
+            border: 1px solid rgba(201,169,110,0.25);
             color: #C9A96E;
             font-size: 0.62rem;
             font-weight: 500;
@@ -122,7 +130,7 @@
             display: flex;
             gap: 0.5rem;
             align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+            border-bottom: 1px solid rgba(201,169,110,0.1);
         }
         .scanner-bar input {
             flex: 1;
@@ -187,7 +195,7 @@
         }
         .cart-table td {
             padding: 0.65rem 0.5rem;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+            border-bottom: 1px solid rgba(201,169,110,0.06);
             vertical-align: middle;
             color: #F0EDE8;
             font-size: 0.875rem;
@@ -249,7 +257,7 @@
         /* Right panel — totals + payment */
         .pos-right {
             background: #38383B;
-            border-left: 1px solid rgba(255,255,255,0.06);
+            border-left: 1px solid rgba(201,169,110,0.12);
             display: flex;
             flex-direction: column;
             padding: 1rem;
@@ -292,8 +300,8 @@
         }
 
         .item-count-badge {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid rgba(255,255,255,0.06);
+            background: rgba(201,169,110,0.05);
+            border: 1px solid rgba(201,169,110,0.12);
             padding: 0.5rem 0.75rem;
             font-size: 0.78rem;
             color: #A8A6A1;
@@ -304,7 +312,7 @@
         .clear-btn {
             width: 100%;
             background: transparent;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(201,169,110,0.15);
             color: #A8A6A1;
             padding: 0.5rem;
             cursor: pointer;
@@ -365,12 +373,12 @@
 
         .pos-modal {
             background: #44444A;
-            border: 1px solid rgba(201,169,110,0.2);
+            border: 1px solid rgba(201,169,110,0.25);
             padding: 1.75rem;
             width: 100%;
             max-width: 460px;
             color: #F0EDE8;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.08);
             animation: fadeUp 0.25s ease;
         }
         .pos-modal h2 {
@@ -380,6 +388,7 @@
             margin-bottom: 1.25rem;
             font-style: italic;
             letter-spacing: 0.01em;
+            color: #C9A96E;
         }
         .pos-modal .total-display {
             text-align: center;
@@ -492,7 +501,7 @@
         .card-waiting-overlay.hidden { display: none; }
         .card-waiting-box {
             background: #44444A;
-            border: 1px solid rgba(201,169,110,0.18);
+            border: 1px solid rgba(201,169,110,0.25);
             padding: 2.5rem;
             text-align: center;
             max-width: 360px;
@@ -536,7 +545,7 @@
         }
         .toast {
             background: #44444A;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(201,169,110,0.15);
             color: #F0EDE8;
             padding: 0.6rem 1.25rem;
             font-size: 0.85rem;
@@ -588,7 +597,7 @@
         .camera-scan-btn {
             display: none;
             background: #4e4e54;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid rgba(201,169,110,0.15);
             color: #F0EDE8;
             font-size: 1.2rem;
             height: 44px;
@@ -644,7 +653,7 @@
         .search-bar {
             background: #3d3d40;
             padding: 0.5rem 1rem;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            border-bottom: 1px solid rgba(201,169,110,0.08);
             position: relative;
         }
         .search-bar input {
@@ -727,7 +736,7 @@
         </div>
         <div class="pos-navbar-right">
             <span id="cashier-name">Loading...</span>
-            <a href="/admin/customers.html">Vendors</a>
+            <a href="/admin/vendors.html">Vendors</a>
             <a href="/vendor/items.html">Items</a>
             <a href="/admin/index.html" id="admin-link" style="display:none">Admin</a>
             <button class="nav-link" onclick="handleLogout()">Logout</button>
