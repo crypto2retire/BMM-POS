@@ -892,6 +892,7 @@ select.form-control option { background: var(--surface-2); color: var(--text); }
 /* ── ITEM CARDS ───────────────────────────────────────── */
 .item-cards-grid { display: grid; grid-template-columns: 1fr; gap: 0.9rem; }
 .item-card {
+    position: relative;
     background: var(--surface);
     border: 1px solid rgba(245,240,232,0.06);
     border-top: 2px solid var(--gold);

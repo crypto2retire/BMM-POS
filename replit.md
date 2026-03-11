@@ -89,6 +89,7 @@ All routes prefixed with `/api/v1/`:
 | PUT | /items/{id} | Auth | Update item |
 | DELETE | /items/{id} | Auth | Soft-delete item |
 | GET | /items/{id}/label | Auth | PDF label download |
+| POST | /items/labels/batch | Auth | Batch PDF labels (body: {item_ids}) |
 | POST | /sales/ | Auth | Create sale (checkout) |
 | GET | /sales/ | Auth | List sales (admin/cashier=all, vendor=own) |
 | GET | /sales/summary/today | Admin/Cashier | Today's sale count, revenue, tax |

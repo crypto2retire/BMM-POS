@@ -1253,6 +1253,7 @@
 
         let html = `<table class="items-list-table">
             <thead><tr>
+                <th style="cursor:default;width:32px;padding:0 4px"><input type="checkbox" onchange="toggleSelectAll()" style="width:15px;height:15px;accent-color:var(--gold);cursor:pointer"></th>
                 <th style="cursor:default">Photo</th>
                 <th ${sortArrow('name')}>Name <span class="sort-arrow">${sortColumn === 'name' ? (sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '&#9650;'}</span></th>
                 <th style="cursor:default">SKU</th>
@@ -1273,8 +1274,10 @@
             const photoHtml = getItemPhotoHtml(item, 40);
             const style = item.label_style || 'standard';
             const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+            const selChecked = selectedItemIds.has(item.id) ? 'checked' : '';
 
             html += `<tr>
+                <td style="padding:0 4px"><input type="checkbox" class="item-select-cb" data-item-id="${item.id}" ${selChecked} onchange="toggleItemSelect(${item.id})" style="width:15px;height:15px;accent-color:var(--gold);cursor:pointer"></td>
                 <td>${photoHtml}</td>
                 <td>${item.name}</td>
                 <td class="sku-cell">${item.sku || '&mdash;'}</td>
