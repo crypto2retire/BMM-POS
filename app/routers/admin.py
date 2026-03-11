@@ -97,3 +97,53 @@ async def toggle_vendor_flag(
         "name": vendor.name,
         "rent_flagged": vendor.rent_flagged,
     }
+
+
+@router.get("/vendors/{vendor_id}/rent-history")
+async def vendor_rent_history(
+    vendor_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: Vendor = Depends(require_cashier_or_admin),
+):
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found.")
+
+    payments_result = await db.execute(
+        select(RentPayment)
+        .where(RentPayment.vendor_id == vendor_id)
+        .order_by(RentPayment.period_month.desc())
+    )
+    payments = payments_result.scalars().all()
+
+    today = date.today()
+    latest = payments[0] if payments else None
+    status = _rent_status(today, latest)
+
+    return {
+        "vendor": {
+            "id": vendor.id,
+            "name": vendor.name,
+            "email": vendor.email,
+            "phone": vendor.phone,
+            "booth_number": vendor.booth_number or "—",
+            "monthly_rent": float(vendor.monthly_rent or 0),
+            "status": vendor.status,
+            "role": vendor.role,
+            "rent_flagged": vendor.rent_flagged,
+            "rent_status": status,
+        },
+        "payments": [
+            {
+                "id": p.id,
+                "amount": float(p.amount),
+                "period_month": p.period_month.strftime("%B %Y"),
+                "method": p.method,
+                "status": p.status,
+                "notes": p.notes,
+                "processed_at": p.processed_at.isoformat() if p.processed_at else None,
+            }
+            for p in payments
+        ],
+    }

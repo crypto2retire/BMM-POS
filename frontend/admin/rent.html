@@ -106,10 +106,148 @@
         .search-bar input:focus { outline: none; border-color: var(--gold-dim); box-shadow: 0 0 0 2px rgba(201,169,110,0.12); }
 
         .vendor-name-cell { display: flex; align-items: center; gap: 0.5rem; }
+        .vendor-name-link {
+            color: var(--gold);
+            cursor: pointer;
+            border-bottom: 1px solid transparent;
+            transition: border-color 0.2s;
+        }
+        .vendor-name-link:hover { border-bottom-color: var(--gold); }
+
+        .detail-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 900;
+            animation: fadeIn 0.2s;
+        }
+        .detail-overlay.open { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .detail-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: min(480px, 92vw);
+            height: 100vh;
+            background: var(--bg);
+            border-left: 1px solid var(--border);
+            z-index: 901;
+            overflow-y: auto;
+            transform: translateX(100%);
+            transition: transform 0.25s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .detail-panel.open { transform: translateX(0); }
+
+        .detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding: 1.5rem 1.5rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .detail-header h2 {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-weight: 500;
+            font-size: 1.5rem;
+            margin: 0;
+            color: var(--text);
+        }
+        .detail-header .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0 0.25rem;
+            line-height: 1;
+        }
+        .detail-header .close-btn:hover { color: var(--text); }
+
+        .detail-body { padding: 1.5rem; flex: 1; }
+
+        .detail-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .detail-info-item label {
+            display: block;
+            font-size: 0.58rem;
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            color: var(--text-light);
+            margin-bottom: 0.2rem;
+            font-family: 'Roboto', sans-serif;
+        }
+        .detail-info-item span {
+            font-size: 0.95rem;
+            color: var(--text);
+        }
+
+        .payment-history-title {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-weight: 500;
+            font-size: 1.1rem;
+            color: var(--text);
+            margin: 0.5rem 0 0.75rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+        .payment-list { list-style: none; padding: 0; margin: 0; }
+        .payment-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.65rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .payment-item:last-child { border-bottom: none; }
+        .payment-period {
+            font-size: 0.9rem;
+            color: var(--text);
+            font-weight: 500;
+        }
+        .payment-meta {
+            font-size: 0.72rem;
+            color: var(--text-light);
+            margin-top: 0.15rem;
+        }
+        .payment-amount {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 1.15rem;
+            font-weight: 500;
+            color: #7BC4A0;
+        }
+        .payment-badge {
+            display: inline-block;
+            padding: 1px 7px;
+            font-size: 0.55rem;
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border: 1px solid transparent;
+            font-family: 'Roboto', sans-serif;
+            margin-left: 0.5rem;
+        }
+        .payment-badge.paid { background: rgba(123,196,160,0.1); color: #7BC4A0; border-color: rgba(123,196,160,0.25); }
+        .payment-badge.pending { background: rgba(232,192,112,0.1); color: #e8c070; border-color: rgba(232,192,112,0.25); }
+        .no-payments {
+            text-align: center;
+            color: var(--text-light);
+            font-size: 0.85rem;
+            padding: 2rem 0;
+            font-style: italic;
+        }
 
         @media (max-width: 767px) {
             .rent-stat-value { font-size: 1.9rem; }
             .main-content { padding-bottom: 70px; }
+            .detail-info-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -202,6 +340,22 @@
     </div>
 </div>
 
+<div class="detail-overlay" id="detail-overlay" onclick="closeVendorDetail()"></div>
+<div class="detail-panel" id="detail-panel">
+    <div class="detail-header">
+        <div>
+            <h2 id="detail-vendor-name"></h2>
+            <div id="detail-rent-status" style="margin-top:0.35rem;"></div>
+        </div>
+        <button class="close-btn" onclick="closeVendorDetail()">&times;</button>
+    </div>
+    <div class="detail-body">
+        <div class="detail-info-grid" id="detail-info-grid"></div>
+        <div class="payment-history-title">Payment History</div>
+        <div id="detail-payments"></div>
+    </div>
+</div>
+
 <!-- Mobile bottom nav -->
 <nav class="admin-bottom-nav">
     <a href="/admin/index.html">
@@ -268,7 +422,7 @@
                 <td>
                     <div class="vendor-name-cell">
                         ${v.rent_flagged ? '<span class="flag-icon" title="Flagged overdue">🚩</span>' : ''}
-                        <strong>${v.name}</strong>
+                        <strong class="vendor-name-link" onclick="openVendorDetail(${v.id})">${v.name}</strong>
                     </div>
                 </td>
                 <td>${v.booth_number}</td>
@@ -347,6 +501,60 @@
                 '<tr><td colspan="6" class="empty-state">Failed to load rent data.</td></tr>';
         }
     }
+
+    async function openVendorDetail(vendorId) {
+        document.getElementById('detail-vendor-name').textContent = 'Loading…';
+        document.getElementById('detail-rent-status').innerHTML = '';
+        document.getElementById('detail-info-grid').innerHTML = '';
+        document.getElementById('detail-payments').innerHTML = '<p style="color:var(--text-light);font-size:0.85rem;">Loading…</p>';
+        document.getElementById('detail-overlay').classList.add('open');
+        document.getElementById('detail-panel').classList.add('open');
+
+        try {
+            const data = await apiGet(`/api/v1/admin/vendors/${vendorId}/rent-history`);
+            const v = data.vendor;
+            document.getElementById('detail-vendor-name').textContent = v.name;
+            document.getElementById('detail-rent-status').innerHTML = statusBadge(v.rent_status);
+
+            document.getElementById('detail-info-grid').innerHTML = `
+                <div class="detail-info-item"><label>Booth</label><span>${v.booth_number}</span></div>
+                <div class="detail-info-item"><label>Monthly Rent</label><span>$${v.monthly_rent.toFixed(2)}</span></div>
+                <div class="detail-info-item"><label>Email</label><span>${v.email}</span></div>
+                <div class="detail-info-item"><label>Phone</label><span>${v.phone || '—'}</span></div>
+                <div class="detail-info-item"><label>Role</label><span style="text-transform:capitalize">${v.role}</span></div>
+                <div class="detail-info-item"><label>Account Status</label><span style="text-transform:capitalize">${v.status}</span></div>
+            `;
+
+            const payments = data.payments;
+            if (payments.length === 0) {
+                document.getElementById('detail-payments').innerHTML = '<p class="no-payments">No rent payments recorded yet.</p>';
+            } else {
+                document.getElementById('detail-payments').innerHTML = `<ul class="payment-list">${payments.map(p => {
+                    const d = p.processed_at ? new Date(p.processed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+                    const badgeCls = p.status === 'paid' ? 'paid' : 'pending';
+                    return `<li class="payment-item">
+                        <div>
+                            <div class="payment-period">${p.period_month}</div>
+                            <div class="payment-meta">${d} &middot; ${p.method}<span class="payment-badge ${badgeCls}">${p.status}</span></div>
+                        </div>
+                        <div class="payment-amount">$${p.amount.toFixed(2)}</div>
+                    </li>`;
+                }).join('')}</ul>`;
+            }
+        } catch (err) {
+            document.getElementById('detail-vendor-name').textContent = 'Error';
+            document.getElementById('detail-payments').innerHTML = `<p class="no-payments">${err.message}</p>`;
+        }
+    }
+
+    function closeVendorDetail() {
+        document.getElementById('detail-panel').classList.remove('open');
+        document.getElementById('detail-overlay').classList.remove('open');
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeVendorDetail();
+    });
 
     loadRentStatus();
 </script>
