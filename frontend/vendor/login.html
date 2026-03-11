@@ -191,14 +191,14 @@
             <div class="choice-greeting" id="choice-greeting">Welcome back</div>
             <div class="choice-sub">Where would you like to go?</div>
             <div class="choice-buttons">
-                <a href="#" class="choice-btn" id="choice-admin">
+                <a href="#" class="choice-btn" id="choice-admin" onclick="sessionStorage.removeItem('bmm_booth_mode')">
                     <span class="choice-icon">&#128202;</span>
                     <div>
                         <div class="choice-label" id="choice-admin-label">Admin Dashboard</div>
                         <div class="choice-desc">Manage vendors, reports, and settings</div>
                     </div>
                 </a>
-                <a href="/vendor/dashboard.html" class="choice-btn" id="choice-booth">
+                <a href="/vendor/dashboard.html" class="choice-btn" id="choice-booth" onclick="sessionStorage.setItem('bmm_booth_mode','1')">
                     <span class="choice-icon">&#127991;&#65039;</span>
                     <div>
                         <div class="choice-label">My Booth</div>
@@ -238,10 +238,9 @@
             const payload = JSON.parse(atob(token.split(".")[1]));
 
             if (data.redirect === "choose") {
-                // Show choice screen
                 document.getElementById("login-form").style.display = "none";
                 document.getElementById("choice-screen").classList.add("active");
-                document.getElementById("choice-greeting").textContent = `Welcome back, ${payload.name || 'there'}`;
+                document.getElementById("choice-greeting").textContent = `Welcome back, ${data.name || payload.name || 'there'}`;
 
                 // Set admin link based on role
                 const adminLink = document.getElementById("choice-admin");

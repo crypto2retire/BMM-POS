@@ -49,15 +49,15 @@ migrations/
 scripts/
   seed_dev.py     — Creates admin + cashier + 3 vendors + 15 items with sale prices
 frontend/
-  index.html              — Redirects to login
+  index.html              — SEO landing page (schema.org, OG tags, keyword-rich)
   static/css/main.css     — Full stylesheet (Bowenstreet Market brand: dark #38383B, accent #A8A6A1, EB Garamond headings, Roboto body, 0px radius, print @media for receipts)
   static/images/logo.webp  — Official Bowenstreet Market logo (white emblem)
   static/images/favicon.webp — Favicon
   static/js/api.js        — JWT fetch wrapper (sessionStorage persistence)
   vendor/
-    login.html    — Login page (redirects by role: admin→/admin, cashier→/pos, vendor→/vendor)
+    login.html    — Login page (redirects by role; shows choice screen for is_vendor admins/cashiers)
     dashboard.html — Vendor stats: balance, items, booth + Pay Rent with Card section
-    items.html    — Item management with add/edit/delete/label
+    items.html    — Item management with add/edit/delete/label (booth mode scopes to own items)
   admin/
     index.html    — Admin dashboard with vendor/item stats + Rent link
     vendors.html  — Admin vendor management (add/edit/suspend); shows 🚩 for flagged vendors
@@ -119,6 +119,15 @@ JWT stored in `sessionStorage` under key `bmm_token` (persists across same-tab n
 | vendor | Own items, own dashboard, own sale history |
 | cashier | POS terminal only (scan, checkout, view sales) |
 | admin | Everything — all vendors, items, sales, plus POS |
+
+### is_vendor Booth Mode
+
+Admins and cashiers with `is_vendor=true` AND a `booth_number` set see a choice screen at login: "Admin Dashboard" or "My Booth". Choosing "My Booth" sets `sessionStorage['bmm_booth_mode']='1'` and navigates to the vendor dashboard. In booth mode:
+- Items page shows only their own items (filtered by vendor_id)
+- Vendor filter bar is hidden
+- Bottom nav and vendor-style nav are shown
+- Page title shows "My Items" instead of "Item Management"
+- JWT includes `is_vendor`, `booth_number`, and `name` claims
 
 ## POS Terminal Features
 

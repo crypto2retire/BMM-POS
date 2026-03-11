@@ -145,6 +145,7 @@
 <script>
     function handleLogout() {
         clearToken();
+        sessionStorage.removeItem('bmm_booth_mode');
         window.location.href = "/vendor/login.html";
     }
 
@@ -248,12 +249,13 @@
         if (!token) { window.location.href = '/vendor/login.html'; return; }
         const payload = parseToken();
         const isVendorRole = payload.role === 'vendor';
-        const hasBoothAccess = isVendorRole || payload.is_vendor;
+        const boothMode = sessionStorage.getItem('bmm_booth_mode') === '1';
+        const hasBoothAccess = isVendorRole || (payload.is_vendor && boothMode);
         if (!payload || !hasBoothAccess) { window.location.href = '/vendor/login.html'; return; }
         document.getElementById("vendor-name").textContent = payload?.name || "Vendor";
 
         try {
-            const vendor = await apiGet(`/api/v1/vendors/${payload.sub}`);
+            const vendor = await apiGet(`/api/v1/vendors/${payload.vendor_id}`);
             document.getElementById("booth-number").textContent = vendor.booth_number || "N/A";
             document.getElementById("balance").textContent = `$${parseFloat(vendor.current_balance || 0).toFixed(2)}`;
             const rent = parseFloat(vendor.monthly_rent || 0);
@@ -263,7 +265,8 @@
                 document.getElementById("rent-status-badge").textContent = 'No rent configured';
             }
 
-            const items = await apiGet("/api/v1/items/");
+            const vendorItemsUrl = (payload.role === 'vendor') ? '/api/v1/items/' : `/api/v1/items/?vendor_id=${payload.vendor_id}`;
+            const items = await apiGet(vendorItemsUrl);
             const active = items.filter(i => i.status === "active");
             document.getElementById("active-items").textContent = active.length;
             document.getElementById("total-items").textContent = items.length;

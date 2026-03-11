@@ -436,6 +436,7 @@
     let pendingPhotoBase64 = null;
     let pendingPhotoMime = null;
     let currentRole = 'vendor';
+    let isVendorMode = false;
     let allVendors = [];
     let selectedVendorId = null;
     let aiSuggestions = {};
@@ -452,7 +453,7 @@
     const PAGE_SIZE = 50;
 
     // ── Nav helpers ────────────────────────────────────────────────────
-    function handleLogout() { clearToken(); window.location.href = '/vendor/login.html'; }
+    function handleLogout() { clearToken(); sessionStorage.removeItem('bmm_booth_mode'); window.location.href = '/vendor/login.html'; }
     function toggleNav() {
         document.getElementById('main-nav').classList.toggle('open');
     }
@@ -653,7 +654,7 @@
         document.getElementById('mini-chat-arrow').textContent = '▾';
         miniChatOpen = false;
 
-        if (currentRole !== 'vendor') {
+        if (currentRole !== 'vendor' && !isVendorMode) {
             const wrap = document.getElementById('form-vendor-wrap');
             wrap.style.display = 'block';
             const sel = document.getElementById('f-vendor-id');
@@ -895,7 +896,10 @@
             label_style: document.getElementById('f-label-style').value,
         };
 
-        if (currentRole !== 'vendor' && !editingId) {
+        if (isVendorMode && !editingId) {
+            const payload = parseToken();
+            body.vendor_id = payload.vendor_id;
+        } else if (currentRole !== 'vendor' && !isVendorMode && !editingId) {
             const vid = document.getElementById('f-vendor-id').value;
             if (!vid) { showAlert('modal-alert', 'Please select a vendor.', 'error'); return; }
             body.vendor_id = parseInt(vid);
@@ -1213,7 +1217,12 @@
     async function loadItems() {
         try {
             let url = '/api/v1/items/';
-            if (currentRole !== 'vendor' && selectedVendorId) url += `?vendor_id=${selectedVendorId}`;
+            const payload = parseToken();
+            if (isVendorMode) {
+                url += `?vendor_id=${payload.vendor_id}`;
+            } else if (currentRole !== 'vendor' && selectedVendorId) {
+                url += `?vendor_id=${selectedVendorId}`;
+            }
             allItems = await apiGet(url);
             displayItems();
         } catch (err) {
@@ -1229,9 +1238,23 @@
         if (!payload) { window.location.href = '/vendor/login.html'; return; }
 
         currentRole = payload.role;
-        document.getElementById('vendor-name').textContent = payload.name || 'User';
+        isVendorMode = (currentRole === 'admin' || currentRole === 'cashier') && payload.is_vendor;
 
-        if (currentRole === 'admin' || currentRole === 'cashier') {
+        const boothMode = sessionStorage.getItem('bmm_booth_mode') === '1';
+
+        if (isVendorMode && boothMode) {
+            document.getElementById('vendor-name').textContent = payload.name || 'User';
+            document.getElementById('nav-brand').href = '/vendor/dashboard.html';
+            document.getElementById('nav-role-label').textContent = 'My Booth';
+            document.getElementById('nav-home').href = '/vendor/dashboard.html';
+            document.getElementById('nav-home').textContent = 'Dashboard';
+            document.getElementById('vendor-filter-wrap').style.display = 'none';
+            document.getElementById('page-title').textContent = 'My Items';
+            document.getElementById('bottom-nav').style.display = '';
+            currentRole = 'vendor';
+        } else if (currentRole === 'admin' || currentRole === 'cashier') {
+            isVendorMode = false;
+            document.getElementById('vendor-name').textContent = payload.name || 'User';
             const homeHref = currentRole === 'admin' ? '/admin/index.html' : '/pos/index.html';
             document.getElementById('nav-brand').href = homeHref;
             document.getElementById('nav-role-label').textContent = currentRole === 'admin' ? 'Admin' : 'Cashier';
@@ -1243,6 +1266,7 @@
             document.body.classList.remove('has-bottom-nav');
             await loadVendors();
         } else {
+            document.getElementById('vendor-name').textContent = payload.name || 'User';
             document.getElementById('nav-brand').href = '/vendor/dashboard.html';
             document.getElementById('nav-home').href = '/vendor/dashboard.html';
             document.getElementById('nav-home').textContent = 'Dashboard';
@@ -1250,9 +1274,7 @@
             document.getElementById('page-title').textContent = 'My Items';
         }
 
-        // Initialize view toggle
         setView(currentView);
-
         await loadItems();
     }
 

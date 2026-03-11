@@ -71,14 +71,32 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSessi
     if not user.is_active:
         raise HTTPException(status_code=401, detail="Account is deactivated")
 
-    access_token = create_access_token(data={"sub": user.email, "role": user.role, "vendor_id": user.id})
+    is_vendor = getattr(user, 'is_vendor', False) or False
+    booth_number = getattr(user, 'booth_number', None)
+
+    token_data = {
+        "sub": user.email,
+        "role": user.role,
+        "vendor_id": user.id,
+        "name": user.name,
+        "is_vendor": is_vendor,
+        "booth_number": booth_number,
+    }
+    access_token = create_access_token(data=token_data)
+
+    redirect = None
+    if user.role in ("admin", "cashier") and is_vendor and booth_number:
+        redirect = "choose"
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
         "role": user.role,
         "vendor_id": user.id,
         "name": user.name,
-        "is_vendor": getattr(user, 'is_vendor', False),
+        "is_vendor": is_vendor,
+        "booth_number": booth_number,
+        "redirect": redirect,
     }
 
 @router.get("/me")
@@ -95,6 +113,13 @@ async def get_me(current_user: Vendor = Depends(get_current_user)):
 @router.post("/refresh")
 async def refresh_token(current_user: Vendor = Depends(get_current_user)):
     access_token = create_access_token(
-        data={"sub": current_user.email, "role": current_user.role, "vendor_id": current_user.id}
+        data={
+            "sub": current_user.email,
+            "role": current_user.role,
+            "vendor_id": current_user.id,
+            "name": current_user.name,
+            "is_vendor": getattr(current_user, 'is_vendor', False) or False,
+            "booth_number": getattr(current_user, 'booth_number', None),
+        }
     )
     return {"access_token": access_token, "token_type": "bearer"}
