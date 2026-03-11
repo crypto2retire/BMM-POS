@@ -88,16 +88,16 @@ async def lifespan(app: FastAPI):
                  role="cashier", is_vendor=True, is_active=True, commission_rate=0.10),
             dict(name="Nora Williams", email="nora@email.com", phone="920-555-0006",
                  booth_number="D-01", monthly_rent=275, password="vendor123",
-                 role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
+                 role="admin", is_vendor=True, is_active=True, commission_rate=0.10),
             dict(name="Sammy Davis", email="sammy@email.com", phone="920-555-0007",
                  booth_number="D-05", monthly_rent=250, password="vendor123",
-                 role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
+                 role="admin", is_vendor=True, is_active=True, commission_rate=0.10),
             dict(name="Ashley Brown", email="ashley@email.com", phone="920-555-0008",
                  booth_number="E-02", monthly_rent=300, password="vendor123",
-                 role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
+                 role="admin", is_vendor=True, is_active=True, commission_rate=0.10),
             dict(name="Anne Taylor", email="anne@email.com", phone="920-555-0009",
                  booth_number="E-10", monthly_rent=225, password="vendor123",
-                 role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
+                 role="admin", is_vendor=True, is_active=True, commission_rate=0.10),
             dict(name="Paula Garcia", email="paula@email.com", phone="920-555-0010",
                  booth_number="F-03", monthly_rent=200, password="vendor123",
                  role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
@@ -113,12 +113,24 @@ async def lifespan(app: FastAPI):
                 )
                 existing = result.scalar_one_or_none()
                 if existing:
+                    changed = False
                     try:
                         pw_ok = bcrypt.checkpw(pw.encode('utf-8'), existing.password_hash.encode('utf-8'))
                     except Exception:
                         pw_ok = False
                     if not pw_ok:
                         existing.password_hash = make_hash(pw)
+                        changed = True
+                    if existing.role != acct.get("role"):
+                        existing.role = acct["role"]
+                        changed = True
+                    if existing.is_vendor != acct.get("is_vendor"):
+                        existing.is_vendor = acct["is_vendor"]
+                        changed = True
+                    if existing.booth_number != acct.get("booth_number"):
+                        existing.booth_number = acct["booth_number"]
+                        changed = True
+                    if changed:
                         updated += 1
                 else:
                     session.add(Vendor(**acct, password_hash=make_hash(pw)))
