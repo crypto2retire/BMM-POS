@@ -42,3 +42,11 @@ externalPort = 3000
 [deployment]
 deploymentTarget = "autoscale"
 run = ["uvicorn", "app.main:app", "--host=0.0.0.0", "--port=5000"]
+
+[userenv]
+
+[userenv.shared]
+SQUARE_ACCESS_TOKEN = "EAAAl8uiapUQbNXvGFXhJJN8p79TcAhCHXi_atLXh4E-vFMP_GqxTek5RuIk9GxD"
+SQUARE_APPLICATION_ID = "sq0idp-lKpBf0IQ_Qo8sivPNql3Ng"
+SQUARE_LOCATION_ID = "L81BVJZFME1QK"
+SQUARE_ENVIRONMENT = "production"
