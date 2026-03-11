@@ -202,6 +202,14 @@
         </select>
     </div>
 
+    <!-- batch actions bar -->
+    <div id="batch-actions-bar" style="display:none; align-items:center; gap:0.75rem; margin-bottom:1rem; padding:0.75rem 1rem; background:var(--surface); border:1px solid var(--warm-border); flex-wrap:wrap">
+        <span style="font-size:0.8rem; color:var(--text)"><strong id="selected-count">0</strong> selected</span>
+        <button class="btn btn-primary" id="batch-print-btn" onclick="printSelectedLabels()" style="font-size:0.75rem; padding:0.4rem 1rem">Print Selected Labels</button>
+        <button class="btn btn-outline" onclick="toggleSelectAll()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select All</button>
+        <button class="btn btn-secondary" onclick="clearSelection()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Clear</button>
+    </div>
+
     <!-- items toolbar: search + view toggle -->
     <div class="items-toolbar" id="items-toolbar">
         <input type="text" class="form-control search-input" id="items-search"
@@ -442,6 +450,7 @@
     let aiSuggestions = {};
     let miniChatOpen = false;
     let miniChatBusy = false;
+    let selectedItemIds = new Set();
 
     // View toggle, search, sort, pagination state
     let allItems = [];
@@ -546,9 +555,21 @@
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
     });
 
-    function printPdfLabel(id) {
+    async function printPdfLabel(id) {
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
-        window.open(`/api/v1/items/${id}/label`, '_blank');
+        const token = sessionStorage.getItem('bmm_token');
+        try {
+            const res = await fetch(`/api/v1/items/${id}/label`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!res.ok) throw new Error('Failed to generate label');
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (e) {
+            showAlert('alert-container', e.message || 'Label generation failed.', 'error');
+        }
     }
 
     async function printDymoLabel(id) {
@@ -577,7 +598,74 @@
 
     async function printLabelAuto(id, style) {
         if (style === 'dymo') await printDymoLabel(id);
-        else printPdfLabel(id);
+        else await printPdfLabel(id);
+    }
+
+    function toggleItemSelect(id) {
+        if (selectedItemIds.has(id)) selectedItemIds.delete(id);
+        else selectedItemIds.add(id);
+        updateSelectionUI();
+    }
+
+    function toggleSelectAll() {
+        const filtered = getFilteredItems();
+        if (selectedItemIds.size === filtered.length && filtered.length > 0) {
+            selectedItemIds.clear();
+        } else {
+            filtered.forEach(item => selectedItemIds.add(item.id));
+        }
+        updateSelectionUI();
+        displayItems();
+    }
+
+    function updateSelectionUI() {
+        const bar = document.getElementById('batch-actions-bar');
+        const count = selectedItemIds.size;
+        if (count > 0) {
+            bar.style.display = 'flex';
+            document.getElementById('selected-count').textContent = count;
+        } else {
+            bar.style.display = 'none';
+        }
+        document.querySelectorAll('.item-select-cb').forEach(cb => {
+            cb.checked = selectedItemIds.has(parseInt(cb.dataset.itemId));
+        });
+    }
+
+    async function printSelectedLabels() {
+        const ids = Array.from(selectedItemIds);
+        if (ids.length === 0) return;
+        const token = sessionStorage.getItem('bmm_token');
+        const btn = document.getElementById('batch-print-btn');
+        btn.disabled = true;
+        btn.textContent = 'Generating…';
+        try {
+            const res = await fetch('/api/v1/items/labels/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ item_ids: ids }),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({ detail: 'Failed' }));
+                throw new Error(err.detail || 'Label generation failed');
+            }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+            showAlert('alert-container', `${ids.length} label(s) generated.`, 'success');
+        } catch (e) {
+            showAlert('alert-container', e.message || 'Batch label generation failed.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Print Selected Labels';
+        }
+    }
+
+    function clearSelection() {
+        selectedItemIds.clear();
+        updateSelectionUI();
+        displayItems();
     }
 
     // ── Inline photo upload on card ─────────────────────────────────────
@@ -1098,8 +1186,14 @@
             const labelBtnText = style === 'dymo' ? 'Dymo' : 'Label';
             const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
 
+            const selChecked = selectedItemIds.has(item.id) ? 'checked' : '';
+
             return `<div class="item-card">
                 <div class="item-card-top">
+                    <label style="position:absolute;top:6px;left:6px;z-index:2;cursor:pointer" onclick="event.stopPropagation()">
+                        <input type="checkbox" class="item-select-cb" data-item-id="${item.id}" ${selChecked}
+                            onchange="toggleItemSelect(${item.id})" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer">
+                    </label>
                     <div class="item-card-photo">${photoHtml}</div>
                     <div class="item-card-info">
                         <div class="item-card-name">${item.name}</div>

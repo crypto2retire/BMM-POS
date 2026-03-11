@@ -15,7 +15,7 @@ from app.models.vendor import Vendor
 from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse
 from app.routers.auth import get_current_user
 from app.services.barcode import generate_sku
-from app.services.labels import generate_label_pdf, generate_dymo_xml
+from app.services.labels import generate_label_pdf, generate_label_sheet, generate_dymo_xml
 
 PHOTO_UPLOAD_DIR = "frontend/static/images/items"
 IMAGE_UPLOAD_DIR = "frontend/static/uploads/items"
@@ -158,6 +158,39 @@ async def get_item_by_barcode(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     return item_to_response(item)
+
+
+@router.post("/labels/batch")
+async def get_batch_labels(
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    item_ids = data.get("item_ids", [])
+    if not item_ids or len(item_ids) > 200:
+        raise HTTPException(status_code=400, detail="Provide 1-200 item IDs")
+
+    result = await db.execute(
+        select(Item).options(selectinload(Item.vendor)).where(Item.id.in_(item_ids))
+    )
+    items = result.scalars().all()
+    if not items:
+        raise HTTPException(status_code=404, detail="No items found")
+
+    if current_user.role not in ("admin", "cashier"):
+        for item in items:
+            if item.vendor_id != current_user.id:
+                raise HTTPException(status_code=403, detail="Access denied")
+
+    id_order = {iid: idx for idx, iid in enumerate(item_ids)}
+    items_sorted = sorted(items, key=lambda it: id_order.get(it.id, 0))
+
+    pdf_bytes = generate_label_sheet(items_sorted)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'inline; filename="labels_batch.pdf"'},
+    )
 
 
 @router.get("/{item_id}/label")
