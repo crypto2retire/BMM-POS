@@ -105,21 +105,36 @@ async def lifespan(app: FastAPI):
 
         async with AsyncSessionLocal() as session:
             added = 0
+            updated = 0
             for acct in seed_accounts:
-                exists = await session.execute(
+                pw = acct.pop("password")
+                result = await session.execute(
                     sa_select(Vendor).where(Vendor.email == acct["email"])
                 )
-                if exists.scalar_one_or_none():
-                    continue
-                pw = acct.pop("password")
-                session.add(Vendor(**acct, password_hash=make_hash(pw)))
-                added += 1
-            if added:
+                existing = result.scalar_one_or_none()
+                if existing:
+                    try:
+                        pw_ok = bcrypt.checkpw(pw.encode('utf-8'), existing.password_hash.encode('utf-8'))
+                    except Exception:
+                        pw_ok = False
+                    if not pw_ok:
+                        existing.password_hash = make_hash(pw)
+                        updated += 1
+                else:
+                    session.add(Vendor(**acct, password_hash=make_hash(pw)))
+                    added += 1
+            if added or updated:
                 await session.commit()
-                print(f"BMM-POS: Seeded {added} new accounts", file=sys.stderr, flush=True)
+            msg_parts = []
+            if added:
+                msg_parts.append(f"seeded {added} new")
+            if updated:
+                msg_parts.append(f"re-hashed {updated} passwords")
+            if msg_parts:
+                print(f"BMM-POS: {', '.join(msg_parts)}", file=sys.stderr, flush=True)
             else:
-                result = await session.execute(text("SELECT COUNT(*) FROM vendors"))
-                print(f"BMM-POS: {result.scalar()} vendors already in DB", file=sys.stderr, flush=True)
+                total = await session.execute(text("SELECT COUNT(*) FROM vendors"))
+                print(f"BMM-POS: {total.scalar()} vendors OK", file=sys.stderr, flush=True)
     except Exception as e:
         print(f"BMM-POS: auto-seed FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
 
