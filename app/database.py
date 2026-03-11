@@ -49,7 +49,15 @@ def get_async_url(url: str):
 
 
 _url, _connect_args = get_async_url(settings.database_url)
-engine = create_async_engine(_url, echo=False, connect_args=_connect_args)
+engine = create_async_engine(
+    _url,
+    echo=False,
+    connect_args=_connect_args,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    pool_size=5,
+    max_overflow=10,
+)
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
