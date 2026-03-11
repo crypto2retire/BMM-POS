@@ -1061,7 +1061,7 @@
             allVendors = await apiGet('/api/v1/vendors/');
             const sel = document.getElementById('vendor-filter');
             const fSel = document.getElementById('f-vendor-id');
-            allVendors.filter(v => v.role === 'vendor').forEach(v => {
+            allVendors.filter(v => v.role === 'vendor' || v.is_vendor || v.booth_number).forEach(v => {
                 const opt = `<option value="${v.id}">${v.name} (${v.booth_number || 'No Booth'})</option>`;
                 sel.innerHTML += opt;
                 fSel.innerHTML += opt;
