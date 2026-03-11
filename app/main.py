@@ -60,6 +60,45 @@ async def lifespan(app: FastAPI):
         print("BMM-POS: database connection OK", file=sys.stderr, flush=True)
     except Exception as e:
         print(f"BMM-POS: DATABASE CONNECTION FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
+    # Auto-seed essential accounts if database is empty
+    try:
+        from app.models.vendor import Vendor
+        import bcrypt
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(text("SELECT COUNT(*) FROM vendors"))
+            count = result.scalar()
+            if count == 0:
+                print("BMM-POS: No vendors found — seeding essential accounts...", file=sys.stderr, flush=True)
+                def make_hash(pw):
+                    return bcrypt.hashpw(pw.encode('utf-8'), bcrypt.gensalt(rounds=12)).decode('utf-8')
+
+                seed_vendors = [
+                    Vendor(name="Admin", email="admin@bowenstreetmarket.com", phone="920-555-0001",
+                           booth_number="A-01", monthly_rent=0, password_hash=make_hash("admin123"),
+                           role="admin", is_vendor=True, is_active=True, commission_rate=0.10),
+                    Vendor(name="Sarah Johnson", email="sarah@email.com", phone="920-555-0002",
+                           booth_number="A-12", monthly_rent=250, password_hash=make_hash("vendor123"),
+                           role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
+                    Vendor(name="Mike Chen", email="mike@email.com", phone="920-555-0003",
+                           booth_number="B-07", monthly_rent=300, password_hash=make_hash("vendor123"),
+                           role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
+                    Vendor(name="Linda Martinez", email="linda@email.com", phone="920-555-0004",
+                           booth_number="C-22", monthly_rent=200, password_hash=make_hash("vendor123"),
+                           role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
+                    Vendor(name="Cashier", email="cashier@bowenstreetmarket.com", phone="920-555-0005",
+                           booth_number="B-01", monthly_rent=0, password_hash=make_hash("cashier123"),
+                           role="cashier", is_vendor=True, is_active=True, commission_rate=0.10),
+                ]
+                for v in seed_vendors:
+                    session.add(v)
+                await session.commit()
+                print(f"BMM-POS: Seeded {len(seed_vendors)} accounts", file=sys.stderr, flush=True)
+            else:
+                print(f"BMM-POS: {count} vendors already in DB", file=sys.stderr, flush=True)
+    except Exception as e:
+        print(f"BMM-POS: auto-seed FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
     yield
 
 

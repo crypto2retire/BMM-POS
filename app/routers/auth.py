@@ -73,24 +73,10 @@ require_cashier_or_admin = require_role("admin", "cashier")
 
 @router.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
-    import sys, os
-    db_url = os.environ.get("DATABASE_URL", "NOT SET")
-    masked = db_url[:30] + "..." if len(db_url) > 30 else db_url
-    print(f"BMM-AUTH: Login attempt for: {form_data.username} db={masked}", file=sys.stderr, flush=True)
-    count_result = await db.execute(select(func.count()).select_from(Vendor))
-    total = count_result.scalar()
-    print(f"BMM-AUTH: Total vendors in DB: {total}", file=sys.stderr, flush=True)
     result = await db.execute(select(Vendor).where(func.lower(Vendor.email) == form_data.username.lower()))
     user = result.scalar_one_or_none()
-    if user:
-        print(f"BMM-AUTH: User found id={user.id} email={user.email} active={user.is_active} hash_prefix={user.password_hash[:15]}", file=sys.stderr, flush=True)
-        pw_ok = verify_password(form_data.password, user.password_hash)
-        print(f"BMM-AUTH: Password verify result: {pw_ok}", file=sys.stderr, flush=True)
-    else:
-        print(f"BMM-AUTH: No user found for email: {form_data.username}", file=sys.stderr, flush=True)
-        pw_ok = False
 
-    if not user or not pw_ok:
+    if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=401, detail="Account is deactivated")
