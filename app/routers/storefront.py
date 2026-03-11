@@ -15,15 +15,15 @@ router = APIRouter(prefix="/storefront", tags=["shop"])
 class ShopItemResponse(BaseModel):
     id: int
     name: str
-    description: Optional[str]
+    description: Optional[str] = None
     price: float
-    sale_price: Optional[float]
-    category: Optional[str]
-    booth_location: Optional[str]
+    sale_price: Optional[float] = None
+    category: Optional[str] = None
     vendor_name: str
-    vendor_booth: Optional[str]
+    vendor_booth: Optional[str] = None
     quantity: int
-    photo_url: Optional[str] = None
+    image_path: Optional[str] = None
+    photo_urls: Optional[list] = None
 
     class Config:
         from_attributes = True
@@ -49,15 +49,15 @@ async def get_shop_items(
             Item.price,
             Item.sale_price,
             Item.category,
-            Item.booth_location,
             Item.quantity,
             Item.created_at,
-            Item.photo_url,
+            Item.image_path,
+            Item.photo_urls,
             Vendor.name.label("vendor_name"),
             Vendor.booth_number.label("vendor_booth"),
         )
         .join(Vendor, Item.vendor_id == Vendor.id)
-        .where(Item.is_active == True)
+        .where(Item.status == "active")
         .where(Item.quantity > 0)
         .where(Vendor.is_active == True)
     )
@@ -85,7 +85,6 @@ async def get_shop_items(
     if on_sale:
         query = query.where(Item.sale_price.isnot(None))
 
-    # Sorting
     if sort == "price_asc":
         query = query.order_by(Item.price.asc())
     elif sort == "price_desc":
@@ -97,12 +96,10 @@ async def get_shop_items(
     else:
         query = query.order_by(Item.created_at.desc())
 
-    # Count total
     count_query = select(func.count()).select_from(query.subquery())
     total_result = await db.execute(count_query)
     total = total_result.scalar()
 
-    # Paginate
     offset = (page - 1) * per_page
     query = query.offset(offset).limit(per_page)
 
@@ -111,6 +108,9 @@ async def get_shop_items(
 
     items = []
     for row in rows:
+        photo_url = row.image_path
+        if not photo_url and row.photo_urls:
+            photo_url = row.photo_urls[0] if row.photo_urls else None
         items.append({
             "id": row.id,
             "name": row.name,
@@ -118,11 +118,11 @@ async def get_shop_items(
             "price": float(row.price),
             "sale_price": float(row.sale_price) if row.sale_price else None,
             "category": row.category,
-            "booth_location": row.booth_location,
             "vendor_name": row.vendor_name,
             "vendor_booth": row.vendor_booth,
             "quantity": row.quantity,
-            "photo_url": row.photo_url,
+            "image_path": row.image_path,
+            "photo_url": photo_url,
         })
 
     return {
@@ -137,7 +137,7 @@ async def get_shop_items(
 async def get_categories(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(Item.category, func.count(Item.id))
-        .where(Item.is_active == True)
+        .where(Item.status == "active")
         .where(Item.quantity > 0)
         .where(Item.category.isnot(None))
         .group_by(Item.category)
@@ -154,7 +154,7 @@ async def get_shop_vendors(db: AsyncSession = Depends(get_db)):
             Vendor.booth_number,
             func.count(Item.id).label("item_count"),
         )
-        .outerjoin(Item, (Item.vendor_id == Vendor.id) & (Item.is_active == True) & (Item.quantity > 0))
+        .outerjoin(Item, (Item.vendor_id == Vendor.id) & (Item.status == "active") & (Item.quantity > 0))
         .where(Vendor.is_active == True)
         .where(or_(Vendor.role == "vendor", Vendor.is_vendor == True))
         .group_by(Vendor.id, Vendor.name, Vendor.booth_number)

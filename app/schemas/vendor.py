@@ -13,6 +13,8 @@ class VendorCreate(BaseModel):
     is_vendor: bool = False
     monthly_rent: Decimal = Decimal("200.00")
     commission_rate: Decimal = Decimal("0.10")
+    payout_method: Optional[str] = None
+    zelle_handle: Optional[str] = None
 
     @field_validator('role')
     @classmethod
@@ -31,18 +33,26 @@ class VendorUpdate(BaseModel):
     is_vendor: Optional[bool] = None
     monthly_rent: Optional[Decimal] = None
     commission_rate: Optional[Decimal] = None
+    payout_method: Optional[str] = None
+    zelle_handle: Optional[str] = None
+    status: Optional[str] = None
+    rent_flagged: Optional[bool] = None
 
 class VendorResponse(BaseModel):
     id: int
     name: str
     email: str
-    phone: Optional[str]
-    booth_number: Optional[str]
+    phone: Optional[str] = None
+    booth_number: Optional[str] = None
     role: str
     is_active: bool
     is_vendor: bool = False
     monthly_rent: Decimal
     commission_rate: Decimal
+    status: Optional[str] = "active"
+    rent_flagged: Optional[bool] = False
+    payout_method: Optional[str] = None
+    zelle_handle: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -51,9 +61,6 @@ class VendorResponse(BaseModel):
 class VendorBalanceResponse(BaseModel):
     vendor_id: int
     balance: Decimal
-    total_sales: Decimal
-    total_commission: Decimal
-    total_payouts: Decimal
 
     class Config:
         from_attributes = True

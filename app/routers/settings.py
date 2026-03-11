@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends
@@ -64,11 +63,9 @@ async def get_settings(
     result = await db.execute(select(StoreSetting))
     rows = result.scalars().all()
 
-    # Seed defaults when table is empty
     if not rows:
-        now = datetime.now(timezone.utc)
         for k, v in DEFAULT_SETTINGS.items():
-            db.add(StoreSetting(key=k, value=v, updated_at=now))
+            db.add(StoreSetting(key=k, value=v))
         await db.commit()
 
         result = await db.execute(select(StoreSetting))
@@ -84,7 +81,6 @@ async def save_settings(
     _admin: Vendor = Depends(require_admin),
 ):
     """Upsert one or more settings from a {key: value} dict."""
-    now = datetime.now(timezone.utc)
     for key, value in payload.items():
         existing = await db.execute(
             select(StoreSetting).where(StoreSetting.key == key)
@@ -92,9 +88,8 @@ async def save_settings(
         row = existing.scalar_one_or_none()
         if row:
             row.value = str(value)
-            row.updated_at = now
             await db.merge(row)
         else:
-            db.add(StoreSetting(key=key, value=str(value), updated_at=now))
+            db.add(StoreSetting(key=key, value=str(value)))
     await db.commit()
     return {"message": "Settings saved"}
