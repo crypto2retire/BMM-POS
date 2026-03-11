@@ -73,8 +73,13 @@ require_cashier_or_admin = require_role("admin", "cashier")
 
 @router.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
-    import sys
-    print(f"BMM-AUTH: Login attempt for: {form_data.username}", file=sys.stderr, flush=True)
+    import sys, os
+    db_url = os.environ.get("DATABASE_URL", "NOT SET")
+    masked = db_url[:30] + "..." if len(db_url) > 30 else db_url
+    print(f"BMM-AUTH: Login attempt for: {form_data.username} db={masked}", file=sys.stderr, flush=True)
+    count_result = await db.execute(select(func.count()).select_from(Vendor))
+    total = count_result.scalar()
+    print(f"BMM-AUTH: Total vendors in DB: {total}", file=sys.stderr, flush=True)
     result = await db.execute(select(Vendor).where(func.lower(Vendor.email) == form_data.username.lower()))
     user = result.scalar_one_or_none()
     if user:
