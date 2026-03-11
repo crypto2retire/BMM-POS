@@ -73,15 +73,16 @@ require_cashier_or_admin = require_role("admin", "cashier")
 
 @router.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
-    logger.info(f"Login attempt for: {form_data.username}")
+    import sys
+    print(f"BMM-AUTH: Login attempt for: {form_data.username}", file=sys.stderr, flush=True)
     result = await db.execute(select(Vendor).where(func.lower(Vendor.email) == form_data.username.lower()))
     user = result.scalar_one_or_none()
     if user:
-        logger.info(f"User found: id={user.id}, email={user.email}, active={user.is_active}")
+        print(f"BMM-AUTH: User found id={user.id} email={user.email} active={user.is_active} hash_prefix={user.password_hash[:15]}", file=sys.stderr, flush=True)
         pw_ok = verify_password(form_data.password, user.password_hash)
-        logger.info(f"Password verify result: {pw_ok}")
+        print(f"BMM-AUTH: Password verify result: {pw_ok}", file=sys.stderr, flush=True)
     else:
-        logger.info("No user found with that email")
+        print(f"BMM-AUTH: No user found for email: {form_data.username}", file=sys.stderr, flush=True)
         pw_ok = False
 
     if not user or not pw_ok:
