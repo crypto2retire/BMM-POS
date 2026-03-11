@@ -8,7 +8,7 @@ A full-featured point-of-sale and vendor management system for a vendor mall wit
 
 - **Backend**: Python FastAPI with SQLAlchemy async ORM
 - **Database**: Replit built-in PostgreSQL (via `DATABASE_URL`)
-- **Auth**: JWT (python-jose) + bcrypt (passlib)
+- **Auth**: JWT (python-jose) + bcrypt (direct, not passlib)
 - **Frontend**: Plain HTML + vanilla JavaScript (no frameworks)
 - **PDF labels**: ReportLab (2.25 × 1.25 inch Zebra-compatible)
 - **Barcodes**: python-barcode (Code 128)
@@ -54,6 +54,7 @@ frontend/
   static/images/logo.webp  — Official Bowenstreet Market logo (white emblem)
   static/images/favicon.webp — Favicon
   static/js/api.js        — JWT fetch wrapper (sessionStorage persistence)
+  static/js/change-password.js — Shared password change modal (all roles)
   vendor/
     login.html    — Login page (redirects by role; shows choice screen for is_vendor admins/cashiers)
     dashboard.html — Vendor stats: balance, items, booth + Pay Rent with Card section

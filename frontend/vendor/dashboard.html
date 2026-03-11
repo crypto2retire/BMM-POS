@@ -26,6 +26,7 @@
         <nav class="navbar-nav" id="main-nav">
             <a href="/vendor/dashboard.html" class="active">Dashboard</a>
             <a href="/vendor/items.html">My Items</a>
+            <a href="#" onclick="openPasswordModal();return false;">Change Password</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
     </div>
@@ -311,5 +312,6 @@
     checkRentReturn();
     loadDashboard();
 </script>
+<script src="/static/js/change-password.js"></script>
 </body>
 </html>

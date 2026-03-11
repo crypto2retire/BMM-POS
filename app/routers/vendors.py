@@ -99,6 +99,23 @@ async def reset_vendor_password(
     await db.commit()
     return {"detail": "Password reset successfully"}
 
+@router.post("/me/change-password")
+async def change_own_password(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user)
+):
+    import bcrypt
+    current_password = body.get("current_password", "")
+    new_password = body.get("new_password", "")
+    if not new_password or len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    if not bcrypt.checkpw(current_password.encode('utf-8'), current_user.password_hash.encode('utf-8')):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    current_user.password_hash = get_password_hash(new_password)
+    await db.commit()
+    return {"detail": "Password changed successfully"}
+
 @router.delete("/{vendor_id}")
 async def delete_vendor(
     vendor_id: int,

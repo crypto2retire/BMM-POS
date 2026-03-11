@@ -101,6 +101,11 @@
 
             <div id="saveStatus" style="margin-top:1em"></div>
         </div>
+
+        <div class="card" style="max-width:700px;margin-top:2em">
+            <h2 style="font-family:'EB Garamond',serif;font-size:1.3rem;margin-bottom:1em">Change Your Password</h2>
+            <button class="btn btn-primary" onclick="openPasswordModal()">Change Password</button>
+        </div>
     </div>
 
     <script>
@@ -120,7 +125,7 @@
 
         async function loadSettings() {
             try {
-                const resp = await fetch('/api/settings', {
+                const resp = await fetch('/api/v1/admin/settings', {
                     headers: { 'Authorization': `Bearer ${TOKEN}` }
                 });
                 if (!resp.ok) throw new Error('Failed to load settings');
@@ -145,8 +150,8 @@
             }
 
             try {
-                const resp = await fetch('/api/settings', {
-                    method: 'PUT',
+                const resp = await fetch('/api/v1/admin/settings', {
+                    method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${TOKEN}`,
                         'Content-Type': 'application/json'
@@ -166,6 +171,7 @@
 
         loadSettings();
     </script>
+    <script src="/static/js/change-password.js"></script>
     <script src="/static/js/assistant-panel.js"></script>
     <script>
         if (typeof initAssistantPanel === 'function') {

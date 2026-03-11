@@ -89,6 +89,21 @@ async def lifespan(app: FastAPI):
                     Vendor(name="Cashier", email="cashier@bowenstreetmarket.com", phone="920-555-0005",
                            booth_number="B-01", monthly_rent=0, password_hash=make_hash("cashier123"),
                            role="cashier", is_vendor=True, is_active=True, commission_rate=0.10),
+                    Vendor(name="Nora Williams", email="nora@email.com", phone="920-555-0006",
+                           booth_number="D-01", monthly_rent=275, password_hash=make_hash("vendor123"),
+                           role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
+                    Vendor(name="Sammy Davis", email="sammy@email.com", phone="920-555-0007",
+                           booth_number="D-05", monthly_rent=250, password_hash=make_hash("vendor123"),
+                           role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
+                    Vendor(name="Ashley Brown", email="ashley@email.com", phone="920-555-0008",
+                           booth_number="E-02", monthly_rent=300, password_hash=make_hash("vendor123"),
+                           role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
+                    Vendor(name="Anne Taylor", email="anne@email.com", phone="920-555-0009",
+                           booth_number="E-10", monthly_rent=225, password_hash=make_hash("vendor123"),
+                           role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
+                    Vendor(name="Paula Garcia", email="paula@email.com", phone="920-555-0010",
+                           booth_number="F-03", monthly_rent=200, password_hash=make_hash("vendor123"),
+                           role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
                 ]
                 for v in seed_vendors:
                     session.add(v)

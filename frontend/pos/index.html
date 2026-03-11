@@ -739,6 +739,7 @@
             <a href="/admin/vendors.html">Vendors</a>
             <a href="/vendor/items.html">Items</a>
             <a href="/admin/index.html" id="admin-link" style="display:none">Admin</a>
+            <button class="nav-link" onclick="openPasswordModal()">Password</button>
             <button class="nav-link" onclick="handleLogout()">Logout</button>
         </div>
     </nav>
@@ -1586,6 +1587,7 @@ ${cashLines}
 
     init();
 </script>
+<script src="/static/js/change-password.js"></script>
 <script src="/static/js/assistant-panel.js"></script>
 <script>initAssistantPanel('The user is a cashier at the POS register at Bowenstreet Market.', { buttonBottom: '80px' });</script>
 </body>
