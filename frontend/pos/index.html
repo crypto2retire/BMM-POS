@@ -717,6 +717,48 @@
         .search-result-price.on-sale { color: #e8a060; }
         .search-no-results { padding: 0.75rem; text-align: center; color: #A8A6A1; font-size: 0.85rem; font-style: italic; font-family: 'EB Garamond', serif; }
 
+        .manual-entry-btn {
+            background: rgba(201,169,110,0.12);
+            border: 1px solid rgba(201,169,110,0.3);
+            color: #C9A96E;
+            font-size: 0.72rem;
+            font-weight: 500;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            white-space: nowrap;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .manual-entry-btn:hover { background: rgba(201,169,110,0.2); border-color: rgba(201,169,110,0.5); }
+
+        .manual-form-group { margin-bottom: 0.75rem; }
+        .manual-form-group label {
+            display: block;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #A8A6A1;
+            margin-bottom: 0.25rem;
+            font-family: 'Roboto', sans-serif;
+        }
+        .manual-form-group input, .manual-form-group select {
+            width: 100%;
+            background: #2a2a2d;
+            border: 1px solid #555558;
+            color: #F0EDE8;
+            padding: 0.55rem 0.7rem;
+            font-size: 0.875rem;
+            font-family: 'Roboto', sans-serif;
+            box-sizing: border-box;
+        }
+        .manual-form-group input:focus, .manual-form-group select:focus {
+            outline: none;
+            border-color: rgba(201,169,110,0.5);
+        }
+        .manual-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
@@ -765,6 +807,7 @@
                 autocomplete="off"
                 oninput="onSearchInput(this.value)"
             >
+            <button class="manual-entry-btn" onclick="openManualEntry()">+ Manual</button>
             <div class="search-results hidden" id="search-results"></div>
         </div>
         <div class="scan-error" id="scan-error"></div>
@@ -881,6 +924,41 @@
     </div>
 </div>
 
+<!-- Manual Entry Modal -->
+<div class="pos-modal-overlay hidden" id="manual-modal">
+    <div class="pos-modal" style="max-width:420px">
+        <h2>Manual Item Entry</h2>
+        <div class="manual-form-group">
+            <label for="manual-vendor">Vendor / Booth</label>
+            <select id="manual-vendor"></select>
+        </div>
+        <div class="manual-form-group">
+            <label for="manual-name">Item Description</label>
+            <input type="text" id="manual-name" placeholder="e.g. Vintage lamp, handmade scarf…">
+        </div>
+        <div class="manual-form-row">
+            <div class="manual-form-group">
+                <label for="manual-price">Price ($)</label>
+                <input type="number" id="manual-price" min="0.01" step="0.01" placeholder="0.00">
+            </div>
+            <div class="manual-form-group">
+                <label for="manual-qty">Quantity</label>
+                <input type="number" id="manual-qty" min="1" value="1">
+            </div>
+        </div>
+        <div class="manual-form-group">
+            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;font-size:0.8rem;letter-spacing:0">
+                <input type="checkbox" id="manual-tax-exempt"> Tax Exempt
+            </label>
+        </div>
+        <div id="manual-error" style="color:#F87171;font-size:0.8rem;min-height:20px"></div>
+        <div class="modal-actions">
+            <button class="cancel-btn" onclick="closeManualEntry()">Cancel</button>
+            <button class="confirm-btn" onclick="addManualItem()">Add to Cart</button>
+        </div>
+    </div>
+</div>
+
 <!-- Camera scanner overlay -->
 <div id="scanner-overlay" style="display:none">
     <div style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:1rem;z-index:10">
@@ -974,6 +1052,67 @@
     }
     function clearScanError() {
         document.getElementById('scan-error').textContent = '';
+    }
+
+    // ─── Manual Entry ─────────────────────────────────────────────────────────
+    let manualVendorsLoaded = false;
+
+    async function openManualEntry() {
+        document.getElementById('manual-modal').classList.remove('hidden');
+        document.getElementById('manual-name').value = '';
+        document.getElementById('manual-price').value = '';
+        document.getElementById('manual-qty').value = '1';
+        document.getElementById('manual-tax-exempt').checked = false;
+        document.getElementById('manual-error').textContent = '';
+
+        if (!manualVendorsLoaded) {
+            try {
+                const vendors = await apiGet('/api/v1/vendors/');
+                const sel = document.getElementById('manual-vendor');
+                sel.innerHTML = '<option value="">— Select vendor —</option>';
+                vendors.filter(v => v.role === 'vendor' || v.is_vendor || v.booth_number).forEach(v => {
+                    sel.innerHTML += `<option value="${v.id}">${v.name} (${v.booth_number || 'No Booth'})</option>`;
+                });
+                manualVendorsLoaded = true;
+            } catch (e) {
+                document.getElementById('manual-error').textContent = 'Could not load vendors';
+            }
+        }
+        setTimeout(() => document.getElementById('manual-vendor').focus(), 100);
+    }
+
+    function closeManualEntry() {
+        document.getElementById('manual-modal').classList.add('hidden');
+    }
+
+    async function addManualItem() {
+        const vendorId = parseInt(document.getElementById('manual-vendor').value);
+        const name = document.getElementById('manual-name').value.trim();
+        const price = parseFloat(document.getElementById('manual-price').value);
+        const quantity = parseInt(document.getElementById('manual-qty').value) || 1;
+        const isTaxExempt = document.getElementById('manual-tax-exempt').checked;
+        const errEl = document.getElementById('manual-error');
+
+        if (!vendorId) { errEl.textContent = 'Please select a vendor'; return; }
+        if (!name) { errEl.textContent = 'Please enter an item description'; return; }
+        if (!price || price <= 0) { errEl.textContent = 'Please enter a valid price'; return; }
+
+        errEl.textContent = '';
+
+        try {
+            const item = await apiPost('/api/v1/pos/manual-item', {
+                vendor_id: vendorId,
+                name: name,
+                price: price,
+                quantity: quantity,
+                is_tax_exempt: isTaxExempt,
+            });
+            addToCart(item);
+            closeManualEntry();
+            showToast(`"${name}" added to cart`, 'success');
+        } catch (err) {
+            errEl.textContent = err.message || 'Failed to create item';
+        }
     }
 
     // ─── Name / SKU search ────────────────────────────────────────────────────

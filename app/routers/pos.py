@@ -103,6 +103,55 @@ async def pos_barcode_lookup(
     return _item_to_pos_dict(item)
 
 
+@router.post("/manual-item")
+async def pos_manual_item(
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Cashier or admin access required")
+
+    vendor_id = body.get("vendor_id")
+    name = body.get("name", "").strip()
+    price = body.get("price")
+    quantity = body.get("quantity", 1)
+    is_tax_exempt = body.get("is_tax_exempt", False)
+
+    if not vendor_id or not name or not price:
+        raise HTTPException(status_code=400, detail="vendor_id, name, and price are required")
+
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    import uuid
+    barcode = f"MAN-{uuid.uuid4().hex[:8].upper()}"
+
+    item = Item(
+        vendor_id=vendor_id,
+        name=name,
+        barcode=barcode,
+        sku=barcode,
+        price=Decimal(str(price)),
+        quantity=quantity,
+        category="Manual Entry",
+        status="active",
+        is_tax_exempt=is_tax_exempt,
+    )
+    db.add(item)
+    await db.commit()
+    await db.refresh(item, attribute_names=["id", "vendor"])
+
+    result = await db.execute(
+        select(Item).options(selectinload(Item.vendor)).where(Item.id == item.id)
+    )
+    item = result.scalar_one()
+
+    return _item_to_pos_dict(item)
+
+
 @router.post("/sale", response_model=SaleResponse, status_code=status.HTTP_201_CREATED)
 async def pos_create_sale(
     data: SaleCreate,
