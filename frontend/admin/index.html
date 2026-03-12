@@ -5,55 +5,199 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard — BMM-POS</title>
     <meta name="description" content="Admin dashboard for Bowenstreet Market POS — vendor management, sales overview, and store operations.">
-    <meta property="og:title" content="Admin Dashboard — Bowenstreet Market">
-    <meta property="og:description" content="Manage vendors, sales, and operations at Bowenstreet Market.">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://www.bowenstreetmm.com/admin/index.html">
-    <meta property="og:image" content="https://www.bowenstreetmm.com/static/images/og-image.jpg">
-    <meta name="twitter:card" content="summary_large_image">
-    <link rel="canonical" href="https://www.bowenstreetmm.com/admin/index.html">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
     <style>
-        /* ── Stats cards ─────────────────────────────────────────────── */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-bottom: 2rem;
+        .dash-greeting {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 1.5rem;
+            font-weight: 400;
+            color: var(--text);
+            margin-bottom: 0.15rem;
         }
-        .stat-card {
+        .dash-sub {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-style: italic;
+            font-size: 0.95rem;
+            color: var(--text-light);
+            margin-bottom: 1.25rem;
+        }
+
+        .period-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.25rem;
+        }
+        .period-tab {
+            padding: 0.5rem 1.25rem;
+            font-size: 0.82rem;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 500;
+            color: var(--text-light);
             background: var(--surface);
             border: 1px solid var(--border);
-            padding: 1.35rem 1.25rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .period-tab:first-child { border-right: none; }
+        .period-tab:last-child { border-left: none; }
+        .period-tab.active {
+            background: var(--gold);
+            color: #1a1a1d;
+            border-color: var(--gold);
+        }
+        .period-tab:hover:not(.active) { border-color: var(--warm-border); color: var(--text); }
+
+        .store-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .sum-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            transition: border-color 0.25s;
+        }
+        .sum-card:hover { border-color: var(--warm-border); }
+        .sum-card .sum-label {
+            font-size: 0.6rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-family: 'Roboto', sans-serif;
+        }
+        .sum-card .sum-value {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 2rem;
+            font-weight: 500;
+            color: var(--gold);
+            margin-top: 0.4rem;
+            line-height: 1;
+        }
+        .sum-card .sum-value.white { color: var(--text); }
+        .sum-card .sum-value.green { color: var(--success); }
+
+        .dash-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+        .dash-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+        }
+        .dash-section-title {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 1.15rem;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+
+        .chart-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 140px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 4px;
+        }
+        .chart-bar-col {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            transition: border-color 0.25s, box-shadow 0.25s;
+            align-items: center;
+            height: 100%;
+            justify-content: flex-end;
         }
-        .stat-card:hover { border-color: var(--warm-border); box-shadow: var(--shadow-warm); }
-        .stat-title {
+        .chart-bar {
+            width: 100%;
+            max-width: 28px;
+            background: linear-gradient(180deg, var(--gold), rgba(201,169,110,0.4));
+            min-height: 2px;
+            transition: height 0.4s ease;
+        }
+        .chart-bar:hover { opacity: 0.8; }
+        .chart-labels {
+            display: flex;
+            gap: 2px;
+            margin-top: 4px;
+        }
+        .chart-label {
+            flex: 1;
+            text-align: center;
+            font-size: 0.55rem;
+            color: var(--text-light);
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .daily-chart-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 1px;
+            height: 120px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 4px;
+        }
+        .daily-chart-bars .chart-bar-col { flex: 1; }
+        .daily-chart-bars .chart-bar { max-width: 16px; }
+
+        .vendor-rank-table { width: 100%; border-collapse: collapse; }
+        .vendor-rank-table th {
+            text-align: left;
             font-size: 0.62rem;
             color: var(--text-light);
             text-transform: uppercase;
-            letter-spacing: 0.14em;
-            font-weight: 400;
-            font-family: 'Roboto', sans-serif;
+            letter-spacing: 0.1em;
+            padding: 0.5rem 0.5rem;
+            border-bottom: 1px solid var(--border);
         }
-        .stat-value {
-            font-family: 'EB Garamond', Georgia, serif;
-            font-size: 2.4rem;
-            font-weight: 500;
+        .vendor-rank-table td {
+            padding: 0.5rem;
+            font-size: 0.88rem;
             color: var(--text);
-            margin-top: 0.5rem;
-            line-height: 1;
-            letter-spacing: -0.01em;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
         }
-        .stat-value.teal  { color: var(--gold); }
-        .stat-value.green { color: var(--success); }
+        .vendor-rank-table tr:hover td { background: rgba(201,169,110,0.04); }
 
-        /* ── Mobile vendor cards ─────────────────────────────────────── */
-        .vendor-cards { display: none; flex-direction: column; gap: 0.75rem; }
+        .payment-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .pay-pill {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            padding: 0.6rem 1rem;
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+        }
+        .pay-pill .pay-method {
+            font-size: 0.65rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+        .pay-pill .pay-amount {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.3rem;
+            color: var(--text);
+            margin-top: 0.2rem;
+        }
+        .pay-pill .pay-count {
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        .vendor-cards-mobile { display: none; flex-direction: column; gap: 0.75rem; }
         .vendor-card {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -102,31 +246,19 @@
             margin-bottom: 2px;
         }
 
-        /* ── Page subtitle ─────────────────────────────────────────── */
-        .page-subtitle {
-            font-family: 'EB Garamond', Georgia, serif;
-            font-style: italic;
-            font-size: 0.95rem;
-            color: var(--text-light);
-            font-weight: 400;
-            margin-top: 0.25rem;
-            letter-spacing: 0.01em;
-        }
-
-        /* ── Mobile responsive ───────────────────────────────────────── */
         @media (max-width: 767px) {
             .main-content { padding-bottom: 70px; }
-            .stats-grid { grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-            .stat-card { padding: 0.9rem 0.85rem; }
-            .stat-value { font-size: 1.9rem; }
+            .dash-row { grid-template-columns: 1fr; }
+            .store-summary { grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+            .sum-card { padding: 0.75rem; }
+            .sum-card .sum-value { font-size: 1.6rem; }
+            .period-tabs { flex-wrap: wrap; }
+            .period-tab { padding: 0.45rem 0.9rem; font-size: 0.75rem; }
             .table-wrapper { display: none; }
-            .vendor-cards { display: flex; }
+            .vendor-cards-mobile { display: flex; }
         }
         @media (min-width: 768px) and (max-width: 1023px) {
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (min-width: 1024px) {
-            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+            .store-summary { grid-template-columns: repeat(3, 1fr); }
         }
     </style>
 </head>
@@ -152,14 +284,13 @@
         <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
     </div>
 </nav>
-
 <div class="mobile-nav-dropdown" id="mobile-nav">
     <a href="/admin/index.html" class="active">Dashboard</a>
     <a href="/admin/vendors.html">Vendors</a>
     <a href="/admin/rent.html">Rent</a>
     <a href="/vendor/items.html">Items</a>
     <a href="/admin/studio.html">Studio</a>
-            <a href="/admin/reports.html">Reports</a>
+    <a href="/admin/reports.html">Reports</a>
     <a href="/admin/settings.html">Settings</a>
     <a href="/pos/index.html">POS Terminal</a>
     <a href="#" onclick="handleLogout()">Logout</a>
@@ -167,31 +298,55 @@
 
 <div class="main-content">
     <div id="alert-container"></div>
-    <div class="page-header">
-        <h1 class="page-title">Admin Dashboard</h1>
-        <p class="page-subtitle">Overview of all vendors and items</p>
+
+    <div class="dash-greeting" id="greeting">Welcome back</div>
+    <div class="dash-sub" id="dash-sub">Here's how things are going so far today</div>
+
+    <div class="period-tabs">
+        <button class="period-tab active" data-period="today" onclick="switchPeriod('today',this)">Today</button>
+        <button class="period-tab" data-period="week" onclick="switchPeriod('week',this)">This Week</button>
+        <button class="period-tab" data-period="month" onclick="switchPeriod('month',this)">This Month</button>
     </div>
 
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-title">Total Vendors</div>
-            <div class="stat-value teal" id="total-vendors">&mdash;</div>
+    <div class="store-summary" id="store-summary">
+        <div class="sum-card"><div class="sum-label">Sales</div><div class="sum-value" id="s-revenue">&mdash;</div></div>
+        <div class="sum-card"><div class="sum-label">Transactions</div><div class="sum-value white" id="s-transactions">&mdash;</div></div>
+        <div class="sum-card"><div class="sum-label">Items Sold</div><div class="sum-value white" id="s-items">&mdash;</div></div>
+        <div class="sum-card"><div class="sum-label">Avg Transaction</div><div class="sum-value white" id="s-avg">&mdash;</div></div>
+        <div class="sum-card"><div class="sum-label">Tax Collected</div><div class="sum-value white" id="s-tax">&mdash;</div></div>
+        <div class="sum-card"><div class="sum-label">Net Sales</div><div class="sum-value green" id="s-net">&mdash;</div></div>
+    </div>
+
+    <div class="dash-row">
+        <div class="dash-section">
+            <div class="dash-section-title">Hourly Sales</div>
+            <div class="chart-bars" id="hourly-chart"></div>
+            <div class="chart-labels" id="hourly-labels"></div>
         </div>
-        <div class="stat-card">
-            <div class="stat-title">Active Vendors</div>
-            <div class="stat-value green" id="active-vendors">&mdash;</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-title">Total Items</div>
-            <div class="stat-value" id="total-items">&mdash;</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-title">Active Items</div>
-            <div class="stat-value teal" id="active-items">&mdash;</div>
+        <div class="dash-section">
+            <div class="dash-section-title">Payment Methods</div>
+            <div class="payment-pills" id="payment-methods">
+                <div style="color:var(--text-light);font-style:italic;width:100%;text-align:center;padding:2rem 0">No sales data</div>
+            </div>
         </div>
     </div>
 
-    <!-- Online Orders Section -->
+    <div class="dash-row">
+        <div class="dash-section">
+            <div class="dash-section-title">Daily Sales (Last 30 Days)</div>
+            <div class="daily-chart-bars" id="daily-chart"></div>
+            <div class="chart-labels" id="daily-labels" style="gap:1px"></div>
+        </div>
+        <div class="dash-section">
+            <div class="dash-section-title">Top Vendors</div>
+            <div id="top-vendors">
+                <div style="color:var(--text-light);font-style:italic;text-align:center;padding:2rem 0">No sales data</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ornament">&loz;</div>
+
     <div class="section" id="online-orders-section">
         <div class="section-header">
             <h2 class="section-title">Online Orders <span id="pending-orders-badge" style="display:none;background:#EF4444;color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle">0 new</span></h2>
@@ -234,30 +389,19 @@
                     </tbody>
                 </table>
             </div>
-            <div class="vendor-cards" id="vendor-cards">
+            <div class="vendor-cards-mobile" id="vendor-cards">
                 <div style="color:#A8A6A1;padding:1rem;text-align:center">Loading vendors&hellip;</div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Mobile bottom nav -->
 <nav class="admin-bottom-nav">
-    <a href="/admin/index.html" class="active">
-        <span class="nav-icon">&#127968;</span>Dashboard
-    </a>
-    <a href="/admin/vendors.html">
-        <span class="nav-icon">&#128101;</span>Vendors
-    </a>
-    <a href="/admin/rent.html">
-        <span class="nav-icon">&#128179;</span>Rent
-    </a>
-    <a href="/vendor/items.html">
-        <span class="nav-icon">&#127991;&#65039;</span>Items
-    </a>
-    <a href="/pos/index.html">
-        <span class="nav-icon">&#128421;&#65039;</span>POS
-    </a>
+    <a href="/admin/index.html" class="active"><span class="nav-icon">&#127968;</span>Dashboard</a>
+    <a href="/admin/vendors.html"><span class="nav-icon">&#128101;</span>Vendors</a>
+    <a href="/admin/rent.html"><span class="nav-icon">&#128179;</span>Rent</a>
+    <a href="/vendor/items.html"><span class="nav-icon">&#127991;&#65039;</span>Items</a>
+    <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
 </nav>
 
 <script src="/static/js/api.js"></script>
@@ -265,123 +409,199 @@
     function toggleMobileNav() {
         document.getElementById('mobile-nav').classList.toggle('open');
     }
-
     document.addEventListener('click', function(e) {
-        const nav = document.getElementById('mobile-nav');
-        const btn = document.getElementById('hamburger-btn');
+        var nav = document.getElementById('mobile-nav');
+        var btn = document.getElementById('hamburger-btn');
         if (nav.classList.contains('open') && !nav.contains(e.target) && e.target !== btn) {
             nav.classList.remove('open');
         }
     });
-
-    function handleLogout() {
-        clearToken();
-        window.location.href = "/vendor/login.html";
-    }
-
-    function statusBadge(s) {
-        return `<span class="badge ${s === 'active' ? 'badge-green' : 'badge-red'}">${s}</span>`;
-    }
-
-    function roleBadge(r) {
-        return `<span class="badge ${r === 'admin' ? 'badge-blue' : 'badge-gray'}">${r}</span>`;
-    }
-
+    function handleLogout() { clearToken(); window.location.href = '/vendor/login.html'; }
+    function statusBadge(s) { return '<span class="badge ' + (s === 'active' ? 'badge-green' : 'badge-red') + '">' + s + '</span>'; }
+    function roleBadge(r) { return '<span class="badge ' + (r === 'admin' ? 'badge-blue' : 'badge-gray') + '">' + r + '</span>'; }
     function toggleCardDetail(id) {
-        const el = document.getElementById('vcard-detail-' + id);
+        var el = document.getElementById('vcard-detail-' + id);
         if (el) el.classList.toggle('collapsed');
+    }
+    function fmt(v) { return '$' + (v || 0).toFixed(2); }
+
+    var currentPeriod = 'today';
+
+    function switchPeriod(period, btn) {
+        currentPeriod = period;
+        document.querySelectorAll('.period-tab').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+
+        var labels = { today: "Here's how things are going so far today", week: "Performance this week", month: "Performance this month" };
+        document.getElementById('dash-sub').textContent = labels[period] || '';
+        loadDashboardStats(period);
+    }
+
+    async function loadDashboardStats(period) {
+        try {
+            var data = await apiGet('/api/v1/admin/reports/dashboard?period=' + period);
+            var s = data.summary;
+
+            document.getElementById('s-revenue').textContent = fmt(s.total_revenue);
+            document.getElementById('s-transactions').textContent = s.total_transactions;
+            document.getElementById('s-items').textContent = s.total_items_sold;
+            document.getElementById('s-avg').textContent = fmt(s.avg_transaction);
+            document.getElementById('s-tax').textContent = fmt(s.total_tax);
+            document.getElementById('s-net').textContent = fmt(s.net_sales);
+
+            renderHourlyChart(data.hourly_sales || []);
+            renderDailyChart(data.daily_sales || []);
+            renderTopVendors(data.top_vendors || []);
+            renderPaymentMethods(data.payment_methods || []);
+        } catch (e) {
+            showAlert('alert-container', 'Failed to load dashboard stats: ' + (e.message || ''), 'error');
+        }
+    }
+
+    function renderHourlyChart(hourly) {
+        var chartEl = document.getElementById('hourly-chart');
+        var labelsEl = document.getElementById('hourly-labels');
+        if (!hourly.length) {
+            chartEl.innerHTML = '<div style="color:var(--text-light);font-style:italic;width:100%;text-align:center;align-self:center">No sales data</div>';
+            labelsEl.innerHTML = '';
+            return;
+        }
+        var maxVal = Math.max.apply(null, hourly.map(function(h) { return h.total; })) || 1;
+        chartEl.innerHTML = hourly.map(function(h) {
+            var pct = Math.max(1, (h.total / maxVal) * 100);
+            var title = h.label + ': ' + fmt(h.total);
+            return '<div class="chart-bar-col"><div class="chart-bar" style="height:' + pct + '%" title="' + title + '"></div></div>';
+        }).join('');
+        labelsEl.innerHTML = hourly.map(function(h, i) {
+            return '<div class="chart-label">' + (i % 2 === 0 ? h.label.replace(' AM','a').replace(' PM','p') : '') + '</div>';
+        }).join('');
+    }
+
+    function renderDailyChart(daily) {
+        var chartEl = document.getElementById('daily-chart');
+        var labelsEl = document.getElementById('daily-labels');
+        if (!daily.length) {
+            chartEl.innerHTML = '<div style="color:var(--text-light);font-style:italic;width:100%;text-align:center;align-self:center">No sales data</div>';
+            labelsEl.innerHTML = '';
+            return;
+        }
+        var maxVal = Math.max.apply(null, daily.map(function(d) { return d.total; })) || 1;
+        chartEl.innerHTML = daily.map(function(d) {
+            var pct = Math.max(1, (d.total / maxVal) * 100);
+            var title = d.label + ': ' + fmt(d.total) + ' (' + d.count + ' sales)';
+            return '<div class="chart-bar-col"><div class="chart-bar" style="height:' + pct + '%" title="' + title + '"></div></div>';
+        }).join('');
+        labelsEl.innerHTML = daily.map(function(d, i) {
+            return '<div class="chart-label">' + (i % 5 === 0 ? d.label : '') + '</div>';
+        }).join('');
+    }
+
+    function renderTopVendors(vendors) {
+        var el = document.getElementById('top-vendors');
+        if (!vendors.length) {
+            el.innerHTML = '<div style="color:var(--text-light);font-style:italic;text-align:center;padding:2rem 0">No vendor sales in this period</div>';
+            return;
+        }
+        var html = '<table class="vendor-rank-table"><thead><tr><th>Vendor</th><th>Items Sold</th><th>Total</th></tr></thead><tbody>';
+        vendors.forEach(function(v) {
+            html += '<tr><td><strong>' + v.vendor_name + '</strong><br><span style="font-size:0.75rem;color:var(--text-light)">Booth ' + (v.booth_number || '-') + '</span></td>';
+            html += '<td>' + v.items_sold + '</td>';
+            html += '<td style="font-weight:600;color:var(--gold)">' + fmt(v.total_sales) + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        el.innerHTML = html;
+    }
+
+    function renderPaymentMethods(methods) {
+        var el = document.getElementById('payment-methods');
+        if (!methods.length) {
+            el.innerHTML = '<div style="color:var(--text-light);font-style:italic;width:100%;text-align:center;padding:2rem 0">No sales data</div>';
+            return;
+        }
+        el.innerHTML = methods.map(function(m) {
+            return '<div class="pay-pill"><div class="pay-method">' + m.method + '</div><div class="pay-amount">' + fmt(m.total) + '</div><div class="pay-count">' + m.count + ' transaction' + (m.count !== 1 ? 's' : '') + '</div></div>';
+        }).join('');
+    }
+
+    async function loadVendors() {
+        try {
+            var vendors = await apiGet('/api/v1/vendors/');
+            var tbody = document.getElementById('vendors-table-body');
+            if (!vendors.length) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No vendors found.</td></tr>';
+            } else {
+                tbody.innerHTML = vendors.map(function(v) {
+                    return '<tr><td><strong>' + v.name + '</strong></td><td>' + v.email + '</td><td>' + (v.booth_number || '-') + '</td>'
+                        + '<td>' + (v.monthly_rent ? fmt(parseFloat(v.monthly_rent)) : '-') + '</td>'
+                        + '<td><strong>' + fmt(parseFloat(v.current_balance || 0)) + '</strong></td>'
+                        + '<td>' + statusBadge(v.status) + '</td><td>' + roleBadge(v.role) + '</td></tr>';
+                }).join('');
+            }
+
+            var cards = document.getElementById('vendor-cards');
+            if (!vendors.length) {
+                cards.innerHTML = '<div style="color:#A8A6A1;padding:1rem;text-align:center">No vendors found.</div>';
+            } else {
+                cards.innerHTML = vendors.map(function(v) {
+                    return '<div class="vendor-card" onclick="toggleCardDetail(' + v.id + ')">'
+                        + '<div class="vendor-card-header"><div>'
+                        + '<div class="vendor-card-name">' + v.name + '</div>'
+                        + '<div class="vendor-card-sub">' + v.email + ' &middot; Booth ' + (v.booth_number || '-') + '</div>'
+                        + '</div><div class="vendor-card-right">'
+                        + statusBadge(v.status)
+                        + '<span class="vendor-card-balance">' + fmt(parseFloat(v.current_balance || 0)) + '</span>'
+                        + '<span class="vendor-card-chevron">&rsaquo;</span></div></div>'
+                        + '<div class="vendor-card-detail collapsed" id="vcard-detail-' + v.id + '">'
+                        + '<span><label>Monthly Rent</label>' + (v.monthly_rent ? fmt(parseFloat(v.monthly_rent)) : '-') + '</span>'
+                        + '<span><label>Role</label>' + v.role + '</span>'
+                        + '<span><label>Payout</label>' + (v.payout_method || '-') + '</span></div></div>';
+                }).join('');
+            }
+        } catch (e) {
+            showAlert('alert-container', e.message, 'error');
+        }
     }
 
     async function loadDashboard() {
-        const token = sessionStorage.getItem('bmm_token');
+        var token = sessionStorage.getItem('bmm_token');
         if (!token) { window.location.href = '/vendor/login.html'; return; }
-        const payload = parseToken();
-        if (payload?.role !== "admin") {
-            window.location.href = "/vendor/dashboard.html";
+        var payload = parseToken();
+        if (payload && payload.role !== 'admin') {
+            window.location.href = '/vendor/dashboard.html';
             return;
         }
-        document.getElementById('user-name').textContent = payload.name || 'Admin';
+        var name = (payload && payload.name) || 'Admin';
+        document.getElementById('user-name').textContent = name;
 
-        try {
-            const [vendors, items] = await Promise.all([
-                apiGet("/api/v1/vendors/"),
-                apiGet("/api/v1/items/"),
-            ]);
+        var hour = new Date().getHours();
+        var greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+        document.getElementById('greeting').textContent = greet + ', ' + name.split(' ')[0] + '.';
 
-            document.getElementById("total-vendors").textContent = vendors.length;
-            document.getElementById("active-vendors").textContent = vendors.filter(v => v.status === "active").length;
-            document.getElementById("total-items").textContent = items.length;
-            document.getElementById("active-items").textContent = items.filter(i => i.status === "active").length;
-
-            const tbody = document.getElementById("vendors-table-body");
-            if (vendors.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No vendors found.</td></tr>`;
-            } else {
-                tbody.innerHTML = vendors.map(v => `
-                    <tr>
-                        <td><strong>${v.name}</strong></td>
-                        <td>${v.email}</td>
-                        <td>${v.booth_number || "—"}</td>
-                        <td>${v.monthly_rent ? `$${parseFloat(v.monthly_rent).toFixed(2)}` : "—"}</td>
-                        <td><strong>$${parseFloat(v.current_balance || 0).toFixed(2)}</strong></td>
-                        <td>${statusBadge(v.status)}</td>
-                        <td>${roleBadge(v.role)}</td>
-                    </tr>
-                `).join("");
-            }
-
-            const cards = document.getElementById("vendor-cards");
-            if (vendors.length === 0) {
-                cards.innerHTML = `<div style="color:#A8A6A1;padding:1rem;text-align:center">No vendors found.</div>`;
-            } else {
-                cards.innerHTML = vendors.map(v => `
-                    <div class="vendor-card" onclick="toggleCardDetail(${v.id})">
-                        <div class="vendor-card-header">
-                            <div>
-                                <div class="vendor-card-name">${v.name}</div>
-                                <div class="vendor-card-sub">${v.email} · Booth ${v.booth_number || '—'}</div>
-                            </div>
-                            <div class="vendor-card-right">
-                                ${statusBadge(v.status)}
-                                <span class="vendor-card-balance">$${parseFloat(v.current_balance || 0).toFixed(2)}</span>
-                                <span class="vendor-card-chevron">›</span>
-                            </div>
-                        </div>
-                        <div class="vendor-card-detail collapsed" id="vcard-detail-${v.id}">
-                            <span><label>Monthly Rent</label>${v.monthly_rent ? `$${parseFloat(v.monthly_rent).toFixed(2)}` : '—'}</span>
-                            <span><label>Role</label>${v.role}</span>
-                            <span><label>Payout</label>${v.payout_method || '—'}</span>
-                        </div>
-                    </div>
-                `).join("");
-            }
-        } catch (err) {
-            showAlert("alert-container", err.message, "error");
-        }
+        loadDashboardStats('today');
+        loadVendors();
     }
 
     loadDashboard();
 
-    // ─── Online Orders ───────────────────────────────────────────────────────
     async function loadAdminOrders(statusFilter) {
-        const list = document.getElementById('admin-orders-list');
+        var list = document.getElementById('admin-orders-list');
         list.innerHTML = '<div class="loading">Loading...</div>';
 
-        document.querySelectorAll('[id^="admin-filter-"]').forEach(b => {
+        document.querySelectorAll('[id^="admin-filter-"]').forEach(function(b) {
             b.style.background = ''; b.style.color = '';
         });
-        const activeBtn = document.getElementById(`admin-filter-${statusFilter || 'all'}`);
+        var activeBtn = document.getElementById('admin-filter-' + (statusFilter || 'all'));
         if (activeBtn) { activeBtn.style.background = '#92400E'; activeBtn.style.color = '#FDE68A'; }
 
         try {
-            const data = await apiGet('/api/v1/admin/reports/reservations');
-            let orders = data.reservations || [];
+            var data = await apiGet('/api/v1/admin/reports/reservations');
+            var orders = data.reservations || [];
             if (statusFilter) {
-                orders = orders.filter(o => o.status === statusFilter);
+                orders = orders.filter(function(o) { return o.status === statusFilter; });
             }
 
-            const pendingCount = (data.reservations || []).filter(o => o.status === 'pending').length;
-            const badge = document.getElementById('pending-orders-badge');
+            var pendingCount = (data.reservations || []).filter(function(o) { return o.status === 'pending'; }).length;
+            var badge = document.getElementById('pending-orders-badge');
             if (pendingCount > 0) {
                 badge.textContent = pendingCount + ' pending';
                 badge.style.display = 'inline';
@@ -389,43 +609,41 @@
                 badge.style.display = 'none';
             }
 
-            if (orders.length === 0) {
+            if (!orders.length) {
                 list.innerHTML = '<div style="color:#A8A6A1;padding:1rem;text-align:center">No orders found</div>';
                 return;
             }
-            list.innerHTML = orders.map(o => {
-                const d = new Date(o.date || o.created_at);
-                const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                const statusColor = o.status === 'pending' ? '#FDE68A' : '#6EE7B7';
-                const statusBg = o.status === 'pending' ? '#92400E' : '#065F46';
-                const pickupBtn = o.status === 'pending'
-                    ? `<button onclick="markAdminPickup(${o.id})" class="btn btn-sm" style="background:#065F46;color:#6EE7B7;margin-top:4px;font-size:0.75rem">Mark Picked Up</button>`
+            list.innerHTML = orders.map(function(o) {
+                var d = new Date(o.date || o.created_at);
+                var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                var statusColor = o.status === 'pending' ? '#FDE68A' : '#6EE7B7';
+                var statusBg = o.status === 'pending' ? '#92400E' : '#065F46';
+                var pickupBtn = o.status === 'pending'
+                    ? '<button onclick="markAdminPickup(' + o.id + ')" class="btn btn-sm" style="background:#065F46;color:#6EE7B7;margin-top:4px;font-size:0.75rem">Mark Picked Up</button>'
                     : '';
-                return `<div style="background:var(--surface);border:1px solid var(--border);padding:0.75rem;margin-bottom:6px;display:flex;justify-content:space-between;align-items:start">
-                    <div>
-                        <div style="font-weight:600;color:var(--text)">${(o.item_name || 'Item #' + o.item_id).replace(/</g,'&lt;')}</div>
-                        <div style="font-size:0.85rem;color:var(--text-light);margin-top:2px">Customer: ${(o.customer_name || 'Unknown').replace(/</g,'&lt;')} · ${(o.customer_phone || '').replace(/</g,'&lt;')}</div>
-                        <div style="font-size:0.8rem;color:var(--text-muted);margin-top:2px">${dateStr} ${timeStr}</div>
-                        ${pickupBtn}
-                    </div>
-                    <div style="text-align:right">
-                        <div style="font-weight:700;color:var(--gold);font-size:1.1rem">$${parseFloat(o.amount_paid || 0).toFixed(2)}</div>
-                        <span style="background:${statusBg};color:${statusColor};padding:2px 8px;font-size:0.7rem;font-weight:600;text-transform:uppercase;display:inline-block;margin-top:4px">${o.status}</span>
-                    </div>
-                </div>`;
+                return '<div style="background:var(--surface);border:1px solid var(--border);padding:0.75rem;margin-bottom:6px;display:flex;justify-content:space-between;align-items:start">'
+                    + '<div>'
+                    + '<div style="font-weight:600;color:var(--text)">' + (o.item_name || 'Item #' + o.item_id).replace(/</g, '&lt;') + '</div>'
+                    + '<div style="font-size:0.85rem;color:var(--text-light);margin-top:2px">Customer: ' + (o.customer_name || 'Unknown').replace(/</g, '&lt;') + ' &middot; ' + (o.customer_phone || '').replace(/</g, '&lt;') + '</div>'
+                    + '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:2px">' + dateStr + ' ' + timeStr + '</div>'
+                    + pickupBtn
+                    + '</div><div style="text-align:right">'
+                    + '<div style="font-weight:700;color:var(--gold);font-size:1.1rem">' + fmt(parseFloat(o.amount_paid || 0)) + '</div>'
+                    + '<span style="background:' + statusBg + ';color:' + statusColor + ';padding:2px 8px;font-size:0.7rem;font-weight:600;text-transform:uppercase;display:inline-block;margin-top:4px">' + o.status + '</span>'
+                    + '</div></div>';
             }).join('');
-        } catch (err) {
-            list.innerHTML = `<div style="color:#F87171;padding:1rem;text-align:center">${err.message || 'Failed to load orders'}</div>`;
+        } catch (e) {
+            list.innerHTML = '<div style="color:#F87171;padding:1rem;text-align:center">' + (e.message || 'Failed to load orders') + '</div>';
         }
     }
 
     async function markAdminPickup(reservationId) {
         try {
-            await apiPost(`/api/v1/admin/reports/reservations/${reservationId}/pickup`, {});
+            await apiPost('/api/v1/admin/reports/reservations/' + reservationId + '/pickup', {});
             loadAdminOrders('pending');
-        } catch (err) {
-            showAlert('alert-container', err.message || 'Failed', 'error');
+        } catch (e) {
+            showAlert('alert-container', e.message || 'Failed', 'error');
         }
     }
 

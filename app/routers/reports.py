@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, extract, cast, Date
 from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models.sale import Sale, SaleItem
@@ -16,28 +16,220 @@ from app.routers.auth import require_cashier_or_admin, require_admin
 router = APIRouter(prefix="/admin/reports", tags=["reports"])
 
 
-@router.get("/sales")
-async def report_sales(
+def _parse_dates(from_date, to_date):
+    try:
+        start_date = date.fromisoformat(from_date) if from_date else date.today()
+        end_date = date.fromisoformat(to_date) if to_date else date.today()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+    start_dt = datetime(start_date.year, start_date.month, start_date.day)
+    end_dt = datetime(end_date.year, end_date.month, end_date.day) + timedelta(days=1)
+    return start_dt, end_dt
+
+
+@router.get("/dashboard")
+async def dashboard_stats(
+    period: Optional[str] = Query("today"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_cashier_or_admin),
+):
+    today = date.today()
+
+    if period == "week":
+        start_date = today - timedelta(days=today.weekday())
+    elif period == "month":
+        start_date = date(today.year, today.month, 1)
+    else:
+        start_date = today
+
+    start_dt = datetime(start_date.year, start_date.month, start_date.day)
+    end_dt = datetime(today.year, today.month, today.day) + timedelta(days=1)
+
+    result = await db.execute(
+        select(Sale)
+        .options(selectinload(Sale.items))
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .order_by(Sale.created_at.desc())
+    )
+    sales = result.scalars().all()
+
+    total_transactions = len(sales)
+    total_revenue = sum(float(s.total) for s in sales)
+    total_tax = sum(float(s.tax_amount) for s in sales)
+    total_items_sold = sum(
+        sum(si.quantity for si in s.items) if s.items else 0
+        for s in sales
+    )
+    avg_transaction = round(total_revenue / total_transactions, 2) if total_transactions > 0 else 0
+
+    hourly_sales = {}
+    for s in sales:
+        if s.created_at:
+            hour = s.created_at.hour
+            hourly_sales[hour] = hourly_sales.get(hour, 0) + float(s.total)
+
+    hourly_data = []
+    for h in range(8, 22):
+        hourly_data.append({"hour": h, "label": _format_hour(h), "total": round(hourly_sales.get(h, 0), 2)})
+
+    vendor_result = await db.execute(
+        select(
+            Vendor.name,
+            Vendor.booth_number,
+            func.coalesce(func.sum(SaleItem.line_total), 0).label("total_sales"),
+            func.coalesce(func.sum(SaleItem.quantity), 0).label("items_sold"),
+        )
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .join(Vendor, Vendor.id == SaleItem.vendor_id)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .group_by(Vendor.name, Vendor.booth_number)
+        .order_by(func.sum(SaleItem.line_total).desc())
+        .limit(10)
+    )
+    top_vendors = [
+        {
+            "vendor_name": r.name,
+            "booth_number": r.booth_number or "",
+            "total_sales": round(float(r.total_sales), 2),
+            "items_sold": int(r.items_sold),
+        }
+        for r in vendor_result.all()
+    ]
+
+    thirty_ago = today - timedelta(days=29)
+    daily_result = await db.execute(
+        select(
+            cast(Sale.created_at, Date).label("sale_date"),
+            func.count(Sale.id).label("count"),
+            func.coalesce(func.sum(Sale.total), 0).label("total"),
+        )
+        .where(Sale.created_at >= datetime(thirty_ago.year, thirty_ago.month, thirty_ago.day))
+        .group_by(cast(Sale.created_at, Date))
+        .order_by(cast(Sale.created_at, Date))
+    )
+    daily_rows = daily_result.all()
+    daily_map = {str(r.sale_date): {"count": r.count, "total": round(float(r.total), 2)} for r in daily_rows}
+
+    daily_sales = []
+    for i in range(30):
+        d = thirty_ago + timedelta(days=i)
+        ds = str(d)
+        daily_sales.append({
+            "date": ds,
+            "label": d.strftime("%-m/%d"),
+            "count": daily_map.get(ds, {}).get("count", 0),
+            "total": daily_map.get(ds, {}).get("total", 0),
+        })
+
+    payment_result = await db.execute(
+        select(
+            Sale.payment_method,
+            func.count(Sale.id).label("count"),
+            func.coalesce(func.sum(Sale.total), 0).label("total"),
+        )
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .group_by(Sale.payment_method)
+    )
+    payment_methods = [
+        {"method": r.payment_method or "unknown", "count": r.count, "total": round(float(r.total), 2)}
+        for r in payment_result.all()
+    ]
+
+    return {
+        "period": period,
+        "start_date": str(start_date),
+        "end_date": str(today),
+        "summary": {
+            "total_revenue": round(total_revenue, 2),
+            "total_transactions": total_transactions,
+            "total_items_sold": total_items_sold,
+            "total_tax": round(total_tax, 2),
+            "avg_transaction": avg_transaction,
+            "net_sales": round(total_revenue - total_tax, 2),
+        },
+        "hourly_sales": hourly_data,
+        "daily_sales": daily_sales,
+        "top_vendors": top_vendors,
+        "payment_methods": payment_methods,
+    }
+
+
+def _format_hour(h):
+    if h == 0:
+        return "12 AM"
+    elif h < 12:
+        return f"{h} AM"
+    elif h == 12:
+        return "12 PM"
+    else:
+        return f"{h - 12} PM"
+
+
+@router.get("/daily_sales")
+async def report_daily_sales(
+    from_date: Optional[str] = Query(None, alias="from_date"),
+    to_date: Optional[str] = Query(None, alias="to_date"),
     start: Optional[str] = Query(None),
     end: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_cashier_or_admin),
 ):
-    try:
-        start_date = date.fromisoformat(start) if start else date.today()
-        end_date = date.fromisoformat(end) if end else date.today()
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
-
-    end_dt = datetime(end_date.year, end_date.month, end_date.day) + timedelta(days=1)
-    start_dt = datetime(start_date.year, start_date.month, start_date.day)
+    start_dt, end_dt = _parse_dates(from_date or start, to_date or end)
 
     result = await db.execute(
         select(Sale)
-        .options(
-            selectinload(Sale.cashier),
-            selectinload(Sale.items),
-        )
+        .options(selectinload(Sale.cashier), selectinload(Sale.items))
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .order_by(Sale.created_at.desc())
+    )
+    sales = result.scalars().all()
+
+    total_transactions = len(sales)
+    total_revenue = sum(float(s.total) for s in sales)
+    total_tax = sum(float(s.tax_amount) for s in sales)
+    total_items_sold = sum(sum(si.quantity for si in s.items) if s.items else 0 for s in sales)
+    avg_transaction = round(total_revenue / total_transactions, 2) if total_transactions > 0 else 0
+
+    rows = []
+    for s in sales:
+        item_count = sum(si.quantity for si in s.items) if s.items else 0
+        rows.append({
+            "date": s.created_at.strftime("%Y-%m-%d %I:%M %p") if s.created_at else "",
+            "cashier": s.cashier.name if s.cashier else "Unknown",
+            "items": item_count,
+            "subtotal": round(float(s.subtotal), 2),
+            "tax": round(float(s.tax_amount), 2),
+            "total": round(float(s.total), 2),
+            "payment": s.payment_method or "unknown",
+        })
+
+    return {
+        "summary": {
+            "total_revenue": round(total_revenue, 2),
+            "total_transactions": total_transactions,
+            "total_items_sold": total_items_sold,
+            "total_tax": round(total_tax, 2),
+            "avg_transaction": avg_transaction,
+        },
+        "columns": ["date", "cashier", "items", "subtotal", "tax", "total", "payment"],
+        "rows": rows,
+    }
+
+
+@router.get("/sales")
+async def report_sales(
+    from_date: Optional[str] = Query(None, alias="from_date"),
+    to_date: Optional[str] = Query(None, alias="to_date"),
+    start: Optional[str] = Query(None),
+    end: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_cashier_or_admin),
+):
+    start_dt, end_dt = _parse_dates(from_date or start, to_date or end)
+
+    result = await db.execute(
+        select(Sale)
+        .options(selectinload(Sale.cashier), selectinload(Sale.items))
         .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
         .order_by(Sale.created_at.desc())
     )
@@ -71,21 +263,66 @@ async def report_sales(
     }
 
 
-@router.get("/vendors")
-async def report_vendors(
+@router.get("/vendor_performance")
+async def report_vendor_performance(
+    from_date: Optional[str] = Query(None, alias="from_date"),
+    to_date: Optional[str] = Query(None, alias="to_date"),
     start: Optional[str] = Query(None),
     end: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_cashier_or_admin),
 ):
-    try:
-        start_date = date.fromisoformat(start) if start else date.today()
-        end_date = date.fromisoformat(end) if end else date.today()
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
+    start_dt, end_dt = _parse_dates(from_date or start, to_date or end)
 
-    end_dt = datetime(end_date.year, end_date.month, end_date.day) + timedelta(days=1)
-    start_dt = datetime(start_date.year, start_date.month, start_date.day)
+    result = await db.execute(
+        select(
+            Vendor.name,
+            Vendor.booth_number,
+            func.coalesce(func.sum(SaleItem.line_total), 0).label("total_sales"),
+            func.coalesce(func.sum(SaleItem.quantity), 0).label("items_sold"),
+        )
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .join(Vendor, Vendor.id == SaleItem.vendor_id)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .group_by(Vendor.name, Vendor.booth_number)
+        .order_by(func.sum(SaleItem.line_total).desc())
+    )
+    rows = result.all()
+
+    grand_total = sum(float(r.total_sales) for r in rows)
+
+    vendor_rows = []
+    for r in rows:
+        total_sales = float(r.total_sales)
+        vendor_rows.append({
+            "vendor_name": r.name,
+            "booth": r.booth_number or "",
+            "items_sold": int(r.items_sold),
+            "total_sales": round(total_sales, 2),
+            "revenue_pct": round(total_sales / grand_total * 100, 1) if grand_total > 0 else 0,
+        })
+
+    return {
+        "summary": {
+            "active_vendors": len(vendor_rows),
+            "total_vendor_sales": round(grand_total, 2),
+            "avg_vendor_sales": round(grand_total / len(vendor_rows), 2) if vendor_rows else 0,
+        },
+        "columns": ["vendor_name", "booth", "items_sold", "total_sales", "revenue_pct"],
+        "rows": vendor_rows,
+    }
+
+
+@router.get("/vendors")
+async def report_vendors(
+    from_date: Optional[str] = Query(None, alias="from_date"),
+    to_date: Optional[str] = Query(None, alias="to_date"),
+    start: Optional[str] = Query(None),
+    end: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_cashier_or_admin),
+):
+    start_dt, end_dt = _parse_dates(from_date or start, to_date or end)
 
     result = await db.execute(
         select(
@@ -119,6 +356,180 @@ async def report_vendors(
     return {"vendors": vendors_list}
 
 
+@router.get("/top_items")
+async def report_top_items(
+    from_date: Optional[str] = Query(None, alias="from_date"),
+    to_date: Optional[str] = Query(None, alias="to_date"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_cashier_or_admin),
+):
+    start_dt, end_dt = _parse_dates(from_date, to_date)
+
+    result = await db.execute(
+        select(
+            Item.name.label("item_name"),
+            Vendor.name.label("vendor_name"),
+            func.coalesce(func.sum(SaleItem.quantity), 0).label("qty_sold"),
+            func.coalesce(func.sum(SaleItem.line_total), 0).label("revenue"),
+        )
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .join(Item, Item.id == SaleItem.item_id)
+        .outerjoin(Vendor, Vendor.id == SaleItem.vendor_id)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .group_by(Item.name, Vendor.name)
+        .order_by(func.sum(SaleItem.quantity).desc())
+        .limit(50)
+    )
+    rows = result.all()
+
+    total_qty = sum(int(r.qty_sold) for r in rows)
+    total_rev = sum(float(r.revenue) for r in rows)
+
+    item_rows = []
+    for r in rows:
+        item_rows.append({
+            "item_name": r.item_name or "Unknown",
+            "vendor": r.vendor_name or "",
+            "qty_sold": int(r.qty_sold),
+            "revenue": round(float(r.revenue), 2),
+        })
+
+    return {
+        "summary": {
+            "unique_items": len(item_rows),
+            "total_quantity": total_qty,
+            "total_item_revenue": round(total_rev, 2),
+        },
+        "columns": ["item_name", "vendor", "qty_sold", "revenue"],
+        "rows": item_rows,
+    }
+
+
+@router.get("/hourly_sales")
+async def report_hourly_sales(
+    from_date: Optional[str] = Query(None, alias="from_date"),
+    to_date: Optional[str] = Query(None, alias="to_date"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_cashier_or_admin),
+):
+    start_dt, end_dt = _parse_dates(from_date, to_date)
+
+    result = await db.execute(
+        select(Sale)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+    )
+    sales = result.scalars().all()
+
+    hourly = {}
+    for s in sales:
+        if s.created_at:
+            h = s.created_at.hour
+            if h not in hourly:
+                hourly[h] = {"count": 0, "total": 0}
+            hourly[h]["count"] += 1
+            hourly[h]["total"] += float(s.total)
+
+    rows = []
+    for h in range(24):
+        if h in hourly:
+            rows.append({
+                "hour": _format_hour(h),
+                "transactions": hourly[h]["count"],
+                "total_sales": round(hourly[h]["total"], 2),
+            })
+
+    return {
+        "summary": {
+            "total_transactions": len(sales),
+            "total_amount": round(sum(float(s.total) for s in sales), 2),
+        },
+        "columns": ["hour", "transactions", "total_sales"],
+        "rows": rows,
+    }
+
+
+@router.get("/payment_methods")
+async def report_payment_methods(
+    from_date: Optional[str] = Query(None, alias="from_date"),
+    to_date: Optional[str] = Query(None, alias="to_date"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_cashier_or_admin),
+):
+    start_dt, end_dt = _parse_dates(from_date, to_date)
+
+    result = await db.execute(
+        select(
+            Sale.payment_method,
+            func.count(Sale.id).label("count"),
+            func.coalesce(func.sum(Sale.total), 0).label("total"),
+        )
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .group_by(Sale.payment_method)
+        .order_by(func.sum(Sale.total).desc())
+    )
+    rows = result.all()
+
+    total_amount = sum(float(r.total) for r in rows)
+    total_txns = sum(r.count for r in rows)
+
+    method_rows = []
+    for r in rows:
+        method_rows.append({
+            "method": (r.payment_method or "unknown").title(),
+            "transactions": r.count,
+            "total_amount": round(float(r.total), 2),
+            "pct": round(float(r.total) / total_amount * 100, 1) if total_amount > 0 else 0,
+        })
+
+    return {
+        "summary": {
+            "total_transactions": total_txns,
+            "total_amount": round(total_amount, 2),
+        },
+        "columns": ["method", "transactions", "total_amount", "pct"],
+        "rows": method_rows,
+    }
+
+
+@router.get("/vendor_balances")
+async def report_vendor_balances(
+    from_date: Optional[str] = Query(None, alias="from_date"),
+    to_date: Optional[str] = Query(None, alias="to_date"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_cashier_or_admin),
+):
+    result = await db.execute(
+        select(Vendor)
+        .where(Vendor.status == "active")
+        .order_by(Vendor.name)
+    )
+    vendors = result.scalars().all()
+    vendors = [v for v in vendors if v.role == "vendor" or float(v.current_balance or 0) > 0]
+
+    total_balance = sum(float(v.current_balance or 0) for v in vendors)
+    avg_balance = round(total_balance / len(vendors), 2) if vendors else 0
+
+    rows = []
+    for v in vendors:
+        rows.append({
+            "vendor_name": v.name,
+            "booth": v.booth_number or "",
+            "balance": round(float(v.current_balance or 0), 2),
+            "monthly_rent": round(float(v.monthly_rent or 0), 2),
+            "status": v.status,
+        })
+
+    return {
+        "summary": {
+            "total_vendors": len(vendors),
+            "total_balance": round(total_balance, 2),
+            "avg_balance": avg_balance,
+        },
+        "columns": ["vendor_name", "booth", "balance", "monthly_rent", "status"],
+        "rows": rows,
+    }
+
+
 @router.get("/rent")
 async def report_rent(
     month: Optional[str] = Query(None),
@@ -135,7 +546,6 @@ async def report_rent(
     except (ValueError, IndexError):
         raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM.")
 
-    # Get rent payments for the month
     result = await db.execute(
         select(RentPayment)
         .options(selectinload(RentPayment.vendor))
@@ -146,7 +556,6 @@ async def report_rent(
 
     paid_vendor_ids = {p.vendor_id for p in payments}
 
-    # Get vendors with rent > 0 who have no payment for this month
     result = await db.execute(
         select(Vendor)
         .where(Vendor.monthly_rent > 0, Vendor.status == "active")
@@ -169,7 +578,6 @@ async def report_rent(
             "status": p.status,
         })
 
-    # Add outstanding vendors
     for v in all_rent_vendors:
         if v.id not in paid_vendor_ids:
             payments_list.append({
