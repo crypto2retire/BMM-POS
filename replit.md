@@ -28,6 +28,8 @@ app/
     rent.py       — RentPayment ORM model
     payout.py     — Payout ORM model
     studio_class.py — StudioClass ORM model (classes/workshops)
+    item_image.py — ItemImage ORM model (binary image data in DB for deploy persistence)
+    studio_image.py — StudioImage ORM model (binary studio class image data in DB)
   schemas/
     vendor.py     — VendorCreate, VendorUpdate, VendorResponse, Token
     item.py       — ItemCreate, ItemUpdate, ItemResponse (w/ computed active_price)

@@ -1,18 +1,24 @@
 import os
 import uuid
+import io
 from datetime import date, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, UploadFile, File
+from fastapi.responses import Response
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
+from PIL import Image as PILImage
 
 from app.database import get_db
 from app.models.studio_class import StudioClass
+from app.models.studio_image import StudioImage
 from app.models.vendor import Vendor
 from app.routers.auth import get_current_user
 
 STUDIO_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "static", "images", "studio")
+MAX_IMAGE_SIZE = 5 * 1024 * 1024
+MAX_IMAGE_DIMENSION = 1200
 
 router = APIRouter(prefix="/studio", tags=["studio"])
 
@@ -211,24 +217,68 @@ async def upload_class_image(
     if ext not in allowed:
         raise HTTPException(status_code=400, detail="Unsupported file type")
 
+    contents = await file.read()
+    if len(contents) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=400, detail="File size must be under 5MB")
+
+    try:
+        img = PILImage.open(io.BytesIO(contents))
+        img = img.convert("RGB")
+        w, h = img.size
+        if max(w, h) > MAX_IMAGE_DIMENSION:
+            ratio = MAX_IMAGE_DIMENSION / max(w, h)
+            img = img.resize((int(w * ratio), int(h * ratio)), PILImage.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, "JPEG", quality=85)
+        jpeg_bytes = buf.getvalue()
+    except Exception:
+        jpeg_bytes = contents
+
     os.makedirs(STUDIO_UPLOAD_DIR, exist_ok=True)
-
-    if c.image_url:
-        old_file = os.path.join(STUDIO_UPLOAD_DIR, os.path.basename(c.image_url))
-        if os.path.exists(old_file):
-            os.remove(old_file)
-
-    filename = f"class_{class_id}_{uuid.uuid4().hex[:8]}{ext}"
+    filename = f"class_{class_id}_{uuid.uuid4().hex[:8]}.jpg"
     filepath = os.path.join(STUDIO_UPLOAD_DIR, filename)
-
-    content = await file.read()
     with open(filepath, "wb") as f:
-        f.write(content)
+        f.write(jpeg_bytes)
 
-    c.image_url = f"/static/images/studio/{filename}"
+    existing = await db.execute(
+        select(StudioImage).where(StudioImage.class_id == class_id)
+    )
+    old_img = existing.scalar_one_or_none()
+    if old_img:
+        old_img.image_data = jpeg_bytes
+        old_img.content_type = "image/jpeg"
+    else:
+        db.add(StudioImage(class_id=class_id, image_data=jpeg_bytes, content_type="image/jpeg"))
+
+    c.image_url = f"/api/v1/studio/classes/{class_id}/image"
     await db.commit()
     await db.refresh(c)
     return _class_to_response(c)
+
+
+@router.get("/classes/{class_id}/image")
+async def get_class_image(
+    class_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(StudioImage).where(StudioImage.class_id == class_id)
+    )
+    img = result.scalar_one_or_none()
+    if img:
+        return Response(content=img.image_data, media_type=img.content_type,
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+    for fname in os.listdir(STUDIO_UPLOAD_DIR) if os.path.isdir(STUDIO_UPLOAD_DIR) else []:
+        if fname.startswith(f"class_{class_id}_"):
+            fpath = os.path.join(STUDIO_UPLOAD_DIR, fname)
+            with open(fpath, "rb") as f:
+                data = f.read()
+            ct = "image/jpeg" if fname.endswith(".jpg") else "image/png"
+            return Response(content=data, media_type=ct,
+                            headers={"Cache-Control": "public, max-age=86400"})
+
+    raise HTTPException(status_code=404, detail="Image not found")
 
 
 @router.delete("/classes/{class_id}/image")
@@ -245,13 +295,20 @@ async def delete_class_image(
     if not c:
         raise HTTPException(status_code=404, detail="Class not found")
 
+    img_result = await db.execute(
+        select(StudioImage).where(StudioImage.class_id == class_id)
+    )
+    old_img = img_result.scalar_one_or_none()
+    if old_img:
+        await db.delete(old_img)
+
     if c.image_url:
         old_file = os.path.join(STUDIO_UPLOAD_DIR, os.path.basename(c.image_url))
         if os.path.exists(old_file):
             os.remove(old_file)
         c.image_url = None
-        await db.commit()
 
+    await db.commit()
     return {"detail": "Image removed"}
 
 

@@ -11,6 +11,7 @@ from PIL import Image
 import io
 from app.database import get_db
 from app.models.item import Item
+from app.models.item_image import ItemImage
 from app.models.vendor import Vendor
 from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse
 from app.routers.auth import get_current_user
@@ -315,15 +316,43 @@ async def upload_item_photo(
     if ext not in allowed:
         raise HTTPException(status_code=400, detail="Unsupported file type")
 
+    contents = await file.read()
+    if len(contents) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=400, detail="File size must be under 5MB")
+
     os.makedirs(PHOTO_UPLOAD_DIR, exist_ok=True)
     filename = f"{item_id}_{uuid.uuid4().hex[:10]}{ext}"
     filepath = os.path.join(PHOTO_UPLOAD_DIR, filename)
 
     with open(filepath, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+        f.write(contents)
+
+    try:
+        img = Image.open(io.BytesIO(contents))
+        img = img.convert("RGB")
+        w, h = img.size
+        if max(w, h) > MAX_IMAGE_DIMENSION:
+            ratio = MAX_IMAGE_DIMENSION / max(w, h)
+            img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, "JPEG", quality=85)
+        jpeg_bytes = buf.getvalue()
+    except Exception:
+        jpeg_bytes = contents
+
+    existing = await db.execute(
+        select(ItemImage).where(ItemImage.item_id == item_id)
+    )
+    old_img = existing.scalar_one_or_none()
+    if old_img:
+        old_img.image_data = jpeg_bytes
+        old_img.content_type = "image/jpeg"
+    else:
+        db.add(ItemImage(item_id=item_id, image_data=jpeg_bytes, content_type="image/jpeg"))
 
     photo_url = f"/static/images/items/{filename}"
     item.photo_urls = (item.photo_urls or []) + [photo_url]
+    item.image_path = f"/api/v1/items/{item_id}/image"
     await db.commit()
 
     result = await db.execute(
@@ -396,15 +425,56 @@ async def upload_item_image(
         ratio = MAX_IMAGE_DIMENSION / max(w, h)
         img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
 
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=85)
+    jpeg_bytes = buf.getvalue()
+
     os.makedirs(IMAGE_UPLOAD_DIR, exist_ok=True)
     save_path = os.path.join(IMAGE_UPLOAD_DIR, f"{item_id}.jpg")
-    img.save(save_path, "JPEG", quality=85)
+    with open(save_path, "wb") as f:
+        f.write(jpeg_bytes)
 
-    image_path = f"/static/uploads/items/{item_id}.jpg"
+    existing = await db.execute(
+        select(ItemImage).where(ItemImage.item_id == item_id)
+    )
+    old_img = existing.scalar_one_or_none()
+    if old_img:
+        old_img.image_data = jpeg_bytes
+        old_img.content_type = "image/jpeg"
+    else:
+        db.add(ItemImage(item_id=item_id, image_data=jpeg_bytes, content_type="image/jpeg"))
+
+    image_path = f"/api/v1/items/{item_id}/image"
     item.image_path = image_path
     await db.commit()
 
     return {"success": True, "image_path": image_path}
+
+
+@router.get("/{item_id}/image")
+async def get_item_image(
+    item_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(ItemImage).where(ItemImage.item_id == item_id)
+    )
+    img = result.scalar_one_or_none()
+    if img:
+        return Response(content=img.image_data, media_type=img.content_type,
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+    for path in [
+        os.path.join(IMAGE_UPLOAD_DIR, f"{item_id}.jpg"),
+        os.path.join(PHOTO_UPLOAD_DIR, f"{item_id}.jpg"),
+    ]:
+        if os.path.exists(path):
+            with open(path, "rb") as f:
+                data = f.read()
+            return Response(content=data, media_type="image/jpeg",
+                            headers={"Cache-Control": "public, max-age=86400"})
+
+    raise HTTPException(status_code=404, detail="Image not found")
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
