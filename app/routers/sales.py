@@ -51,6 +51,9 @@ def sale_to_response(sale: Sale) -> SaleResponse:
                 quantity=si.quantity,
                 unit_price=si.unit_price,
                 line_total=si.line_total,
+                is_consignment=si.is_consignment,
+                consignment_rate=si.consignment_rate,
+                consignment_amount=si.consignment_amount,
             )
         )
 
@@ -140,6 +143,12 @@ async def create_sale(
 
     vendor_totals: dict[int, Decimal] = {}
     for item, qty, unit_price, line_total in resolved_lines:
+        consignment_amt = None
+        c_rate = None
+        if item.is_consignment and item.consignment_rate is not None:
+            c_rate = Decimal(str(item.consignment_rate))
+            consignment_amt = (line_total * c_rate).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
         sale_item = SaleItem(
             sale_id=sale.id,
             item_id=item.id,
@@ -147,6 +156,9 @@ async def create_sale(
             quantity=qty,
             unit_price=unit_price,
             line_total=line_total,
+            is_consignment=item.is_consignment,
+            consignment_rate=c_rate,
+            consignment_amount=consignment_amt,
         )
         db.add(sale_item)
 
@@ -155,7 +167,11 @@ async def create_sale(
         if new_qty <= 0:
             item.status = "sold"
 
-        vendor_totals[item.vendor_id] = vendor_totals.get(item.vendor_id, Decimal("0")) + line_total
+        vendor_credit = line_total
+        if consignment_amt is not None:
+            vendor_credit = (line_total - consignment_amt).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+        vendor_totals[item.vendor_id] = vendor_totals.get(item.vendor_id, Decimal("0")) + vendor_credit
 
     for vendor_id, amount in vendor_totals.items():
         result = await db.execute(

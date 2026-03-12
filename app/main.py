@@ -49,6 +49,26 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
                 "image_path VARCHAR(500)"
             ))
+            await session.execute(text(
+                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
+                "is_consignment BOOLEAN NOT NULL DEFAULT false"
+            ))
+            await session.execute(text(
+                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
+                "consignment_rate NUMERIC(5,4)"
+            ))
+            await session.execute(text(
+                "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS "
+                "is_consignment BOOLEAN NOT NULL DEFAULT false"
+            ))
+            await session.execute(text(
+                "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS "
+                "consignment_rate NUMERIC(5,4)"
+            ))
+            await session.execute(text(
+                "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS "
+                "consignment_amount NUMERIC(10,2)"
+            ))
             await session.commit()
     except Exception as e:
         print(f"BMM-POS: column migration FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)

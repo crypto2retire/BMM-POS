@@ -17,12 +17,21 @@ class ItemCreate(BaseModel):
     photo_urls: Optional[List[str]] = None
     is_online: Optional[bool] = False
     is_tax_exempt: Optional[bool] = False
+    is_consignment: Optional[bool] = False
+    consignment_rate: Optional[Decimal] = None
     label_style: Optional[str] = "standard"
 
     @model_validator(mode='after')
     def check_sale_price(self):
         if self.sale_price is not None and self.sale_price >= self.price:
             raise ValueError('sale_price must be less than price')
+        if self.is_consignment and self.consignment_rate is None:
+            raise ValueError('consignment_rate is required when is_consignment is true')
+        if self.consignment_rate is not None:
+            if self.consignment_rate < Decimal('0') or self.consignment_rate > Decimal('1'):
+                raise ValueError('consignment_rate must be between 0 and 1')
+        if not self.is_consignment:
+            self.consignment_rate = None
         return self
 
 class ItemUpdate(BaseModel):
@@ -37,6 +46,8 @@ class ItemUpdate(BaseModel):
     status: Optional[str] = None
     is_online: Optional[bool] = None
     is_tax_exempt: Optional[bool] = None
+    is_consignment: Optional[bool] = None
+    consignment_rate: Optional[Decimal] = None
     label_style: Optional[str] = None
 
 class ItemResponse(BaseModel):
@@ -52,6 +63,8 @@ class ItemResponse(BaseModel):
     photo_urls: Optional[List[str]] = None
     is_online: Optional[bool] = False
     is_tax_exempt: Optional[bool] = False
+    is_consignment: Optional[bool] = False
+    consignment_rate: Optional[Decimal] = None
     sale_price: Optional[Decimal] = None
     sale_start: Optional[date] = None
     sale_end: Optional[date] = None

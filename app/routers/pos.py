@@ -50,6 +50,8 @@ def _item_to_pos_dict(item: Item) -> dict:
         "vendor_id": item.vendor_id,
         "booth_number": item.vendor.booth_number if item.vendor else None,
         "is_tax_exempt": item.is_tax_exempt,
+        "is_consignment": item.is_consignment,
+        "consignment_rate": float(item.consignment_rate) if item.consignment_rate is not None else None,
         "quantity": item.quantity,
         "photo_urls": item.photo_urls,
     }
@@ -117,9 +119,18 @@ async def pos_manual_item(
     price = body.get("price")
     quantity = body.get("quantity", 1)
     is_tax_exempt = body.get("is_tax_exempt", False)
+    is_consignment = body.get("is_consignment", False)
+    consignment_rate = body.get("consignment_rate")
 
     if not vendor_id or not name or not price:
         raise HTTPException(status_code=400, detail="vendor_id, name, and price are required")
+
+    if is_consignment and consignment_rate is None:
+        raise HTTPException(status_code=400, detail="consignment_rate is required for consignment items")
+    if consignment_rate is not None and (consignment_rate < 0 or consignment_rate > 1):
+        raise HTTPException(status_code=400, detail="consignment_rate must be between 0 and 1")
+    if not is_consignment:
+        consignment_rate = None
 
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -139,6 +150,8 @@ async def pos_manual_item(
         category="Manual Entry",
         status="active",
         is_tax_exempt=is_tax_exempt,
+        is_consignment=is_consignment,
+        consignment_rate=Decimal(str(consignment_rate)) if consignment_rate is not None else None,
     )
     db.add(item)
     await db.commit()
@@ -229,6 +242,12 @@ async def pos_create_sale(
 
     vendor_totals: dict[int, Decimal] = {}
     for item, qty, unit_price, line_total in resolved_lines:
+        consignment_amt = None
+        c_rate = None
+        if item.is_consignment and item.consignment_rate is not None:
+            c_rate = Decimal(str(item.consignment_rate))
+            consignment_amt = (line_total * c_rate).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
         sale_item = SaleItem(
             sale_id=sale.id,
             item_id=item.id,
@@ -236,6 +255,9 @@ async def pos_create_sale(
             quantity=qty,
             unit_price=unit_price,
             line_total=line_total,
+            is_consignment=item.is_consignment,
+            consignment_rate=c_rate,
+            consignment_amount=consignment_amt,
         )
         db.add(sale_item)
 
@@ -244,8 +266,12 @@ async def pos_create_sale(
         if new_qty <= 0:
             item.status = "sold"
 
+        vendor_credit = line_total
+        if consignment_amt is not None:
+            vendor_credit = (line_total - consignment_amt).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
         vendor_totals[item.vendor_id] = (
-            vendor_totals.get(item.vendor_id, Decimal("0")) + line_total
+            vendor_totals.get(item.vendor_id, Decimal("0")) + vendor_credit
         )
 
     for vendor_id, amount in vendor_totals.items():
@@ -287,6 +313,9 @@ async def pos_create_sale(
                 quantity=si.quantity,
                 unit_price=si.unit_price,
                 line_total=si.line_total,
+                is_consignment=si.is_consignment,
+                consignment_rate=si.consignment_rate,
+                consignment_amount=si.consignment_amount,
             )
         )
 

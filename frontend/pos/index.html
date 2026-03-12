@@ -946,10 +946,18 @@
                 <input type="number" id="manual-qty" min="1" value="1">
             </div>
         </div>
-        <div class="manual-form-group">
+        <div class="manual-form-group" style="display:flex;gap:1.5rem;flex-wrap:wrap">
             <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;font-size:0.8rem;letter-spacing:0">
                 <input type="checkbox" id="manual-tax-exempt"> Tax Exempt
             </label>
+            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;font-size:0.8rem;letter-spacing:0">
+                <input type="checkbox" id="manual-consignment" onchange="toggleManualConsignment()"> Consignment
+            </label>
+        </div>
+        <div class="manual-form-group" id="manual-consignment-group" style="display:none">
+            <label for="manual-consignment-rate">Consignment Rate (%)</label>
+            <input type="number" id="manual-consignment-rate" min="0" max="100" step="0.01" placeholder="e.g. 40">
+            <small style="color:#999;font-size:0.7rem">Percentage the store keeps</small>
         </div>
         <div id="manual-error" style="color:#F87171;font-size:0.8rem;min-height:20px"></div>
         <div class="modal-actions">
@@ -1063,6 +1071,9 @@
         document.getElementById('manual-price').value = '';
         document.getElementById('manual-qty').value = '1';
         document.getElementById('manual-tax-exempt').checked = false;
+        document.getElementById('manual-consignment').checked = false;
+        document.getElementById('manual-consignment-rate').value = '';
+        document.getElementById('manual-consignment-group').style.display = 'none';
         document.getElementById('manual-error').textContent = '';
 
         if (!manualVendorsLoaded) {
@@ -1085,12 +1096,21 @@
         document.getElementById('manual-modal').classList.add('hidden');
     }
 
+    function toggleManualConsignment() {
+        const checked = document.getElementById('manual-consignment').checked;
+        document.getElementById('manual-consignment-group').style.display = checked ? 'block' : 'none';
+    }
+
     async function addManualItem() {
         const vendorId = parseInt(document.getElementById('manual-vendor').value);
         const name = document.getElementById('manual-name').value.trim();
         const price = parseFloat(document.getElementById('manual-price').value);
         const quantity = parseInt(document.getElementById('manual-qty').value) || 1;
         const isTaxExempt = document.getElementById('manual-tax-exempt').checked;
+        const isConsignment = document.getElementById('manual-consignment').checked;
+        const consignmentRate = isConsignment
+            ? (parseFloat(document.getElementById('manual-consignment-rate').value) || 0) / 100
+            : null;
         const errEl = document.getElementById('manual-error');
 
         if (!vendorId) { errEl.textContent = 'Please select a vendor'; return; }
@@ -1106,6 +1126,8 @@
                 price: price,
                 quantity: quantity,
                 is_tax_exempt: isTaxExempt,
+                is_consignment: isConsignment,
+                consignment_rate: consignmentRate,
             });
             addToCart(item);
             closeManualEntry();
@@ -1290,9 +1312,10 @@
                     ? `<span style="text-decoration:line-through;color:#6B7280;font-size:0.75rem">$${parseFloat(item.price).toFixed(2)}</span><br><span class="item-sale-badge">$${activePrice.toFixed(2)}</span>`
                     : `$${activePrice.toFixed(2)}`;
 
+                const consignTag = item.is_consignment ? ' <span style="background:#C9A96E;color:#38383B;font-size:0.6rem;padding:1px 5px;border-radius:2px;font-weight:700;vertical-align:middle">C</span>' : '';
                 return `<tr>
                     <td class="item-name-cell">
-                        <strong>${item.name}</strong>
+                        <strong>${item.name}${consignTag}</strong>
                         <small>Booth: ${item.booth_number || 'N/A'} &bull; ${item.category || ''}</small>
                     </td>
                     <td>

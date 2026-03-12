@@ -27,6 +27,9 @@ class SaleItemResponse(BaseModel):
     quantity: int
     unit_price: Decimal
     line_total: Decimal
+    is_consignment: bool = False
+    consignment_rate: Optional[Decimal] = None
+    consignment_amount: Optional[Decimal] = None
 
     model_config = {"from_attributes": True}
 

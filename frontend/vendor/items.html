@@ -426,6 +426,15 @@
                         <input type="checkbox" id="f-is-tax-exempt">
                         Tax Exempt
                     </label>
+                    <label class="form-check">
+                        <input type="checkbox" id="f-is-consignment" onchange="toggleConsignmentRate()">
+                        Consignment
+                    </label>
+                </div>
+                <div class="form-group" id="consignment-rate-group" style="display:none">
+                    <label>Consignment Rate (%)</label>
+                    <input type="number" id="f-consignment-rate" min="0" max="100" step="0.01" placeholder="e.g. 40 for 40%">
+                    <small style="color:#999">Percentage the store keeps on each sale</small>
                 </div>
             </form>
         </div>
@@ -704,6 +713,11 @@
     }
 
     // ── Modal ──────────────────────────────────────────────────────────
+    function toggleConsignmentRate() {
+        const checked = document.getElementById('f-is-consignment').checked;
+        document.getElementById('consignment-rate-group').style.display = checked ? 'block' : 'none';
+    }
+
     function openModal(item = null) {
         editingId = item ? item.id : null;
         pendingPhotoFile = null;
@@ -721,6 +735,10 @@
         document.getElementById('f-sale-end').value = item?.sale_end || '';
         document.getElementById('f-is-online').checked = item?.is_online || false;
         document.getElementById('f-is-tax-exempt').checked = item?.is_tax_exempt || false;
+        document.getElementById('f-is-consignment').checked = item?.is_consignment || false;
+        const rateVal = item?.consignment_rate ? (parseFloat(item.consignment_rate) * 100).toFixed(2) : '';
+        document.getElementById('f-consignment-rate').value = rateVal;
+        toggleConsignmentRate();
         document.getElementById('f-label-style').value = item?.label_style || 'standard';
 
         clearPhotoPreview();
@@ -982,6 +1000,10 @@
             sale_end: document.getElementById('f-sale-end').value || null,
             is_online: document.getElementById('f-is-online').checked,
             is_tax_exempt: document.getElementById('f-is-tax-exempt').checked,
+            is_consignment: document.getElementById('f-is-consignment').checked,
+            consignment_rate: document.getElementById('f-is-consignment').checked
+                ? (parseFloat(document.getElementById('f-consignment-rate').value) || 0) / 100
+                : null,
             label_style: document.getElementById('f-label-style').value,
         };
 

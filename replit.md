@@ -195,6 +195,7 @@ Item photos are stored in `frontend/static/images/items/` and served as static f
 - Cashiers can read vendors list (read-only), manage items, access Vendor Directory
 - Sale pricing: active_price uses sale_price when today is between sale_start and sale_end
 - On sale completion: inventory is decremented, vendor balances are credited
+- Consignment items: `is_consignment=true` + `consignment_rate` (decimal, e.g. 0.40 = 40% store keeps). On sale, vendor balance credited with (line_total - consignment_amount). Sale items track `is_consignment`, `consignment_rate`, `consignment_amount`
 - SKU format: `BSM-{vendor_id:04d}-{sequence:06d}`
 - Barcode: 12-digit numeric (auto-generated) or custom
 - Vendor suspend = soft delete (status = "suspended")
