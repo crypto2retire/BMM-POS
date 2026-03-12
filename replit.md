@@ -116,6 +116,9 @@ All routes prefixed with `/api/v1/`:
 | POST | /studio/classes/{id}/image | Admin/Cashier | Upload class image |
 | DELETE | /studio/classes/{id}/image | Admin/Cashier | Remove class image |
 | GET | /studio/categories | Public | List distinct class categories |
+| POST | /studio/classes/{id}/register | Public | Customer class registration (validates capacity, prevents duplicates) |
+| GET | /studio/classes/{id}/registrations | Admin/Cashier | List registrations for a class |
+| DELETE | /studio/registrations/{id} | Admin/Cashier | Cancel a registration (restores spots) |
 
 ## Database Tables
 
@@ -125,6 +128,7 @@ All routes prefixed with `/api/v1/`:
 - `sales` — POS transaction headers (subtotal, tax, total, payment_method, cash_tendered, change_given)
 - `sale_items` — Line items per sale (linked to item + vendor)
 - `studio_classes` — Studio class schedule (title, instructor, date, time, capacity, enrolled, price, category, location, image_url)
+- `class_registrations` — Customer class signups (class_id FK, name, email, phone, num_spots, status, created_at)
 - `rent_payments` — Monthly rent tracking (method: "square" for online payments)
 - `reservations` — Square-paid shop reservations (status: pending → confirmed)
 - `payouts` — Vendor payout records

@@ -13,8 +13,10 @@ from PIL import Image as PILImage
 from app.database import get_db
 from app.models.studio_class import StudioClass
 from app.models.studio_image import StudioImage
+from app.models.class_registration import ClassRegistration
 from app.models.vendor import Vendor
 from app.routers.auth import get_current_user
+from app.schemas.class_registration import ClassRegistrationCreate, ClassRegistrationResponse
 
 STUDIO_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "static", "images", "studio")
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -322,3 +324,109 @@ async def list_categories(db: AsyncSession = Depends(get_db)):
         .order_by(StudioClass.category)
     )
     return [row[0] for row in result.all()]
+
+
+@router.post("/classes/{class_id}/register", status_code=status.HTTP_201_CREATED)
+async def register_for_class(
+    class_id: int,
+    data: ClassRegistrationCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    from sqlalchemy import with_for_update
+    result = await db.execute(
+        select(StudioClass).where(
+            StudioClass.id == class_id,
+            StudioClass.is_published == True,
+            StudioClass.is_cancelled == False,
+        ).with_for_update()
+    )
+    cls = result.scalar_one_or_none()
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found or not available")
+
+    if cls.class_date < date.today():
+        raise HTTPException(status_code=400, detail="This class has already passed")
+
+    if data.num_spots < 1 or data.num_spots > 10:
+        raise HTTPException(status_code=400, detail="Must register for 1–10 spots")
+
+    spots_left = cls.capacity - cls.enrolled
+    if data.num_spots > spots_left:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Only {spots_left} spot(s) remaining"
+        )
+
+    existing = await db.execute(
+        select(ClassRegistration).where(
+            ClassRegistration.class_id == class_id,
+            ClassRegistration.customer_email == data.customer_email.strip().lower(),
+            ClassRegistration.status == "confirmed",
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="You are already registered for this class")
+
+    reg = ClassRegistration(
+        class_id=class_id,
+        customer_name=data.customer_name.strip(),
+        customer_email=data.customer_email.strip().lower(),
+        customer_phone=data.customer_phone.strip() if data.customer_phone else None,
+        num_spots=data.num_spots,
+        notes=data.notes,
+        status="confirmed",
+    )
+    db.add(reg)
+
+    cls.enrolled += data.num_spots
+    await db.commit()
+    await db.refresh(reg)
+    return ClassRegistrationResponse.model_validate(reg)
+
+
+@router.get("/classes/{class_id}/registrations")
+async def list_registrations(
+    class_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+
+    result = await db.execute(
+        select(ClassRegistration)
+        .where(ClassRegistration.class_id == class_id)
+        .order_by(ClassRegistration.created_at)
+    )
+    regs = result.scalars().all()
+    return [ClassRegistrationResponse.model_validate(r) for r in regs]
+
+
+@router.delete("/registrations/{reg_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_registration(
+    reg_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+
+    result = await db.execute(
+        select(ClassRegistration).where(ClassRegistration.id == reg_id)
+    )
+    reg = result.scalar_one_or_none()
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+
+    if reg.status == "cancelled":
+        raise HTTPException(status_code=400, detail="Already cancelled")
+
+    cls_result = await db.execute(
+        select(StudioClass).where(StudioClass.id == reg.class_id)
+    )
+    cls = cls_result.scalar_one_or_none()
+    if cls:
+        cls.enrolled = max(0, cls.enrolled - reg.num_spots)
+
+    reg.status = "cancelled"
+    await db.commit()

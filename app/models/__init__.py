@@ -8,5 +8,6 @@ from app.models.store_setting import StoreSetting
 from app.models.studio_class import StudioClass
 from app.models.item_image import ItemImage
 from app.models.studio_image import StudioImage
+from app.models.class_registration import ClassRegistration
 
-__all__ = ["Vendor", "VendorBalance", "Item", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting", "StudioClass", "ItemImage", "StudioImage"]
+__all__ = ["Vendor", "VendorBalance", "Item", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting", "StudioClass", "ItemImage", "StudioImage", "ClassRegistration"]
