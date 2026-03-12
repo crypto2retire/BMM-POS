@@ -33,9 +33,9 @@ def _draw_label(c, item, x_offset, y_offset):
     w = LABEL_WIDTH
     h = LABEL_HEIGHT
 
-    name = item.name[:30] if item.name else ""
-    c.setFont("Helvetica-Bold", 7)
-    c.drawString(margin, h - margin - 7, name)
+    name = item.name[:28] if item.name else ""
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(margin, h - margin - 10, name)
 
     booth = getattr(item, "vendor", None)
     booth_number = ""
@@ -53,20 +53,20 @@ def _draw_label(c, item, x_offset, y_offset):
         active_price = item.sale_price
 
     price_str = f"${active_price:.2f}"
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(margin, h - margin - 18, price_str)
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(margin, h - margin - 26, price_str)
 
     if booth_number:
-        c.setFont("Helvetica", 6)
-        c.drawRightString(w - margin, h - margin - 7, f"Booth: {booth_number}")
+        c.setFont("Helvetica-Bold", 9)
+        c.drawRightString(w - margin, h - margin - 10, f"Booth {booth_number}")
 
-    barcode_obj = code128.Code128(item.barcode, barHeight=0.3 * inch, barWidth=0.8)
+    barcode_obj = code128.Code128(item.barcode, barHeight=0.38 * inch, barWidth=1.0)
     barcode_w = barcode_obj.width
     barcode_x = (w - barcode_w) / 2
-    barcode_obj.drawOn(c, barcode_x, margin + 4)
+    barcode_obj.drawOn(c, barcode_x, margin + 8)
 
-    c.setFont("Helvetica", 5)
-    c.drawCentredString(w / 2, margin, item.barcode)
+    c.setFont("Helvetica", 7)
+    c.drawCentredString(w / 2, margin + 1, item.barcode)
 
 
 def generate_dymo_xml(item) -> str:
@@ -104,13 +104,13 @@ def generate_dymo_xml(item) -> str:
         lw = 3060
         lh = 1440
 
-    m = 72
+    m = 50
     row1_y = lh - m - int(lh * 0.28)
-    row1_h = int(lh * 0.3)
+    row1_h = int(lh * 0.32)
     row2_y = lh - m - int(lh * 0.58)
     row2_h = int(lh * 0.28)
     row3_y = m
-    row3_h = int(lh * 0.25)
+    row3_h = int(lh * 0.28)
     usable_w = lw - (m * 2)
 
     xml = f"""<?xml version="1.0" encoding="utf-8"?>
@@ -137,7 +137,7 @@ def generate_dymo_xml(item) -> str:
         <Element>
           <String>{name_str}</String>
           <Attributes>
-            <Font Family="Arial" Size="11" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
+            <Font Family="Arial" Size="14" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
           </Attributes>
         </Element>
       </StyledText>
@@ -170,7 +170,7 @@ def generate_dymo_xml(item) -> str:
         <Element>
           <String>{price_booth}</String>
           <Attributes>
-            <Font Family="Arial" Size="9" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
+            <Font Family="Arial" Size="12" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
           </Attributes>
         </Element>
       </StyledText>
@@ -203,7 +203,7 @@ def generate_dymo_xml(item) -> str:
         <Element>
           <String>{barcode_str}</String>
           <Attributes>
-            <Font Family="Courier New" Size="7" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
+            <Font Family="Courier New" Size="10" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
           </Attributes>
         </Element>
       </StyledText>

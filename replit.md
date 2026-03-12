@@ -202,6 +202,13 @@ Item photos are stored in `frontend/static/images/items/` and served as static f
 - Inline per-card photo upload button on items page (opens camera/gallery)
 - Photo thumbnail shown in item card top-left corner
 
+## POS Features
+
+- **Suspend/Hold Order**: Cart can be held (⏸ Hold button) and resumed later via green Resume button. Held orders stored in sessionStorage.
+- **Receipt Lookup**: "Receipts" button in POS navbar opens search by sale # or date. Can view and reprint old receipts.
+- **Online Orders**: "Orders" button in POS navbar shows pending/completed reservations from the shop. New order badge notification (polls every 30s). Can mark orders as picked up.
+- **Receipt**: Includes BMM logo at top, optimized for 72mm thermal paper width. Right-side cutoff fixed.
+
 ## Key Behaviors
 
 - Vendors can only see/edit their own items

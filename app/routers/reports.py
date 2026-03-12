@@ -247,7 +247,7 @@ async def report_reservations(
 async def mark_reservation_pickup(
     reservation_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_admin),
+    current_user: Vendor = Depends(require_cashier_or_admin),
 ):
     result = await db.execute(
         select(Reservation).where(Reservation.id == reservation_id)

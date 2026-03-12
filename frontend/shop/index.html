@@ -985,8 +985,9 @@
     const btnLabel  = isReserved ? 'Reserved \u2713' : 'Pay &amp; Reserve';
     const btnDisabled = isReserved ? ' disabled' : '';
 
-    const imageHtml = item.image_path
-      ? `<div class="card-image"><img src="${item.image_path}" alt="${escAttr(item.name)}"></div>`
+    const imgSrc = item.image_path || item.photo_url || null;
+    const imageHtml = imgSrc
+      ? `<div class="card-image"><img src="${imgSrc}" alt="${escAttr(item.name)}" loading="lazy"></div>`
       : `<div class="card-image"><div class="card-image-placeholder">\uD83C\uDFF7\uFE0F</div></div>`;
 
     card.innerHTML = `
@@ -1029,8 +1030,9 @@
     const basePrice  = hasSale ? parseFloat(item.sale_price) : parseFloat(item.price);
     const totalPrice = basePrice * (1 + TAX_RATE);
 
-    const imageHtml = item.image_path
-      ? `<img src="${item.image_path}" alt="">`
+    const listImgSrc = item.image_path || item.photo_url || null;
+    const imageHtml = listImgSrc
+      ? `<img src="${listImgSrc}" alt="" loading="lazy">`
       : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;opacity:0.15">\uD83C\uDFF7\uFE0F</div>`;
 
     const priceHtml = hasSale
