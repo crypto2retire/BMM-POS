@@ -12,7 +12,7 @@
     <meta property="og:description" content="120-vendor market featuring handmade, vintage, upcycled, and antique goods in Oshkosh, Wisconsin. Open Wed-Sun.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://www.bowenstreetmarket.com/">
-    <meta property="og:image" content="https://images.squarespace-cdn.com/content/v1/66b5e4b25a01a12ea2c37b80/d8f5b4cc-da67-4d4e-8d6f-fcbc59b7b89b/483692212_122097938474750791_2497474996498498498_n+%281%29.jpg">
+    <meta property="og:image" content="/static/images/logo.webp">
     <meta property="og:site_name" content="Bowenstreet Market">
     <meta property="og:locale" content="en_US">
     <meta name="twitter:card" content="summary_large_image">
@@ -60,7 +60,7 @@
                 "closes": "16:00"
             }
         ],
-        "image": "https://images.squarespace-cdn.com/content/v1/66b5e4b25a01a12ea2c37b80/d8f5b4cc-da67-4d4e-8d6f-fcbc59b7b89b/483692212_122097938474750791_2497474996498498498_n+%281%29.jpg",
+        "image": "https://www.bowenstreetmarket.com/static/images/logo.webp",
         "priceRange": "$",
         "currenciesAccepted": "USD",
         "paymentAccepted": "Cash, Credit Card",
@@ -153,7 +153,7 @@
         }
         .hero-bg {
             position: absolute; inset: 0;
-            background: url('https://images.squarespace-cdn.com/content/v1/66b5e4b25a01a12ea2c37b80/d8f5b4cc-da67-4d4e-8d6f-fcbc59b7b89b/483692212_122097938474750791_2497474996498498498_n+%281%29.jpg') center/cover no-repeat;
+            background: linear-gradient(180deg, #2a2a2d 0%, #38383B 100%);
         }
         .hero-bg::after {
             content: ''; position: absolute; inset: 0;
@@ -237,6 +237,9 @@
             position: relative; overflow: hidden; aspect-ratio: 4/5;
             cursor: pointer;
         }
+        .category-card-placeholder {
+            width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+        }
         .category-card img {
             width: 100%; height: 100%; object-fit: cover;
             transition: transform 0.6s ease;
@@ -262,6 +265,16 @@
         }
         .about-img { overflow: hidden; }
         .about-img img { width: 100%; height: auto; display: block; }
+        .placeholder-img {
+            width: 100%; min-height: 300px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: linear-gradient(145deg, #3a3a3e 0%, #2e2e32 100%);
+            border: 1px solid rgba(201,169,110,0.12);
+        }
+        .placeholder-img-cream {
+            background: linear-gradient(145deg, #e8e0d4 0%, #ddd5c8 100%);
+            border: 1px solid rgba(56,56,59,0.1);
+        }
         .about-text h2 { font-size: 2rem; margin-bottom: 1rem; }
         .about-text p { margin-bottom: 1rem; font-weight: 300; line-height: 1.8; }
         .about-text .highlight {
@@ -443,7 +456,11 @@
     <div class="container">
         <div class="about-grid">
             <div class="about-img">
-                <img src="https://images.squarespace-cdn.com/content/v1/66b5e4b25a01a12ea2c37b80/1723218132437-EYVQG1L2CZDP37RRQVLM/bowen+street+mall+logo.jpg" alt="Bowenstreet Market storefront in Oshkosh, Wisconsin" width="600" height="450" loading="lazy">
+                <div class="placeholder-img" aria-label="Bowenstreet Market storefront in Oshkosh, Wisconsin">
+                    <img src="/static/images/logo.webp" alt="Bowenstreet Market" style="width:120px;height:auto;opacity:0.6;margin-bottom:1rem">
+                    <span style="font-family:'EB Garamond',serif;font-style:italic;font-size:1.2rem;color:var(--gold);opacity:0.7">Bowenstreet Market</span>
+                    <span style="font-size:0.75rem;color:var(--text-light);opacity:0.5;margin-top:0.25rem">2837 Bowen St, Oshkosh WI</span>
+                </div>
             </div>
             <div class="about-text">
                 <h2>A Marketplace Like No Other</h2>
@@ -464,7 +481,7 @@
         </div>
         <div class="categories-grid">
             <div class="category-card">
-                <img src="https://images.squarespace-cdn.com/content/v1/66b5e4b25a01a12ea2c37b80/1723218230037-5GTVZ8CC1FZQB2ZZ64BB/IMG_1961.jpg" alt="Handmade artisan goods at Bowenstreet Market" width="400" height="500" loading="lazy">
+                <div class="category-card-placeholder" style="background:linear-gradient(135deg,#4a3f35 0%,#5c4d3c 100%)"><span style="font-size:3rem;opacity:0.35">&#9997;&#65039;</span></div>
                 <div class="category-card-overlay">
                     <div>
                         <h3>Handmade</h3>
@@ -473,7 +490,7 @@
                 </div>
             </div>
             <div class="category-card">
-                <img src="https://images.squarespace-cdn.com/content/v1/66b5e4b25a01a12ea2c37b80/1723218305650-4B5XF9IVLXVJ6Y9KNMF1/IMG_1967.jpg" alt="Vintage and antique items at Bowenstreet Market Oshkosh" width="400" height="500" loading="lazy">
+                <div class="category-card-placeholder" style="background:linear-gradient(135deg,#3d3a35 0%,#554e44 100%)"><span style="font-size:3rem;opacity:0.35">&#128336;</span></div>
                 <div class="category-card-overlay">
                     <div>
                         <h3>Vintage &amp; Antique</h3>
@@ -482,7 +499,7 @@
                 </div>
             </div>
             <div class="category-card">
-                <img src="https://images.squarespace-cdn.com/content/v1/66b5e4b25a01a12ea2c37b80/1723218351553-5UUMXG2DPAVMZ2JTCQNA/IMG_1969.jpg" alt="Upcycled furniture and home decor in Oshkosh" width="400" height="500" loading="lazy">
+                <div class="category-card-placeholder" style="background:linear-gradient(135deg,#3a4035 0%,#4d5544 100%)"><span style="font-size:3rem;opacity:0.35">&#9851;&#65039;</span></div>
                 <div class="category-card-overlay">
                     <div>
                         <h3>Upcycled &amp; Resale</h3>
@@ -491,7 +508,7 @@
                 </div>
             </div>
             <div class="category-card">
-                <img src="https://images.squarespace-cdn.com/content/v1/66b5e4b25a01a12ea2c37b80/1723218393503-2GZ15KVJZ4A9R6JP6LB1/IMG_1970.jpg" alt="Furniture and home goods at Bowenstreet Market" width="400" height="500" loading="lazy">
+                <div class="category-card-placeholder" style="background:linear-gradient(135deg,#3f3935 0%,#55504a 100%)"><span style="font-size:3rem;opacity:0.35">&#127968;</span></div>
                 <div class="category-card-overlay">
                     <div>
                         <h3>Furniture &amp; Home</h3>
@@ -500,7 +517,7 @@
                 </div>
             </div>
             <div class="category-card">
-                <img src="https://images.squarespace-cdn.com/content/v1/66b5e4b25a01a12ea2c37b80/1723218157754-E5EY6JJFWJM4OD6YYYXP/IMG_1958.jpg" alt="Art, collectibles and classes at Bowenstreet Market" width="400" height="500" loading="lazy">
+                <div class="category-card-placeholder" style="background:linear-gradient(135deg,#3a3540 0%,#504a55 100%)"><span style="font-size:3rem;opacity:0.35">&#127912;</span></div>
                 <div class="category-card-overlay">
                     <div>
                         <h3>Art &amp; Studio</h3>
@@ -531,7 +548,11 @@
                 </div>
             </div>
             <div class="about-img">
-                <img src="https://images.squarespace-cdn.com/content/v1/66b5e4b25a01a12ea2c37b80/1723218157754-E5EY6JJFWJM4OD6YYYXP/IMG_1958.jpg" alt="Bowenstreet Market Studio — creative classes and workshops in Oshkosh" width="600" height="450" loading="lazy">
+                <div class="placeholder-img placeholder-img-cream" aria-label="Bowenstreet Market Studio — creative classes and workshops in Oshkosh">
+                    <span style="font-size:3.5rem;opacity:0.3">&#127912;</span>
+                    <span style="font-family:'EB Garamond',serif;font-style:italic;font-size:1.2rem;color:#38383B;opacity:0.5;margin-top:0.5rem">The Studio</span>
+                    <span style="font-size:0.75rem;color:#666;opacity:0.5;margin-top:0.25rem">Classes &amp; Workshops</span>
+                </div>
             </div>
         </div>
     </div>

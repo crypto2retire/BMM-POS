@@ -92,9 +92,12 @@
         .class-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; }
         .class-card {
             background: var(--surface); border: 1px solid var(--border);
-            padding: 1.5rem; transition: border-color 0.2s;
+            padding: 0; transition: border-color 0.2s; overflow: hidden;
         }
         .class-card:hover { border-color: var(--warm-border); }
+        .cc-image { width: 100%; max-height: 200px; overflow: hidden; }
+        .cc-image img { width: 100%; height: 200px; object-fit: cover; display: block; }
+        .cc-content { padding: 1.5rem; }
         .cc-date {
             font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.14em;
             color: var(--gold); margin-bottom: 0.5rem;
@@ -310,15 +313,21 @@
             const dateStr = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
             const spotsClass = c.spots_left > 0 ? 'open' : 'full';
             const spotsText = c.spots_left > 0 ? `${c.spots_left} spots left` : 'Class Full';
+            const imgHtml = c.image_url
+                ? `<div class="cc-image"><img src="${c.image_url}" alt="${c.title}" loading="lazy"></div>`
+                : '';
 
             return `<div class="class-card" onclick="showDetail(${c.id})" style="cursor:pointer">
-                <div class="cc-date">${dateStr} &bull; ${c.start_time.slice(0,5)} - ${c.end_time.slice(0,5)}</div>
-                <h3 class="cc-title">${c.title}</h3>
-                <div class="cc-meta">${c.instructor} &bull; ${c.location}</div>
-                ${c.description ? `<div class="cc-desc">${c.description.length > 120 ? c.description.slice(0,120)+'...' : c.description}</div>` : ''}
-                <div class="cc-footer">
-                    <span class="cc-price">$${parseFloat(c.price).toFixed(2)}</span>
-                    <span class="cc-spots ${spotsClass}">${spotsText}</span>
+                ${imgHtml}
+                <div class="cc-content">
+                    <div class="cc-date">${dateStr} &bull; ${c.start_time.slice(0,5)} - ${c.end_time.slice(0,5)}</div>
+                    <h3 class="cc-title">${c.title}</h3>
+                    <div class="cc-meta">${c.instructor} &bull; ${c.location}</div>
+                    ${c.description ? `<div class="cc-desc">${c.description.length > 120 ? c.description.slice(0,120)+'...' : c.description}</div>` : ''}
+                    <div class="cc-footer">
+                        <span class="cc-price">$${parseFloat(c.price).toFixed(2)}</span>
+                        <span class="cc-spots ${spotsClass}">${spotsText}</span>
+                    </div>
                 </div>
             </div>`;
         }).join('');
@@ -332,8 +341,12 @@
         const dateStr = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
         const isFull = c.spots_left <= 0;
 
+        const detailImg = c.image_url
+            ? `<img src="${c.image_url}" alt="${c.title}" style="width:100%;max-height:220px;object-fit:cover;margin-bottom:1rem;border:1px solid var(--border)">`
+            : '';
         document.getElementById('detail-panel').innerHTML = `
             <button class="detail-close" onclick="closeDetail()">&times;</button>
+            ${detailImg}
             <h3>${c.title}</h3>
             <div class="dp-meta">${c.instructor} &bull; ${c.location}</div>
             ${c.description ? `<div class="dp-desc">${c.description}</div>` : ''}

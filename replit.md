@@ -108,9 +108,11 @@ All routes prefixed with `/api/v1/`:
 
 | GET | /studio/classes | Public | List published classes (query: start, end, category) |
 | GET | /studio/classes/{id} | Public | Get single class details |
-| POST | /studio/classes | Admin | Create studio class |
-| PUT | /studio/classes/{id} | Admin | Update studio class |
-| DELETE | /studio/classes/{id} | Admin | Delete studio class |
+| POST | /studio/classes | Admin/Cashier | Create studio class |
+| PUT | /studio/classes/{id} | Admin/Cashier | Update studio class |
+| DELETE | /studio/classes/{id} | Admin/Cashier | Delete studio class |
+| POST | /studio/classes/{id}/image | Admin/Cashier | Upload class image |
+| DELETE | /studio/classes/{id}/image | Admin/Cashier | Remove class image |
 | GET | /studio/categories | Public | List distinct class categories |
 
 ## Database Tables
@@ -120,7 +122,7 @@ All routes prefixed with `/api/v1/`:
 - `items` — Inventory with sale price and date range support
 - `sales` — POS transaction headers (subtotal, tax, total, payment_method, cash_tendered, change_given)
 - `sale_items` — Line items per sale (linked to item + vendor)
-- `studio_classes` — Studio class schedule (title, instructor, date, time, capacity, enrolled, price, category, location)
+- `studio_classes` — Studio class schedule (title, instructor, date, time, capacity, enrolled, price, category, location, image_url)
 - `rent_payments` — Monthly rent tracking (method: "square" for online payments)
 - `reservations` — Square-paid shop reservations (status: pending → confirmed)
 - `payouts` — Vendor payout records
@@ -201,6 +203,14 @@ Item photos are stored in `frontend/static/images/items/` and served as static f
 - `DELETE /api/v1/items/{id}/photo?photo_url=...` — removes a photo from the array and deletes the file
 - Inline per-card photo upload button on items page (opens camera/gallery)
 - Photo thumbnail shown in item card top-left corner
+
+## Studio Class Images
+
+Studio class images stored in `frontend/static/images/studio/` and served as static files.
+- `POST /api/v1/studio/classes/{id}/image` — multipart upload, saves as `class_{id}_{hash}.ext`
+- `DELETE /api/v1/studio/classes/{id}/image` — removes image file and clears `image_url`
+- Images shown on public studio page (class cards + detail overlay)
+- Admin form shows image preview with upload/remove controls
 
 ## POS Features
 

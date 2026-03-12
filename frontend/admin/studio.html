@@ -307,6 +307,14 @@
                 <input type="checkbox" id="f-cancelled"> Cancelled
             </label>
         </div>
+        <div class="fm-group">
+            <label>Class Image</label>
+            <div id="image-preview-area" style="display:none;margin-bottom:0.5rem;position:relative">
+                <img id="image-preview" style="max-width:100%;max-height:180px;display:block;border:1px solid var(--border)">
+                <button type="button" onclick="removeImage()" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;border:none;width:24px;height:24px;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center">&times;</button>
+            </div>
+            <input type="file" id="f-image" accept="image/*" capture="environment" style="font-size:0.8rem">
+        </div>
         <div id="form-error"></div>
         <div class="modal-actions">
             <button class="btn-delete" id="delete-btn" style="display:none;margin-right:auto" onclick="deleteClass()">Delete</button>
@@ -331,7 +339,7 @@
         if (!token) { window.location.href = '/vendor/login.html'; return; }
         try {
             const payload = JSON.parse(atob(token.split('.')[1]));
-            if (payload.role !== 'admin') { window.location.href = '/vendor/login.html'; return; }
+            if (payload.role !== 'admin' && payload.role !== 'cashier') { window.location.href = '/vendor/login.html'; return; }
             document.getElementById('user-name').textContent = payload.name || 'Admin';
         } catch { window.location.href = '/vendor/login.html'; return; }
 
@@ -491,6 +499,18 @@
         document.getElementById('f-published').checked = classData?.is_published !== false;
         document.getElementById('f-cancelled').checked = classData?.is_cancelled || false;
 
+        document.getElementById('f-image').value = '';
+        const previewArea = document.getElementById('image-preview-area');
+        if (classData?.image_url) {
+            document.getElementById('image-preview').src = classData.image_url;
+            previewArea.style.display = 'block';
+            previewArea.dataset.existingUrl = classData.image_url;
+        } else {
+            previewArea.style.display = 'none';
+            previewArea.dataset.existingUrl = '';
+        }
+        previewArea.dataset.removeFlag = '';
+
         document.getElementById('class-modal').classList.add('open');
         setTimeout(() => document.getElementById('f-title').focus(), 100);
     }
@@ -531,11 +551,37 @@
         };
 
         try {
+            let savedClass;
             if (editingId) {
-                await apiPut(`/api/v1/studio/classes/${editingId}`, body);
+                savedClass = await apiPut(`/api/v1/studio/classes/${editingId}`, body);
             } else {
-                await apiPost('/api/v1/studio/classes', body);
+                savedClass = await apiPost('/api/v1/studio/classes', body);
             }
+
+            const classId = savedClass?.id || editingId;
+            const previewArea = document.getElementById('image-preview-area');
+            const fileInput = document.getElementById('f-image');
+
+            if (previewArea.dataset.removeFlag === '1' && !fileInput.files.length && classId) {
+                const token = sessionStorage.getItem('bmm_token');
+                await fetch(`/api/v1/studio/classes/${classId}/image`, {
+                    method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` }
+                });
+            }
+
+            if (fileInput.files.length > 0 && classId) {
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+                const token = sessionStorage.getItem('bmm_token');
+                const resp = await fetch(`/api/v1/studio/classes/${classId}/image`, {
+                    method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData
+                });
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err.detail || 'Failed to upload image');
+                }
+            }
+
             closeModal();
             await loadClasses();
         } catch (e) {
@@ -555,6 +601,26 @@
             document.getElementById('form-error').textContent = e.message || 'Failed to delete';
         }
     }
+
+    function removeImage() {
+        const previewArea = document.getElementById('image-preview-area');
+        previewArea.style.display = 'none';
+        previewArea.dataset.removeFlag = '1';
+        document.getElementById('f-image').value = '';
+    }
+
+    document.getElementById('f-image').addEventListener('change', function() {
+        const previewArea = document.getElementById('image-preview-area');
+        if (this.files && this.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('image-preview').src = e.target.result;
+                previewArea.style.display = 'block';
+                previewArea.dataset.removeFlag = '';
+            };
+            reader.readAsDataURL(this.files[0]);
+        }
+    });
 
     function handleLogout() {
         sessionStorage.removeItem('bmm_token');

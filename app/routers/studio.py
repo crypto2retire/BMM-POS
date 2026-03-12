@@ -1,6 +1,8 @@
+import os
+import uuid
 from datetime import date, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, UploadFile, File
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +11,8 @@ from app.database import get_db
 from app.models.studio_class import StudioClass
 from app.models.vendor import Vendor
 from app.routers.auth import get_current_user
+
+STUDIO_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "static", "images", "studio")
 
 router = APIRouter(prefix="/studio", tags=["studio"])
 
@@ -68,9 +72,9 @@ async def list_classes(
 ):
     q = select(StudioClass).order_by(StudioClass.class_date, StudioClass.start_time)
 
-    is_admin = current_user and current_user.role == "admin"
+    is_staff = current_user and current_user.role in ("admin", "cashier")
 
-    if not published_only and is_admin:
+    if not published_only and is_staff:
         pass
     else:
         q = q.where(StudioClass.is_published == True)
@@ -98,8 +102,8 @@ async def get_class(
     current_user: Optional[Vendor] = Depends(get_optional_user),
 ):
     q = select(StudioClass).where(StudioClass.id == class_id)
-    is_admin = current_user and current_user.role == "admin"
-    if not is_admin:
+    is_staff = current_user and current_user.role in ("admin", "cashier")
+    if not is_staff:
         q = q.where(StudioClass.is_published == True)
 
     result = await db.execute(q)
@@ -115,8 +119,8 @@ async def create_class(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
 
     from app.schemas.studio_class import StudioClassCreate
     parsed = StudioClassCreate(**data)
@@ -150,8 +154,8 @@ async def update_class(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
 
     result = await db.execute(select(StudioClass).where(StudioClass.id == class_id))
     c = result.scalar_one_or_none()
@@ -175,8 +179,8 @@ async def delete_class(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
 
     result = await db.execute(select(StudioClass).where(StudioClass.id == class_id))
     c = result.scalar_one_or_none()
@@ -185,6 +189,70 @@ async def delete_class(
 
     await db.delete(c)
     await db.commit()
+
+
+@router.post("/classes/{class_id}/image")
+async def upload_class_image(
+    class_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+
+    result = await db.execute(select(StudioClass).where(StudioClass.id == class_id))
+    c = result.scalar_one_or_none()
+    if not c:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    allowed = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    ext = os.path.splitext(file.filename or "photo.jpg")[1].lower() or ".jpg"
+    if ext not in allowed:
+        raise HTTPException(status_code=400, detail="Unsupported file type")
+
+    os.makedirs(STUDIO_UPLOAD_DIR, exist_ok=True)
+
+    if c.image_url:
+        old_file = os.path.join(STUDIO_UPLOAD_DIR, os.path.basename(c.image_url))
+        if os.path.exists(old_file):
+            os.remove(old_file)
+
+    filename = f"class_{class_id}_{uuid.uuid4().hex[:8]}{ext}"
+    filepath = os.path.join(STUDIO_UPLOAD_DIR, filename)
+
+    content = await file.read()
+    with open(filepath, "wb") as f:
+        f.write(content)
+
+    c.image_url = f"/static/images/studio/{filename}"
+    await db.commit()
+    await db.refresh(c)
+    return _class_to_response(c)
+
+
+@router.delete("/classes/{class_id}/image")
+async def delete_class_image(
+    class_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+
+    result = await db.execute(select(StudioClass).where(StudioClass.id == class_id))
+    c = result.scalar_one_or_none()
+    if not c:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    if c.image_url:
+        old_file = os.path.join(STUDIO_UPLOAD_DIR, os.path.basename(c.image_url))
+        if os.path.exists(old_file):
+            os.remove(old_file)
+        c.image_url = None
+        await db.commit()
+
+    return {"detail": "Image removed"}
 
 
 @router.get("/categories")
