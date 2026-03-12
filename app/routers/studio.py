@@ -224,7 +224,9 @@ async def upload_class_image(
         raise HTTPException(status_code=400, detail="File size must be under 5MB")
 
     try:
+        from PIL import ImageOps
         img = PILImage.open(io.BytesIO(contents))
+        img = ImageOps.exif_transpose(img)
         img = img.convert("RGB")
         w, h = img.size
         if max(w, h) > MAX_IMAGE_DIMENSION:

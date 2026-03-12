@@ -102,10 +102,10 @@ def _draw_label(c, item, x_offset, y_offset):
         quiet_zone = 0.08 * inch
         avail_w = (inner_right - inner_left) - quiet_zone * 2
 
-        bar_w = 1.1
+        bar_w = 1.3
         barcode_obj = code128.Code128(
             barcode_val,
-            barHeight=0.42 * inch,
+            barHeight=0.45 * inch,
             barWidth=bar_w,
             humanReadable=False,
             quiet=False,
@@ -113,7 +113,7 @@ def _draw_label(c, item, x_offset, y_offset):
 
         if barcode_obj.width > avail_w:
             bar_w = avail_w / (barcode_obj.width / bar_w)
-            bar_w = max(bar_w, 0.8)
+            bar_w = max(bar_w, 0.9)
             barcode_obj = code128.Code128(
                 barcode_val,
                 barHeight=0.42 * inch,
@@ -173,14 +173,14 @@ def generate_dymo_xml(item) -> str:
     m = 60
     usable_w = lw - (m * 2)
 
-    name_y = lh - m - 20
-    name_h = int(lh * 0.22)
+    name_y = lh - m - 10
+    name_h = int(lh * 0.18)
     price_w = int(usable_w * 0.55)
     booth_w = usable_w - price_w - 20
-    price_y = name_y - name_h - 10
-    price_h = int(lh * 0.20)
-    barcode_h = lh - m - (name_h + price_h + 50) - m
-    barcode_h = max(barcode_h, int(lh * 0.30))
+    price_y = name_y - name_h - 5
+    price_h = int(lh * 0.16)
+    barcode_h = lh - m - (name_h + price_h + 30) - m
+    barcode_h = max(barcode_h, int(lh * 0.42))
     barcode_y = m
 
     xml = f"""<?xml version="1.0" encoding="utf-8"?>
@@ -305,10 +305,10 @@ def generate_dymo_xml(item) -> str:
       <IsVariable>False</IsVariable>
       <Text>{barcode_str}</Text>
       <Type>Code128Auto</Type>
-      <Size>Medium</Size>
+      <Size>Large</Size>
       <TextPosition>Bottom</TextPosition>
-      <TextFont Family="Arial" Size="8" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
-      <CheckSumFont Family="Arial" Size="8" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
+      <TextFont Family="Arial" Size="7" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
+      <CheckSumFont Family="Arial" Size="7" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
       <TextEmbedding>None</TextEmbedding>
       <ECLevel>0</ECLevel>
       <HorizontalAlignment>Center</HorizontalAlignment>

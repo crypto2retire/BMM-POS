@@ -419,6 +419,8 @@ async def upload_item_image(
         raise HTTPException(status_code=400, detail="File size must be under 5MB")
 
     img = Image.open(io.BytesIO(contents))
+    from PIL import ImageOps
+    img = ImageOps.exif_transpose(img)
     img = img.convert("RGB")
     w, h = img.size
     if max(w, h) > MAX_IMAGE_DIMENSION:
