@@ -27,10 +27,12 @@ app/
     sale.py       — Sale, SaleItem ORM models
     rent.py       — RentPayment ORM model
     payout.py     — Payout ORM model
+    studio_class.py — StudioClass ORM model (classes/workshops)
   schemas/
     vendor.py     — VendorCreate, VendorUpdate, VendorResponse, Token
     item.py       — ItemCreate, ItemUpdate, ItemResponse (w/ computed active_price)
     sale.py       — SaleCreate, SaleResponse, CartItem, SaleItemResponse, Poynt schemas
+    studio_class.py — StudioClassCreate, StudioClassUpdate, StudioClassResponse
   routers/
     auth.py       — Login, get_current_user, require_admin, require_cashier_or_admin
     vendors.py    — CRUD for vendors (admin-only management)
@@ -39,6 +41,7 @@ app/
     pos.py        — Poynt terminal charge + status polling endpoints
     rent.py       — Vendor rent payment via Square (POST /vendor/pay-rent, /vendor/rent-confirmed)
     admin.py      — Admin rent status (GET /admin/rent-status) + vendor flag toggle
+    studio.py     — Studio class CRUD (GET/POST/PUT/DELETE /studio/classes)
   services/
     barcode.py    — SKU generation (BSM-XXXX-YYYYYY) + barcode PNG
     labels.py     — PDF label generation (single + batch)
@@ -63,6 +66,9 @@ frontend/
     index.html    — Admin dashboard with vendor/item stats + Rent link
     vendors.html  — Admin vendor management (add/edit/suspend); shows 🚩 for flagged vendors
     rent.html     — Rent status dashboard: all vendors, CURRENT/DUE/OVERDUE badges, flag/unflag buttons
+    studio.html   — Studio class calendar (calendar/list view, add/edit/delete classes)
+  studio/
+    index.html    — Public studio class calendar with class cards and detail overlay
   shop/
     index.html    — Public storefront: browse items, "Pay & Reserve" → Square checkout
   pos/
@@ -100,6 +106,13 @@ All routes prefixed with `/api/v1/`:
 | POST | /pos/poynt/charge | Cashier/Admin | Initiate Poynt terminal charge |
 | GET | /pos/poynt/status/{id} | Cashier/Admin | Poll Poynt transaction status |
 
+| GET | /studio/classes | Public | List published classes (query: start, end, category) |
+| GET | /studio/classes/{id} | Public | Get single class details |
+| POST | /studio/classes | Admin | Create studio class |
+| PUT | /studio/classes/{id} | Admin | Update studio class |
+| DELETE | /studio/classes/{id} | Admin | Delete studio class |
+| GET | /studio/categories | Public | List distinct class categories |
+
 ## Database Tables
 
 - `vendors` — All users (role: vendor/cashier/admin)
@@ -107,6 +120,7 @@ All routes prefixed with `/api/v1/`:
 - `items` — Inventory with sale price and date range support
 - `sales` — POS transaction headers (subtotal, tax, total, payment_method, cash_tendered, change_given)
 - `sale_items` — Line items per sale (linked to item + vendor)
+- `studio_classes` — Studio class schedule (title, instructor, date, time, capacity, enrolled, price, category, location)
 - `rent_payments` — Monthly rent tracking (method: "square" for online payments)
 - `reservations` — Square-paid shop reservations (status: pending → confirmed)
 - `payouts` — Vendor payout records
