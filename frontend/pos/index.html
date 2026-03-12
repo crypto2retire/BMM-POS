@@ -561,20 +561,21 @@
         /* Receipt Modal */
         .receipt-modal { max-width: 380px; max-height: 85vh; overflow-y: auto; }
         .receipt-print-area {
-            font-family: "Courier New", Courier, monospace;
+            font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
             font-size: 12px;
             color: #F0EDE8;
-            line-height: 1.5;
+            line-height: 1.45;
         }
         .receipt-header { text-align: center; margin-bottom: 0.75rem; }
-        .receipt-header h3 { font-size: 1rem; font-weight: 700; }
-        .receipt-header p { font-size: 0.75rem; color: #A8A6A1; }
-        .receipt-divider { border: none; border-top: 1px dashed rgba(255,255,255,0.15); margin: 0.5rem 0; }
-        .receipt-line { display: flex; justify-content: space-between; font-size: 0.75rem; padding: 0.1rem 0; }
-        .receipt-line .left { flex: 1; }
-        .receipt-line .right { text-align: right; min-width: 70px; }
-        .receipt-total-line { font-weight: 700; font-size: 0.875rem; }
-        .receipt-footer { text-align: center; margin-top: 0.75rem; font-size: 0.7rem; color: #A8A6A1; }
+        .receipt-header h3 { font-family: 'EB Garamond', Georgia, serif; font-size: 1.1rem; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; }
+        .receipt-header p { font-size: 0.72rem; color: #A8A6A1; margin-top: 2px; }
+        .receipt-divider { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 0.5rem 0; }
+        .receipt-line { display: flex; justify-content: space-between; font-size: 0.78rem; padding: 0.15rem 0; }
+        .receipt-line .left { flex: 1; font-weight: 400; }
+        .receipt-line .right { text-align: right; min-width: 70px; font-weight: 500; }
+        .receipt-total-line { font-weight: 700; font-size: 0.95rem; padding: 0.3rem 0; border-top: 2px solid rgba(255,255,255,0.15); border-bottom: 2px solid rgba(255,255,255,0.15); margin: 0.2rem 0; }
+        .receipt-footer { text-align: center; margin-top: 0.75rem; font-size: 0.72rem; color: #A8A6A1; }
+        .receipt-footer p:last-child { font-family: 'EB Garamond', Georgia, serif; font-weight: 500; font-size: 0.85rem; color: #C9A96E; }
         .print-receipt-btn {
             width: 100%; background: #A8A6A1; color: #1e1e20; border: none;
             padding: 0.75rem; cursor: pointer; font-size: 0.78rem; font-weight: 500;
@@ -1567,7 +1568,7 @@
         for (const li of (sale.line_items || [])) {
             const booth = li.booth_number ? ` [${li.booth_number}]` : '';
             lines += `<div class="receipt-line">
-                <span class="left">${li.item_name}${booth}</span>
+                <span class="left">${escHtml(li.item_name)}${booth}</span>
                 <span class="right">${li.quantity} × $${parseFloat(li.unit_price).toFixed(2)}</span>
             </div>
             <div class="receipt-line">
@@ -1636,21 +1637,17 @@
 
         let itemRows = '';
         for (const li of (sale.line_items || [])) {
-            const boothStr = li.booth_number ? ` [${li.booth_number}]` : '';
-            itemRows += `<div style="margin:3px 0">
-                <div style="display:flex;justify-content:space-between;gap:4px">
-                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${li.item_name}</span>
-                    <span style="white-space:nowrap;text-align:right">$${parseFloat(li.line_total).toFixed(2)}</span>
-                </div>
-                <div style="font-size:9px;color:#666">${li.quantity > 1 ? `${li.quantity} × $${parseFloat(li.unit_price).toFixed(2)}` : ''}${boothStr}</div>
-            </div>`;
+            const boothStr = li.booth_number ? `Booth ${li.booth_number}` : '';
+            const qtyDetail = li.quantity > 1 ? `${li.quantity} x $${parseFloat(li.unit_price).toFixed(2)}` : '';
+            const meta = [qtyDetail, boothStr].filter(Boolean).join(' \u2022 ');
+            itemRows += `<tr><td class="item-name">${escHtml(li.item_name)}${meta ? '<div class="item-meta">' + escHtml(meta) + '</div>' : ''}</td><td class="item-price">$${parseFloat(li.line_total).toFixed(2)}</td></tr>`;
         }
 
         let cashLines = '';
         if (sale.payment_method === 'cash' && sale.cash_tendered != null) {
             cashLines = `
-                <div style="display:flex;justify-content:space-between;margin:2px 0"><span>Tendered</span><span>$${parseFloat(sale.cash_tendered).toFixed(2)}</span></div>
-                <div style="display:flex;justify-content:space-between;margin:2px 0"><span>Change</span><span>$${parseFloat(sale.change_given || 0).toFixed(2)}</span></div>`;
+                <tr><td>Tendered</td><td class="val">$${parseFloat(sale.cash_tendered).toFixed(2)}</td></tr>
+                <tr><td>Change</td><td class="val">$${parseFloat(sale.change_given || 0).toFixed(2)}</td></tr>`;
         }
 
         const taxPct = (parseFloat(sale.tax_rate || 0.055) * 100).toFixed(1);
@@ -1659,42 +1656,103 @@
 <style>
 @page { margin: 0; size: 72mm auto; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: "Courier New", Courier, monospace; font-size: 11px; width: 72mm; padding: 2mm 3mm; color: #000; background: #fff; overflow: hidden; }
-.center { text-align: center; }
-.bold { font-weight: bold; }
-.divider { border: none; border-top: 1px dashed #000; margin: 3px 0; }
-.row { display: flex; justify-content: space-between; margin: 2px 0; word-break: break-word; }
-.row span:last-child { white-space: nowrap; padding-left: 4px; text-align: right; }
-.total-row { font-size: 13px; font-weight: bold; }
-.small { font-size: 9px; color: #555; }
-.spacer { height: 4mm; }
-.logo { width: 44mm; height: auto; display: block; margin: 0 auto 2mm; }
+body {
+    font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    font-size: 11px;
+    width: 72mm;
+    padding: 3mm 3.5mm;
+    color: #1a1a1a;
+    background: #fff;
+    overflow: hidden;
+    line-height: 1.35;
+    -webkit-font-smoothing: antialiased;
+}
+.header { text-align: center; padding-bottom: 3mm; }
+.logo { width: 38mm; height: auto; display: block; margin: 0 auto 1.5mm; }
+.store-name {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    margin-bottom: 1px;
+}
+.store-addr {
+    font-size: 8.5px;
+    color: #555;
+    letter-spacing: 0.5px;
+}
+.rule { border: none; border-top: 1px solid #333; margin: 2.5mm 0; }
+.rule-light { border: none; border-top: 1px solid #ccc; margin: 2mm 0; }
+.meta-block {
+    font-size: 10px;
+    color: #333;
+    padding: 1mm 0 1.5mm;
+}
+.meta-block div { margin: 1px 0; }
+.meta-label { color: #777; font-size: 9px; }
+table { width: 100%; border-collapse: collapse; }
+.items-table td { padding: 2px 0; vertical-align: top; }
+.item-name { font-size: 11px; font-weight: 500; overflow-wrap: anywhere; word-break: break-word; }
+.item-meta { font-size: 8.5px; color: #777; font-weight: 400; margin-top: 0.5px; }
+.item-price { text-align: right; white-space: nowrap; font-size: 11px; font-weight: 500; padding-left: 6px; }
+.items-table { table-layout: fixed; }
+.items-table td:first-child { width: 75%; }
+.items-table td:last-child { width: 25%; }
+.totals-table td { padding: 1.5px 0; font-size: 11px; }
+.totals-table .val { text-align: right; white-space: nowrap; }
+.total-line td {
+    font-size: 15px;
+    font-weight: 700;
+    padding: 3px 0 2px;
+    border-top: 2px solid #333;
+    border-bottom: 2px solid #333;
+}
+.total-line .val { text-align: right; }
+.payment-line td { font-size: 10.5px; padding: 2px 0; }
+.payment-line .val { text-align: right; font-weight: 600; }
+.footer {
+    text-align: center;
+    padding-top: 3mm;
+    font-size: 10px;
+    color: #333;
+}
+.footer-brand { font-weight: 700; font-size: 11px; }
+.footer-url { font-size: 8px; color: #888; letter-spacing: 0.5px; margin-top: 2px; }
+.cut-spacer { height: 8mm; }
 </style></head>
 <body>
-<img class="logo" src="/static/images/logo.webp" alt="BMM">
-<div class="center bold" style="font-size:13px;letter-spacing:1px">BOWENSTREET MARKET</div>
-<div class="center small">2837 Bowen St, Oshkosh WI 54901</div>
-<div class="spacer"></div>
-<div>${dateStr} at ${timeStr}</div>
-<div>Cashier: ${cashierName}</div>
-<div>Sale #${sale.id}</div>
-<div class="divider"></div>
-${itemRows}
-<div class="divider"></div>
-<div class="row"><span>Subtotal</span><span>$${parseFloat(sale.subtotal).toFixed(2)}</span></div>
-<div class="row"><span>Tax (${taxPct}%)</span><span>$${parseFloat(sale.tax_amount).toFixed(2)}</span></div>
-<div class="divider"></div>
-<div class="row total-row"><span>TOTAL</span><span>$${parseFloat(sale.total).toFixed(2)}</span></div>
-<div class="row"><span>Payment</span><span>${(sale.payment_method || '').toUpperCase()}</span></div>
-${cashLines}
-<div class="divider"></div>
-<div class="spacer"></div>
-<div class="center">Thank you for shopping at</div>
-<div class="center bold">Bowenstreet Market!</div>
-<div class="center small">bowenstreetmarket.com</div>
-<div class="spacer"></div>
-<div class="spacer"></div>
-<div class="spacer"></div>
+<div class="header">
+    <img class="logo" src="/static/images/logo.webp" alt="Bowenstreet Market">
+    <div class="store-name">Bowenstreet Market</div>
+    <div class="store-addr">2837 Bowen St, Oshkosh WI 54901</div>
+</div>
+<hr class="rule">
+<div class="meta-block">
+    <div>${dateStr} at ${timeStr}</div>
+    <div><span class="meta-label">Cashier:</span> ${cashierName}</div>
+    <div><span class="meta-label">Sale</span> #${sale.id}</div>
+</div>
+<hr class="rule">
+<table class="items-table">${itemRows}</table>
+<hr class="rule-light">
+<table class="totals-table">
+    <tr><td>Subtotal</td><td class="val">$${parseFloat(sale.subtotal).toFixed(2)}</td></tr>
+    <tr><td>Tax (${taxPct}%)</td><td class="val">$${parseFloat(sale.tax_amount).toFixed(2)}</td></tr>
+</table>
+<table class="totals-table">
+    <tr class="total-line"><td>TOTAL</td><td class="val">$${parseFloat(sale.total).toFixed(2)}</td></tr>
+</table>
+<table class="totals-table">
+    <tr class="payment-line"><td>Payment</td><td class="val">${(sale.payment_method || '').toUpperCase()}</td></tr>
+    ${cashLines}
+</table>
+<hr class="rule-light">
+<div class="footer">
+    <div>Thank you for shopping at</div>
+    <div class="footer-brand">Bowenstreet Market!</div>
+    <div class="footer-url">www.bowenstreetmarket.com</div>
+</div>
+<div class="cut-spacer"></div>
 <script>window.onload = function(){ window.print(); }<\/script>
 </body></html>`;
 

@@ -29,13 +29,24 @@ def generate_label_sheet(items) -> bytes:
 
 
 def _draw_label(c, item, x_offset, y_offset):
-    margin = 0.08 * inch
     w = LABEL_WIDTH
     h = LABEL_HEIGHT
+    m = 0.06 * inch
 
-    name = item.name[:28] if item.name else ""
-    c.setFont("Helvetica-Bold", 10)
-    c.drawString(margin, h - margin - 10, name)
+    c.setStrokeColorRGB(0, 0, 0)
+    c.setLineWidth(0.75)
+    c.roundRect(m / 2, m / 2, w - m, h - m, 2)
+
+    c.setLineWidth(0.4)
+    divider_y = h - 0.42 * inch
+    c.line(m, divider_y, w - m, divider_y)
+
+    name = (item.name or "")[:32]
+    if len(name) > 18:
+        c.setFont("Helvetica-Bold", 9)
+    else:
+        c.setFont("Helvetica-Bold", 11)
+    c.drawString(m + 4, h - m - 13, name)
 
     booth = getattr(item, "vendor", None)
     booth_number = ""
@@ -44,6 +55,7 @@ def _draw_label(c, item, x_offset, y_offset):
 
     today = __import__("datetime").date.today()
     active_price = item.price
+    on_sale = False
     if (
         item.sale_price is not None
         and item.sale_start is not None
@@ -51,22 +63,33 @@ def _draw_label(c, item, x_offset, y_offset):
         and item.sale_start <= today <= item.sale_end
     ):
         active_price = item.sale_price
+        on_sale = True
 
     price_str = f"${active_price:.2f}"
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(margin, h - margin - 26, price_str)
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(m + 4, h - m - 32, price_str)
+
+    if on_sale:
+        orig_str = f"${item.price:.2f}"
+        price_w = c.stringWidth(price_str, "Helvetica-Bold", 16)
+        c.setFont("Helvetica", 8)
+        c.drawString(m + 8 + price_w, h - m - 28, orig_str)
+        orig_w = c.stringWidth(orig_str, "Helvetica", 8)
+        strike_y = h - m - 25
+        c.setLineWidth(0.5)
+        c.line(m + 8 + price_w, strike_y, m + 8 + price_w + orig_w, strike_y)
 
     if booth_number:
-        c.setFont("Helvetica-Bold", 9)
-        c.drawRightString(w - margin, h - margin - 10, f"Booth {booth_number}")
+        c.setFont("Helvetica-Bold", 10)
+        c.drawRightString(w - m - 4, h - m - 13, f"Booth {booth_number}")
 
-    barcode_obj = code128.Code128(item.barcode, barHeight=0.38 * inch, barWidth=1.0)
+    barcode_obj = code128.Code128(item.barcode, barHeight=0.32 * inch, barWidth=0.9)
     barcode_w = barcode_obj.width
     barcode_x = (w - barcode_w) / 2
-    barcode_obj.drawOn(c, barcode_x, margin + 8)
+    barcode_obj.drawOn(c, barcode_x, m + 10)
 
-    c.setFont("Helvetica", 7)
-    c.drawCentredString(w / 2, margin + 1, item.barcode)
+    c.setFont("Helvetica", 6.5)
+    c.drawCentredString(w / 2, m + 3, item.barcode)
 
 
 def generate_dymo_xml(item) -> str:
