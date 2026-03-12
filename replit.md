@@ -46,7 +46,7 @@ app/
     studio.py     — Studio class CRUD (GET/POST/PUT/DELETE /studio/classes)
   services/
     barcode.py    — SKU generation (BSM-XXXX-YYYYYY) + barcode PNG
-    labels.py     — PDF label generation (single + batch)
+    labels.py     — PDF + Dymo label generation (single + batch, scannable Code128 barcodes)
     poynt.py      — GoDaddy Poynt Cloud API (RSA JWT + order/transaction calls)
     square.py     — Square Checkout API helper (create_payment_link)
 migrations/

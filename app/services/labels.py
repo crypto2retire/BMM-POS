@@ -1,5 +1,5 @@
 import io
-from decimal import Decimal
+import datetime
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas as pdf_canvas
 from reportlab.graphics.barcode import code128
@@ -31,29 +31,41 @@ def generate_label_sheet(items) -> bytes:
 def _draw_label(c, item, x_offset, y_offset):
     w = LABEL_WIDTH
     h = LABEL_HEIGHT
-    m = 0.06 * inch
+    margin = 4
 
-    c.setStrokeColorRGB(0, 0, 0)
-    c.setLineWidth(0.75)
-    c.roundRect(m / 2, m / 2, w - m, h - m, 2)
+    c.setStrokeColorRGB(0.15, 0.15, 0.15)
+    c.setLineWidth(0.6)
+    c.rect(margin, margin, w - margin * 2, h - margin * 2)
 
-    c.setLineWidth(0.4)
-    divider_y = h - 0.42 * inch
-    c.line(m, divider_y, w - m, divider_y)
+    inner_left = margin + 5
+    inner_right = w - margin - 5
 
-    name = (item.name or "")[:32]
-    if len(name) > 18:
-        c.setFont("Helvetica-Bold", 9)
-    else:
-        c.setFont("Helvetica-Bold", 11)
-    c.drawString(m + 4, h - m - 13, name)
+    name = (item.name or "")[:36]
+    name_y = h - margin - 14
 
     booth = getattr(item, "vendor", None)
     booth_number = ""
     if booth:
         booth_number = getattr(booth, "booth_number", "") or ""
 
-    today = __import__("datetime").date.today()
+    if len(name) > 22:
+        c.setFont("Helvetica-Bold", 8)
+    elif len(name) > 16:
+        c.setFont("Helvetica-Bold", 9.5)
+    else:
+        c.setFont("Helvetica-Bold", 11)
+    c.drawString(inner_left, name_y, name)
+
+    if booth_number:
+        c.setFont("Helvetica", 8)
+        c.drawRightString(inner_right, name_y, f"Booth {booth_number}")
+
+    divider_y = name_y - 5
+    c.setStrokeColorRGB(0.6, 0.6, 0.6)
+    c.setLineWidth(0.3)
+    c.line(inner_left, divider_y, inner_right, divider_y)
+
+    today = datetime.date.today()
     active_price = item.price
     on_sale = False
     if (
@@ -66,34 +78,62 @@ def _draw_label(c, item, x_offset, y_offset):
         on_sale = True
 
     price_str = f"${active_price:.2f}"
-    c.setFont("Helvetica-Bold", 16)
-    c.drawString(m + 4, h - m - 32, price_str)
+    price_y = divider_y - 16
+    c.setFont("Helvetica-Bold", 14)
+    c.setFillColorRGB(0, 0, 0)
+    c.drawString(inner_left, price_y, price_str)
 
     if on_sale:
         orig_str = f"${item.price:.2f}"
-        price_w = c.stringWidth(price_str, "Helvetica-Bold", 16)
-        c.setFont("Helvetica", 8)
-        c.drawString(m + 8 + price_w, h - m - 28, orig_str)
-        orig_w = c.stringWidth(orig_str, "Helvetica", 8)
-        strike_y = h - m - 25
+        price_w = c.stringWidth(price_str, "Helvetica-Bold", 14)
+        c.setFont("Helvetica", 7.5)
+        c.setFillColorRGB(0.4, 0.4, 0.4)
+        orig_x = inner_left + price_w + 4
+        c.drawString(orig_x, price_y + 2, orig_str)
+        orig_w = c.stringWidth(orig_str, "Helvetica", 7.5)
+        c.setStrokeColorRGB(0.4, 0.4, 0.4)
         c.setLineWidth(0.5)
-        c.line(m + 8 + price_w, strike_y, m + 8 + price_w + orig_w, strike_y)
+        strike_y = price_y + 5
+        c.line(orig_x, strike_y, orig_x + orig_w, strike_y)
+        c.setFillColorRGB(0, 0, 0)
 
-    if booth_number:
-        c.setFont("Helvetica-Bold", 10)
-        c.drawRightString(w - m - 4, h - m - 13, f"Booth {booth_number}")
+    barcode_val = item.barcode or ""
+    if barcode_val:
+        quiet_zone = 0.08 * inch
+        avail_w = (inner_right - inner_left) - quiet_zone * 2
 
-    barcode_obj = code128.Code128(item.barcode, barHeight=0.32 * inch, barWidth=0.9)
-    barcode_w = barcode_obj.width
-    barcode_x = (w - barcode_w) / 2
-    barcode_obj.drawOn(c, barcode_x, m + 10)
+        bar_w = 1.1
+        barcode_obj = code128.Code128(
+            barcode_val,
+            barHeight=0.42 * inch,
+            barWidth=bar_w,
+            humanReadable=False,
+            quiet=False,
+        )
 
-    c.setFont("Helvetica", 6.5)
-    c.drawCentredString(w / 2, m + 3, item.barcode)
+        if barcode_obj.width > avail_w:
+            bar_w = avail_w / (barcode_obj.width / bar_w)
+            bar_w = max(bar_w, 0.8)
+            barcode_obj = code128.Code128(
+                barcode_val,
+                barHeight=0.42 * inch,
+                barWidth=bar_w,
+                humanReadable=False,
+                quiet=False,
+            )
+
+        barcode_w = barcode_obj.width
+        barcode_x = (w - barcode_w) / 2
+        barcode_y = margin + 11
+        barcode_obj.drawOn(c, barcode_x, barcode_y)
+
+        c.setFont("Helvetica", 6)
+        c.drawCentredString(w / 2, margin + 4, barcode_val)
 
 
 def generate_dymo_xml(item) -> str:
     from app.config import settings
+    import xml.sax.saxutils as saxutils
 
     label_size = settings.dymo_label_size
 
@@ -102,8 +142,9 @@ def generate_dymo_xml(item) -> str:
     if vendor:
         booth_number = getattr(vendor, "booth_number", "") or ""
 
-    today = __import__("datetime").date.today()
+    today = datetime.date.today()
     active_price = item.price
+    on_sale = False
     if (
         item.sale_price is not None
         and item.sale_start is not None
@@ -111,12 +152,14 @@ def generate_dymo_xml(item) -> str:
         and item.sale_start <= today <= item.sale_end
     ):
         active_price = item.sale_price
+        on_sale = True
 
-    price_str = f"${active_price:.2f}"
-    name_str = (item.name or "")[:35]
-    barcode_str = item.barcode or ""
-    booth_str = f"Booth: {booth_number}" if booth_number else ""
-    price_booth = f"{price_str}  {booth_str}".strip()
+    price_str = saxutils.escape(f"${active_price:.2f}")
+    if on_sale:
+        price_str += saxutils.escape(f"  (was ${item.price:.2f})")
+    name_str = saxutils.escape((item.name or "")[:35])
+    barcode_str = saxutils.escape(item.barcode or "")
+    booth_str = saxutils.escape(f"Booth {booth_number}") if booth_number else ""
 
     if label_size == "30252":
         paper_name = "30252 Address"
@@ -127,14 +170,18 @@ def generate_dymo_xml(item) -> str:
         lw = 3060
         lh = 1440
 
-    m = 50
-    row1_y = lh - m - int(lh * 0.28)
-    row1_h = int(lh * 0.32)
-    row2_y = lh - m - int(lh * 0.58)
-    row2_h = int(lh * 0.28)
-    row3_y = m
-    row3_h = int(lh * 0.28)
+    m = 60
     usable_w = lw - (m * 2)
+
+    name_y = lh - m - 20
+    name_h = int(lh * 0.22)
+    price_w = int(usable_w * 0.55)
+    booth_w = usable_w - price_w - 20
+    price_y = name_y - name_h - 10
+    price_h = int(lh * 0.20)
+    barcode_h = lh - m - (name_h + price_h + 50) - m
+    barcode_h = max(barcode_h, int(lh * 0.30))
+    barcode_y = m
 
     xml = f"""<?xml version="1.0" encoding="utf-8"?>
 <DieCutLabel Version="8.0" Units="twips" MediaType="Default">
@@ -166,8 +213,8 @@ def generate_dymo_xml(item) -> str:
       </StyledText>
     </TextObject>
     <ObjectLayout>
-      <DYMOPoint><X>{m}</X><Y>{row1_y}</Y></DYMOPoint>
-      <Size><Width>{usable_w}</Width><Height>{row1_h}</Height></Size>
+      <DYMOPoint><X>{m}</X><Y>{name_y}</Y></DYMOPoint>
+      <Size><Width>{usable_w}</Width><Height>{name_h}</Height></Size>
       <ZOrder>0</ZOrder>
       <AlternateColors>False</AlternateColors>
       <BorderStyle>SolidLine</BorderStyle>
@@ -191,25 +238,64 @@ def generate_dymo_xml(item) -> str:
       <Verticalized>False</Verticalized>
       <StyledText>
         <Element>
-          <String>{price_booth}</String>
+          <String>{price_str}</String>
           <Attributes>
-            <Font Family="Arial" Size="12" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
+            <Font Family="Arial" Size="14" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
           </Attributes>
         </Element>
       </StyledText>
     </TextObject>
     <ObjectLayout>
-      <DYMOPoint><X>{m}</X><Y>{row2_y}</Y></DYMOPoint>
-      <Size><Width>{usable_w}</Width><Height>{row2_h}</Height></Size>
+      <DYMOPoint><X>{m}</X><Y>{price_y}</Y></DYMOPoint>
+      <Size><Width>{price_w}</Width><Height>{price_h}</Height></Size>
       <ZOrder>1</ZOrder>
       <AlternateColors>False</AlternateColors>
       <BorderStyle>SolidLine</BorderStyle>
       <BorderColor Alpha="255" Red="0" Green="0" Blue="0"/>
       <BorderThickness>0</BorderThickness>
     </ObjectLayout>
-  </ObjectInfo>
+  </ObjectInfo>"""
+
+    if booth_str:
+        xml += f"""
   <ObjectInfo>
     <TextObject>
+      <Name>BOOTH</Name>
+      <ForeColor Alpha="255" Red="0" Green="0" Blue="0"/>
+      <BackColor Alpha="0" Red="255" Green="255" Blue="255"/>
+      <LinkedObjectName></LinkedObjectName>
+      <Rotation>Rotation0</Rotation>
+      <IsMirrored>False</IsMirrored>
+      <IsVariable>False</IsVariable>
+      <HorizontalAlignment>Right</HorizontalAlignment>
+      <VerticalAlignment>Middle</VerticalAlignment>
+      <TextFitMode>ShrinkToFit</TextFitMode>
+      <UseFullFontHeight>True</UseFullFontHeight>
+      <Verticalized>False</Verticalized>
+      <StyledText>
+        <Element>
+          <String>{booth_str}</String>
+          <Attributes>
+            <Font Family="Arial" Size="10" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
+          </Attributes>
+        </Element>
+      </StyledText>
+    </TextObject>
+    <ObjectLayout>
+      <DYMOPoint><X>{m + price_w + 20}</X><Y>{price_y}</Y></DYMOPoint>
+      <Size><Width>{booth_w}</Width><Height>{price_h}</Height></Size>
+      <ZOrder>2</ZOrder>
+      <AlternateColors>False</AlternateColors>
+      <BorderStyle>SolidLine</BorderStyle>
+      <BorderColor Alpha="255" Red="0" Green="0" Blue="0"/>
+      <BorderThickness>0</BorderThickness>
+    </ObjectLayout>
+  </ObjectInfo>"""
+
+    if barcode_str:
+        xml += f"""
+  <ObjectInfo>
+    <BarcodeObject>
       <Name>BARCODE</Name>
       <ForeColor Alpha="255" Red="0" Green="0" Blue="0"/>
       <BackColor Alpha="0" Red="255" Green="255" Blue="255"/>
@@ -217,29 +303,28 @@ def generate_dymo_xml(item) -> str:
       <Rotation>Rotation0</Rotation>
       <IsMirrored>False</IsMirrored>
       <IsVariable>False</IsVariable>
+      <Text>{barcode_str}</Text>
+      <Type>Code128Auto</Type>
+      <Size>Medium</Size>
+      <TextPosition>Bottom</TextPosition>
+      <TextFont Family="Arial" Size="8" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
+      <CheckSumFont Family="Arial" Size="8" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
+      <TextEmbedding>None</TextEmbedding>
+      <ECLevel>0</ECLevel>
       <HorizontalAlignment>Center</HorizontalAlignment>
-      <VerticalAlignment>Middle</VerticalAlignment>
-      <TextFitMode>ShrinkToFit</TextFitMode>
-      <UseFullFontHeight>True</UseFullFontHeight>
-      <Verticalized>False</Verticalized>
-      <StyledText>
-        <Element>
-          <String>{barcode_str}</String>
-          <Attributes>
-            <Font Family="Courier New" Size="10" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
-          </Attributes>
-        </Element>
-      </StyledText>
-    </TextObject>
+      <QuietZonesPadding Left="0" Top="0" Right="0" Bottom="0"/>
+    </BarcodeObject>
     <ObjectLayout>
-      <DYMOPoint><X>{m}</X><Y>{row3_y}</Y></DYMOPoint>
-      <Size><Width>{usable_w}</Width><Height>{row3_h}</Height></Size>
-      <ZOrder>2</ZOrder>
+      <DYMOPoint><X>{m}</X><Y>{barcode_y}</Y></DYMOPoint>
+      <Size><Width>{usable_w}</Width><Height>{barcode_h}</Height></Size>
+      <ZOrder>3</ZOrder>
       <AlternateColors>False</AlternateColors>
       <BorderStyle>SolidLine</BorderStyle>
       <BorderColor Alpha="255" Red="0" Green="0" Blue="0"/>
       <BorderThickness>0</BorderThickness>
     </ObjectLayout>
-  </ObjectInfo>
+  </ObjectInfo>"""
+
+    xml += """
 </DieCutLabel>"""
     return xml
