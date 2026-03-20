@@ -40,7 +40,7 @@ app/
     vendors.py    — CRUD for vendors (admin-only management)
     items.py      — CRUD for items (vendor self-service + admin)
     sales.py      — POS checkout, sale history
-    pos.py        — Poynt terminal charge + status polling endpoints
+    pos.py        — POS search, checkout, end-of-day report, image search endpoints
     rent.py       — Vendor rent payment via Square (POST /vendor/pay-rent, /vendor/rent-confirmed)
     admin.py      — Admin rent status (GET /admin/rent-status) + vendor flag toggle
     studio.py     — Studio class CRUD (GET/POST/PUT/DELETE /studio/classes)
@@ -65,7 +65,7 @@ frontend/
     dashboard.html — Vendor stats: balance, items, booth + Pay Rent with Card section
     items.html    — Item management with add/edit/delete/label (booth mode scopes to own items)
   admin/
-    index.html    — Admin dashboard with vendor/item stats + Rent link
+    index.html    — Admin dashboard with vendor/item stats, employees section, hourly/daily charts + Rent link
     vendors.html  — Admin vendor management (add/edit/suspend); shows 🚩 for flagged vendors
     rent.html     — Rent status dashboard: all vendors, CURRENT/DUE/OVERDUE badges, flag/unflag buttons
     studio.html   — Studio class calendar (calendar/list view, add/edit/delete classes)
@@ -77,6 +77,10 @@ frontend/
     index.html    — Full employee POS terminal (barcode scanner, cart, cash/card payments, receipt)
     register.html — Cash register: two-column layout, item search, cart, cash/card checkout
 ```
+
+## Timezone Handling
+
+All timestamps are stored in UTC in PostgreSQL (`TIMESTAMP WITH TIME ZONE`). The store is in **Oshkosh, WI — Central Time (America/Chicago)**. All date filtering, hourly aggregation, and date display in reports/dashboard use `zoneinfo.ZoneInfo("America/Chicago")` to convert UTC to local time. Helper functions `_local_today()`, `_local_date_to_utc_range()`, and `_to_local()` are in `app/routers/reports.py`. The POS end-of-day endpoint in `pos.py` and sales summary in `sales.py` also use Central Time conversion.
 
 ## API Routes
 

@@ -1,5 +1,8 @@
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 import datetime as dt
+from zoneinfo import ZoneInfo
+
+_STORE_TZ = ZoneInfo("America/Chicago")
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -19,7 +22,7 @@ router = APIRouter(prefix="/sales", tags=["sales"])
 
 
 def get_active_price(item: Item) -> Decimal:
-    today = date.today()
+    today = datetime.now(_STORE_TZ).date()
     if (
         item.sale_price is not None
         and item.sale_start is not None
@@ -248,8 +251,11 @@ async def sales_summary_today(
     if current_user.role not in ("admin", "cashier"):
         raise HTTPException(status_code=403, detail="Admin or cashier access required")
 
-    today = date.today()
-    tomorrow = today + dt.timedelta(days=1)
+    today = datetime.now(_STORE_TZ).date()
+    start_local = datetime(today.year, today.month, today.day, tzinfo=_STORE_TZ)
+    end_local = start_local + timedelta(days=1)
+    start_utc = start_local.astimezone(timezone.utc)
+    end_utc = end_local.astimezone(timezone.utc)
 
     result = await db.execute(
         select(
@@ -257,8 +263,8 @@ async def sales_summary_today(
             func.coalesce(func.sum(Sale.total), 0).label("total_revenue"),
             func.coalesce(func.sum(Sale.tax_amount), 0).label("total_tax"),
         ).where(
-            Sale.created_at >= today,
-            Sale.created_at < tomorrow,
+            Sale.created_at >= start_utc,
+            Sale.created_at < end_utc,
         )
     )
     row = result.one()

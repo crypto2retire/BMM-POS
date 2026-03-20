@@ -1,5 +1,6 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
+from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, extract, cast, Date
@@ -15,16 +16,34 @@ from app.routers.auth import require_cashier_or_admin, require_admin
 
 router = APIRouter(prefix="/admin/reports", tags=["reports"])
 
+STORE_TZ = ZoneInfo("America/Chicago")
+
+
+def _local_today():
+    return datetime.now(STORE_TZ).date()
+
+
+def _local_date_to_utc_range(d: date) -> tuple[datetime, datetime]:
+    start_local = datetime(d.year, d.month, d.day, tzinfo=STORE_TZ)
+    end_local = start_local + timedelta(days=1)
+    return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
+
+
+def _to_local(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(STORE_TZ)
+
 
 def _parse_dates(from_date, to_date):
     try:
-        start_date = date.fromisoformat(from_date) if from_date else date.today()
-        end_date = date.fromisoformat(to_date) if to_date else date.today()
+        start_date = date.fromisoformat(from_date) if from_date else _local_today()
+        end_date = date.fromisoformat(to_date) if to_date else _local_today()
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
-    start_dt = datetime(start_date.year, start_date.month, start_date.day)
-    end_dt = datetime(end_date.year, end_date.month, end_date.day) + timedelta(days=1)
-    return start_dt, end_dt
+    start_utc, _ = _local_date_to_utc_range(start_date)
+    _, end_utc = _local_date_to_utc_range(end_date)
+    return start_utc, end_utc
 
 
 @router.get("/dashboard")
@@ -33,7 +52,7 @@ async def dashboard_stats(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_cashier_or_admin),
 ):
-    today = date.today()
+    today = _local_today()
 
     if period == "week":
         start_date = today - timedelta(days=today.weekday())
@@ -42,8 +61,8 @@ async def dashboard_stats(
     else:
         start_date = today
 
-    start_dt = datetime(start_date.year, start_date.month, start_date.day)
-    end_dt = datetime(today.year, today.month, today.day) + timedelta(days=1)
+    start_dt, _ = _local_date_to_utc_range(start_date)
+    _, end_dt = _local_date_to_utc_range(today)
 
     result = await db.execute(
         select(Sale)
@@ -65,7 +84,8 @@ async def dashboard_stats(
     hourly_sales = {}
     for s in sales:
         if s.created_at:
-            hour = s.created_at.hour
+            local_dt = _to_local(s.created_at)
+            hour = local_dt.hour
             hourly_sales[hour] = hourly_sales.get(hour, 0) + float(s.total)
 
     hourly_data = []
@@ -97,18 +117,22 @@ async def dashboard_stats(
     ]
 
     thirty_ago = today - timedelta(days=29)
+    thirty_start_utc, _ = _local_date_to_utc_range(thirty_ago)
     daily_result = await db.execute(
-        select(
-            cast(Sale.created_at, Date).label("sale_date"),
-            func.count(Sale.id).label("count"),
-            func.coalesce(func.sum(Sale.total), 0).label("total"),
-        )
-        .where(Sale.created_at >= datetime(thirty_ago.year, thirty_ago.month, thirty_ago.day))
-        .group_by(cast(Sale.created_at, Date))
-        .order_by(cast(Sale.created_at, Date))
+        select(Sale)
+        .where(Sale.created_at >= thirty_start_utc)
+        .order_by(Sale.created_at)
     )
-    daily_rows = daily_result.all()
-    daily_map = {str(r.sale_date): {"count": r.count, "total": round(float(r.total), 2)} for r in daily_rows}
+    daily_sales_raw = daily_result.scalars().all()
+
+    daily_map: dict[str, dict] = {}
+    for s in daily_sales_raw:
+        if s.created_at:
+            local_date_str = str(_to_local(s.created_at).date())
+            if local_date_str not in daily_map:
+                daily_map[local_date_str] = {"count": 0, "total": 0}
+            daily_map[local_date_str]["count"] += 1
+            daily_map[local_date_str]["total"] = round(daily_map[local_date_str]["total"] + float(s.total), 2)
 
     daily_sales = []
     for i in range(30):
@@ -194,7 +218,7 @@ async def report_daily_sales(
     for s in sales:
         item_count = sum(si.quantity for si in s.items) if s.items else 0
         rows.append({
-            "date": s.created_at.strftime("%Y-%m-%d %I:%M %p") if s.created_at else "",
+            "date": _to_local(s.created_at).strftime("%Y-%m-%d %I:%M %p") if s.created_at else "",
             "cashier": s.cashier.name if s.cashier else "Unknown",
             "items": item_count,
             "subtotal": round(float(s.subtotal), 2),
@@ -244,7 +268,7 @@ async def report_sales(
         item_count = sum(si.quantity for si in s.items) if s.items else 0
         sales_list.append({
             "id": s.id,
-            "date": s.created_at.isoformat() if s.created_at else None,
+            "date": _to_local(s.created_at).isoformat() if s.created_at else None,
             "cashier_name": s.cashier.name if s.cashier else "Unknown",
             "item_count": item_count,
             "subtotal": float(s.subtotal),
@@ -644,7 +668,7 @@ async def report_reservations(
             "customer_phone": r.customer_phone or "",
             "item_name": r.item.name if r.item else "Unknown",
             "amount_paid": float(r.amount_paid) if r.amount_paid else 0,
-            "date": r.created_at.isoformat() if r.created_at else None,
+            "date": _to_local(r.created_at).isoformat() if r.created_at else None,
             "status": r.status,
         })
 

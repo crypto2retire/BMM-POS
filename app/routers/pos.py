@@ -2,7 +2,8 @@ import math
 import os
 import base64
 import io
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
@@ -28,7 +29,7 @@ router = APIRouter(prefix="/pos", tags=["pos"])
 
 
 def _get_active_price(item: Item) -> Decimal:
-    today = date.today()
+    today = datetime.now(ZoneInfo("America/Chicago")).date()
     if (
         item.sale_price is not None
         and item.sale_start is not None
@@ -382,18 +383,25 @@ async def end_of_day_report(
     if current_user.role not in ("admin", "cashier"):
         raise HTTPException(status_code=403, detail="Cashier or admin access required")
 
+    store_tz = ZoneInfo("America/Chicago")
+
     if report_date:
         try:
             target_date = date.fromisoformat(report_date)
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
     else:
-        target_date = date.today()
+        target_date = datetime.now(store_tz).date()
+
+    start_local = datetime(target_date.year, target_date.month, target_date.day, tzinfo=store_tz)
+    end_local = start_local + timedelta(days=1)
+    start_utc = start_local.astimezone(timezone.utc)
+    end_utc = end_local.astimezone(timezone.utc)
 
     result = await db.execute(
         select(Sale)
         .options(selectinload(Sale.cashier), selectinload(Sale.items))
-        .where(cast(Sale.created_at, Date) == target_date)
+        .where(Sale.created_at >= start_utc, Sale.created_at < end_utc)
         .order_by(Sale.created_at)
     )
     sales = result.scalars().all()
