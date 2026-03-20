@@ -365,6 +365,36 @@
 
     <div class="ornament">&loz;</div>
 
+    <div class="section" id="employees-section">
+        <div class="section-header">
+            <h2 class="section-title">Employees</h2>
+            <button class="btn btn-primary btn-sm" onclick="openAddEmployee()">+ Add Employee</button>
+        </div>
+        <div class="card">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employees-table-body">
+                        <tr><td colspan="5" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="vendor-cards-mobile" id="employee-cards" style="display:none">
+                <div style="color:#A8A6A1;padding:1rem;text-align:center">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ornament">&loz;</div>
+
     <div class="section">
         <div class="section-header">
             <h2 class="section-title">All Vendors</h2>
@@ -392,6 +422,41 @@
             <div class="vendor-cards-mobile" id="vendor-cards">
                 <div style="color:#A8A6A1;padding:1rem;text-align:center">Loading vendors&hellip;</div>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Employee Modal -->
+<div class="modal-overlay" id="add-employee-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:1000;align-items:center;justify-content:center;padding:1rem">
+    <div style="background:var(--surface);border:1px solid var(--warm-border);padding:1.75rem;width:100%;max-width:420px;color:var(--text)">
+        <h2 style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:500;margin-bottom:1.25rem;color:var(--gold);font-style:italic">Add Employee</h2>
+        <div style="margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Full Name</label>
+            <input type="text" id="emp-name" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box" placeholder="Jane Smith">
+        </div>
+        <div style="margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Email</label>
+            <input type="email" id="emp-email" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box" placeholder="jane@bowenstreetmarket.com">
+        </div>
+        <div style="margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Password</label>
+            <input type="password" id="emp-password" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box" placeholder="Minimum 6 characters">
+        </div>
+        <div style="margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Phone (optional)</label>
+            <input type="tel" id="emp-phone" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box" placeholder="(920) 555-1234">
+        </div>
+        <div style="margin-bottom:1rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Role</label>
+            <select id="emp-role" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box">
+                <option value="cashier">Cashier</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+        <div id="emp-error" style="color:#F87171;font-size:0.8rem;min-height:20px;margin-bottom:4px"></div>
+        <div style="display:flex;gap:0.5rem">
+            <button onclick="closeAddEmployee()" style="flex:1;padding:0.7rem;background:var(--surface-2,#4e4e54);color:var(--text-light);border:1px solid var(--border);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Cancel</button>
+            <button onclick="submitAddEmployee()" id="emp-submit-btn" style="flex:1;padding:0.7rem;background:#147a54;color:#fff;border:none;cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Add Employee</button>
         </div>
     </div>
 </div>
@@ -648,6 +713,103 @@
     }
 
     loadAdminOrders('pending');
+
+    async function loadEmployees() {
+        try {
+            var vendors = await apiGet('/api/v1/vendors/');
+            var employees = vendors.filter(function(v) { return v.role === 'admin' || v.role === 'cashier'; });
+            var tbody = document.getElementById('employees-table-body');
+            var cards = document.getElementById('employee-cards');
+
+            if (!employees.length) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No employees found.</td></tr>';
+                if (cards) cards.innerHTML = '<div style="color:#A8A6A1;padding:1rem;text-align:center">No employees</div>';
+                return;
+            }
+
+            tbody.innerHTML = employees.map(function(e) {
+                var created = new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                return '<tr><td><strong>' + e.name + '</strong></td><td>' + e.email + '</td>'
+                    + '<td>' + roleBadge(e.role) + '</td>'
+                    + '<td>' + statusBadge(e.status || 'active') + '</td>'
+                    + '<td style="font-size:0.85rem;color:var(--text-light)">' + created + '</td></tr>';
+            }).join('');
+
+            if (cards) {
+                cards.style.display = '';
+                cards.innerHTML = employees.map(function(e) {
+                    return '<div class="vendor-card"><div class="vendor-card-header"><div>'
+                        + '<div class="vendor-card-name">' + e.name + '</div>'
+                        + '<div class="vendor-card-sub">' + e.email + '</div>'
+                        + '</div><div class="vendor-card-right">'
+                        + roleBadge(e.role) + ' ' + statusBadge(e.status || 'active')
+                        + '</div></div></div>';
+                }).join('');
+            }
+        } catch (e) {
+            document.getElementById('employees-table-body').innerHTML = '<tr><td colspan="5" style="color:#F87171">' + (e.message || 'Failed to load') + '</td></tr>';
+        }
+    }
+
+    function openAddEmployee() {
+        document.getElementById('add-employee-modal').style.display = 'flex';
+        document.getElementById('emp-name').value = '';
+        document.getElementById('emp-email').value = '';
+        document.getElementById('emp-password').value = '';
+        document.getElementById('emp-phone').value = '';
+        document.getElementById('emp-role').value = 'cashier';
+        document.getElementById('emp-error').textContent = '';
+        setTimeout(function() { document.getElementById('emp-name').focus(); }, 100);
+    }
+
+    function closeAddEmployee() {
+        document.getElementById('add-employee-modal').style.display = 'none';
+    }
+
+    async function submitAddEmployee() {
+        var name = document.getElementById('emp-name').value.trim();
+        var email = document.getElementById('emp-email').value.trim();
+        var password = document.getElementById('emp-password').value;
+        var phone = document.getElementById('emp-phone').value.trim();
+        var role = document.getElementById('emp-role').value;
+        var errEl = document.getElementById('emp-error');
+
+        if (!name) { errEl.textContent = 'Name is required'; return; }
+        if (!email) { errEl.textContent = 'Email is required'; return; }
+        if (!password || password.length < 6) { errEl.textContent = 'Password must be at least 6 characters'; return; }
+
+        errEl.textContent = '';
+        var btn = document.getElementById('emp-submit-btn');
+        btn.disabled = true;
+        btn.textContent = 'Adding...';
+
+        try {
+            await apiPost('/api/v1/vendors/', {
+                name: name,
+                email: email,
+                password: password,
+                phone: phone || null,
+                role: role,
+                is_vendor: false,
+                monthly_rent: 0,
+                commission_rate: 0
+            });
+            closeAddEmployee();
+            showAlert('alert-container', name + ' added as ' + role, 'success');
+            loadEmployees();
+        } catch (e) {
+            errEl.textContent = e.message || 'Failed to add employee';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Add Employee';
+        }
+    }
+
+    document.getElementById('add-employee-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeAddEmployee();
+    });
+
+    loadEmployees();
 </script>
 <script src="/static/js/assistant-panel.js"></script>
 <script>initAssistantPanel('The user is an admin at Bowenstreet Market.', { buttonBottom: '70px' });</script>

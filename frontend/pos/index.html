@@ -766,6 +766,31 @@
         @media (max-width: 900px) {
             .pos-layout { grid-template-columns: 1fr 300px; }
         }
+
+        .denom-row {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #2D2D30;
+            padding: 4px 8px;
+        }
+        .denom-row label {
+            font-size: 0.72rem;
+            color: #A8A6A1;
+            min-width: 55px;
+            font-family: 'Roboto', sans-serif;
+        }
+        .denom-row input {
+            width: 50px;
+            background: #44444A;
+            border: 1px solid #555558;
+            color: #F0EDE8;
+            padding: 4px 6px;
+            font-size: 0.85rem;
+            text-align: center;
+            font-family: 'Roboto Mono', monospace;
+        }
+        .denom-row input:focus { outline: none; border-color: rgba(201,169,110,0.4); }
     </style>
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
 </head>
@@ -781,6 +806,7 @@
             <span id="cashier-name">Loading...</span>
             <button class="nav-link" onclick="openOnlineOrdersPanel()" style="position:relative">Orders <span id="orders-badge" style="display:none;position:absolute;top:-4px;right:-8px;background:#EF4444;color:#fff;font-size:10px;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 4px">0</span></button>
             <button class="nav-link" onclick="openReceiptLookup()">Receipts</button>
+            <button class="nav-link" onclick="openEndOfDay()">End of Day</button>
             <a href="/admin/vendors.html">Vendors</a>
             <a href="/vendor/items.html">Items</a>
             <a href="/admin/studio.html">Studio</a>
@@ -811,6 +837,7 @@
                 autocomplete="off"
                 oninput="onSearchInput(this.value)"
             >
+            <button class="manual-entry-btn" onclick="openImageSearch()" title="Search by photo">📷 Photo</button>
             <button class="manual-entry-btn" onclick="openManualEntry()">+ Manual</button>
             <div class="search-results hidden" id="search-results"></div>
         </div>
@@ -1059,6 +1086,103 @@
     <button class="pay-btn card" id="mobile-card-btn" onclick="startCardPayment()" disabled style="flex:1;max-width:140px;padding:0.75rem">
         💳 Card
     </button>
+</div>
+
+<!-- End of Day Modal -->
+<div class="pos-modal-overlay hidden" id="eod-modal">
+    <div class="pos-modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
+        <h2>End of Day Report</h2>
+        <div id="eod-loading" style="text-align:center;padding:2rem;color:#A8A6A1">Loading report...</div>
+        <div id="eod-content" style="display:none">
+            <div style="text-align:center;font-size:0.75rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem" id="eod-date-label"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem">
+                <div style="background:#2D2D30;padding:0.75rem;text-align:center">
+                    <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Total Sales</div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.8rem;color:#C9A96E;margin-top:4px" id="eod-total-revenue">$0.00</div>
+                </div>
+                <div style="background:#2D2D30;padding:0.75rem;text-align:center">
+                    <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Transactions</div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.8rem;color:#F0EDE8;margin-top:4px" id="eod-total-txns">0</div>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1rem">
+                <div style="background:#2D2D30;padding:0.75rem;text-align:center">
+                    <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Cash</div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:#7BC4A0;margin-top:4px" id="eod-cash-total">$0.00</div>
+                    <div style="font-size:0.72rem;color:#A8A6A1" id="eod-cash-count">0 sales</div>
+                </div>
+                <div style="background:#2D2D30;padding:0.75rem;text-align:center">
+                    <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Card</div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:#6495ed;margin-top:4px" id="eod-card-total">$0.00</div>
+                    <div style="font-size:0.72rem;color:#A8A6A1" id="eod-card-count">0 sales</div>
+                </div>
+                <div style="background:#2D2D30;padding:0.75rem;text-align:center">
+                    <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Tax</div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:#F0EDE8;margin-top:4px" id="eod-tax-total">$0.00</div>
+                    <div style="font-size:0.72rem;color:#A8A6A1" id="eod-items-sold">0 items</div>
+                </div>
+            </div>
+            <div style="margin-bottom:1rem">
+                <div style="font-size:0.7rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-family:'Roboto',sans-serif">Cash Drawer Count</div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px" id="denom-grid">
+                    <div class="denom-row"><label>$100 x</label><input type="number" min="0" value="0" data-denom="100" onchange="updateCashCount()" oninput="updateCashCount()"></div>
+                    <div class="denom-row"><label>$50 x</label><input type="number" min="0" value="0" data-denom="50" onchange="updateCashCount()" oninput="updateCashCount()"></div>
+                    <div class="denom-row"><label>$20 x</label><input type="number" min="0" value="0" data-denom="20" onchange="updateCashCount()" oninput="updateCashCount()"></div>
+                    <div class="denom-row"><label>$10 x</label><input type="number" min="0" value="0" data-denom="10" onchange="updateCashCount()" oninput="updateCashCount()"></div>
+                    <div class="denom-row"><label>$5 x</label><input type="number" min="0" value="0" data-denom="5" onchange="updateCashCount()" oninput="updateCashCount()"></div>
+                    <div class="denom-row"><label>$1 x</label><input type="number" min="0" value="0" data-denom="1" onchange="updateCashCount()" oninput="updateCashCount()"></div>
+                    <div class="denom-row"><label>Quarters</label><input type="number" min="0" value="0" data-denom="0.25" onchange="updateCashCount()" oninput="updateCashCount()"></div>
+                    <div class="denom-row"><label>Dimes</label><input type="number" min="0" value="0" data-denom="0.10" onchange="updateCashCount()" oninput="updateCashCount()"></div>
+                    <div class="denom-row"><label>Other $</label><input type="number" min="0" step="0.01" value="0" data-denom="1" data-raw="true" onchange="updateCashCount()" oninput="updateCashCount()"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:8px 12px;background:#2D2D30">
+                    <div>
+                        <div style="font-size:0.65rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Counted Cash</div>
+                        <div style="font-family:'EB Garamond',serif;font-size:1.5rem;color:#F0EDE8" id="eod-counted-cash">$0.00</div>
+                    </div>
+                    <div style="text-align:right">
+                        <div style="font-size:0.65rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Variance</div>
+                        <div style="font-family:'EB Garamond',serif;font-size:1.5rem" id="eod-variance">$0.00</div>
+                    </div>
+                </div>
+                <div style="font-size:0.7rem;color:#A8A6A1;margin-top:6px;text-align:center" id="eod-variance-note"></div>
+            </div>
+            <div id="eod-cashier-breakdown" style="margin-bottom:1rem"></div>
+        </div>
+        <div class="modal-actions">
+            <button class="cancel-btn" onclick="document.getElementById('eod-modal').classList.add('hidden')">Close</button>
+            <button class="confirm-btn" onclick="printEndOfDay()">Print Report</button>
+        </div>
+    </div>
+</div>
+
+<!-- Image Search Modal -->
+<div class="pos-modal-overlay hidden" id="image-search-modal">
+    <div class="pos-modal" style="max-width:480px">
+        <h2>Search by Photo</h2>
+        <div style="font-size:0.8rem;color:#A8A6A1;margin-bottom:1rem">Take or upload a photo of the item to find matching inventory</div>
+        <div style="display:flex;gap:8px;margin-bottom:1rem">
+            <label style="flex:1;display:flex;align-items:center;justify-content:center;background:#2D2D30;border:1px solid #555558;padding:1rem;cursor:pointer;color:#C9A96E;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;font-family:'Roboto',sans-serif;text-align:center;gap:6px">
+                📷 Camera
+                <input type="file" accept="image/*" capture="environment" id="img-search-camera" onchange="handleImageSearchFile(this)" style="display:none">
+            </label>
+            <label style="flex:1;display:flex;align-items:center;justify-content:center;background:#2D2D30;border:1px solid #555558;padding:1rem;cursor:pointer;color:#C9A96E;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;font-family:'Roboto',sans-serif;text-align:center;gap:6px">
+                📁 Upload
+                <input type="file" accept="image/*" id="img-search-upload" onchange="handleImageSearchFile(this)" style="display:none">
+            </label>
+        </div>
+        <div id="img-search-preview" style="display:none;text-align:center;margin-bottom:1rem">
+            <img id="img-search-img" style="max-width:100%;max-height:200px;border:1px solid #555558">
+        </div>
+        <div id="img-search-status" style="display:none;text-align:center;padding:1.5rem;color:#A8A6A1">
+            <div class="spinner" style="margin:0 auto 0.75rem"></div>
+            <div>Analyzing image...</div>
+        </div>
+        <div id="img-search-results" style="max-height:40vh;overflow-y:auto"></div>
+        <div class="modal-actions" style="margin-top:1rem">
+            <button class="cancel-btn" onclick="closeImageSearch()">Close</button>
+        </div>
+    </div>
 </div>
 
 <!-- Toast container -->
@@ -2170,6 +2294,228 @@ table { width: 100%; border-collapse: collapse; }
 
     setInterval(checkNewOrders, 30000);
     setTimeout(checkNewOrders, 2000);
+
+    // ─── End of Day ──────────────────────────────────────────────────────────
+    let eodData = null;
+
+    async function openEndOfDay() {
+        document.getElementById('eod-modal').classList.remove('hidden');
+        document.getElementById('eod-loading').style.display = 'block';
+        document.getElementById('eod-content').style.display = 'none';
+
+        try {
+            eodData = await apiGet('/api/v1/pos/end-of-day');
+            const d = new Date(eodData.date + 'T12:00:00');
+            document.getElementById('eod-date-label').textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+            document.getElementById('eod-total-revenue').textContent = '$' + eodData.total_revenue.toFixed(2);
+            document.getElementById('eod-total-txns').textContent = eodData.total_transactions;
+            document.getElementById('eod-cash-total').textContent = '$' + eodData.cash.total.toFixed(2);
+            document.getElementById('eod-cash-count').textContent = eodData.cash.count + ' sale' + (eodData.cash.count !== 1 ? 's' : '');
+            document.getElementById('eod-card-total').textContent = '$' + eodData.card.total.toFixed(2);
+            document.getElementById('eod-card-count').textContent = eodData.card.count + ' sale' + (eodData.card.count !== 1 ? 's' : '');
+            document.getElementById('eod-tax-total').textContent = '$' + eodData.total_tax.toFixed(2);
+            document.getElementById('eod-items-sold').textContent = eodData.items_sold + ' item' + (eodData.items_sold !== 1 ? 's' : '');
+
+            document.querySelectorAll('#denom-grid input').forEach(inp => inp.value = '0');
+            updateCashCount();
+
+            const bkdn = document.getElementById('eod-cashier-breakdown');
+            if (eodData.cashier_breakdown && eodData.cashier_breakdown.length > 0) {
+                let html = '<div style="font-size:0.7rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-family:\'Roboto\',sans-serif">Cashier Breakdown</div>';
+                eodData.cashier_breakdown.forEach(cb => {
+                    html += `<div style="background:#2D2D30;padding:8px 12px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+                        <div>
+                            <div style="font-weight:600;color:#F0EDE8;font-size:0.9rem">${escHtml(cb.name)}</div>
+                            <div style="font-size:0.75rem;color:#A8A6A1">${cb.transactions} txn · Cash: $${cb.cash_total.toFixed(2)} · Card: $${cb.card_total.toFixed(2)}</div>
+                        </div>
+                        <div style="font-family:'EB Garamond',serif;font-size:1.1rem;font-weight:500;color:#C9A96E">$${cb.total.toFixed(2)}</div>
+                    </div>`;
+                });
+                bkdn.innerHTML = html;
+            } else {
+                bkdn.innerHTML = '';
+            }
+
+            document.getElementById('eod-loading').style.display = 'none';
+            document.getElementById('eod-content').style.display = 'block';
+        } catch (err) {
+            document.getElementById('eod-loading').textContent = 'Failed to load report: ' + (err.message || 'Unknown error');
+        }
+    }
+
+    function updateCashCount() {
+        let total = 0;
+        document.querySelectorAll('#denom-grid input').forEach(inp => {
+            const val = parseFloat(inp.value) || 0;
+            if (inp.dataset.raw === 'true') {
+                total += val;
+            } else {
+                total += val * parseFloat(inp.dataset.denom);
+            }
+        });
+        total = Math.round(total * 100) / 100;
+        document.getElementById('eod-counted-cash').textContent = '$' + total.toFixed(2);
+
+        const expectedCash = eodData ? eodData.cash.total : 0;
+        const variance = Math.round((total - expectedCash) * 100) / 100;
+        const varEl = document.getElementById('eod-variance');
+        const noteEl = document.getElementById('eod-variance-note');
+        if (variance > 0) {
+            varEl.textContent = '+$' + variance.toFixed(2);
+            varEl.style.color = '#7BC4A0';
+            noteEl.textContent = 'Over by $' + variance.toFixed(2) + ' (check for unrecorded sales)';
+        } else if (variance < 0) {
+            varEl.textContent = '-$' + Math.abs(variance).toFixed(2);
+            varEl.style.color = '#c87070';
+            noteEl.textContent = 'Short by $' + Math.abs(variance).toFixed(2);
+        } else {
+            varEl.textContent = '$0.00';
+            varEl.style.color = '#7BC4A0';
+            noteEl.textContent = 'Cash drawer matches expected amount';
+        }
+    }
+
+    function printEndOfDay() {
+        if (!eodData) return;
+        const d = new Date(eodData.date + 'T12:00:00');
+        const dateLabel = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        const countedCash = document.getElementById('eod-counted-cash').textContent;
+        const variance = document.getElementById('eod-variance').textContent;
+
+        let cashierRows = '';
+        (eodData.cashier_breakdown || []).forEach(cb => {
+            cashierRows += `<tr><td style="padding:3px 0">${escHtml(cb.name)}</td><td style="text-align:right;padding:3px 0">${cb.transactions}</td><td style="text-align:right;padding:3px 0">$${cb.total.toFixed(2)}</td></tr>`;
+        });
+
+        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>End of Day Report</title>
+<style>
+@page { margin: 10mm; size: letter; }
+body { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; color: #000; max-width: 600px; margin: 0 auto; }
+h1 { font-size: 18px; text-align: center; margin-bottom: 4px; }
+.sub { text-align: center; font-size: 11px; color: #555; margin-bottom: 16px; }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.box { border: 1px solid #ccc; padding: 8px; text-align: center; }
+.box .label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #666; }
+.box .val { font-size: 20px; font-weight: 700; margin-top: 2px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+hr { border: none; border-top: 1px solid #ccc; margin: 10px 0; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #666; padding: 4px 0; border-bottom: 1px solid #ccc; }
+td { padding: 4px 0; font-size: 12px; }
+.section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #333; margin: 14px 0 6px; }
+.variance-row { display: flex; justify-content: space-between; padding: 6px 8px; border: 1px solid #ccc; margin-top: 8px; }
+</style></head><body>
+<h1>Bowenstreet Market</h1>
+<div class="sub">End of Day Report — ${escHtml(dateLabel)}</div>
+<div class="grid">
+    <div class="box"><div class="label">Total Sales</div><div class="val">$${eodData.total_revenue.toFixed(2)}</div></div>
+    <div class="box"><div class="label">Transactions</div><div class="val">${eodData.total_transactions}</div></div>
+</div>
+<div class="grid3">
+    <div class="box"><div class="label">Cash</div><div class="val">$${eodData.cash.total.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.cash.count} sales</div></div>
+    <div class="box"><div class="label">Card</div><div class="val">$${eodData.card.total.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.card.count} sales</div></div>
+    <div class="box"><div class="label">Tax Collected</div><div class="val">$${eodData.total_tax.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.items_sold} items</div></div>
+</div>
+<hr>
+<div class="section-title">Cash Drawer</div>
+<div class="variance-row"><div><strong>Counted:</strong> ${countedCash}</div><div><strong>Variance:</strong> ${variance}</div></div>
+<hr>
+${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead><tr><th>Cashier</th><th style="text-align:right">Txns</th><th style="text-align:right">Total</th></tr></thead><tbody>${cashierRows}</tbody></table>` : ''}
+<div style="text-align:center;margin-top:20px;font-size:10px;color:#999">Generated ${new Date().toLocaleString()}</div>
+</body></html>`;
+
+        const w = window.open('', '_blank', 'width=700,height=900');
+        w.document.write(html);
+        w.document.close();
+        setTimeout(() => { w.print(); }, 400);
+    }
+
+    // ─── Image Search ────────────────────────────────────────────────────────
+    function openImageSearch() {
+        document.getElementById('image-search-modal').classList.remove('hidden');
+        document.getElementById('img-search-preview').style.display = 'none';
+        document.getElementById('img-search-status').style.display = 'none';
+        document.getElementById('img-search-results').innerHTML = '';
+        document.getElementById('img-search-camera').value = '';
+        document.getElementById('img-search-upload').value = '';
+    }
+
+    function closeImageSearch() {
+        document.getElementById('image-search-modal').classList.add('hidden');
+    }
+
+    async function handleImageSearchFile(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('img-search-img').src = e.target.result;
+            document.getElementById('img-search-preview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+
+        document.getElementById('img-search-status').style.display = 'block';
+        document.getElementById('img-search-results').innerHTML = '';
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const token = sessionStorage.getItem('bmm_token');
+            const resp = await fetch('/api/v1/pos/image-search', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                body: formData,
+            });
+
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.detail || 'Search failed');
+            }
+
+            const data = await resp.json();
+            document.getElementById('img-search-status').style.display = 'none';
+
+            if (data.description) {
+                document.getElementById('img-search-results').innerHTML = `<div style="background:#2D2D30;padding:8px 12px;margin-bottom:8px;font-size:0.8rem;color:#A8A6A1;font-style:italic">${escHtml(data.description)}</div>`;
+            }
+
+            if (!data.matches || data.matches.length === 0) {
+                document.getElementById('img-search-results').innerHTML += '<div style="text-align:center;color:#A8A6A1;padding:1rem;font-style:italic;font-family:\'EB Garamond\',serif">No matching items found</div>';
+                return;
+            }
+
+            let html = '';
+            data.matches.forEach(item => {
+                const imgSrc = `/api/v1/items/${item.id}/image`;
+                const meta = [item.category, item.booth_number ? 'Booth ' + item.booth_number : null].filter(Boolean).join(' · ');
+                html += `<div onclick="addImageSearchResult(${item.id})" style="display:flex;gap:10px;align-items:center;background:#2D2D30;padding:8px;margin-bottom:4px;cursor:pointer;transition:background 0.12s" onmouseover="this.style.background='#3a3a3d'" onmouseout="this.style.background='#2D2D30'">
+                    <img src="${imgSrc}" style="width:56px;height:56px;object-fit:cover;border:1px solid #555558;flex-shrink:0" onerror="this.style.display='none'">
+                    <div style="flex:1;min-width:0">
+                        <div style="font-family:'EB Garamond',serif;font-size:0.95rem;color:#F0EDE8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(item.name)}</div>
+                        <div style="font-size:0.72rem;color:#A8A6A1">${meta}</div>
+                    </div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.05rem;color:#C9A96E;font-weight:500;white-space:nowrap">$${item.active_price.toFixed(2)}</div>
+                </div>`;
+            });
+            document.getElementById('img-search-results').innerHTML += html;
+
+            window._imageSearchItems = data.matches;
+        } catch (err) {
+            document.getElementById('img-search-status').style.display = 'none';
+            document.getElementById('img-search-results').innerHTML = `<div style="color:#c87070;text-align:center;padding:1rem">${escHtml(err.message)}</div>`;
+        }
+    }
+
+    function addImageSearchResult(itemId) {
+        const items = window._imageSearchItems || [];
+        const item = items.find(i => i.id === itemId);
+        if (!item) return;
+        addToCart(item);
+        closeImageSearch();
+        showToast('Added: ' + item.name, 'success');
+    }
 
     init();
 </script>
