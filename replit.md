@@ -30,10 +30,12 @@ app/
     studio_class.py — StudioClass ORM model (classes/workshops)
     item_image.py — ItemImage ORM model (binary image data in DB for deploy persistence)
     studio_image.py — StudioImage ORM model (binary studio class image data in DB)
+    gift_card.py  — GiftCard, GiftCardTransaction ORM models (barcode, balance, transaction history)
   schemas/
     vendor.py     — VendorCreate, VendorUpdate, VendorResponse, Token
     item.py       — ItemCreate, ItemUpdate, ItemResponse (w/ computed active_price)
     sale.py       — SaleCreate, SaleResponse, CartItem, SaleItemResponse, Poynt schemas
+    gift_card.py  — GiftCardActivate, GiftCardLoad, GiftCardRedeem, GiftCardResponse, GiftCardDetailResponse
     studio_class.py — StudioClassCreate, StudioClassUpdate, StudioClassResponse
   routers/
     auth.py       — Login, get_current_user, require_admin, require_cashier_or_admin
@@ -74,7 +76,7 @@ frontend/
   shop/
     index.html    — Public storefront: browse items, "Pay & Reserve" → Square checkout
   pos/
-    index.html    — Full employee POS terminal (barcode scanner, cart, cash/card payments, receipt)
+    index.html    — Full employee POS terminal (barcode scanner, cart, cash/card/gift card payments, receipt, gift card management)
     register.html — Cash register: two-column layout, item search, cart, cash/card checkout
 ```
 
@@ -111,6 +113,11 @@ All routes prefixed with `/api/v1/`:
 | POST | /pos/payment-callback | Auth | Placeholder payment webhook |
 | POST | /pos/poynt/charge | Cashier/Admin | Initiate Poynt terminal charge |
 | GET | /pos/poynt/status/{id} | Cashier/Admin | Poll Poynt transaction status |
+| POST | /pos/gift-cards/activate | Admin/Cashier | Activate a new gift card with optional initial balance |
+| GET | /pos/gift-cards/{barcode} | Admin/Cashier | Check gift card balance |
+| POST | /pos/gift-cards/{barcode}/load | Admin/Cashier | Load funds onto gift card |
+| POST | /pos/gift-cards/{barcode}/redeem | Admin/Cashier | Redeem from gift card (standalone) |
+| GET | /pos/gift-cards/{barcode}/history | Admin/Cashier | Get card details + transaction history |
 
 | GET | /studio/classes | Public | List published classes (query: start, end, category) |
 | GET | /studio/classes/{id} | Public | Get single class details |
@@ -136,6 +143,8 @@ All routes prefixed with `/api/v1/`:
 - `rent_payments` — Monthly rent tracking (method: "square" for online payments)
 - `reservations` — Square-paid shop reservations (status: pending → confirmed)
 - `payouts` — Vendor payout records
+- `gift_cards` — In-house gift cards (barcode, balance, is_active, notes, issued_at, last_used_at)
+- `gift_card_transactions` — Gift card load/redeem/refund history (amount, type, sale_id, cashier_id, balance_after)
 - `vendors.rent_flagged` — Boolean flag for vendors 30+ days overdue on rent
 
 ## Authentication & Roles

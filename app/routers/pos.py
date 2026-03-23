@@ -17,9 +17,14 @@ from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
 from app.models.item_image import ItemImage
 from app.models.sale import Sale, SaleItem
+from app.models.gift_card import GiftCard, GiftCardTransaction
 from app.schemas.sale import (
     SaleCreate, SaleResponse, SaleItemResponse,
     PoyntChargeRequest, PoyntChargeResponse, PoyntStatusResponse,
+)
+from app.schemas.gift_card import (
+    GiftCardActivate, GiftCardLoad, GiftCardRedeem,
+    GiftCardResponse, GiftCardDetailResponse, GiftCardTransactionResponse,
 )
 from app.services import poynt
 from app.config import settings
@@ -183,8 +188,8 @@ async def pos_create_sale(
     if not data.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
-    if data.payment_method not in ("cash", "card", "split"):
-        raise HTTPException(status_code=400, detail="payment_method must be cash, card, or split")
+    if data.payment_method not in ("cash", "card", "split", "gift_card"):
+        raise HTTPException(status_code=400, detail="payment_method must be cash, card, split, or gift_card")
 
     resolved_lines = []
     for cart_item in data.items:
@@ -291,6 +296,36 @@ async def pos_create_sale(
             ).quantize(Decimal("0.01"), ROUND_HALF_UP)
         else:
             db.add(VendorBalance(vendor_id=vendor_id, balance=amount))
+
+    if data.payment_method == "gift_card":
+        if not data.gift_card_barcode:
+            raise HTTPException(status_code=400, detail="gift_card_barcode is required for gift card payments")
+        gc_result = await db.execute(
+            select(GiftCard).where(GiftCard.barcode == data.gift_card_barcode).with_for_update()
+        )
+        gc = gc_result.scalar_one_or_none()
+        if not gc:
+            raise HTTPException(status_code=404, detail="Gift card not found")
+        if not gc.is_active:
+            raise HTTPException(status_code=400, detail="Gift card is deactivated")
+        gc_balance = Decimal(str(gc.balance))
+        if total > gc_balance:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Insufficient gift card balance: ${gc_balance:.2f} available, ${total:.2f} needed"
+            )
+        new_gc_balance = (gc_balance - total).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        gc.balance = new_gc_balance
+        gc.last_used_at = datetime.utcnow()
+        db.add(GiftCardTransaction(
+            gift_card_id=gc.id,
+            amount=total,
+            transaction_type="redeem",
+            sale_id=sale.id,
+            cashier_id=current_user.id,
+            balance_after=new_gc_balance,
+            notes=f"Sale #{sale.id}",
+        ))
 
     await db.commit()
 
@@ -409,11 +444,13 @@ async def end_of_day_report(
     total_cash = Decimal("0")
     total_card = Decimal("0")
     total_split = Decimal("0")
+    total_gift_card = Decimal("0")
     total_tax = Decimal("0")
     total_revenue = Decimal("0")
     cash_count = 0
     card_count = 0
     split_count = 0
+    gift_card_count = 0
     cashier_breakdown = {}
 
     for sale in sales:
@@ -434,6 +471,9 @@ async def end_of_day_report(
             sale_cash = split_cash
             sale_card = sale.total - split_cash
             split_count += 1
+        elif sale.payment_method == "gift_card":
+            total_gift_card += sale.total
+            gift_card_count += 1
 
         total_cash += sale_cash
         total_card += sale_card
@@ -447,6 +487,7 @@ async def end_of_day_report(
                 "transactions": 0,
                 "cash_total": Decimal("0"),
                 "card_total": Decimal("0"),
+                "gift_card_total": Decimal("0"),
                 "total": Decimal("0"),
             }
         cb = cashier_breakdown[cashier_id]
@@ -454,8 +495,10 @@ async def end_of_day_report(
         cb["total"] += sale.total
         cb["cash_total"] += sale_cash
         cb["card_total"] += sale_card
+        if sale.payment_method == "gift_card":
+            cb["gift_card_total"] = cb.get("gift_card_total", Decimal("0")) + sale.total
 
-    total_transactions = cash_count + card_count + split_count
+    total_transactions = cash_count + card_count + split_count + gift_card_count
     items_sold = sum(
         si.quantity for sale in sales for si in sale.items
     )
@@ -469,6 +512,7 @@ async def end_of_day_report(
         "cash": {"total": float(total_cash), "count": cash_count},
         "card": {"total": float(total_card), "count": card_count},
         "split": {"total": float(total_split), "count": split_count},
+        "gift_card": {"total": float(total_gift_card), "count": gift_card_count},
         "cashier_breakdown": [
             {
                 "cashier_id": cid,
@@ -476,6 +520,7 @@ async def end_of_day_report(
                 "transactions": info["transactions"],
                 "cash_total": float(info["cash_total"]),
                 "card_total": float(info["card_total"]),
+                "gift_card_total": float(info.get("gift_card_total", Decimal("0"))),
                 "total": float(info["total"]),
             }
             for cid, info in cashier_breakdown.items()
@@ -596,3 +641,201 @@ Respond with ONLY valid JSON, no markdown.
         ordered_matches = []
 
     return {"matches": ordered_matches, "description": description}
+
+
+@router.post("/gift-cards/activate", response_model=GiftCardResponse)
+async def activate_gift_card(
+    data: GiftCardActivate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+
+    if data.initial_balance < Decimal("0"):
+        raise HTTPException(status_code=400, detail="Balance cannot be negative")
+
+    existing = await db.execute(
+        select(GiftCard).where(GiftCard.barcode == data.barcode)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="This barcode is already registered as a gift card")
+
+    card = GiftCard(
+        barcode=data.barcode,
+        balance=data.initial_balance,
+        is_active=True,
+        notes=data.notes,
+    )
+    db.add(card)
+    await db.flush()
+
+    if data.initial_balance > 0:
+        txn = GiftCardTransaction(
+            gift_card_id=card.id,
+            amount=data.initial_balance,
+            transaction_type="load",
+            cashier_id=current_user.id,
+            balance_after=data.initial_balance,
+            notes="Initial activation",
+        )
+        db.add(txn)
+
+    await db.commit()
+    await db.refresh(card)
+    return card
+
+
+@router.get("/gift-cards/{barcode}", response_model=GiftCardResponse)
+async def check_gift_card_balance(
+    barcode: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+
+    result = await db.execute(
+        select(GiftCard).where(GiftCard.barcode == barcode)
+    )
+    card = result.scalar_one_or_none()
+    if not card:
+        raise HTTPException(status_code=404, detail="Gift card not found")
+    return card
+
+
+@router.post("/gift-cards/{barcode}/load", response_model=GiftCardResponse)
+async def load_gift_card(
+    barcode: str,
+    data: GiftCardLoad,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+
+    if data.amount <= 0:
+        raise HTTPException(status_code=400, detail="Load amount must be positive")
+
+    result = await db.execute(
+        select(GiftCard).where(GiftCard.barcode == barcode).with_for_update()
+    )
+    card = result.scalar_one_or_none()
+    if not card:
+        raise HTTPException(status_code=404, detail="Gift card not found")
+    if not card.is_active:
+        raise HTTPException(status_code=400, detail="Gift card is deactivated")
+
+    load_amount = Decimal(str(data.amount)).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    new_balance = (Decimal(str(card.balance)) + load_amount).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    card.balance = new_balance
+    card.last_used_at = datetime.utcnow()
+
+    txn = GiftCardTransaction(
+        gift_card_id=card.id,
+        amount=load_amount,
+        transaction_type="load",
+        cashier_id=current_user.id,
+        balance_after=new_balance,
+        notes=data.notes,
+    )
+    db.add(txn)
+    await db.commit()
+    await db.refresh(card)
+    return card
+
+
+@router.post("/gift-cards/{barcode}/redeem", response_model=GiftCardResponse)
+async def redeem_gift_card(
+    barcode: str,
+    data: GiftCardRedeem,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+
+    if data.amount <= 0:
+        raise HTTPException(status_code=400, detail="Redeem amount must be positive")
+
+    result = await db.execute(
+        select(GiftCard).where(GiftCard.barcode == barcode).with_for_update()
+    )
+    card = result.scalar_one_or_none()
+    if not card:
+        raise HTTPException(status_code=404, detail="Gift card not found")
+    if not card.is_active:
+        raise HTTPException(status_code=400, detail="Gift card is deactivated")
+
+    redeem_amount = Decimal(str(data.amount)).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    current_balance = Decimal(str(card.balance))
+    if redeem_amount > current_balance:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient gift card balance: ${current_balance:.2f} available, ${redeem_amount:.2f} requested"
+        )
+
+    new_balance = (current_balance - redeem_amount).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    card.balance = new_balance
+    card.last_used_at = datetime.utcnow()
+
+    txn = GiftCardTransaction(
+        gift_card_id=card.id,
+        amount=redeem_amount,
+        transaction_type="redeem",
+        cashier_id=current_user.id,
+        balance_after=new_balance,
+    )
+    db.add(txn)
+    await db.commit()
+    await db.refresh(card)
+    return card
+
+
+@router.get("/gift-cards/{barcode}/history")
+async def gift_card_history(
+    barcode: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+
+    result = await db.execute(
+        select(GiftCard).where(GiftCard.barcode == barcode)
+    )
+    card = result.scalar_one_or_none()
+    if not card:
+        raise HTTPException(status_code=404, detail="Gift card not found")
+
+    txn_result = await db.execute(
+        select(GiftCardTransaction)
+        .options(selectinload(GiftCardTransaction.cashier))
+        .where(GiftCardTransaction.gift_card_id == card.id)
+        .order_by(GiftCardTransaction.created_at.desc())
+    )
+    txns = txn_result.scalars().all()
+
+    return {
+        "card": {
+            "id": card.id,
+            "barcode": card.barcode,
+            "balance": float(card.balance),
+            "is_active": card.is_active,
+            "issued_at": card.issued_at.isoformat() if card.issued_at else None,
+            "last_used_at": card.last_used_at.isoformat() if card.last_used_at else None,
+        },
+        "transactions": [
+            {
+                "id": t.id,
+                "amount": float(t.amount),
+                "type": t.transaction_type,
+                "sale_id": t.sale_id,
+                "cashier_name": t.cashier.name if t.cashier else None,
+                "balance_after": float(t.balance_after),
+                "notes": t.notes,
+                "created_at": t.created_at.isoformat() if t.created_at else None,
+            }
+            for t in txns
+        ],
+    }

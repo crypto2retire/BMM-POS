@@ -805,6 +805,7 @@
         <div class="pos-navbar-right">
             <span id="cashier-name">Loading...</span>
             <button class="nav-link" onclick="openOnlineOrdersPanel()" style="position:relative">Orders <span id="orders-badge" style="display:none;position:absolute;top:-4px;right:-8px;background:#EF4444;color:#fff;font-size:10px;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 4px">0</span></button>
+            <button class="nav-link" onclick="openGiftCardModal()">Gift Cards</button>
             <button class="nav-link" onclick="openReceiptLookup()">Receipts</button>
             <button class="nav-link" onclick="openEndOfDay()">End of Day</button>
             <a href="/admin/vendors.html">Vendors</a>
@@ -890,6 +891,9 @@
                 💳 CARD (Poynt)
             </button>
         </div>
+        <button class="pay-btn card" id="gc-pay-btn" onclick="openGcPayModal()" disabled style="width:100%;margin-top:6px;background:#7C3AED;border-color:#7C3AED">
+            🎁 GIFT CARD
+        </button>
     </div>
 </div>
 
@@ -1086,6 +1090,83 @@
     <button class="pay-btn card" id="mobile-card-btn" onclick="startCardPayment()" disabled style="flex:1;max-width:140px;padding:0.75rem">
         💳 Card
     </button>
+</div>
+
+<!-- Gift Card Payment Modal -->
+<div class="pos-modal-overlay hidden" id="gc-pay-modal">
+    <div class="pos-modal" style="max-width:400px">
+        <h2>🎁 Gift Card Payment</h2>
+        <div class="total-display">
+            <small>Amount Due</small>
+            <span id="gc-pay-total">$0.00</span>
+        </div>
+        <div style="margin:1rem 0">
+            <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.3rem">Scan Gift Card Barcode</label>
+            <input type="text" id="gc-pay-barcode" placeholder="Scan or type barcode" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.6rem 0.75rem;font-size:1rem;box-sizing:border-box">
+        </div>
+        <div id="gc-pay-balance" style="min-height:30px;margin-bottom:0.5rem"></div>
+        <div id="gc-pay-error" style="color:#F87171;font-size:0.8rem;min-height:18px"></div>
+        <div style="display:flex;gap:8px">
+            <button class="cancel-btn" onclick="closeGcPayModal()" style="flex:1">Cancel</button>
+            <button class="confirm-btn" onclick="processGcPayment()" id="gc-pay-submit" style="flex:1;background:#7C3AED">Pay with Gift Card</button>
+        </div>
+    </div>
+</div>
+
+<!-- Gift Card Modal -->
+<div class="pos-modal-overlay hidden" id="gc-modal">
+    <div class="pos-modal" style="max-width:480px;max-height:90vh;overflow-y:auto">
+        <h2>Gift Cards</h2>
+        <div style="display:flex;gap:6px;margin-bottom:1rem">
+            <button class="confirm-btn" onclick="switchGcTab('check')" id="gc-tab-check" style="flex:1;padding:0.5rem;font-size:0.75rem">Check Balance</button>
+            <button class="confirm-btn" onclick="switchGcTab('load')" id="gc-tab-load" style="flex:1;padding:0.5rem;font-size:0.75rem;background:#555">Load Card</button>
+            <button class="confirm-btn" onclick="switchGcTab('activate')" id="gc-tab-activate" style="flex:1;padding:0.5rem;font-size:0.75rem;background:#555">Activate New</button>
+        </div>
+
+        <div id="gc-check-panel">
+            <div style="display:flex;gap:6px;margin-bottom:0.75rem">
+                <input type="text" id="gc-check-barcode" placeholder="Scan or type gift card barcode" style="flex:1;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem">
+                <button class="confirm-btn" onclick="checkGcBalance()" style="padding:0.55rem 1rem;font-size:0.8rem">Check</button>
+            </div>
+            <div id="gc-check-result" style="min-height:100px"></div>
+        </div>
+
+        <div id="gc-load-panel" style="display:none">
+            <div style="margin-bottom:0.6rem">
+                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Gift Card Barcode</label>
+                <input type="text" id="gc-load-barcode" placeholder="Scan or type barcode" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+            </div>
+            <div style="margin-bottom:0.6rem">
+                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Amount to Load ($)</label>
+                <input type="number" id="gc-load-amount" placeholder="25.00" min="1" step="0.01" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+            </div>
+            <div style="margin-bottom:0.6rem">
+                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Notes (optional)</label>
+                <input type="text" id="gc-load-notes" placeholder="e.g. Birthday gift" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.85rem;box-sizing:border-box">
+            </div>
+            <div id="gc-load-error" style="color:#F87171;font-size:0.8rem;min-height:18px"></div>
+            <button class="confirm-btn" onclick="loadGiftCard()" id="gc-load-btn" style="width:100%;padding:0.7rem;margin-top:4px">Load Card</button>
+        </div>
+
+        <div id="gc-activate-panel" style="display:none">
+            <div style="margin-bottom:0.6rem">
+                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Gift Card Barcode</label>
+                <input type="text" id="gc-activate-barcode" placeholder="Scan the new gift card barcode" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+            </div>
+            <div style="margin-bottom:0.6rem">
+                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Initial Balance ($)</label>
+                <input type="number" id="gc-activate-amount" placeholder="25.00" min="0" step="0.01" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+            </div>
+            <div style="margin-bottom:0.6rem">
+                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Notes (optional)</label>
+                <input type="text" id="gc-activate-notes" placeholder="e.g. Holiday promo" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.85rem;box-sizing:border-box">
+            </div>
+            <div id="gc-activate-error" style="color:#F87171;font-size:0.8rem;min-height:18px"></div>
+            <button class="confirm-btn" onclick="activateGiftCard()" id="gc-activate-btn" style="width:100%;padding:0.7rem;margin-top:4px;background:#147a54">Activate Card</button>
+        </div>
+
+        <button class="cancel-btn" onclick="closeGcModal()" style="width:100%;margin-top:1rem">Close</button>
+    </div>
 </div>
 
 <!-- End of Day Modal -->
@@ -1482,6 +1563,7 @@
             cardBtn.disabled = true;
             if (mobileCashBtn) mobileCashBtn.disabled = true;
             if (mobileCardBtn) mobileCardBtn.disabled = true;
+            document.getElementById('gc-pay-btn').disabled = true;
         } else {
             empty.style.display = 'none';
             table.style.display = 'table';
@@ -1489,6 +1571,7 @@
             cardBtn.disabled = false;
             if (mobileCashBtn) mobileCashBtn.disabled = false;
             if (mobileCardBtn) mobileCardBtn.disabled = false;
+            document.getElementById('gc-pay-btn').disabled = false;
 
             tbody.innerHTML = cart.map(({ item, quantity }) => {
                 const activePrice = getActivePrice(item);
@@ -2074,6 +2157,182 @@ table { width: 100%; border-collapse: collapse; }
         openResumeModal();
     }
 
+    // ─── Gift Card Functions ──────────────────────────────────────────────────
+    function openGiftCardModal() {
+        document.getElementById('gc-modal').classList.remove('hidden');
+        switchGcTab('check');
+        document.getElementById('gc-check-barcode').value = '';
+        document.getElementById('gc-check-result').innerHTML = '';
+        setTimeout(function() { document.getElementById('gc-check-barcode').focus(); }, 100);
+    }
+    function closeGcModal() { document.getElementById('gc-modal').classList.add('hidden'); }
+
+    function switchGcTab(tab) {
+        document.getElementById('gc-check-panel').style.display = tab === 'check' ? '' : 'none';
+        document.getElementById('gc-load-panel').style.display = tab === 'load' ? '' : 'none';
+        document.getElementById('gc-activate-panel').style.display = tab === 'activate' ? '' : 'none';
+        document.getElementById('gc-tab-check').style.background = tab === 'check' ? '' : '#555';
+        document.getElementById('gc-tab-load').style.background = tab === 'load' ? '' : '#555';
+        document.getElementById('gc-tab-activate').style.background = tab === 'activate' ? '' : '#555';
+        if (tab === 'check') setTimeout(function() { document.getElementById('gc-check-barcode').focus(); }, 50);
+        if (tab === 'load') setTimeout(function() { document.getElementById('gc-load-barcode').focus(); }, 50);
+        if (tab === 'activate') setTimeout(function() { document.getElementById('gc-activate-barcode').focus(); }, 50);
+    }
+
+    async function checkGcBalance() {
+        var bc = document.getElementById('gc-check-barcode').value.trim();
+        var result = document.getElementById('gc-check-result');
+        if (!bc) { result.innerHTML = '<p style="color:#F87171;text-align:center">Please scan or enter a barcode</p>'; return; }
+        result.innerHTML = '<p style="text-align:center;color:#999">Checking...</p>';
+        try {
+            var data = await apiGet('/api/v1/pos/gift-cards/' + encodeURIComponent(bc) + '/history');
+            var card = data.card;
+            var html = '<div style="background:#2D2D30;padding:1rem;margin-bottom:0.75rem;text-align:center">'
+                + '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:#A8A6A1;margin-bottom:4px">Gift Card Balance</div>'
+                + '<div style="font-size:2rem;font-weight:700;color:#C9A96E">$' + parseFloat(card.balance).toFixed(2) + '</div>'
+                + '<div style="font-size:0.75rem;color:#A8A6A1;margin-top:4px">Barcode: ' + escHtml(card.barcode) + '</div>'
+                + '<div style="font-size:0.7rem;color:' + (card.is_active ? '#6EE7B7' : '#F87171') + ';margin-top:2px">' + (card.is_active ? 'Active' : 'Deactivated') + '</div>'
+                + '</div>';
+            if (data.transactions && data.transactions.length) {
+                html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:6px">Transaction History</div>';
+                html += data.transactions.slice(0, 10).map(function(t) {
+                    var d = new Date(t.created_at);
+                    var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                    var color = t.type === 'load' ? '#6EE7B7' : '#F87171';
+                    var sign = t.type === 'load' ? '+' : '-';
+                    return '<div style="display:flex;justify-content:space-between;padding:4px 6px;background:#2D2D30;margin-bottom:2px;font-size:0.82rem">'
+                        + '<span style="color:#A8A6A1">' + escHtml(dateStr + ' ' + timeStr + ' · ' + (t.cashier_name||'') + (t.notes ? ' · ' + t.notes : '')) + '</span>'
+                        + '<span style="color:' + color + ';font-weight:600">' + sign + '$' + parseFloat(t.amount).toFixed(2) + '</span>'
+                        + '</div>';
+                }).join('');
+            }
+            result.innerHTML = html;
+        } catch (err) {
+            result.innerHTML = '<p style="color:#F87171;text-align:center">' + (err.message || 'Gift card not found') + '</p>';
+        }
+    }
+
+    async function loadGiftCard() {
+        var bc = document.getElementById('gc-load-barcode').value.trim();
+        var amount = parseFloat(document.getElementById('gc-load-amount').value);
+        var notes = document.getElementById('gc-load-notes').value.trim();
+        var errEl = document.getElementById('gc-load-error');
+        if (!bc) { errEl.textContent = 'Please scan a barcode'; return; }
+        if (!amount || amount <= 0) { errEl.textContent = 'Enter a valid amount'; return; }
+        errEl.textContent = '';
+        var btn = document.getElementById('gc-load-btn');
+        btn.disabled = true; btn.textContent = 'Loading...';
+        try {
+            var card = await apiPost('/api/v1/pos/gift-cards/' + encodeURIComponent(bc) + '/load', { amount: amount, notes: notes || null });
+            errEl.style.color = '#6EE7B7';
+            errEl.textContent = 'Loaded $' + amount.toFixed(2) + ' — New balance: $' + parseFloat(card.balance).toFixed(2);
+            document.getElementById('gc-load-amount').value = '';
+            document.getElementById('gc-load-notes').value = '';
+        } catch (err) {
+            errEl.style.color = '#F87171';
+            errEl.textContent = err.message || 'Failed to load card';
+        } finally {
+            btn.disabled = false; btn.textContent = 'Load Card';
+        }
+    }
+
+    async function activateGiftCard() {
+        var bc = document.getElementById('gc-activate-barcode').value.trim();
+        var amount = parseFloat(document.getElementById('gc-activate-amount').value) || 0;
+        var notes = document.getElementById('gc-activate-notes').value.trim();
+        var errEl = document.getElementById('gc-activate-error');
+        if (!bc) { errEl.textContent = 'Please scan the gift card barcode'; return; }
+        errEl.textContent = '';
+        var btn = document.getElementById('gc-activate-btn');
+        btn.disabled = true; btn.textContent = 'Activating...';
+        try {
+            var card = await apiPost('/api/v1/pos/gift-cards/activate', { barcode: bc, initial_balance: amount, notes: notes || null });
+            errEl.style.color = '#6EE7B7';
+            errEl.textContent = 'Card activated with $' + parseFloat(card.balance).toFixed(2) + ' balance';
+            document.getElementById('gc-activate-barcode').value = '';
+            document.getElementById('gc-activate-amount').value = '';
+            document.getElementById('gc-activate-notes').value = '';
+        } catch (err) {
+            errEl.style.color = '#F87171';
+            errEl.textContent = err.message || 'Failed to activate card';
+        } finally {
+            btn.disabled = false; btn.textContent = 'Activate Card';
+        }
+    }
+
+    document.getElementById('gc-modal').addEventListener('click', function(e) { if (e.target === this) closeGcModal(); });
+    document.getElementById('gc-check-barcode').addEventListener('keydown', function(e) { if (e.key === 'Enter') checkGcBalance(); });
+
+    // ─── Gift Card Payment ──────────────────────────────────────────────────
+    function openGcPayModal() {
+        if (cart.length === 0) return;
+        var totals = calcTotals();
+        document.getElementById('gc-pay-total').textContent = '$' + totals.total.toFixed(2);
+        document.getElementById('gc-pay-barcode').value = '';
+        document.getElementById('gc-pay-balance').innerHTML = '';
+        document.getElementById('gc-pay-error').textContent = '';
+        document.getElementById('gc-pay-modal').classList.remove('hidden');
+        setTimeout(function() { document.getElementById('gc-pay-barcode').focus(); }, 100);
+    }
+    function closeGcPayModal() { document.getElementById('gc-pay-modal').classList.add('hidden'); }
+
+    document.getElementById('gc-pay-modal').addEventListener('click', function(e) { if (e.target === this) closeGcPayModal(); });
+
+    var gcPayCheckTimer = null;
+    document.getElementById('gc-pay-barcode').addEventListener('input', function() {
+        clearTimeout(gcPayCheckTimer);
+        var bc = this.value.trim();
+        if (bc.length >= 3) {
+            gcPayCheckTimer = setTimeout(async function() {
+                try {
+                    var card = await apiGet('/api/v1/pos/gift-cards/' + encodeURIComponent(bc));
+                    var totals = calcTotals();
+                    var sufficient = parseFloat(card.balance) >= totals.total;
+                    document.getElementById('gc-pay-balance').innerHTML =
+                        '<div style="text-align:center;padding:6px;background:#2D2D30">'
+                        + '<span style="color:#A8A6A1;font-size:0.8rem">Card Balance: </span>'
+                        + '<span style="font-size:1.1rem;font-weight:700;color:' + (sufficient ? '#6EE7B7' : '#F87171') + '">$' + parseFloat(card.balance).toFixed(2) + '</span>'
+                        + (sufficient ? '' : '<div style="color:#F87171;font-size:0.75rem;margin-top:2px">Insufficient balance</div>')
+                        + '</div>';
+                    document.getElementById('gc-pay-error').textContent = '';
+                } catch (err) {
+                    document.getElementById('gc-pay-balance').innerHTML = '';
+                    document.getElementById('gc-pay-error').textContent = err.message || 'Card not found';
+                }
+            }, 300);
+        }
+    });
+
+    document.getElementById('gc-pay-barcode').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') processGcPayment();
+    });
+
+    async function processGcPayment() {
+        var bc = document.getElementById('gc-pay-barcode').value.trim();
+        var errEl = document.getElementById('gc-pay-error');
+        if (!bc) { errEl.textContent = 'Please scan the gift card'; return; }
+        errEl.textContent = '';
+        var btn = document.getElementById('gc-pay-submit');
+        btn.disabled = true; btn.textContent = 'Processing...';
+        try {
+            var items = cart.map(function(c) { return { barcode: c.item.barcode, quantity: c.quantity }; });
+            var sale = await apiPost('/api/v1/pos/sale', {
+                items: items,
+                payment_method: 'gift_card',
+                gift_card_barcode: bc
+            });
+            closeGcPayModal();
+            cart = [];
+            renderCart();
+            showReceiptModal(sale);
+        } catch (err) {
+            errEl.textContent = err.message || 'Payment failed';
+        } finally {
+            btn.disabled = false; btn.textContent = 'Pay with Gift Card';
+        }
+    }
+
     // ─── Receipt Lookup ──────────────────────────────────────────────────────
     let lookupSaleData = null;
 
@@ -2097,14 +2356,19 @@ table { width: 100%; border-collapse: collapse; }
                 const sale = await apiGet(`/api/v1/sales/${saleNum}`);
                 renderReceiptResults([sale]);
             } else {
-                const sales = await apiGet('/api/v1/sales/?limit=500');
-                const filtered = sales.filter(s => {
-                    const d = new Date(s.created_at);
-                    const dateStr = d.toISOString().split('T')[0];
-                    const readableDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                    return dateStr.includes(q) || readableDate.toLowerCase().includes(q.toLowerCase());
-                });
-                renderReceiptResults(filtered);
+                var dateMatch = q.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+                if (dateMatch) {
+                    var sales = await apiGet('/api/v1/sales/?search_date=' + encodeURIComponent(q) + '&limit=200');
+                    renderReceiptResults(sales);
+                } else {
+                    var sales = await apiGet('/api/v1/sales/?limit=100');
+                    var filtered = sales.filter(function(s) {
+                        var d = new Date(s.created_at);
+                        var readableDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        return readableDate.toLowerCase().includes(q.toLowerCase());
+                    });
+                    renderReceiptResults(filtered);
+                }
             }
         } catch (err) {
             results.innerHTML = `<p style="color:#F87171;text-align:center">${err.message || 'Not found'}</p>`;

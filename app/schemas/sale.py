@@ -15,6 +15,7 @@ class SaleCreate(BaseModel):
     cash_tendered: Optional[Decimal] = None
     card_transaction_id: Optional[str] = None
     receipt_email: Optional[str] = None
+    gift_card_barcode: Optional[str] = None
 
 
 class SaleItemResponse(BaseModel):
