@@ -99,8 +99,8 @@ def _draw_label(c, item, x_offset, y_offset):
 
     barcode_val = item.barcode or ""
     if barcode_val:
-        quiet_zone = 0.08 * inch
-        avail_w = (inner_right - inner_left) - quiet_zone * 2
+        quiet_pad = 0.1 * inch
+        avail_w = (inner_right - inner_left) - quiet_pad * 2
 
         bar_w = 1.3
         barcode_obj = code128.Code128(
@@ -112,8 +112,8 @@ def _draw_label(c, item, x_offset, y_offset):
         )
 
         if barcode_obj.width > avail_w:
-            bar_w = avail_w / (barcode_obj.width / bar_w)
-            bar_w = max(bar_w, 0.9)
+            bar_w = avail_w / barcode_obj.width * bar_w
+            bar_w = max(bar_w, 0.55)
             barcode_obj = code128.Code128(
                 barcode_val,
                 barHeight=0.42 * inch,
