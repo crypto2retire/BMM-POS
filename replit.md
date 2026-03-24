@@ -37,6 +37,7 @@ The frontend design adheres to Bowenstreet Market branding with a dark (`#38383B
 - **Sales Management**: Records sales, tracks inventory decrement, and credits vendor balances. Supports consignment items with configurable rates.
 - **Studio Class Management**: CRUD for studio classes, public class calendar, online registration, and image uploads.
 - **Gift Card System**: In-house gift cards with barcode, balance tracking, and transaction history.
+- **Bulk CSV Import**: Admin-only CSV upload for vendors and inventory items (`/api/v1/bulk-import/vendors`, `/api/v1/bulk-import/inventory`). Includes vendor deduplication by email, auto-generated secure passwords, per-row savepoints, and a clear-test-data endpoint (blocked when sales exist). Admin UI in the Data Import section of `/admin/index.html` with template downloads.
 - **Rent Tracking**: Monthly rent tracking for vendors, including payment methods and overdue flagging.
 
 ## External Dependencies

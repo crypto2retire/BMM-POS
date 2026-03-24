@@ -1,16 +1,18 @@
+import os
 import sys
 import traceback
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from pathlib import Path
 from sqlalchemy import text
 
 from app.database import AsyncSessionLocal, engine, Base
-from app.routers import auth, vendors, items, sales, pos, assistant, storefront, rent, admin, reports, settings, studio
+from app.routers import auth, vendors, items, sales, pos, assistant, storefront, rent, admin, reports, settings, studio, bulk_import
 
 
 @asynccontextmanager
@@ -180,11 +182,19 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+_replit_domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
+_replit_domains = os.environ.get("REPLIT_DOMAINS", "")
+_allowed_origins = ["*"] if not _replit_domain else [
+    f"https://{_replit_domain}",
+    *[f"https://{d.strip()}" for d in _replit_domains.split(",") if d.strip()],
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_allowed_origins,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+    allow_credentials=True,
 )
 
 
@@ -215,6 +225,7 @@ app.include_router(admin.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
 app.include_router(settings.router, prefix="/api/v1")
 app.include_router(studio.router, prefix="/api/v1")
+app.include_router(bulk_import.router, prefix="/api/v1")
 
 @app.get("/llms.txt", response_class=PlainTextResponse)
 async def llms_txt():

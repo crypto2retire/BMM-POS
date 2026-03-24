@@ -149,6 +149,10 @@ function showAlert(containerId, message, type) {
     type = type || 'error';
     const el = document.getElementById(containerId);
     if (!el) return;
-    el.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
+    var div = document.createElement('div');
+    div.className = 'alert alert-' + (['error','success','info','warning'].indexOf(type) >= 0 ? type : 'error');
+    div.textContent = message;
+    el.innerHTML = '';
+    el.appendChild(div);
     setTimeout(function () { el.innerHTML = ''; }, 5000);
 }

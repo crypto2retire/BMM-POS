@@ -397,6 +397,41 @@
 
     <div class="section">
         <div class="section-header">
+            <h2 class="section-title">Data Import</h2>
+        </div>
+        <div class="card" style="padding:1.25rem">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <div>
+                    <h3 style="font-size:0.85rem;color:var(--text);margin-bottom:0.5rem">Import Vendors</h3>
+                    <p style="font-size:0.75rem;color:var(--text-light);margin-bottom:0.6rem">CSV with columns: name, email, phone, booth_number, monthly_rent, commission_rate, payout_method, zelle_handle</p>
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <input type="file" id="vendor-csv" accept=".csv" style="font-size:0.8rem;color:var(--text-light);max-width:200px">
+                        <button class="btn btn-primary btn-sm" onclick="uploadVendors()" id="upload-vendors-btn">Upload Vendors</button>
+                        <a href="#" onclick="downloadVendorTemplate(event)" style="font-size:0.75rem;color:var(--accent)">Template</a>
+                    </div>
+                </div>
+                <div>
+                    <h3 style="font-size:0.85rem;color:var(--text);margin-bottom:0.5rem">Import Inventory</h3>
+                    <p style="font-size:0.75rem;color:var(--text-light);margin-bottom:0.6rem">CSV with columns: name, price, vendor (name or booth), quantity, category, description, barcode, tax_exempt</p>
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <input type="file" id="inventory-csv" accept=".csv" style="font-size:0.8rem;color:var(--text-light);max-width:200px">
+                        <button class="btn btn-primary btn-sm" onclick="uploadInventory()" id="upload-inventory-btn">Upload Inventory</button>
+                        <a href="#" onclick="downloadInventoryTemplate(event)" style="font-size:0.75rem;color:var(--accent)">Template</a>
+                    </div>
+                </div>
+            </div>
+            <div id="import-results" style="margin-top:0.75rem;max-height:300px;overflow-y:auto"></div>
+            <div style="margin-top:0.75rem;border-top:1px solid var(--border);padding-top:0.75rem">
+                <button class="btn btn-sm" onclick="clearTestData()" style="background:#991B1B;color:#FCA5A5;font-size:0.75rem">Clear All Test Vendors &amp; Inventory</button>
+                <span style="font-size:0.7rem;color:var(--text-light);margin-left:8px">Only works when no sales exist. Use for pre-launch testing.</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="ornament">&loz;</div>
+
+    <div class="section">
+        <div class="section-header">
             <h2 class="section-title">All Vendors</h2>
             <a href="/admin/vendors.html" class="btn btn-primary btn-sm">Manage Vendors</a>
         </div>
@@ -810,6 +845,144 @@
     });
 
     loadEmployees();
+
+    function downloadVendorTemplate(e) {
+        e.preventDefault();
+        var csv = 'name,email,phone,booth_number,monthly_rent,commission_rate,payout_method,zelle_handle\n';
+        csv += 'Jane Smith,jane@example.com,920-555-1234,A1,200.00,0.10,zelle,jane@example.com\n';
+        var blob = new Blob([csv], {type:'text/csv'});
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'vendor_template.csv';
+        a.click();
+    }
+
+    function downloadInventoryTemplate(e) {
+        e.preventDefault();
+        var csv = 'name,price,vendor,quantity,category,description,barcode,tax_exempt\n';
+        csv += 'Vintage Lamp,45.00,Jane Smith,1,Home Decor,Beautiful antique lamp,,no\n';
+        var blob = new Blob([csv], {type:'text/csv'});
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'inventory_template.csv';
+        a.click();
+    }
+
+    async function uploadVendors() {
+        var fileInput = document.getElementById('vendor-csv');
+        var btn = document.getElementById('upload-vendors-btn');
+        var results = document.getElementById('import-results');
+        if (!fileInput.files.length) { results.innerHTML = '<p style="color:#F87171">Please select a CSV file</p>'; return; }
+        btn.disabled = true; btn.textContent = 'Uploading...';
+        results.innerHTML = '<p style="color:var(--text-light)">Processing...</p>';
+        try {
+            var formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            var token = sessionStorage.getItem('bmm_token');
+            var resp = await fetch('/api/v1/bulk-import/vendors', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                body: formData
+            });
+            var data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || 'Upload failed');
+            var html = '<div style="padding:0.75rem;background:var(--surface);margin-bottom:0.5rem"><strong style="color:var(--accent)">' + escapeHtml(data.summary) + '</strong></div>';
+            if (data.created.length) {
+                html += '<div style="font-size:0.75rem;color:var(--text-light);margin-bottom:4px">Created:</div>';
+                data.created.forEach(function(c) {
+                    html += '<div style="font-size:0.8rem;padding:3px 6px;background:var(--surface);margin-bottom:2px;color:var(--text)">' + escapeHtml(c.name) + ' — ' + escapeHtml(c.email) + (c.booth ? ' (Booth ' + escapeHtml(c.booth) + ')' : '') + '</div>';
+                });
+            }
+            if (data.skipped.length) {
+                html += '<div style="font-size:0.75rem;color:#FBBF24;margin-top:6px;margin-bottom:4px">Skipped:</div>';
+                data.skipped.forEach(function(s) {
+                    html += '<div style="font-size:0.8rem;padding:3px 6px;color:#FBBF24">Row ' + s.row + ': ' + escapeHtml(s.reason) + (s.name ? ' (' + escapeHtml(s.name) + ')' : '') + '</div>';
+                });
+            }
+            if (data.errors.length) {
+                html += '<div style="font-size:0.75rem;color:#F87171;margin-top:6px;margin-bottom:4px">Errors:</div>';
+                data.errors.forEach(function(e) {
+                    html += '<div style="font-size:0.8rem;padding:3px 6px;color:#F87171">Row ' + e.row + ': ' + escapeHtml(e.error) + '</div>';
+                });
+            }
+            results.innerHTML = html;
+            fileInput.value = '';
+            loadVendors();
+        } catch (err) {
+            results.innerHTML = '<p style="color:#F87171">' + escapeHtml(err.message) + '</p>';
+        } finally {
+            btn.disabled = false; btn.textContent = 'Upload Vendors';
+        }
+    }
+
+    async function uploadInventory() {
+        var fileInput = document.getElementById('inventory-csv');
+        var btn = document.getElementById('upload-inventory-btn');
+        var results = document.getElementById('import-results');
+        if (!fileInput.files.length) { results.innerHTML = '<p style="color:#F87171">Please select a CSV file</p>'; return; }
+        btn.disabled = true; btn.textContent = 'Uploading...';
+        results.innerHTML = '<p style="color:var(--text-light)">Processing...</p>';
+        try {
+            var formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            var token = sessionStorage.getItem('bmm_token');
+            var resp = await fetch('/api/v1/bulk-import/inventory', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                body: formData
+            });
+            var data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || 'Upload failed');
+            var html = '<div style="padding:0.75rem;background:var(--surface);margin-bottom:0.5rem"><strong style="color:var(--accent)">' + escapeHtml(data.summary) + '</strong></div>';
+            if (data.created.length) {
+                html += '<div style="font-size:0.75rem;color:var(--text-light);margin-bottom:4px">Created (' + data.created.length + ' items):</div>';
+                data.created.slice(0, 50).forEach(function(c) {
+                    html += '<div style="font-size:0.8rem;padding:3px 6px;background:var(--surface);margin-bottom:2px;color:var(--text)">' + escapeHtml(c.name) + ' — $' + c.price.toFixed(2) + ' — ' + escapeHtml(c.vendor) + (c.booth ? ' (Booth ' + escapeHtml(c.booth) + ')' : '') + '</div>';
+                });
+                if (data.created.length > 50) html += '<div style="font-size:0.75rem;color:var(--text-light);padding:3px 6px">... and ' + (data.created.length - 50) + ' more</div>';
+            }
+            if (data.skipped.length) {
+                html += '<div style="font-size:0.75rem;color:#FBBF24;margin-top:6px;margin-bottom:4px">Skipped:</div>';
+                data.skipped.forEach(function(s) {
+                    html += '<div style="font-size:0.8rem;padding:3px 6px;color:#FBBF24">Row ' + s.row + ': ' + escapeHtml(s.reason) + '</div>';
+                });
+            }
+            if (data.errors.length) {
+                html += '<div style="font-size:0.75rem;color:#F87171;margin-top:6px;margin-bottom:4px">Errors:</div>';
+                data.errors.slice(0, 20).forEach(function(e) {
+                    html += '<div style="font-size:0.8rem;padding:3px 6px;color:#F87171">Row ' + e.row + ' (' + escapeHtml(e.name || '') + '): ' + escapeHtml(e.error) + '</div>';
+                });
+                if (data.errors.length > 20) html += '<div style="font-size:0.75rem;color:#F87171;padding:3px 6px">... and ' + (data.errors.length - 20) + ' more errors</div>';
+            }
+            results.innerHTML = html;
+            fileInput.value = '';
+        } catch (err) {
+            results.innerHTML = '<p style="color:#F87171">' + escapeHtml(err.message) + '</p>';
+        } finally {
+            btn.disabled = false; btn.textContent = 'Upload Inventory';
+        }
+    }
+
+    async function clearTestData() {
+        if (!confirm('This will DELETE all vendor accounts (not admin/cashier) and their inventory items. This ONLY works if there are no sales recorded yet. Continue?')) return;
+        var results = document.getElementById('import-results');
+        results.innerHTML = '<p style="color:var(--text-light)">Clearing...</p>';
+        try {
+            var token = sessionStorage.getItem('bmm_token');
+            var resp = await fetch('/api/v1/bulk-import/clear-test-data', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+            });
+            var data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || 'Failed to clear data');
+            results.innerHTML = '<div style="padding:0.75rem;background:var(--surface);color:var(--accent)">' + escapeHtml(data.message) + '</div>';
+            loadVendors();
+        } catch (err) {
+            results.innerHTML = '<p style="color:#F87171">' + escapeHtml(err.message) + '</p>';
+        }
+    }
+
+    function escapeHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 </script>
 <script src="/static/js/assistant-panel.js"></script>
 <script>initAssistantPanel('The user is an admin at Bowenstreet Market.', { buttonBottom: '70px' });</script>

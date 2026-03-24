@@ -1,21 +1,28 @@
 from datetime import datetime, timedelta
 from typing import Optional
+from collections import defaultdict
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+import time
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
+import os
 from app.database import get_db
 from app.models.vendor import Vendor
 
 logger = logging.getLogger("bmm-auth")
 
+_login_attempts = defaultdict(list)
+_LOGIN_WINDOW = 300
+_LOGIN_MAX = 10
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-SECRET_KEY = "bmm-pos-secret-key-change-in-production"
+SECRET_KEY = os.environ.get("SECRET_KEY", "bmm-pos-dev-fallback-key")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480
 
@@ -72,11 +79,18 @@ require_admin = require_role("admin")
 require_cashier_or_admin = require_role("admin", "cashier")
 
 @router.post("/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    _login_attempts[client_ip] = [t for t in _login_attempts[client_ip] if now - t < _LOGIN_WINDOW]
+    if len(_login_attempts[client_ip]) >= _LOGIN_MAX:
+        raise HTTPException(status_code=429, detail="Too many login attempts. Please wait a few minutes.")
+
     result = await db.execute(select(Vendor).where(func.lower(Vendor.email) == form_data.username.lower()))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(form_data.password, user.password_hash):
+        _login_attempts[client_ip].append(now)
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=401, detail="Account is deactivated")
