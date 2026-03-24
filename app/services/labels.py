@@ -99,13 +99,22 @@ def _draw_label(c, item, x_offset, y_offset):
 
     barcode_val = item.barcode or ""
     if barcode_val:
-        quiet_pad = 0.1 * inch
-        avail_w = (inner_right - inner_left) - quiet_pad * 2
+        bc_margin = margin + 1
+        avail_w = w - bc_margin * 2
 
-        bar_w = 1.3
+        probe = code128.Code128(barcode_val, barHeight=10, barWidth=1.0, humanReadable=False, quiet=False)
+        modules = probe.width
+
+        bar_w = avail_w / modules
+        bar_w = min(bar_w, 2.5)
+
+        barcode_y = margin + 12
+        bar_h = price_y - 4 - barcode_y
+        bar_h = max(bar_h, 0.35 * inch)
+
         barcode_obj = code128.Code128(
             barcode_val,
-            barHeight=0.45 * inch,
+            barHeight=bar_h,
             barWidth=bar_w,
             humanReadable=False,
             quiet=False,
@@ -113,10 +122,9 @@ def _draw_label(c, item, x_offset, y_offset):
 
         if barcode_obj.width > avail_w:
             bar_w = avail_w / barcode_obj.width * bar_w
-            bar_w = max(bar_w, 0.55)
             barcode_obj = code128.Code128(
                 barcode_val,
-                barHeight=0.42 * inch,
+                barHeight=bar_h,
                 barWidth=bar_w,
                 humanReadable=False,
                 quiet=False,
@@ -124,7 +132,6 @@ def _draw_label(c, item, x_offset, y_offset):
 
         barcode_w = barcode_obj.width
         barcode_x = (w - barcode_w) / 2
-        barcode_y = margin + 11
         barcode_obj.drawOn(c, barcode_x, barcode_y)
 
         c.setFont("Helvetica", 6)
