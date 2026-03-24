@@ -6,7 +6,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from app.database import get_db
 from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
@@ -15,7 +15,7 @@ from app.services.barcode import generate_sku
 
 router = APIRouter(prefix="/bulk-import", tags=["bulk-import"])
 
-MAX_FILE_SIZE = 5 * 1024 * 1024
+MAX_FILE_SIZE = 25 * 1024 * 1024
 
 
 def _clean(val):
@@ -178,6 +178,35 @@ async def bulk_import_inventory(
             vendors_cache[v.booth_number.lower()] = v
         vendors_cache[str(v.id)] = v
 
+    sku_counters = {}
+    sku_count_result = await db.execute(
+        select(Item.vendor_id, func.count(Item.id)).group_by(Item.vendor_id)
+    )
+    for vid, cnt in sku_count_result.all():
+        sku_counters[vid] = cnt
+
+    existing_skus = set()
+    sku_result = await db.execute(select(Item.sku))
+    for (s,) in sku_result.all():
+        if s:
+            existing_skus.add(s)
+
+    existing_barcodes = set()
+    bc_result = await db.execute(select(Item.barcode))
+    for (b,) in bc_result.all():
+        if b:
+            existing_barcodes.add(b)
+
+    def next_sku(vendor_id):
+        seq = sku_counters.get(vendor_id, 0) + 1
+        while True:
+            sku = f"BSM-{vendor_id:04d}-{seq:06d}"
+            if sku not in existing_skus:
+                existing_skus.add(sku)
+                sku_counters[vendor_id] = seq
+                return sku
+            seq += 1
+
     created = []
     skipped = []
     errors = []
@@ -219,14 +248,13 @@ async def bulk_import_inventory(
 
         if not barcode:
             barcode = str(uuid.uuid4().int)[:12]
-            existing = await db.execute(select(Item).where(Item.barcode == barcode))
-            while existing.scalar_one_or_none():
+            while barcode in existing_barcodes:
                 barcode = str(uuid.uuid4().int)[:12]
-                existing = await db.execute(select(Item).where(Item.barcode == barcode))
+        existing_barcodes.add(barcode)
 
         try:
             async with db.begin_nested():
-                sku = await generate_sku(vendor.id, db)
+                sku = clean_row.get("sku") or next_sku(vendor.id)
 
                 sale_price = None
                 if clean_row.get("sale_price"):
@@ -262,7 +290,6 @@ async def bulk_import_inventory(
                     status="active",
                 )
                 db.add(item)
-                await db.flush()
 
             created.append({
                 "row": row_num,
@@ -271,7 +298,6 @@ async def bulk_import_inventory(
                 "vendor": vendor.name,
                 "booth": vendor.booth_number,
                 "barcode": barcode,
-                "id": item.id,
             })
         except Exception as e:
             errors.append({"row": row_num, "name": name, "error": "Import failed for this row"})
@@ -281,7 +307,7 @@ async def bulk_import_inventory(
 
     return {
         "summary": f"Created {len(created)} items, skipped {len(skipped)}, errors {len(errors)}",
-        "created": created,
+        "created_count": len(created),
         "skipped": skipped,
         "errors": errors,
     }
