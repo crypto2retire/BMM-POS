@@ -159,6 +159,16 @@ async def dashboard_stats(
         for r in payment_result.all()
     ]
 
+    vendor_count_result = await db.execute(
+        select(func.count(Vendor.id)).where(Vendor.role == "vendor", Vendor.is_active == True)
+    )
+    total_vendors = vendor_count_result.scalar() or 0
+
+    item_count_result = await db.execute(
+        select(func.count(Item.id)).where(Item.status == "active")
+    )
+    total_inventory = item_count_result.scalar() or 0
+
     return {
         "period": period,
         "start_date": str(start_date),
@@ -171,6 +181,8 @@ async def dashboard_stats(
             "avg_transaction": avg_transaction,
             "net_sales": round(total_revenue - total_tax, 2),
         },
+        "total_vendors": total_vendors,
+        "total_inventory": total_inventory,
         "hourly_sales": hourly_data,
         "daily_sales": daily_sales,
         "top_vendors": top_vendors,

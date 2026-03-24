@@ -317,6 +317,11 @@
         <div class="sum-card"><div class="sum-label">Net Sales</div><div class="sum-value green" id="s-net">&mdash;</div></div>
     </div>
 
+    <div class="store-summary" style="margin-top:0.75rem">
+        <div class="sum-card"><div class="sum-label">Active Vendors</div><div class="sum-value white" id="s-vendors">&mdash;</div></div>
+        <div class="sum-card"><div class="sum-label">Inventory Items</div><div class="sum-value white" id="s-inventory">&mdash;</div></div>
+    </div>
+
     <div class="dash-row">
         <div class="dash-section">
             <div class="dash-section-title">Hourly Sales</div>
@@ -548,6 +553,9 @@
             document.getElementById('s-avg').textContent = fmt(s.avg_transaction);
             document.getElementById('s-tax').textContent = fmt(s.total_tax);
             document.getElementById('s-net').textContent = fmt(s.net_sales);
+
+            document.getElementById('s-vendors').textContent = (data.total_vendors || 0).toLocaleString();
+            document.getElementById('s-inventory').textContent = (data.total_inventory || 0).toLocaleString();
 
             renderHourlyChart(data.hourly_sales || []);
             renderDailyChart(data.daily_sales || []);
