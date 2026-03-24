@@ -157,7 +157,7 @@ async def get_item_by_barcode(
     current_user: Vendor = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.barcode == barcode)
+        select(Item).options(selectinload(Item.vendor)).where(func.upper(Item.barcode) == barcode.upper())
     )
     item = result.scalar_one_or_none()
     if not item:

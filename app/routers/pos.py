@@ -108,7 +108,7 @@ async def pos_barcode_lookup(
     result = await db.execute(
         select(Item)
         .options(selectinload(Item.vendor))
-        .where(Item.barcode == barcode, Item.status == "active")
+        .where(func.upper(Item.barcode) == barcode.upper(), Item.status == "active")
     )
     item = result.scalar_one_or_none()
     if not item:

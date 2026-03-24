@@ -8,6 +8,9 @@ from reportlab.graphics.barcode import code128
 LABEL_WIDTH = 2.25 * inch
 LABEL_HEIGHT = 1.25 * inch
 
+THERMAL_DPI = 203
+DOT_SIZE = 72.0 / THERMAL_DPI
+
 
 def generate_label_pdf(item) -> bytes:
     buffer = io.BytesIO()
@@ -105,8 +108,8 @@ def _draw_label(c, item, x_offset, y_offset):
         probe = code128.Code128(barcode_val, barHeight=10, barWidth=1.0, humanReadable=False, quiet=False)
         modules = probe.width
 
-        bar_w = avail_w / modules
-        bar_w = min(bar_w, 2.5)
+        dots_per_module = max(int(avail_w / modules / DOT_SIZE), 2)
+        bar_w = dots_per_module * DOT_SIZE
 
         barcode_y = margin + 12
         bar_h = price_y - 4 - barcode_y
@@ -121,7 +124,8 @@ def _draw_label(c, item, x_offset, y_offset):
         )
 
         if barcode_obj.width > avail_w:
-            bar_w = avail_w / barcode_obj.width * bar_w
+            dots_per_module = max(dots_per_module - 1, 2)
+            bar_w = dots_per_module * DOT_SIZE
             barcode_obj = code128.Code128(
                 barcode_val,
                 barHeight=bar_h,

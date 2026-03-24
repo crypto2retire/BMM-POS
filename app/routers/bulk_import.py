@@ -400,7 +400,9 @@ async def batch_import_items(
         vendor_map[row.lname] = row.id
 
     created = 0
+    skipped = 0
     errors = []
+    batch_params = []
 
     for row_num, row in enumerate(reader, start=2):
         clean = {k.strip().lower(): _clean(v) for k, v in row.items()}
@@ -450,32 +452,47 @@ async def batch_import_items(
             except (InvalidOperation, ValueError):
                 pass
 
-        try:
-            async with db.begin_nested():
-                await db.execute(
-                    text("""INSERT INTO items (vendor_id, name, description, price, sale_price,
-                            quantity, category, barcode, sku, is_tax_exempt, is_consignment,
-                            consignment_rate, status)
-                            VALUES (:vid, :name, :desc, :price, :sp, :qty, :cat, :bc, :sku,
-                            :tax, :cons, :cr, 'active')"""),
-                    {
-                        "vid": vendor_id, "name": name[:200],
-                        "desc": clean.get("description"), "price": float(price),
-                        "sp": float(sp) if sp else None, "qty": qty,
-                        "cat": clean.get("category"), "bc": barcode, "sku": sku,
-                        "tax": is_tax_exempt, "cons": is_consignment,
-                        "cr": float(cr) if cr else None,
-                    },
-                )
-            created += 1
-        except Exception as e:
-            err_msg = str(e).split('\n')[0][:100]
-            errors.append({"row": row_num, "name": name, "error": err_msg})
+        batch_params.append({
+            "vid": vendor_id, "name": name[:200],
+            "desc": clean.get("description"), "price": float(price),
+            "sp": float(sp) if sp else None, "qty": qty,
+            "cat": clean.get("category"), "bc": barcode, "sku": sku,
+            "tax": is_tax_exempt, "cons": is_consignment,
+            "cr": float(cr) if cr else None,
+        })
 
-    await db.commit()
+    if batch_params:
+        BATCH_SIZE = 100
+        for i in range(0, len(batch_params), BATCH_SIZE):
+            chunk = batch_params[i:i + BATCH_SIZE]
+            values_parts = []
+            bind_params = {}
+            for j, p in enumerate(chunk):
+                prefix = f"p{j}_"
+                values_parts.append(
+                    f"(:{prefix}vid, :{prefix}name, :{prefix}desc, :{prefix}price, "
+                    f":{prefix}sp, :{prefix}qty, :{prefix}cat, :{prefix}bc, :{prefix}sku, "
+                    f":{prefix}tax, :{prefix}cons, :{prefix}cr, 'active')"
+                )
+                for k, v in p.items():
+                    bind_params[f"{prefix}{k}"] = v
+            sql = text(
+                "INSERT INTO items (vendor_id, name, description, price, sale_price, "
+                "quantity, category, barcode, sku, is_tax_exempt, is_consignment, "
+                "consignment_rate, status) VALUES " + ", ".join(values_parts) +
+                " ON CONFLICT (barcode) DO NOTHING"
+            )
+            try:
+                result = await db.execute(sql, bind_params)
+                created += result.rowcount
+                skipped += len(chunk) - result.rowcount
+            except Exception as e:
+                errors.append({"row": i, "name": "batch", "error": str(e)[:200]})
+        await db.commit()
 
     return {
-        "summary": f"Inserted {created} items, {len(errors)} errors",
+        "summary": f"Inserted {created} items, skipped {skipped} duplicates, {len(errors)} errors",
         "created_count": created,
+        "skipped_count": skipped,
         "errors": errors[:20],
     }
