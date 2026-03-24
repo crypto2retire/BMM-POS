@@ -13,6 +13,8 @@ from app.models.item import Item
 from app.routers.auth import get_current_user, get_password_hash
 from app.services.barcode import generate_sku
 
+from sqlalchemy import text
+
 router = APIRouter(prefix="/bulk-import", tags=["bulk-import"])
 
 MAX_FILE_SIZE = 25 * 1024 * 1024
@@ -364,4 +366,116 @@ async def clear_test_data(
 
     return {
         "message": f"Cleared {vendor_count} vendors and {item_count} items (test data only, no sales affected)",
+    }
+
+
+@router.post("/batch-items")
+async def batch_import_items(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Please upload a CSV file")
+
+    raw = await file.read()
+    if len(raw) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large")
+
+    try:
+        csv_text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        csv_text = raw.decode("latin-1")
+
+    reader = csv.DictReader(io.StringIO(csv_text))
+    if not reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV has no headers")
+
+    vendor_map = {}
+    vresult = await db.execute(text("SELECT id, lower(name) as lname FROM vendors WHERE role='vendor'"))
+    for row in vresult.all():
+        vendor_map[row.lname] = row.id
+
+    created = 0
+    errors = []
+
+    for row_num, row in enumerate(reader, start=2):
+        clean = {k.strip().lower(): _clean(v) for k, v in row.items()}
+        name = clean.get("name")
+        if not name:
+            continue
+
+        price_str = clean.get("price", "0")
+        try:
+            price = Decimal(price_str.replace("$", "").replace(",", ""))
+            if price <= 0:
+                continue
+        except (InvalidOperation, ValueError):
+            continue
+
+        vref = clean.get("vendor_name") or clean.get("vendor") or ""
+        vendor_id = vendor_map.get(vref.lower())
+        if not vendor_id:
+            errors.append({"row": row_num, "name": name, "error": f"Vendor not found: {vref}"})
+            continue
+
+        barcode = clean.get("barcode") or str(uuid.uuid4().int)[:12]
+        sku = clean.get("sku") or f"BSM-{vendor_id:04d}-{row_num:06d}"
+
+        try:
+            qty = int(clean.get("quantity") or "1")
+        except ValueError:
+            qty = 1
+
+        is_consignment = clean.get("consignment", "").lower() in ("true", "yes", "1", "y")
+        is_tax_exempt = clean.get("tax_exempt", "").lower() in ("true", "yes", "1", "y")
+
+        cr = None
+        if is_consignment and clean.get("consignment_rate"):
+            try:
+                crv = Decimal(clean["consignment_rate"].replace("%", ""))
+                cr = crv / 100 if crv > 1 else crv
+            except (InvalidOperation, ValueError):
+                pass
+
+        sp = None
+        if clean.get("sale_price"):
+            try:
+                spv = Decimal(clean["sale_price"].replace("$", "").replace(",", ""))
+                if spv < price:
+                    sp = spv
+            except (InvalidOperation, ValueError):
+                pass
+
+        try:
+            async with db.begin_nested():
+                await db.execute(
+                    text("""INSERT INTO items (vendor_id, name, description, price, sale_price,
+                            quantity, category, barcode, sku, is_tax_exempt, is_consignment,
+                            consignment_rate, status)
+                            VALUES (:vid, :name, :desc, :price, :sp, :qty, :cat, :bc, :sku,
+                            :tax, :cons, :cr, 'active')"""),
+                    {
+                        "vid": vendor_id, "name": name[:200],
+                        "desc": clean.get("description"), "price": float(price),
+                        "sp": float(sp) if sp else None, "qty": qty,
+                        "cat": clean.get("category"), "bc": barcode, "sku": sku,
+                        "tax": is_tax_exempt, "cons": is_consignment,
+                        "cr": float(cr) if cr else None,
+                    },
+                )
+            created += 1
+        except Exception as e:
+            err_msg = str(e).split('\n')[0][:100]
+            errors.append({"row": row_num, "name": name, "error": err_msg})
+
+    await db.commit()
+
+    return {
+        "summary": f"Inserted {created} items, {len(errors)} errors",
+        "created_count": created,
+        "errors": errors[:20],
     }

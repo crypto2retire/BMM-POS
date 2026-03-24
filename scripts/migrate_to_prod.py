@@ -84,7 +84,18 @@ async def upload_csv(client, token, endpoint, csv_data, filename):
         f"{PROD_URL}/api/v1/bulk-import/{endpoint}",
         headers={"Authorization": f"Bearer {token}"},
         files={"file": (filename, csv_data.encode(), "text/csv")},
-        timeout=600.0,
+        timeout=300.0,
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+async def upload_batch_items(client, token, csv_data, filename):
+    resp = await client.post(
+        f"{PROD_URL}/api/v1/bulk-import/batch-items",
+        headers={"Authorization": f"Bearer {token}"},
+        files={"file": (filename, csv_data.encode(), "text/csv")},
+        timeout=300.0,
     )
     resp.raise_for_status()
     return resp.json()
@@ -113,8 +124,8 @@ async def main():
                 print(f"  Error: {e}")
 
         print(f"\n--- Uploading inventory ({total_items} items in chunks of {CHUNK_SIZE}) ---")
+        print("  Using fast batch-items endpoint (raw SQL, preserves barcodes)")
         total_created = 0
-        total_skipped = 0
         total_errors = 0
 
         for offset in range(0, total_items, CHUNK_SIZE):
@@ -125,19 +136,17 @@ async def main():
             print(f"  Chunk {chunk_num}: {chunk_count} items ({len(chunk_csv):,} bytes)...", end=" ", flush=True)
 
             try:
-                result = await upload_csv(client, token, "inventory", chunk_csv, f"items_{chunk_num}.csv")
-                created = result.get("created_count", len(result.get("created", [])))
-                skipped = len(result.get("skipped", []))
+                result = await upload_batch_items(client, token, chunk_csv, f"items_{chunk_num}.csv")
+                created = result.get("created_count", 0)
                 errors = len(result.get("errors", []))
                 total_created += created
-                total_skipped += skipped
                 total_errors += errors
-                print(f"created={created}, skipped={skipped}, errors={errors}")
+                print(f"created={created}, errors={errors}")
                 if result.get("errors"):
                     for e in result["errors"][:3]:
                         print(f"    Error: {e}")
             except httpx.HTTPStatusError as e:
-                print(f"FAILED: HTTP {e.response.status_code}")
+                print(f"FAILED: HTTP {e.response.status_code} - {e.response.text[:200]}")
                 total_errors += chunk_count
             except Exception as e:
                 print(f"FAILED: {e}")
@@ -145,7 +154,7 @@ async def main():
 
         print(f"\n=== MIGRATION COMPLETE ===")
         print(f"Vendors: {vendor_count} exported")
-        print(f"Items: {total_created} created, {total_skipped} skipped, {total_errors} errors")
+        print(f"Items: {total_created} created, {total_errors} errors")
 
     await conn.close()
 
