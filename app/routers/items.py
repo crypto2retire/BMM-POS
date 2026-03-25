@@ -479,6 +479,24 @@ async def get_item_image(
     raise HTTPException(status_code=404, detail="Image not found")
 
 
+@router.patch("/{item_id}/toggle-status", response_model=ItemResponse)
+async def toggle_item_status(
+    item_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    result = await db.execute(select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id))
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+    item.status = "inactive" if item.status == "active" else "active"
+    await db.commit()
+    await db.refresh(item)
+    return item_to_response(item)
+
+
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_item(
     item_id: int,

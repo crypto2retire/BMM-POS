@@ -35,7 +35,7 @@ You can take real actions in the system — adding, editing, archiving items, an
 CAPABILITIES:
 - Add new items to the vendor's booth (use add_item tool — automatically linked to their account for payout)
 - Edit existing items (use edit_item tool — always list_items or get_item first to find the ID)
-- Archive items that are sold or no longer available (use archive_item tool)
+- Deactivate items — seasonal storage, items that didn't sell, etc. (use archive_item tool — sets item to inactive, vendor can reactivate anytime)
 - List and search the vendor's items (use list_items tool)
 - Look up item details (use get_item tool)
 - Apply a sale to ALL of the vendor's items at once (use apply_sale_to_all_items tool) — useful for storewide or weekend sales
@@ -108,11 +108,11 @@ Step 1: "Tap the menu icon (☰) and go to 'My Items'."
 Step 2: "Select the items you want labels for using the checkboxes."
 Step 3: "Tap 'Print Labels' at the top. You can choose between standard PDF labels or Dymo thermal labels."
 
-ARCHIVE/REMOVE AN ITEM — dashboard walkthrough:
+DEACTIVATE AN ITEM — dashboard walkthrough:
 Step 1: "Tap the menu icon (☰) and go to 'My Items'."
-Step 2: "Find the item you want to remove."
-Step 3: "Tap the trash icon on the item."
-Step 4: "Confirm the archive. The item won't be deleted permanently — it just won't show in the POS anymore."
+Step 2: "Find the item you want to deactivate."
+Step 3: "Toggle the switch on the item card from on (gold) to off. The item will be deactivated immediately."
+Step 4: "Deactivated items move to the 'Inactive' tab. You can reactivate them anytime by toggling the switch back on."
 Give ONE step at a time.
 
 CHANGE PASSWORD — dashboard walkthrough:
@@ -125,7 +125,7 @@ EDIT AN ITEM via chat: "Tell me what to change. Example: 'Change the price on my
 SET A SALE PRICE via chat: "Tell me the item, sale price, and dates. Example: 'Put my ceramic bowl on sale for $20 from March 1 to March 15'."
 APPLY SALE TO ALL ITEMS via chat: "Say 'Put all my items 20% off from [date] to [date]' and I'll apply it to everything at once."
 CHECK INVENTORY via chat: "Say 'show my items' or 'list my items' and I'll show you what's in your booth."
-ARCHIVE AN ITEM via chat: "Say 'archive [item name]' and I'll remove it from the POS."
+DEACTIVATE AN ITEM via chat: "Say 'deactivate [item name]' and I'll turn it off in the POS. You can reactivate it anytime."
 
 CONVERSATION STYLE:
 - Be friendly, patient, and encouraging — many vendors are not tech-savvy.
@@ -243,7 +243,7 @@ TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "status": {"type": "string", "description": "Filter by status: active, sold, removed. Default active."},
+                    "status": {"type": "string", "description": "Filter by status: active, inactive, sold, removed. Default active."},
                     "vendor_id": {"type": "integer", "description": "Filter by vendor ID. Omit to list all items (admin only)."},
                     "category": {"type": "string", "description": "Filter by category name"},
                     "search": {"type": "string", "description": "Search by item name"},
@@ -419,9 +419,9 @@ async def _execute_tool(
         item = row.scalar_one_or_none()
         if not item:
             return f"ERROR: Item ID {item_id} not found or does not belong to you.", None, None
-        item.status = "removed"
+        item.status = "inactive"
         await db.commit()
-        result = f"SUCCESS: Archived '{item.name}' (ID={item.id}). It will no longer appear in the POS or online."
+        result = f"SUCCESS: Deactivated '{item.name}' (ID={item.id}). It will no longer appear in the POS. You can reactivate it anytime from your Items page."
         return result, "item_archived", item.id
 
     if tool_name == "list_items":

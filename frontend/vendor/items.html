@@ -54,6 +54,46 @@
         .item-card-photos .add-photo-btn:hover { border-color:var(--gold-dim); color:var(--gold); }
         .item-card-photos .add-photo-btn input { position:absolute; inset:0; opacity:0; cursor:pointer; }
 
+        .status-toggle {
+            position:relative; display:inline-block; width:40px; height:22px; flex-shrink:0;
+        }
+        .status-toggle input { opacity:0; width:0; height:0; }
+        .status-toggle .slider {
+            position:absolute; cursor:pointer; inset:0;
+            background:rgba(255,255,255,0.08); border:1px solid var(--border);
+            transition:background 0.25s, border-color 0.25s;
+        }
+        .status-toggle .slider:before {
+            content:""; position:absolute; height:16px; width:16px;
+            left:2px; bottom:2px; background:var(--text-light);
+            transition:transform 0.25s, background 0.25s;
+        }
+        .status-toggle input:checked + .slider {
+            background:rgba(201,169,110,0.25); border-color:var(--gold-dim);
+        }
+        .status-toggle input:checked + .slider:before {
+            transform:translateX(18px); background:var(--gold);
+        }
+        .item-card.inactive { opacity:0.5; }
+        .item-card.inactive .item-card-name { text-decoration:line-through; }
+        tr.inactive-row { opacity:0.5; }
+        tr.inactive-row td:nth-child(3) { text-decoration:line-through; }
+        .status-filter-bar {
+            display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;
+        }
+        .status-filter-bar button {
+            background:none; border:1px solid var(--border); color:var(--text-light);
+            font-size:0.72rem; padding:0.3rem 0.75rem; cursor:pointer;
+            font-family:'Roboto',sans-serif; letter-spacing:0.06em;
+            transition:background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .status-filter-bar button.active {
+            background:rgba(201,169,110,0.15); color:var(--gold); border-color:var(--gold-dim);
+        }
+        .status-filter-bar button:hover:not(.active) {
+            border-color:var(--gold-dim); color:var(--text);
+        }
+
         @media (max-width: 767px) { .desktop-only { display:none !important; } }
         @media (min-width: 768px) { .mobile-only { display:none !important; } }
 
@@ -209,6 +249,12 @@
         <button class="btn btn-primary" id="batch-print-btn" onclick="printSelectedLabels()" style="font-size:0.75rem; padding:0.4rem 1rem">Print Selected Labels</button>
         <button class="btn btn-outline" onclick="toggleSelectAll()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select All</button>
         <button class="btn btn-secondary" onclick="clearSelection()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Clear</button>
+    </div>
+
+    <div class="status-filter-bar" id="status-filter-bar">
+        <button class="active" data-status="active" onclick="setStatusFilter('active')">Active</button>
+        <button data-status="inactive" onclick="setStatusFilter('inactive')">Inactive</button>
+        <button data-status="all" onclick="setStatusFilter('all')">All</button>
     </div>
 
     <!-- items toolbar: search + view toggle -->
@@ -462,7 +508,6 @@
     let miniChatBusy = false;
     let selectedItemIds = new Set();
 
-    // View toggle, search, sort, pagination state
     let allItems = [];
     let currentView = localStorage.getItem('bmm_items_view') || 'grid';
     let searchTerm = '';
@@ -470,6 +515,7 @@
     let sortDirection = 'asc';
     let currentPage = 1;
     const PAGE_SIZE = 50;
+    let statusFilter = 'active';
 
     // ── Nav helpers ────────────────────────────────────────────────────
     function handleLogout() { clearToken(); sessionStorage.removeItem('bmm_booth_mode'); window.location.href = '/vendor/login.html'; }
@@ -1065,12 +1111,20 @@
         }
     }
 
-    // ── Delete ─────────────────────────────────────────────────────────
-    async function deleteItem(id, name) {
-        if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+    function setStatusFilter(filter) {
+        statusFilter = filter;
+        document.querySelectorAll('.status-filter-bar button').forEach(function(b) {
+            b.classList.toggle('active', b.getAttribute('data-status') === filter);
+        });
+        currentPage = 1;
+        displayItems();
+    }
+
+    async function toggleItemStatus(id) {
         try {
-            await apiDelete(`/api/v1/items/${id}`);
-            showAlert('alert-container', 'Item removed.', 'success');
+            var resp = await apiFetch('PATCH', '/api/v1/items/' + id + '/toggle-status');
+            var newStatus = resp.status;
+            showAlert('alert-container', newStatus === 'active' ? 'Item activated.' : 'Item deactivated.', 'success');
             await loadItems();
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
@@ -1099,7 +1153,7 @@
 
     // ── Render items ───────────────────────────────────────────────────
     function statusBadge(s) {
-        const map = { active: 'badge-green', sold: 'badge-blue', removed: 'badge-red' };
+        const map = { active: 'badge-green', inactive: 'badge-gray', sold: 'badge-blue', removed: 'badge-red' };
         return `<span class="badge ${map[s] || 'badge-gray'}">${s}</span>`;
     }
 
@@ -1158,8 +1212,23 @@
     }
 
     function displayItems() {
-        const filtered = getFilteredItems();
+        var filtered = getFilteredItems();
+        if (statusFilter === 'active') {
+            filtered = filtered.filter(function(i) { return i.status === 'active'; });
+        } else if (statusFilter === 'inactive') {
+            filtered = filtered.filter(function(i) { return i.status === 'inactive'; });
+        }
         const sorted = getSortedItems(filtered);
+
+        var activeCount = allItems.filter(function(i) { return i.status === 'active'; }).length;
+        var inactiveCount = allItems.filter(function(i) { return i.status === 'inactive'; }).length;
+        var btns = document.querySelectorAll('.status-filter-bar button');
+        btns.forEach(function(b) {
+            var s = b.getAttribute('data-status');
+            if (s === 'active') b.textContent = 'Active (' + activeCount + ')';
+            else if (s === 'inactive') b.textContent = 'Inactive (' + inactiveCount + ')';
+            else b.textContent = 'All (' + allItems.length + ')';
+        });
 
         const grid = document.getElementById('items-grid');
         if (currentView === 'list') {
@@ -1211,7 +1280,10 @@
 
             const selChecked = selectedItemIds.has(item.id) ? 'checked' : '';
 
-            return `<div class="item-card">
+            const isActive = item.status === 'active';
+            const cardClass = isActive ? 'item-card' : 'item-card inactive';
+
+            return `<div class="${cardClass}">
                 <div class="item-card-top">
                     <label style="position:absolute;top:6px;left:6px;z-index:2;cursor:pointer" onclick="event.stopPropagation()">
                         <input type="checkbox" class="item-select-cb" data-item-id="${item.id}" ${selChecked}
@@ -1237,7 +1309,10 @@
                             <button onclick="printDymoLabel(${item.id})">Dymo Label</button>
                         </div>
                     </div>
-                    <button class="btn btn-danger" onclick="deleteItem(${item.id}, '${item.name.replace(/'/g, "\\'").replace(/"/g, '\\"')}')">Del</button>
+                    <label class="status-toggle" title="${isActive ? 'Deactivate' : 'Activate'}" onclick="event.stopPropagation()">
+                        <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
+                        <span class="slider"></span>
+                    </label>
                 </div>
                 <div class="item-card-photos">
                     ${(item.photo_urls || []).slice(1).map(url =>
@@ -1299,7 +1374,10 @@
             const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
             const selChecked = selectedItemIds.has(item.id) ? 'checked' : '';
 
-            html += `<tr>
+            const isActive = item.status === 'active';
+            const rowClass = isActive ? '' : ' class="inactive-row"';
+
+            html += `<tr${rowClass}>
                 <td style="padding:0 4px"><input type="checkbox" class="item-select-cb" data-item-id="${item.id}" ${selChecked} onchange="toggleItemSelect(${item.id})" style="width:15px;height:15px;accent-color:var(--gold);cursor:pointer"></td>
                 <td>${photoHtml}</td>
                 <td>${item.name}</td>
@@ -1310,7 +1388,10 @@
                 <td><div class="actions-cell">
                     <button class="btn btn-outline" onclick="openModal(${itemJson})">Edit</button>
                     <button class="btn btn-secondary" onclick="printLabelAuto(${item.id}, '${style}')">Label</button>
-                    <button class="btn btn-danger" onclick="deleteItem(${item.id}, '${item.name.replace(/'/g, "\\'").replace(/"/g, '\\"')}')">Del</button>
+                    <label class="status-toggle" title="${isActive ? 'Deactivate' : 'Activate'}">
+                        <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
+                        <span class="slider"></span>
+                    </label>
                 </div></td>
             </tr>`;
         });
