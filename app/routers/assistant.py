@@ -21,6 +21,9 @@ router = APIRouter(prefix="/assistant", tags=["assistant"])
 
 SYSTEM_PROMPT = """You are the Bowenstreet Market assistant. Bowenstreet Market is a vendor mall at 2837 Bowen St, Oshkosh WI 54901 with over 120 vendors selling handcrafted, vintage, and antique goods.
 
+CRITICAL — ITEM OWNERSHIP:
+Every item in this system belongs to a specific vendor. Items are NEVER "general inventory." When a vendor adds an item, it is automatically linked to THEIR vendor account so they get paid when it sells. The system handles this automatically — you do NOT need to ask the vendor for their ID or booth number. Always say "added to YOUR booth" or "added to your account" — never say "added to inventory" or "added to the system" without making it clear it belongs to them.
+
 ADMIN/CASHIER CONTEXT:
 If the user is an admin or cashier (not a vendor), inventory tool calls require knowing which vendor to act on.
 For list_items: you may list all items across all vendors — do not require a vendor filter.
@@ -30,12 +33,12 @@ Admins can also answer questions about the system, vendor management, reports, a
 You can take real actions in the system — adding, editing, archiving items, and changing passwords directly through conversation.
 
 CAPABILITIES:
-- Add new items to inventory (use add_item tool)
+- Add new items to the vendor's booth (use add_item tool — automatically linked to their account for payout)
 - Edit existing items (use edit_item tool — always list_items or get_item first to find the ID)
 - Archive items that are sold or no longer available (use archive_item tool)
-- List and search inventory (use list_items tool)
+- List and search the vendor's items (use list_items tool)
 - Look up item details (use get_item tool)
-- Apply a sale to ALL items at once (use apply_sale_to_all_items tool) — useful for storewide or weekend sales
+- Apply a sale to ALL of the vendor's items at once (use apply_sale_to_all_items tool) — useful for storewide or weekend sales
 - Change the vendor's own password (use change_password tool)
 - Write product descriptions and suggest categories
 - Analyze photos to suggest item details
@@ -101,7 +104,7 @@ CONVERSATION STYLE:
 ADDING ITEMS — example flow:
 Vendor: "Add a blue ceramic vase, $45"
 Assistant: [calls add_item with name="Blue Ceramic Vase", price=45, category="Decor"]
-Assistant: "Added! Blue Ceramic Vase at $45. Want to add a description or set it as available online?"
+Assistant: "Added Blue Ceramic Vase at $45 to your booth! When it sells, the revenue goes to your account. Want to add a description or set it as available online?"
 
 EDITING ITEMS — always find the item first:
 Vendor: "Change the price on my oak table to $280"
@@ -326,9 +329,14 @@ async def _execute_tool(
         db.add(item)
         await db.commit()
         await db.refresh(item)
+        target_vendor_result = await db.execute(select(Vendor).where(Vendor.id == target_vendor_id))
+        target_vendor_obj = target_vendor_result.scalar_one_or_none()
+        vendor_label = target_vendor_obj.name if target_vendor_obj else f"vendor #{target_vendor_id}"
         result = (
             f"SUCCESS: Added item '{item.name}' with ID={item.id}, "
-            f"SKU={item.sku}, price=${float(item.price):.2f}."
+            f"SKU={item.sku}, price=${float(item.price):.2f}. "
+            f"This item is linked to {vendor_label}'s account (vendor ID {target_vendor_id}) — "
+            f"when it sells, the revenue is credited to their account."
         )
         return result, "item_added", item.id
 
@@ -597,14 +605,17 @@ async def chat(
     action_taken: Optional[str] = None
     item_id: Optional[int] = None
 
-    # Prepend form context and last known item ID to system prompt if provided
     extra = ""
+    booth = getattr(current_user, 'booth_number', None) or ''
+    extra += f"\n\nLOGGED-IN USER: {current_user.name} (vendor ID {current_user.id}, role: {current_user.role}"
+    if booth:
+        extra += f", booth: {booth}"
+    extra += "). All items added will be automatically linked to this vendor's account."
     if data.form_context:
         extra += "\n\nCurrent context: " + data.form_context
     if data.last_item_id:
         extra += f"\n\nLast item discussed: item_id={data.last_item_id}. Use this ID directly for any edit or archive action on that item without calling list_items first."
-    if extra:
-        messages[0]["content"] = SYSTEM_PROMPT + extra
+    messages[0]["content"] = SYSTEM_PROMPT + extra
 
     # Multi-round tool-calling loop (max 4 rounds to prevent runaway)
     for _round in range(4):
