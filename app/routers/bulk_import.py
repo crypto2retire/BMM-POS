@@ -480,7 +480,7 @@ async def batch_import_items(
                 "INSERT INTO items (vendor_id, name, description, price, sale_price, "
                 "quantity, category, barcode, sku, is_tax_exempt, is_consignment, "
                 "consignment_rate, status) VALUES " + ", ".join(values_parts) +
-                " ON CONFLICT (barcode) DO NOTHING"
+                " ON CONFLICT DO NOTHING"
             )
             try:
                 result = await db.execute(sql, bind_params)
