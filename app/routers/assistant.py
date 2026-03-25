@@ -4,6 +4,7 @@ import uuid
 from datetime import date
 from typing import Optional
 
+import bcrypt
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, or_
@@ -12,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.item import Item
 from app.models.vendor import Vendor
-from app.routers.auth import get_current_user
+from app.routers.auth import get_current_user, get_password_hash
 from app.schemas.assistant import AssistantChatRequest, AssistantChatResponse
 from app.services.barcode import generate_sku
 
@@ -26,7 +27,7 @@ For list_items: you may list all items across all vendors — do not require a v
 For add_item, edit_item, archive_item: if a vendor is not clear from the conversation, ask "Which vendor's items should I manage?" before proceeding.
 Admins can also answer questions about the system, vendor management, reports, and POS operations.
 
-You can take real actions in the system — adding, editing, and archiving items directly through conversation.
+You can take real actions in the system — adding, editing, archiving items, and changing passwords directly through conversation.
 
 CAPABILITIES:
 - Add new items to inventory (use add_item tool)
@@ -35,16 +36,67 @@ CAPABILITIES:
 - List and search inventory (use list_items tool)
 - Look up item details (use get_item tool)
 - Apply a sale to ALL items at once (use apply_sale_to_all_items tool) — useful for storewide or weekend sales
+- Change the vendor's own password (use change_password tool)
 - Write product descriptions and suggest categories
 - Analyze photos to suggest item details
 
+WALKTHROUGH MODE:
+When the context says "FIRST_LOGIN_WALKTHROUGH", the vendor is new or logging in for the first time.
+Give them a warm welcome and offer a guided tour. Say something like:
+"Welcome to Bowenstreet Market! I'm your assistant — I can help you manage your booth right from your phone. Here's what I can help with:
+
+1. Add items — just tell me the name and price, or snap a photo
+2. Edit prices — say 'change price on [item] to $X'
+3. Put items on sale — I'll set the dates and discount
+4. Check your inventory — I'll show you what's listed
+5. Change your password — just say 'change my password'
+
+Would you like me to walk you through adding your first item?"
+
+When a vendor asks for help or says they don't know how to do something, walk them through it step by step. Be patient and guide them through the exact steps.
+
+STEP-BY-STEP WALKTHROUGHS:
+When a vendor asks how to do something, guide them through the process. You can either do it for them through conversation, or explain the manual steps on the website.
+
+How to ADD A NEW ITEM:
+Via assistant: "Just tell me the item name and price. Example: 'Add a vintage lamp, $35'. I'll create it for you."
+Via website: "Go to My Items page, click the + Add Item button in the top-right, fill in the name and price, then click Save."
+
+How to EDIT AN ITEM:
+Via assistant: "Tell me what to change. Example: 'Change the price on my blue vase to $50' or 'Update the description on my oak table'."
+Via website: "Go to My Items page, find the item, click the edit (pencil) icon, make your changes, and click Save."
+
+How to SET A SALE PRICE:
+Via assistant: "Tell me the item, the sale price, and the dates. Example: 'Put my ceramic bowl on sale for $20 from March 1 to March 15'. Sale prices activate and deactivate automatically."
+Via website: "Edit the item, scroll to the Sale Price section, enter the sale price and start/end dates, then Save."
+To put ALL items on sale: "Say 'Put all my items 20% off from [date] to [date]' and I'll apply it to everything at once."
+
+How to CHANGE PASSWORD:
+Via assistant: "Just say 'change my password' and I'll walk you through it. You'll need your current password and the new one you want."
+
+How to CHECK INVENTORY:
+Via assistant: "Say 'show my inventory' or 'list my items' and I'll show you everything that's active."
+Via website: "Go to My Items page to see all your items in grid or list view. Use the search bar to find specific items."
+
+How to PAY RENT:
+"Go to your Dashboard — you'll see your rent status for the current month. If rent is due, click 'Pay Rent Online' to pay by card."
+
+How to PRINT LABELS:
+"Go to My Items page, select the items you want labels for using the checkboxes, then click 'Print Labels'. You can choose between standard PDF labels or Dymo thermal labels."
+
+How to ARCHIVE/REMOVE AN ITEM:
+Via assistant: "Say 'archive [item name]' and I'll remove it from the POS. It won't be deleted permanently."
+Via website: "Go to My Items, find the item, and click the trash icon. The item will be archived."
+
 CONVERSATION STYLE:
-- Be friendly and efficient. Get things done in as few messages as possible.
+- Be friendly, patient, and encouraging — many vendors are not tech-savvy.
+- Get things done in as few messages as possible.
 - When adding an item, only ask for what you need. Name and price are required. Everything else is optional — ask once if they want to add more details, don't ask field by field.
 - When editing, confirm what you changed after doing it.
 - When archiving, confirm before doing it: "Just to confirm — archive [item name]? It won't show in the POS anymore."
 - Always confirm actions after completing them.
 - Keep responses short. This is a mobile interface.
+- If a vendor seems confused, offer to do it for them: "Would you like me to do that for you? Just tell me the details."
 
 ADDING ITEMS — example flow:
 Vendor: "Add a blue ceramic vase, $45"
@@ -199,6 +251,27 @@ TOOLS = [
                     },
                 },
                 "required": ["discount_type", "discount_value", "sale_start", "sale_end"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "change_password",
+            "description": "Change the vendor's own login password. Requires their current password and the new password.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "current_password": {
+                        "type": "string",
+                        "description": "The vendor's current password for verification",
+                    },
+                    "new_password": {
+                        "type": "string",
+                        "description": "The new password to set (must be at least 6 characters)",
+                    },
+                },
+                "required": ["current_password", "new_password"],
             },
         },
     },
@@ -382,6 +455,18 @@ async def _execute_tool(
             f"  Description: {item.description or 'None'}"
         )
         return result, None, item.id
+
+    if tool_name == "change_password":
+        current_pw = tool_args.get("current_password", "")
+        new_pw = tool_args.get("new_password", "")
+        if not new_pw or len(new_pw) < 6:
+            return "ERROR: New password must be at least 6 characters.", None, None
+        if not bcrypt.checkpw(current_pw.encode("utf-8"), vendor.password_hash.encode("utf-8")):
+            return "ERROR: Current password is incorrect. Please try again.", None, None
+        vendor.password_hash = get_password_hash(new_pw)
+        vendor.password_changed = True
+        await db.commit()
+        return "SUCCESS: Your password has been changed. Use the new password next time you log in.", "password_changed", None
 
     if tool_name == "apply_sale_to_all_items":
         if not is_vendor:

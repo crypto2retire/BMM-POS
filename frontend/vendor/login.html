@@ -235,6 +235,9 @@
             const data = await res.json();
             const token = data.access_token;
             sessionStorage.setItem("bmm_token", token);
+            if (data.first_login) {
+                sessionStorage.setItem("bmm_first_login", "1");
+            }
             const payload = JSON.parse(atob(token.split(".")[1]));
 
             if (data.redirect === "choose") {

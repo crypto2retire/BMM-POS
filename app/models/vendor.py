@@ -24,6 +24,7 @@ class Vendor(Base):
     rent_flagged: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_vendor: Mapped[bool] = mapped_column(Boolean, default=False)
+    password_changed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     commission_rate: Mapped[Decimal] = mapped_column(Numeric(5, 4), default=Decimal("0.10"))
 
     items = relationship("Item", back_populates="vendor")

@@ -148,7 +148,15 @@
 
 <script src="/static/js/api.js"></script>
 <script src="/static/js/assistant-panel.js"></script>
-<script>initAssistantPanel('The vendor is viewing their dashboard at Bowenstreet Market.');</script>
+<script>
+(function() {
+    var isFirst = sessionStorage.getItem('bmm_first_login') === '1';
+    if (isFirst) sessionStorage.removeItem('bmm_first_login');
+    var ctx = 'The vendor is viewing their dashboard at Bowenstreet Market.';
+    if (isFirst) ctx += ' FIRST_LOGIN_WALKTHROUGH';
+    initAssistantPanel(ctx, { firstLogin: isFirst });
+})();
+</script>
 <script>
     function handleLogout() {
         clearToken();

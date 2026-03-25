@@ -112,6 +112,8 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
     if user.role in ("admin", "cashier") and is_vendor and booth_number:
         redirect = "choose"
 
+    first_login = not getattr(user, 'password_changed', True)
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -121,6 +123,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         "is_vendor": is_vendor,
         "booth_number": booth_number,
         "redirect": redirect,
+        "first_login": first_login,
     }
 
 @router.get("/me")

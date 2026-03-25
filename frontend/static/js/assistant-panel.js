@@ -4,6 +4,7 @@
     window.initAssistantPanel = function (panelContext, opts) {
         opts = opts || {};
         var buttonBottom = opts.buttonBottom || '80px';
+        var isFirstLogin = opts.firstLogin || false;
 
         if (document.getElementById('bmm-assistant-btn')) return;
 
@@ -173,13 +174,15 @@
             '</div>' +
             '<div id="bmm-action-banner">\u2713 <span id="bmm-action-banner-text">Item saved</span></div>' +
             '<div id="bmm-assistant-messages">' +
-                '<div class="bmm-msg bmm-msg-assistant">Hi! I can add items, edit prices, archive listings, and show inventory \u2014 all through conversation. What would you like to do?</div>' +
+                '<div class="bmm-msg bmm-msg-assistant">Hi! I can help you manage your booth \u2014 add items, edit prices, set sales, change your password, and more. What would you like to do?</div>' +
             '</div>' +
             '<div id="bmm-chips">' +
-                '<button class="bmm-chip" data-msg="\ud83d\udce6 Add an item">\ud83d\udce6 Add an item</button>' +
-                '<button class="bmm-chip" data-msg="\u270f\ufe0f Edit an item">\u270f\ufe0f Edit an item</button>' +
-                '<button class="bmm-chip" data-msg="\ud83d\udccb Show my inventory">\ud83d\udccb Show my inventory</button>' +
-                '<button class="bmm-chip" data-msg="\ud83d\udcb0 Set a sale price">\ud83d\udcb0 Set a sale price</button>' +
+                '<button class="bmm-chip" data-msg="Add an item">Add item</button>' +
+                '<button class="bmm-chip" data-msg="Edit an item">Edit item</button>' +
+                '<button class="bmm-chip" data-msg="Show my inventory">My items</button>' +
+                '<button class="bmm-chip" data-msg="Set a sale price">Sale price</button>' +
+                '<button class="bmm-chip" data-msg="How do I use this system?">Help</button>' +
+                '<button class="bmm-chip" data-msg="Change my password">Password</button>' +
             '</div>' +
             '<div id="bmm-assistant-input-row">' +
                 '<button id="bmm-assistant-photo" title="Send a photo">' +
@@ -354,6 +357,8 @@
                         } else if (data.action_taken === 'items_on_sale') {
                             showActionBanner('Sale applied to all items \u2713');
                             tryRefreshItems();
+                        } else if (data.action_taken === 'password_changed') {
+                            showActionBanner('Password changed \u2713');
                         }
                     }
                 }
@@ -422,5 +427,12 @@
         document.addEventListener('keydown', function (e) {
             if (e.key === 'Escape' && isOpen) closePanel();
         });
+
+        if (isFirstLogin) {
+            setTimeout(function () {
+                openPanel();
+                sendMessage('FIRST_LOGIN_WALKTHROUGH: I just logged in for the first time. Can you show me around?');
+            }, 800);
+        }
     };
 })();
