@@ -839,3 +839,135 @@ async def gift_card_history(
             for t in txns
         ],
     }
+
+
+@router.get("/rent/vendors")
+async def rent_vendor_list(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Cashier or admin access required")
+
+    from app.models.rent import RentPayment
+    from datetime import date as dt_date
+    today = dt_date.today()
+    period = dt_date(today.year, today.month, 1)
+
+    result = await db.execute(
+        select(Vendor)
+        .where(Vendor.role == "vendor", Vendor.monthly_rent > 0)
+        .order_by(Vendor.name)
+    )
+    vendors = result.scalars().all()
+
+    paid_result = await db.execute(
+        select(RentPayment.vendor_id).where(
+            RentPayment.period_month == period,
+            RentPayment.status == "paid",
+        )
+    )
+    paid_ids = {r[0] for r in paid_result.all()}
+
+    return [
+        {
+            "id": v.id,
+            "name": v.name,
+            "booth_number": v.booth_number,
+            "monthly_rent": float(v.monthly_rent),
+            "paid_this_month": v.id in paid_ids,
+        }
+        for v in vendors
+    ]
+
+
+@router.post("/rent/pay")
+async def pos_rent_payment(
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Cashier or admin access required")
+
+    from app.models.rent import RentPayment
+    from datetime import date as dt_date
+
+    vendor_id = body.get("vendor_id")
+    method = body.get("method", "cash")
+    amount_override = body.get("amount")
+    notes = str(body.get("notes", "") or "")[:200]
+
+    if not vendor_id or not isinstance(vendor_id, int):
+        raise HTTPException(status_code=400, detail="Valid vendor_id required")
+    if method not in ("cash", "card"):
+        raise HTTPException(status_code=400, detail="Method must be cash or card")
+
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    amount = float(amount_override) if amount_override else float(vendor.monthly_rent or 0)
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="No rent amount configured for this vendor")
+
+    today = dt_date.today()
+    period = dt_date(today.year, today.month, 1)
+
+    existing = await db.execute(
+        select(RentPayment).where(
+            RentPayment.vendor_id == vendor.id,
+            RentPayment.period_month == period,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail=f"Rent for {period.strftime('%B %Y')} already recorded for {vendor.name}"
+        )
+
+    if method == "card":
+        try:
+            from app.services.square import create_payment_link
+            price_cents = round(amount * 100)
+            result_link = await create_payment_link(
+                name=f"Rent - {vendor.name} - {today.strftime('%B %Y')}",
+                price_cents=price_cents,
+                redirect_url=f"https://www.bowenstreetmm.com/pos/index.html?rent_paid=success&vendor_id={vendor.id}",
+            )
+            payment = RentPayment(
+                vendor_id=vendor.id,
+                amount=amount,
+                period_month=period,
+                method="square",
+                status="pending",
+                notes=f"POS card payment initiated by {current_user.name}. {notes}".strip(),
+            )
+            db.add(payment)
+            await db.commit()
+            return {
+                "success": True,
+                "method": "card",
+                "payment_url": result_link["url"],
+                "message": f"Card payment link created for {vendor.name}. Complete payment at the link.",
+            }
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Card payment failed: {str(exc)[:100]}")
+
+    payment = RentPayment(
+        vendor_id=vendor.id,
+        amount=amount,
+        period_month=period,
+        method="cash",
+        status="paid",
+        notes=f"POS cash payment received by {current_user.name}. {notes}".strip(),
+    )
+    db.add(payment)
+    await db.commit()
+
+    return {
+        "success": True,
+        "method": "cash",
+        "message": f"Cash rent payment of ${amount:.2f} recorded for {vendor.name} ({period.strftime('%B %Y')})",
+    }

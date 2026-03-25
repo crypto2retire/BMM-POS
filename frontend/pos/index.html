@@ -894,6 +894,9 @@
         <button class="pay-btn card" id="gc-pay-btn" onclick="openGcPayModal()" disabled style="width:100%;margin-top:6px;background:#7C3AED;border-color:#7C3AED">
             🎁 GIFT CARD
         </button>
+        <button class="pay-btn cash" onclick="openRentPaymentModal()" style="width:100%;margin-top:6px;background:#92400E;border-color:#92400E">
+            🏠 RENT PAYMENT
+        </button>
     </div>
 </div>
 
@@ -1262,6 +1265,45 @@
         <div id="img-search-results" style="max-height:40vh;overflow-y:auto"></div>
         <div class="modal-actions" style="margin-top:1rem">
             <button class="cancel-btn" onclick="closeImageSearch()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Rent Payment Modal -->
+<div class="pos-modal-overlay hidden" id="rent-modal">
+    <div class="pos-modal" style="max-width:520px">
+        <h2>🏠 Rent Payment</h2>
+        <div style="margin-bottom:1rem">
+            <label class="form-label" style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:4px;font-family:'Roboto',sans-serif">Search Vendor</label>
+            <input type="text" id="rent-vendor-search" placeholder="Type vendor name or booth number…" autocomplete="off" oninput="filterRentVendors(this.value)" style="width:100%;background:#2D2D30;border:1px solid #555558;color:#F0EDE8;padding:0.6rem 0.75rem;font-size:0.9rem;font-family:'Roboto',sans-serif">
+        </div>
+        <div id="rent-vendor-list" style="max-height:220px;overflow-y:auto;margin-bottom:1rem;border:1px solid #555558;background:#2D2D30"></div>
+        <div id="rent-selected-section" style="display:none">
+            <div style="background:#1e1e20;border:1px solid rgba(201,169,110,0.25);padding:0.75rem 1rem;margin-bottom:1rem">
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                    <div>
+                        <div id="rent-vendor-name" style="font-weight:600;color:#F0EDE8;font-size:1rem"></div>
+                        <div id="rent-vendor-booth" style="font-size:0.8rem;color:#A8A6A1"></div>
+                    </div>
+                    <div id="rent-amount-display" style="font-size:1.4rem;font-weight:700;color:#C9A96E"></div>
+                </div>
+            </div>
+            <div class="manual-form-group" style="margin-bottom:0.75rem">
+                <label class="form-label" style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:4px;font-family:'Roboto',sans-serif">Amount (override if different)</label>
+                <input type="number" id="rent-amount-input" step="0.01" min="0" style="width:100%;background:#2D2D30;border:1px solid #555558;color:#F0EDE8;padding:0.6rem 0.75rem;font-size:0.9rem;font-family:'Roboto',sans-serif">
+            </div>
+            <div class="manual-form-group" style="margin-bottom:0.75rem">
+                <label class="form-label" style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:4px;font-family:'Roboto',sans-serif">Notes (optional)</label>
+                <input type="text" id="rent-notes" placeholder="e.g. partial payment, extra month" style="width:100%;background:#2D2D30;border:1px solid #555558;color:#F0EDE8;padding:0.6rem 0.75rem;font-size:0.9rem;font-family:'Roboto',sans-serif">
+            </div>
+            <div style="display:flex;gap:8px">
+                <button onclick="submitRentPayment('cash')" style="flex:1;padding:0.75rem;background:#137547;border:1px solid #137547;color:#fff;font-weight:600;font-size:0.9rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em">💵 Cash</button>
+                <button onclick="submitRentPayment('card')" style="flex:1;padding:0.75rem;background:#1a4b8c;border:1px solid #1a4b8c;color:#fff;font-weight:600;font-size:0.9rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em">💳 Card</button>
+            </div>
+        </div>
+        <div id="rent-result-msg" style="display:none;padding:0.75rem;margin-top:0.75rem;text-align:center;font-size:0.9rem"></div>
+        <div class="modal-actions" style="margin-top:1rem">
+            <button class="cancel-btn" onclick="closeRentModal()">Close</button>
         </div>
     </div>
 </div>
@@ -2779,6 +2821,115 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
         addToCart(item);
         closeImageSearch();
         showToast('Added: ' + item.name, 'success');
+    }
+
+    var _rentVendors = [];
+    var _selectedRentVendor = null;
+
+    async function openRentPaymentModal() {
+        document.getElementById('rent-modal').classList.remove('hidden');
+        document.getElementById('rent-vendor-search').value = '';
+        document.getElementById('rent-selected-section').style.display = 'none';
+        document.getElementById('rent-result-msg').style.display = 'none';
+        document.getElementById('rent-notes').value = '';
+        _selectedRentVendor = null;
+
+        var listEl = document.getElementById('rent-vendor-list');
+        listEl.innerHTML = '<div style="text-align:center;padding:1.5rem;color:#A8A6A1">Loading vendors...</div>';
+
+        try {
+            var data = await apiGet('/api/v1/pos/rent/vendors');
+            _rentVendors = data;
+            renderRentVendors(data);
+        } catch (e) {
+            listEl.innerHTML = '<div style="text-align:center;padding:1rem;color:#c87070">Failed to load vendors</div>';
+        }
+    }
+
+    function renderRentVendors(vendors) {
+        var listEl = document.getElementById('rent-vendor-list');
+        if (!vendors.length) {
+            listEl.innerHTML = '<div style="text-align:center;padding:1rem;color:#A8A6A1;font-style:italic">No vendors found</div>';
+            return;
+        }
+        var html = '';
+        vendors.forEach(function(v) {
+            var paidBadge = v.paid_this_month
+                ? '<span style="background:#065F46;color:#6EE7B7;font-size:0.65rem;padding:2px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:0.06em">Paid</span>'
+                : '';
+            html += '<div onclick="selectRentVendor(' + v.id + ')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;cursor:pointer;border-bottom:1px solid #3a3a3d;transition:background 0.12s" onmouseover="this.style.background=\'#3a3a3d\'" onmouseout="this.style.background=\'transparent\'">'
+                + '<div><span style="color:#F0EDE8;font-size:0.9rem">' + escHtml(v.name) + '</span>' + paidBadge
+                + '<div style="font-size:0.75rem;color:#A8A6A1">Booth ' + escHtml(v.booth_number || '—') + '</div></div>'
+                + '<div style="color:#C9A96E;font-weight:600;font-size:0.95rem">$' + v.monthly_rent.toFixed(2) + '</div>'
+                + '</div>';
+        });
+        listEl.innerHTML = html;
+    }
+
+    function filterRentVendors(q) {
+        var term = q.toLowerCase().trim();
+        if (!term) { renderRentVendors(_rentVendors); return; }
+        var filtered = _rentVendors.filter(function(v) {
+            return v.name.toLowerCase().indexOf(term) >= 0
+                || (v.booth_number || '').toLowerCase().indexOf(term) >= 0;
+        });
+        renderRentVendors(filtered);
+    }
+
+    function selectRentVendor(id) {
+        var v = _rentVendors.find(function(x) { return x.id === id; });
+        if (!v) return;
+        _selectedRentVendor = v;
+        document.getElementById('rent-vendor-name').textContent = v.name;
+        document.getElementById('rent-vendor-booth').textContent = 'Booth ' + (v.booth_number || '—');
+        document.getElementById('rent-amount-display').textContent = '$' + v.monthly_rent.toFixed(2);
+        document.getElementById('rent-amount-input').value = v.monthly_rent.toFixed(2);
+        document.getElementById('rent-selected-section').style.display = 'block';
+        document.getElementById('rent-result-msg').style.display = 'none';
+    }
+
+    async function submitRentPayment(method) {
+        if (!_selectedRentVendor) return;
+        var amount = parseFloat(document.getElementById('rent-amount-input').value);
+        if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
+
+        var notes = document.getElementById('rent-notes').value.trim();
+        var msgEl = document.getElementById('rent-result-msg');
+
+        try {
+            var resp = await apiPost('/api/v1/pos/rent/pay', {
+                vendor_id: _selectedRentVendor.id,
+                method: method,
+                amount: amount,
+                notes: notes,
+            });
+
+            msgEl.style.display = 'block';
+            msgEl.style.background = '#065F46';
+            msgEl.style.color = '#6EE7B7';
+            msgEl.textContent = resp.message || 'Payment recorded';
+
+            if (resp.payment_url) {
+                window.open(resp.payment_url, '_blank');
+            }
+
+            var paidV = _rentVendors.find(function(x) { return x.id === _selectedRentVendor.id; });
+            if (paidV) paidV.paid_this_month = true;
+            renderRentVendors(_rentVendors);
+            document.getElementById('rent-selected-section').style.display = 'none';
+            _selectedRentVendor = null;
+
+        } catch (e) {
+            msgEl.style.display = 'block';
+            msgEl.style.background = '#7F1D1D';
+            msgEl.style.color = '#FCA5A5';
+            msgEl.textContent = e.message || 'Payment failed';
+        }
+    }
+
+    function closeRentModal() {
+        document.getElementById('rent-modal').classList.add('hidden');
+        _selectedRentVendor = null;
     }
 
     init();
