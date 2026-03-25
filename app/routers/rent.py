@@ -14,6 +14,52 @@ from app.routers.auth import get_current_user
 router = APIRouter(prefix="/vendor", tags=["vendor-rent"])
 
 
+@router.get("/rent-status")
+async def rent_status(
+    db: AsyncSession = Depends(get_db),
+    current_vendor: Vendor = Depends(get_current_user),
+):
+    if current_vendor.role not in ("vendor", "admin"):
+        raise HTTPException(status_code=403, detail="Vendor access required.")
+
+    vendor = current_vendor
+    today = date.today()
+    period = date(today.year, today.month, 1)
+
+    existing = await db.execute(
+        select(RentPayment).where(
+            RentPayment.vendor_id == vendor.id,
+            RentPayment.period_month == period,
+        )
+    )
+    current_payment = existing.scalar_one_or_none()
+
+    history_result = await db.execute(
+        select(RentPayment)
+        .where(RentPayment.vendor_id == vendor.id)
+        .order_by(RentPayment.period_month.desc())
+        .limit(12)
+    )
+    history = history_result.scalars().all()
+
+    return {
+        "monthly_rent": float(vendor.monthly_rent or 0),
+        "current_month": today.strftime("%B %Y"),
+        "paid_this_month": current_payment is not None and current_payment.status == "paid",
+        "pending_this_month": current_payment is not None and current_payment.status == "pending",
+        "history": [
+            {
+                "period": p.period_month.strftime("%B %Y"),
+                "amount": float(p.amount),
+                "method": p.method,
+                "status": p.status,
+                "date": p.processed_at.strftime("%m/%d/%Y") if p.processed_at else None,
+            }
+            for p in history
+        ],
+    }
+
+
 class RentConfirmRequest(BaseModel):
     square_payment_id: Optional[str] = None
 

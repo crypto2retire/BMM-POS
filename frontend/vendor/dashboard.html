@@ -74,18 +74,24 @@
         <div class="section-header">
             <h2 class="section-title">Rent</h2>
         </div>
-        <div class="card" style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;padding:1.25rem 1.5rem;">
-            <div>
-                <div class="card-title" style="font-size:0.8rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Monthly Rent</div>
-                <div class="card-value" id="rent-amount" style="font-size:1.5rem;font-weight:700;">—</div>
+        <div class="card" style="padding:1.25rem 1.5rem;">
+            <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+                <div>
+                    <div class="card-title" style="font-size:0.8rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Monthly Rent</div>
+                    <div class="card-value" id="rent-amount" style="font-size:1.5rem;font-weight:700;">—</div>
+                </div>
+                <div style="flex:1;min-width:180px;">
+                    <div class="card-title" style="font-size:0.8rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Status for <span id="rent-current-month"></span></div>
+                    <div id="rent-status-badge" style="font-size:0.9rem;">—</div>
+                </div>
+                <div>
+                    <button class="btn btn-primary" id="pay-rent-btn" onclick="payRent()" style="font-size:0.95rem;padding:0.65rem 1.5rem;">Pay Rent Online</button>
+                    <div id="pay-rent-error" style="color:#C06060;font-size:0.85rem;margin-top:6px;display:none;"></div>
+                </div>
             </div>
-            <div style="flex:1;min-width:180px;">
-                <div class="card-title" style="font-size:0.8rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Status</div>
-                <div id="rent-status-badge" style="font-size:0.9rem;">—</div>
-            </div>
-            <div>
-                <button class="btn btn-primary" id="pay-rent-btn" onclick="payRent()">Pay Rent with Card</button>
-                <div id="pay-rent-error" style="color:#C06060;font-size:0.85rem;margin-top:6px;display:none;"></div>
+            <div id="rent-history-section" style="display:none;margin-top:1.25rem;border-top:1px solid rgba(201,169,110,0.15);padding-top:1rem;">
+                <div class="card-title" style="font-size:0.75rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Payment History</div>
+                <div id="rent-history-list" style="font-size:0.85rem;"></div>
             </div>
         </div>
     </div>
@@ -265,6 +271,7 @@
                 document.getElementById("pay-rent-btn").style.display = 'none';
                 document.getElementById("rent-status-badge").textContent = 'No rent configured';
             }
+            loadRentStatus();
 
             const vendorItemsUrl = (payload.role === 'vendor') ? '/api/v1/items/' : `/api/v1/items/?vendor_id=${payload.vendor_id}`;
             const items = await apiGet(vendorItemsUrl);
@@ -279,6 +286,45 @@
     }
 
     window.addEventListener('resize', () => applyLayout(cachedItems));
+
+    async function loadRentStatus() {
+        try {
+            var data = await apiGet('/api/v1/vendor/rent-status');
+            document.getElementById('rent-current-month').textContent = data.current_month;
+
+            var badge = document.getElementById('rent-status-badge');
+            var btn = document.getElementById('pay-rent-btn');
+
+            if (data.paid_this_month) {
+                badge.innerHTML = '<span style="background:#065F46;color:#6EE7B7;padding:4px 12px;font-size:0.8rem;font-weight:600;letter-spacing:0.04em">PAID</span>';
+                btn.style.display = 'none';
+            } else if (data.pending_this_month) {
+                badge.innerHTML = '<span style="background:#92400E;color:#FDE68A;padding:4px 12px;font-size:0.8rem;font-weight:600;letter-spacing:0.04em">PENDING</span>';
+                btn.textContent = 'Payment Pending';
+                btn.disabled = true;
+            } else {
+                badge.innerHTML = '<span style="background:#7F1D1D;color:#FCA5A5;padding:4px 12px;font-size:0.8rem;font-weight:600;letter-spacing:0.04em">UNPAID</span>';
+                btn.style.display = '';
+            }
+
+            if (data.history && data.history.length > 0) {
+                document.getElementById('rent-history-section').style.display = 'block';
+                var html = '';
+                data.history.forEach(function(p) {
+                    var statusColor = p.status === 'paid' ? '#6EE7B7' : (p.status === 'pending' ? '#FDE68A' : '#A8A6A1');
+                    var methodLabel = p.method === 'square' ? 'Card' : (p.method === 'cash' ? 'Cash' : p.method);
+                    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
+                        + '<span style="color:#F0EDE8">' + escHtml(p.period) + '</span>'
+                        + '<span style="color:#A8A6A1;font-size:0.8rem">' + escHtml(methodLabel) + '</span>'
+                        + '<span style="color:#C9A96E;font-weight:600">$' + p.amount.toFixed(2) + '</span>'
+                        + '<span style="color:' + statusColor + ';font-size:0.8rem;text-transform:uppercase">' + escHtml(p.status) + '</span>'
+                        + '</div>';
+                });
+                document.getElementById('rent-history-list').innerHTML = html;
+            }
+        } catch (err) {
+        }
+    }
 
     async function checkRentReturn() {
         const params = new URLSearchParams(window.location.search);
