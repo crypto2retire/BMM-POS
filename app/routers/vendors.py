@@ -1,12 +1,17 @@
+from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models.vendor import Vendor, VendorBalance
-from app.schemas.vendor import VendorCreate, VendorUpdate, VendorResponse, VendorBalanceResponse
+from app.models.vendor import Vendor, VendorBalance, BalanceAdjustment
+from app.schemas.vendor import (
+    VendorCreate, VendorUpdate, VendorResponse, VendorBalanceResponse,
+    BalanceAdjustRequest, BalanceAdjustmentResponse,
+)
 from app.routers.auth import get_current_user, require_role, get_password_hash
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
@@ -147,3 +152,110 @@ async def get_vendor_balance(
         await db.commit()
         await db.refresh(balance)
     return balance
+
+
+@router.post("/{vendor_id}/balance/adjust", response_model=BalanceAdjustmentResponse)
+async def adjust_vendor_balance(
+    vendor_id: int,
+    data: BalanceAdjustRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    vendor = await db.get(Vendor, vendor_id)
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    result = await db.execute(
+        select(VendorBalance)
+        .where(VendorBalance.vendor_id == vendor_id)
+        .with_for_update()
+    )
+    balance_row = result.scalar_one_or_none()
+    if not balance_row:
+        balance_row = VendorBalance(vendor_id=vendor_id, balance=Decimal("0.00"))
+        db.add(balance_row)
+        await db.flush()
+        await db.execute(
+            select(VendorBalance)
+            .where(VendorBalance.vendor_id == vendor_id)
+            .with_for_update()
+        )
+
+    balance_before = Decimal(str(balance_row.balance))
+    adj_amount = Decimal(str(data.amount)).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+    if adj_amount > Decimal("99999999.99"):
+        raise HTTPException(status_code=400, detail="Amount exceeds maximum allowed")
+
+    if data.adjustment_type == "credit":
+        balance_after = (balance_before + adj_amount).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    else:
+        balance_after = (balance_before - adj_amount).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+    balance_row.balance = balance_after
+    balance_row.last_updated = datetime.utcnow()
+
+    adjustment = BalanceAdjustment(
+        vendor_id=vendor_id,
+        adjusted_by=current_user.id,
+        amount=adj_amount,
+        adjustment_type=data.adjustment_type,
+        reason=data.reason,
+        balance_before=balance_before,
+        balance_after=balance_after,
+    )
+    db.add(adjustment)
+    await db.commit()
+    await db.refresh(adjustment)
+
+    return BalanceAdjustmentResponse(
+        id=adjustment.id,
+        vendor_id=adjustment.vendor_id,
+        adjusted_by=adjustment.adjusted_by,
+        admin_name=current_user.name,
+        amount=adjustment.amount,
+        adjustment_type=adjustment.adjustment_type,
+        reason=adjustment.reason,
+        balance_before=adjustment.balance_before,
+        balance_after=adjustment.balance_after,
+        created_at=adjustment.created_at,
+    )
+
+
+@router.get("/{vendor_id}/balance/history", response_model=List[BalanceAdjustmentResponse])
+async def get_balance_history(
+    vendor_id: int,
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role != "admin" and current_user.id != vendor_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    result = await db.execute(
+        select(BalanceAdjustment)
+        .options(selectinload(BalanceAdjustment.admin))
+        .where(BalanceAdjustment.vendor_id == vendor_id)
+        .order_by(BalanceAdjustment.created_at.desc())
+        .limit(limit)
+    )
+    adjustments = result.scalars().all()
+
+    return [
+        BalanceAdjustmentResponse(
+            id=a.id,
+            vendor_id=a.vendor_id,
+            adjusted_by=a.adjusted_by,
+            admin_name=a.admin.name if a.admin else None,
+            amount=a.amount,
+            adjustment_type=a.adjustment_type,
+            reason=a.reason,
+            balance_before=a.balance_before,
+            balance_after=a.balance_after,
+            created_at=a.created_at,
+        )
+        for a in adjustments
+    ]

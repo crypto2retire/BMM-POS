@@ -452,6 +452,7 @@
                             <th>Balance</th>
                             <th>Status</th>
                             <th>Role</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="vendors-table-body">
@@ -497,6 +498,55 @@
         <div style="display:flex;gap:0.5rem">
             <button onclick="closeAddEmployee()" style="flex:1;padding:0.7rem;background:var(--surface-2,#4e4e54);color:var(--text-light);border:1px solid var(--border);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Cancel</button>
             <button onclick="submitAddEmployee()" id="emp-submit-btn" style="flex:1;padding:0.7rem;background:#147a54;color:#fff;border:none;cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Add Employee</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="adjust-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:1000;align-items:center;justify-content:center;padding:1rem">
+    <div style="background:var(--surface);border:1px solid var(--warm-border);padding:1.75rem;width:100%;max-width:420px;color:var(--text)">
+        <h2 style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:500;margin-bottom:0.25rem;color:var(--gold);font-style:italic">Adjust Balance</h2>
+        <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem"><span id="adj-vendor-name"></span> &mdash; Current: <strong id="adj-current-bal"></strong></p>
+        <div style="margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Type</label>
+            <select id="adj-type" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box">
+                <option value="credit">Credit (add to balance)</option>
+                <option value="debit">Debit (subtract from balance)</option>
+            </select>
+        </div>
+        <div style="margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Amount ($)</label>
+            <input type="number" id="adj-amount" min="0.01" step="0.01" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box" placeholder="0.00">
+        </div>
+        <div style="margin-bottom:1rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Reason (required)</label>
+            <textarea id="adj-reason" rows="2" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box;resize:vertical;font-family:'Roboto',sans-serif" placeholder="e.g. Rent deduction, payout correction, cash advance"></textarea>
+        </div>
+        <div style="display:flex;gap:0.5rem">
+            <button onclick="closeAdjustModal()" style="flex:1;padding:0.7rem;background:var(--surface-2,#4e4e54);color:var(--text-light);border:1px solid var(--border);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Cancel</button>
+            <button onclick="submitAdjustment()" id="adj-submit-btn" style="flex:1;padding:0.7rem;background:#147a54;color:#fff;border:none;cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Submit Adjustment</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="history-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:1000;align-items:center;justify-content:center;padding:1rem">
+    <div style="background:var(--surface);border:1px solid var(--warm-border);padding:1.75rem;width:100%;max-width:640px;color:var(--text);max-height:80vh;display:flex;flex-direction:column">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+            <h2 style="font-family:'EB Garamond',serif;font-size:1.3rem;font-weight:500;color:var(--gold);font-style:italic">Balance History &mdash; <span id="hist-vendor-name"></span></h2>
+            <button onclick="closeHistoryModal()" style="background:none;border:none;color:var(--text-light);font-size:1.5rem;cursor:pointer;line-height:1">&times;</button>
+        </div>
+        <div style="overflow-y:auto;flex:1">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="font-size:0.7rem">Date</th>
+                        <th style="font-size:0.7rem">Type</th>
+                        <th style="font-size:0.7rem">Amount</th>
+                        <th style="font-size:0.7rem">Reason</th>
+                        <th style="font-size:0.7rem">Balance Change</th>
+                    </tr>
+                </thead>
+                <tbody id="hist-body"></tbody>
+            </table>
         </div>
     </div>
 </div>
@@ -639,10 +689,12 @@
                 tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No vendors found.</td></tr>';
             } else {
                 tbody.innerHTML = vendors.map(function(v) {
-                    return '<tr><td><strong>' + v.name + '</strong></td><td>' + v.email + '</td><td>' + (v.booth_number || '-') + '</td>'
+                    return '<tr><td><strong>' + escapeHtml(v.name) + '</strong></td><td>' + escapeHtml(v.email) + '</td><td>' + escapeHtml(v.booth_number || '-') + '</td>'
                         + '<td>' + (v.monthly_rent ? fmt(parseFloat(v.monthly_rent)) : '-') + '</td>'
                         + '<td><strong>' + fmt(parseFloat(v.current_balance || 0)) + '</strong></td>'
-                        + '<td>' + statusBadge(v.status) + '</td><td>' + roleBadge(v.role) + '</td></tr>';
+                        + '<td>' + statusBadge(v.status) + '</td><td>' + roleBadge(v.role) + '</td>'
+                        + '<td><button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px;background:var(--gold);color:#1a1a1d" onclick="openAdjustModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\',' + parseFloat(v.current_balance || 0) + ')">Adjust</button>'
+                        + ' <button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px" onclick="openHistoryModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\')">History</button></td></tr>';
                 }).join('');
             }
 
@@ -662,7 +714,9 @@
                         + '<div class="vendor-card-detail collapsed" id="vcard-detail-' + v.id + '">'
                         + '<span><label>Monthly Rent</label>' + (v.monthly_rent ? fmt(parseFloat(v.monthly_rent)) : '-') + '</span>'
                         + '<span><label>Role</label>' + v.role + '</span>'
-                        + '<span><label>Payout</label>' + (v.payout_method || '-') + '</span></div></div>';
+                        + '<span><label>Payout</label>' + (v.payout_method || '-') + '</span>'
+                        + '<div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px;background:var(--gold);color:#1a1a1d" onclick="event.stopPropagation();openAdjustModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\',' + parseFloat(v.current_balance || 0) + ')">Adjust Balance</button>'
+                        + '<button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px" onclick="event.stopPropagation();openHistoryModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\')">History</button></div></div></div>';
                 }).join('');
             }
         } catch (e) {
@@ -991,6 +1045,86 @@
     }
 
     function escapeHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    var _adjVendorId = null;
+    function openAdjustModal(vendorId, vendorName, currentBalance) {
+        _adjVendorId = vendorId;
+        document.getElementById('adj-vendor-name').textContent = vendorName;
+        document.getElementById('adj-current-bal').textContent = fmt(currentBalance);
+        document.getElementById('adj-type').value = 'credit';
+        document.getElementById('adj-amount').value = '';
+        document.getElementById('adj-reason').value = '';
+        document.getElementById('adj-submit-btn').disabled = false;
+        document.getElementById('adj-submit-btn').textContent = 'Submit Adjustment';
+        document.getElementById('adjust-modal').style.display = 'flex';
+    }
+    function closeAdjustModal() {
+        document.getElementById('adjust-modal').style.display = 'none';
+        _adjVendorId = null;
+    }
+    async function submitAdjustment() {
+        var amount = parseFloat(document.getElementById('adj-amount').value);
+        var reason = document.getElementById('adj-reason').value.trim();
+        var adjType = document.getElementById('adj-type').value;
+        if (!amount || amount <= 0) { showAlert('alert-container', 'Enter a valid amount.', 'error'); return; }
+        if (!reason) { showAlert('alert-container', 'A reason is required.', 'error'); return; }
+        var label = adjType === 'credit' ? 'CREDIT' : 'DEBIT';
+        if (!confirm('Confirm ' + label + ' of ' + fmt(amount) + ' for this vendor?\n\nReason: ' + reason)) return;
+        var btn = document.getElementById('adj-submit-btn');
+        btn.disabled = true; btn.textContent = 'Processing...';
+        try {
+            var token = sessionStorage.getItem('bmm_token');
+            var resp = await fetch('/api/v1/vendors/' + _adjVendorId + '/balance/adjust', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: amount, adjustment_type: adjType, reason: reason })
+            });
+            var data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || 'Adjustment failed');
+            showAlert('alert-container', label + ' of ' + fmt(amount) + ' applied. New balance: ' + fmt(parseFloat(data.balance_after)), 'success');
+            closeAdjustModal();
+            loadVendors();
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+            btn.disabled = false; btn.textContent = 'Submit Adjustment';
+        }
+    }
+
+    async function openHistoryModal(vendorId, vendorName) {
+        document.getElementById('hist-vendor-name').textContent = vendorName;
+        document.getElementById('hist-body').innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>';
+        document.getElementById('history-modal').style.display = 'flex';
+        try {
+            var token = sessionStorage.getItem('bmm_token');
+            var resp = await fetch('/api/v1/vendors/' + vendorId + '/balance/history?limit=50', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            var data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || 'Failed to load history');
+            if (!data.length) {
+                document.getElementById('hist-body').innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-light)">No adjustments recorded.</td></tr>';
+                return;
+            }
+            document.getElementById('hist-body').innerHTML = data.map(function(a) {
+                var d = new Date(a.created_at);
+                var typeClass = a.adjustment_type === 'credit' ? 'color:#4ADE80' : 'color:#F87171';
+                return '<tr>'
+                    + '<td style="font-size:0.78rem">' + d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + '</td>'
+                    + '<td style="' + typeClass + ';font-weight:600;font-size:0.78rem;text-transform:uppercase">' + a.adjustment_type + '</td>'
+                    + '<td style="font-size:0.78rem;font-weight:600">' + fmt(parseFloat(a.amount)) + '</td>'
+                    + '<td style="font-size:0.78rem">' + escapeHtml(a.reason) + '</td>'
+                    + '<td style="font-size:0.75rem;color:var(--text-light)">' + fmt(parseFloat(a.balance_before)) + ' &rarr; ' + fmt(parseFloat(a.balance_after)) + '</td>'
+                    + '</tr>';
+            }).join('');
+        } catch (err) {
+            document.getElementById('hist-body').innerHTML = '<tr><td colspan="5" style="color:#F87171">' + escapeHtml(err.message) + '</td></tr>';
+        }
+    }
+    function closeHistoryModal() {
+        document.getElementById('history-modal').style.display = 'none';
+    }
+    document.getElementById('adjust-modal').addEventListener('click', function(e) { if (e.target === this) closeAdjustModal(); });
+    document.getElementById('history-modal').addEventListener('click', function(e) { if (e.target === this) closeHistoryModal(); });
 </script>
 <script src="/static/js/assistant-panel.js"></script>
 <script>initAssistantPanel('The user is an admin at Bowenstreet Market.', { buttonBottom: '70px' });</script>

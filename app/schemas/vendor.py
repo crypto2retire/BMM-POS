@@ -64,3 +64,48 @@ class VendorBalanceResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class BalanceAdjustRequest(BaseModel):
+    amount: Decimal
+    adjustment_type: str
+    reason: str
+
+    @field_validator('adjustment_type')
+    @classmethod
+    def validate_type(cls, v):
+        if v not in ('credit', 'debit'):
+            raise ValueError('adjustment_type must be credit or debit')
+        return v
+
+    @field_validator('amount')
+    @classmethod
+    def validate_amount(cls, v):
+        if v <= 0:
+            raise ValueError('amount must be greater than 0')
+        if v > Decimal("99999999.99"):
+            raise ValueError('amount exceeds maximum allowed')
+        return v
+
+    @field_validator('reason')
+    @classmethod
+    def validate_reason(cls, v):
+        if not v or not v.strip():
+            raise ValueError('reason is required')
+        return v.strip()
+
+
+class BalanceAdjustmentResponse(BaseModel):
+    id: int
+    vendor_id: int
+    adjusted_by: int
+    admin_name: Optional[str] = None
+    amount: Decimal
+    adjustment_type: str
+    reason: str
+    balance_before: Decimal
+    balance_after: Decimal
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

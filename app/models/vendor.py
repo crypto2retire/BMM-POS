@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
-from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey, text
+from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -39,3 +39,20 @@ class VendorBalance(Base):
     vendor_id: Mapped[int] = mapped_column(Integer, ForeignKey("vendors.id"))
     balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
     last_updated: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default="now()")
+
+
+class BalanceAdjustment(Base):
+    __tablename__ = "balance_adjustments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    vendor_id: Mapped[int] = mapped_column(Integer, ForeignKey("vendors.id"), nullable=False)
+    adjusted_by: Mapped[int] = mapped_column(Integer, ForeignKey("vendors.id"), nullable=False)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    adjustment_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    balance_before: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    balance_after: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default="now()", nullable=False)
+
+    vendor: Mapped["Vendor"] = relationship("Vendor", foreign_keys=[vendor_id])
+    admin: Mapped["Vendor"] = relationship("Vendor", foreign_keys=[adjusted_by])
