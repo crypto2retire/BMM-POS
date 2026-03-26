@@ -403,6 +403,8 @@ async def pos_create_sale(
         cash_tendered=sale.cash_tendered,
         change_given=sale.change_given,
         card_transaction_id=sale.card_transaction_id,
+        gift_card_amount=sale.gift_card_amount,
+        gift_card_barcode=sale.gift_card_barcode,
         receipt_email=sale.receipt_email,
         created_at=sale.created_at,
         line_items=line_items,

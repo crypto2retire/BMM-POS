@@ -1954,10 +1954,9 @@
             </div>`;
         }
 
-        let paymentLine = sale.payment_method.toUpperCase();
+        let paymentLine = {'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[sale.payment_method] || (sale.payment_method || '').toUpperCase();
         let changeLine = '';
         if (sale.payment_method === 'split') {
-            paymentLine = 'SPLIT';
             var gcAmt = sale.gift_card_amount ? parseFloat(sale.gift_card_amount) : 0;
             var saleTotal = parseFloat(sale.total);
             var cashAmt = sale.cash_tendered ? parseFloat(sale.cash_tendered) : 0;
@@ -2072,7 +2071,30 @@
         }
 
         let cashLines = '';
-        if (sale.payment_method === 'cash' && sale.cash_tendered != null) {
+        if (sale.payment_method === 'split') {
+            var gcAmt = sale.gift_card_amount ? parseFloat(sale.gift_card_amount) : 0;
+            var sTotal = parseFloat(sale.total);
+            var rem = sTotal - gcAmt;
+            if (gcAmt > 0) {
+                cashLines += `<tr class="payment-line"><td>Gift Card</td><td class="val">$${gcAmt.toFixed(2)}</td></tr>`;
+            }
+            if (sale.cash_tendered != null && sale.card_transaction_id) {
+                var cp = Math.min(parseFloat(sale.cash_tendered), rem);
+                var cdp = Math.max(rem - cp, 0);
+                cashLines += `<tr class="payment-line"><td>Cash</td><td class="val">$${cp.toFixed(2)}</td></tr>`;
+                cashLines += `<tr class="payment-line"><td>Card</td><td class="val">$${cdp.toFixed(2)}</td></tr>`;
+                cashLines += `<tr><td>Tendered</td><td class="val">$${parseFloat(sale.cash_tendered).toFixed(2)}</td></tr>`;
+                cashLines += `<tr><td>Change</td><td class="val">$${parseFloat(sale.change_given || 0).toFixed(2)}</td></tr>`;
+            } else if (sale.cash_tendered != null) {
+                cashLines += `<tr class="payment-line"><td>Cash</td><td class="val">$${rem.toFixed(2)}</td></tr>`;
+                cashLines += `<tr><td>Tendered</td><td class="val">$${parseFloat(sale.cash_tendered).toFixed(2)}</td></tr>`;
+                cashLines += `<tr><td>Change</td><td class="val">$${parseFloat(sale.change_given || 0).toFixed(2)}</td></tr>`;
+            } else if (sale.card_transaction_id) {
+                cashLines += `<tr class="payment-line"><td>Card</td><td class="val">$${rem.toFixed(2)}</td></tr>`;
+            }
+        } else if (sale.payment_method === 'gift_card') {
+            cashLines = `<tr class="payment-line"><td>Gift Card</td><td class="val">$${parseFloat(sale.total).toFixed(2)}</td></tr>`;
+        } else if (sale.payment_method === 'cash' && sale.cash_tendered != null) {
             cashLines = `
                 <tr><td>Tendered</td><td class="val">$${parseFloat(sale.cash_tendered).toFixed(2)}</td></tr>
                 <tr><td>Change</td><td class="val">$${parseFloat(sale.change_given || 0).toFixed(2)}</td></tr>`;
@@ -2171,7 +2193,7 @@ table { width: 100%; border-collapse: collapse; }
     <tr class="total-line"><td>TOTAL</td><td class="val">$${parseFloat(sale.total).toFixed(2)}</td></tr>
 </table>
 <table class="totals-table">
-    <tr class="payment-line"><td>Payment</td><td class="val">${(sale.payment_method || '').toUpperCase()}</td></tr>
+    <tr class="payment-line"><td>Payment</td><td class="val">${{'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[sale.payment_method] || (sale.payment_method || '').toUpperCase()}</td></tr>
     ${cashLines}
 </table>
 <hr class="rule-light">
@@ -2403,7 +2425,7 @@ table { width: 100%; border-collapse: collapse; }
     }
 
     async function checkGcBalance() {
-        var bc = document.getElementById('gc-check-barcode').value.trim();
+        var bc = document.getElementById('gc-check-barcode').value.replace(/\D/g, '').trim();
         var result = document.getElementById('gc-check-result');
         if (!bc) { result.innerHTML = '<p style="color:#F87171;text-align:center">Please scan or enter a barcode</p>'; return; }
         result.innerHTML = '<p style="text-align:center;color:#999">Checking...</p>';
@@ -2437,7 +2459,7 @@ table { width: 100%; border-collapse: collapse; }
     }
 
     async function loadGiftCard() {
-        var bc = document.getElementById('gc-load-barcode').value.trim();
+        var bc = document.getElementById('gc-load-barcode').value.replace(/\D/g, '').trim();
         var amount = parseFloat(document.getElementById('gc-load-amount').value);
         var notes = document.getElementById('gc-load-notes').value.trim();
         var errEl = document.getElementById('gc-load-error');
@@ -2461,7 +2483,7 @@ table { width: 100%; border-collapse: collapse; }
     }
 
     async function activateGiftCard() {
-        var bc = document.getElementById('gc-activate-barcode').value.trim();
+        var bc = document.getElementById('gc-activate-barcode').value.replace(/\D/g, '').trim();
         var amount = parseFloat(document.getElementById('gc-activate-amount').value) || 0;
         var notes = document.getElementById('gc-activate-notes').value.trim();
         var errEl = document.getElementById('gc-activate-error');
@@ -2512,6 +2534,7 @@ table { width: 100%; border-collapse: collapse; }
 
     var gcPayCheckTimer = null;
     document.getElementById('gc-pay-barcode').addEventListener('input', function() {
+        this.value = this.value.replace(/\D/g, '');
         clearTimeout(gcPayCheckTimer);
         var bc = this.value.trim();
         if (bc.length >= 3) {
@@ -2540,7 +2563,7 @@ table { width: 100%; border-collapse: collapse; }
     });
 
     async function processGcPayment() {
-        var bc = document.getElementById('gc-pay-barcode').value.trim();
+        var bc = document.getElementById('gc-pay-barcode').value.replace(/\D/g, '').trim();
         var errEl = document.getElementById('gc-pay-error');
         if (!bc) { errEl.textContent = 'Please scan the gift card'; return; }
         errEl.textContent = '';
@@ -2875,7 +2898,7 @@ table { width: 100%; border-collapse: collapse; }
             return `<div onclick="viewReceiptDetail(${s.id})" style="background:#2D2D30;padding:0.65rem 0.75rem;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
                 <div>
                     <div style="font-weight:600;color:#F0EDE8">Sale #${s.id}</div>
-                    <div style="font-size:0.8rem;color:#A8A6A1">${dateStr} ${timeStr} · ${itemCount} item(s) · ${(s.payment_method||'').toUpperCase()}</div>
+                    <div style="font-size:0.8rem;color:#A8A6A1">${dateStr} ${timeStr} · ${itemCount} item(s) · ${{'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[s.payment_method] || (s.payment_method||'').toUpperCase()}</div>
                 </div>
                 <div style="font-weight:700;color:#C9A96E;font-size:1.05rem">$${parseFloat(s.total).toFixed(2)}</div>
             </div>`;
@@ -2905,9 +2928,32 @@ table { width: 100%; border-collapse: collapse; }
                 </div>`;
             }
 
-            let paymentLine = (sale.payment_method || '').toUpperCase();
+            let paymentLine = {'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[sale.payment_method] || (sale.payment_method || '').toUpperCase();
             let changeLine = '';
-            if (sale.payment_method === 'cash' && sale.cash_tendered != null) {
+            if (sale.payment_method === 'split') {
+                var gcA = sale.gift_card_amount ? parseFloat(sale.gift_card_amount) : 0;
+                var sT = parseFloat(sale.total);
+                var rr = sT - gcA;
+                if (gcA > 0) {
+                    changeLine += `<div class="receipt-line"><span class="left">Gift Card</span><span class="right">$${gcA.toFixed(2)}</span></div>`;
+                }
+                if (sale.cash_tendered != null && sale.card_transaction_id) {
+                    var ccp = Math.min(parseFloat(sale.cash_tendered), rr);
+                    var ccdp = Math.max(rr - ccp, 0);
+                    changeLine += `<div class="receipt-line"><span class="left">Cash</span><span class="right">$${ccp.toFixed(2)}</span></div>`;
+                    changeLine += `<div class="receipt-line"><span class="left">Card</span><span class="right">$${ccdp.toFixed(2)}</span></div>`;
+                    changeLine += `<div class="receipt-line"><span class="left">Tendered</span><span class="right">$${parseFloat(sale.cash_tendered).toFixed(2)}</span></div>`;
+                    changeLine += `<div class="receipt-line receipt-total-line"><span class="left">CHANGE</span><span class="right">$${parseFloat(sale.change_given || 0).toFixed(2)}</span></div>`;
+                } else if (sale.cash_tendered != null) {
+                    changeLine += `<div class="receipt-line"><span class="left">Cash</span><span class="right">$${rr.toFixed(2)}</span></div>`;
+                    changeLine += `<div class="receipt-line"><span class="left">Tendered</span><span class="right">$${parseFloat(sale.cash_tendered).toFixed(2)}</span></div>`;
+                    changeLine += `<div class="receipt-line receipt-total-line"><span class="left">CHANGE</span><span class="right">$${parseFloat(sale.change_given || 0).toFixed(2)}</span></div>`;
+                } else if (sale.card_transaction_id) {
+                    changeLine += `<div class="receipt-line"><span class="left">Card</span><span class="right">$${rr.toFixed(2)}</span></div>`;
+                }
+            } else if (sale.payment_method === 'gift_card') {
+                changeLine = `<div class="receipt-line"><span class="left">Gift Card</span><span class="right">$${parseFloat(sale.total).toFixed(2)}</span></div>`;
+            } else if (sale.payment_method === 'cash' && sale.cash_tendered != null) {
                 paymentLine += ` — Tendered: $${parseFloat(sale.cash_tendered).toFixed(2)}`;
                 changeLine = `<div class="receipt-line receipt-total-line">
                     <span class="left">CHANGE</span>
