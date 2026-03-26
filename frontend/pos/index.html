@@ -1105,7 +1105,7 @@
         </div>
         <div style="margin:1rem 0">
             <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.3rem">Scan Gift Card Barcode</label>
-            <input type="text" id="gc-pay-barcode" placeholder="Scan or type barcode" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.6rem 0.75rem;font-size:1rem;box-sizing:border-box">
+            <input type="text" id="gc-pay-barcode" placeholder="Scan or type barcode" inputmode="numeric" pattern="[0-9]*" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.6rem 0.75rem;font-size:1rem;box-sizing:border-box">
         </div>
         <div id="gc-pay-balance" style="min-height:30px;margin-bottom:0.5rem"></div>
         <div id="gc-pay-error" style="color:#F87171;font-size:0.8rem;min-height:18px"></div>
@@ -1128,7 +1128,7 @@
 
         <div id="gc-check-panel">
             <div style="display:flex;gap:6px;margin-bottom:0.75rem">
-                <input type="text" id="gc-check-barcode" placeholder="Scan or type gift card barcode" style="flex:1;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem">
+                <input type="text" id="gc-check-barcode" placeholder="Scan or type gift card barcode" inputmode="numeric" pattern="[0-9]*" style="flex:1;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem">
                 <button class="confirm-btn" onclick="checkGcBalance()" style="padding:0.55rem 1rem;font-size:0.8rem">Check</button>
             </div>
             <div id="gc-check-result" style="min-height:100px"></div>
@@ -1137,7 +1137,7 @@
         <div id="gc-load-panel" style="display:none">
             <div style="margin-bottom:0.6rem">
                 <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Gift Card Barcode</label>
-                <input type="text" id="gc-load-barcode" placeholder="Scan or type barcode" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+                <input type="text" id="gc-load-barcode" placeholder="Scan or type barcode" inputmode="numeric" pattern="[0-9]*" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
             </div>
             <div style="margin-bottom:0.6rem">
                 <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Amount to Load ($)</label>
@@ -1154,7 +1154,7 @@
         <div id="gc-activate-panel" style="display:none">
             <div style="margin-bottom:0.6rem">
                 <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Gift Card Barcode</label>
-                <input type="text" id="gc-activate-barcode" placeholder="Scan the new gift card barcode" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+                <input type="text" id="gc-activate-barcode" placeholder="Scan the new gift card barcode" inputmode="numeric" pattern="[0-9]*" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
             </div>
             <div style="margin-bottom:0.6rem">
                 <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Initial Balance ($)</label>
@@ -2348,6 +2348,14 @@ table { width: 100%; border-collapse: collapse; }
 
     document.getElementById('gc-modal').addEventListener('click', function(e) { if (e.target === this) closeGcModal(); });
     document.getElementById('gc-check-barcode').addEventListener('keydown', function(e) { if (e.key === 'Enter') checkGcBalance(); });
+
+    ['gc-pay-barcode','gc-check-barcode','gc-load-barcode','gc-activate-barcode'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', function() {
+            var cleaned = this.value.replace(/[^0-9]/g, '');
+            if (cleaned !== this.value) this.value = cleaned;
+        });
+    });
 
     // ─── Gift Card Payment ──────────────────────────────────────────────────
     function openGcPayModal() {
