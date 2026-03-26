@@ -558,6 +558,34 @@
         .toast.success { border-color: rgba(123,196,160,0.3); color: #7BC4A0; }
         .toast.error { border-color: rgba(200,112,112,0.3); color: #c87070; }
 
+        /* Void Sale */
+        .void-sale-btn {
+            width: 100%;
+            padding: 0.5rem;
+            margin-top: 0.35rem;
+            background: transparent;
+            border: 1px solid #991B1B;
+            color: #F87171;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .void-sale-btn:hover { background: #991B1B; color: #FEE2E2; }
+        .void-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            background: #991B1B;
+            color: #FEE2E2;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 4px;
+        }
+
         /* Receipt Modal */
         .receipt-modal { max-width: 380px; max-height: 85vh; overflow-y: auto; }
         .receipt-print-area {
@@ -962,9 +990,10 @@
 <!-- Receipt Modal -->
 <div class="pos-modal-overlay hidden" id="receipt-modal">
     <div class="pos-modal receipt-modal">
-        <h2>✅ Sale Complete</h2>
+        <h2 id="receipt-modal-title">✅ Sale Complete</h2>
         <div class="receipt-print-area" id="receipt-content"></div>
         <button class="print-receipt-btn" onclick="printReceipt()">🖨 Print Receipt</button>
+        <button class="void-sale-btn" id="void-from-receipt-btn" onclick="openVoidModal()">Void This Sale</button>
         <button class="new-sale-btn" onclick="startNewSale()">New Sale →</button>
     </div>
 </div>
@@ -1046,6 +1075,24 @@
         <div class="modal-actions" style="margin-top:0.5rem">
             <button class="cancel-btn" onclick="document.getElementById('receipt-detail-modal').classList.add('hidden')">Back</button>
             <button class="confirm-btn" onclick="reprintReceipt()">🖨 Reprint</button>
+        </div>
+        <button class="void-sale-btn" id="void-from-detail-btn" onclick="openVoidModal()">Void This Sale</button>
+    </div>
+</div>
+
+<div class="pos-modal-overlay hidden" id="void-confirm-modal" style="z-index:450">
+    <div class="pos-modal" style="max-width:360px">
+        <h2 style="color:#F87171">⚠ Void Sale</h2>
+        <p style="color:#A8A6A1;font-size:0.85rem;margin-bottom:0.75rem" id="void-sale-info"></p>
+        <div style="margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:4px">Reason (optional)</label>
+            <input type="text" id="void-reason" placeholder="e.g. Wrong item, customer changed mind" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.5rem 0.6rem;font-size:0.9rem;box-sizing:border-box">
+        </div>
+        <p style="color:#F87171;font-size:0.78rem;margin-bottom:0.5rem">This will reverse the sale: items returned to inventory, vendor balances adjusted, and any gift card funds refunded.</p>
+        <div id="void-error" style="color:#F87171;font-size:0.82rem;text-align:center;margin-bottom:0.5rem"></div>
+        <div class="modal-actions">
+            <button class="cancel-btn" onclick="closeVoidModal()">Cancel</button>
+            <button class="confirm-btn" id="void-confirm-btn" onclick="confirmVoidSale()" style="background:#991B1B;color:#FEE2E2">Confirm Void</button>
         </div>
     </div>
 </div>
@@ -1290,6 +1337,10 @@
                     <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:#F0EDE8;margin-top:4px" id="eod-tax-total">$0.00</div>
                     <div style="font-size:0.72rem;color:#A8A6A1" id="eod-items-sold">0 items</div>
                 </div>
+            </div>
+            <div id="eod-voided-row" class="hidden" style="background:#2D2D30;padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+                <div style="font-size:0.75rem;color:#F87171;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Voided Sales</div>
+                <div><span style="color:#F87171;font-size:0.85rem;font-weight:700" id="eod-voided-count">0</span><span style="color:#A8A6A1;font-size:0.8rem"> sale(s) — </span><span style="color:#F87171;font-size:0.85rem;font-weight:700" id="eod-voided-total">$0.00</span></div>
             </div>
             <div style="margin-bottom:1rem">
                 <div style="font-size:0.7rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-family:'Roboto',sans-serif">Cash Drawer Count</div>
@@ -2050,6 +2101,18 @@
             </div>`;
 
         document.getElementById('receipt-content').innerHTML = html;
+        if (sale.is_voided) {
+            document.getElementById('receipt-modal-title').textContent = '🚫 Sale Voided';
+            document.getElementById('void-from-receipt-btn').style.display = 'none';
+            var voidHtml = '<div style="text-align:center;margin:6px 0"><div class="void-badge">VOIDED</div>';
+            if (sale.void_reason) voidHtml += '<div style="color:#F87171;font-size:0.75rem;margin-top:2px">' + escHtml(sale.void_reason) + '</div>';
+            voidHtml += '</div>';
+            var hdr = document.getElementById('receipt-content').querySelector('.receipt-header');
+            if (hdr) hdr.insertAdjacentHTML('afterend', voidHtml);
+        } else {
+            document.getElementById('receipt-modal-title').textContent = '✅ Sale Complete';
+            document.getElementById('void-from-receipt-btn').style.display = '';
+        }
         document.getElementById('receipt-modal').classList.remove('hidden');
     }
 
@@ -2220,6 +2283,71 @@ table { width: 100%; border-collapse: collapse; }
         document.getElementById('barcode-input').value = '';
         document.getElementById('barcode-input').focus();
         showToast('Ready for next sale', 'success');
+    }
+
+    function openVoidModal() {
+        if (!currentSale || !currentSale.id) return;
+        if (currentSale.is_voided) {
+            showToast('This sale is already voided', 'error');
+            return;
+        }
+        document.getElementById('void-sale-info').textContent =
+            'Sale #' + currentSale.id + ' — $' + parseFloat(currentSale.total).toFixed(2) +
+            ' (' + ({'gift_card':'Gift Card','split':'Split','cash':'Cash','card':'Card'}[currentSale.payment_method] || currentSale.payment_method) + ')';
+        document.getElementById('void-reason').value = '';
+        document.getElementById('void-error').textContent = '';
+        document.getElementById('void-confirm-btn').disabled = false;
+        document.getElementById('void-confirm-btn').textContent = 'Confirm Void';
+        document.getElementById('void-confirm-modal').classList.remove('hidden');
+    }
+    function closeVoidModal() {
+        document.getElementById('void-confirm-modal').classList.add('hidden');
+    }
+    document.getElementById('void-confirm-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeVoidModal();
+    });
+
+    async function confirmVoidSale() {
+        if (!currentSale || !currentSale.id) return;
+        var btn = document.getElementById('void-confirm-btn');
+        var errEl = document.getElementById('void-error');
+        btn.disabled = true;
+        btn.textContent = 'Voiding...';
+        errEl.textContent = '';
+        try {
+            var reason = document.getElementById('void-reason').value.trim() || null;
+            var body = {};
+            if (reason) body.reason = reason;
+            var result = await apiPost('/api/v1/pos/sale/' + currentSale.id + '/void', body);
+            currentSale = result;
+            closeVoidModal();
+            showToast('Sale #' + result.id + ' has been voided', 'success');
+            updateReceiptVoidState(result);
+        } catch (err) {
+            errEl.textContent = err.message || 'Failed to void sale';
+            btn.disabled = false;
+            btn.textContent = 'Confirm Void';
+        }
+    }
+
+    function updateReceiptVoidState(sale) {
+        var voidBadgeHtml = '<div class="void-badge">VOIDED</div>';
+        if (sale.void_reason) {
+            voidBadgeHtml += '<div style="color:#F87171;font-size:0.75rem;margin-top:2px">' + escHtml(sale.void_reason) + '</div>';
+        }
+        var receiptContent = document.getElementById('receipt-content');
+        if (receiptContent && !receiptContent.querySelector('.void-badge')) {
+            var header = receiptContent.querySelector('.receipt-header');
+            if (header) header.insertAdjacentHTML('afterend', '<div style="text-align:center;margin:6px 0">' + voidBadgeHtml + '</div>');
+        }
+        var detailContent = document.getElementById('receipt-detail-content');
+        if (detailContent && !detailContent.querySelector('.void-badge')) {
+            var dHeader = detailContent.querySelector('.receipt-header');
+            if (dHeader) dHeader.insertAdjacentHTML('afterend', '<div style="text-align:center;margin:6px 0">' + voidBadgeHtml + '</div>');
+        }
+        document.getElementById('receipt-modal-title').textContent = '🚫 Sale Voided';
+        document.getElementById('void-from-receipt-btn').style.display = 'none';
+        document.getElementById('void-from-detail-btn').style.display = 'none';
     }
 
     // ─── Camera barcode scanner ───────────────────────────────────────────────
@@ -2895,12 +3023,13 @@ table { width: 100%; border-collapse: collapse; }
             const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
             const itemCount = (s.line_items || []).reduce((sum, li) => sum + li.quantity, 0);
-            return `<div onclick="viewReceiptDetail(${s.id})" style="background:#2D2D30;padding:0.65rem 0.75rem;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+            var voidTag = s.is_voided ? ' · <span style="color:#F87171;font-weight:700">VOIDED</span>' : '';
+            return `<div onclick="viewReceiptDetail(${s.id})" style="background:#2D2D30;padding:0.65rem 0.75rem;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center${s.is_voided ? ';opacity:0.6' : ''}">
                 <div>
-                    <div style="font-weight:600;color:#F0EDE8">Sale #${s.id}</div>
+                    <div style="font-weight:600;color:#F0EDE8">Sale #${s.id}${voidTag}</div>
                     <div style="font-size:0.8rem;color:#A8A6A1">${dateStr} ${timeStr} · ${itemCount} item(s) · ${{'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[s.payment_method] || (s.payment_method||'').toUpperCase()}</div>
                 </div>
-                <div style="font-weight:700;color:#C9A96E;font-size:1.05rem">$${parseFloat(s.total).toFixed(2)}</div>
+                <div style="font-weight:700;color:${s.is_voided ? '#F87171' : '#C9A96E'};font-size:1.05rem">${s.is_voided ? '-' : ''}$${parseFloat(s.total).toFixed(2)}</div>
             </div>`;
         }).join('');
     }
@@ -2909,6 +3038,7 @@ table { width: 100%; border-collapse: collapse; }
         try {
             const sale = await apiGet(`/api/v1/sales/${saleId}`);
             lookupSaleData = sale;
+            currentSale = sale;
             const payload = parseToken();
             const cashierName = sale.cashier_name || payload?.name || 'Cashier';
             const now = new Date(sale.created_at);
@@ -2981,6 +3111,16 @@ table { width: 100%; border-collapse: collapse; }
                 <hr class="receipt-divider">
                 <div class="receipt-footer"><p>Bowenstreet Market</p></div>`;
 
+            if (sale.is_voided) {
+                document.getElementById('void-from-detail-btn').style.display = 'none';
+                var voidHtml = '<div style="text-align:center;margin:6px 0"><div class="void-badge">VOIDED</div>';
+                if (sale.void_reason) voidHtml += '<div style="color:#F87171;font-size:0.75rem;margin-top:2px">' + escHtml(sale.void_reason) + '</div>';
+                voidHtml += '</div>';
+                var dHdr = document.getElementById('receipt-detail-content').querySelector('.receipt-header');
+                if (dHdr) dHdr.insertAdjacentHTML('afterend', voidHtml);
+            } else {
+                document.getElementById('void-from-detail-btn').style.display = '';
+            }
             document.getElementById('receipt-detail-modal').classList.remove('hidden');
         } catch (err) {
             showToast('Could not load receipt', 'error');
@@ -3111,6 +3251,17 @@ table { width: 100%; border-collapse: collapse; }
             document.getElementById('eod-card-count').textContent = eodData.card.count + ' sale' + (eodData.card.count !== 1 ? 's' : '');
             document.getElementById('eod-tax-total').textContent = '$' + eodData.total_tax.toFixed(2);
             document.getElementById('eod-items-sold').textContent = eodData.items_sold + ' item' + (eodData.items_sold !== 1 ? 's' : '');
+
+            var voidedRow = document.getElementById('eod-voided-row');
+            if (eodData.voided && eodData.voided.count > 0) {
+                voidedRow.classList.remove('hidden');
+                voidedRow.style.display = 'flex';
+                document.getElementById('eod-voided-count').textContent = eodData.voided.count;
+                document.getElementById('eod-voided-total').textContent = '$' + eodData.voided.total.toFixed(2);
+            } else {
+                voidedRow.classList.add('hidden');
+                voidedRow.style.display = 'none';
+            }
 
             document.querySelectorAll('#denom-grid input').forEach(inp => inp.value = '0');
             updateCashCount();

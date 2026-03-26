@@ -75,6 +75,11 @@ def sale_to_response(sale: Sale) -> SaleResponse:
         gift_card_amount=sale.gift_card_amount,
         gift_card_barcode=sale.gift_card_barcode,
         receipt_email=sale.receipt_email,
+        is_voided=sale.is_voided,
+        voided_at=sale.voided_at,
+        voided_by=sale.voided_by,
+        voided_by_name=sale.voided_by_user.name if hasattr(sale, 'voided_by_user') and sale.voided_by_user else None,
+        void_reason=sale.void_reason,
         created_at=sale.created_at,
         line_items=line_items,
     )
@@ -196,6 +201,7 @@ async def create_sale(
         select(Sale)
         .options(
             selectinload(Sale.cashier),
+            selectinload(Sale.voided_by_user),
             selectinload(Sale.items).selectinload(SaleItem.item).selectinload(Item.vendor),
             selectinload(Sale.items).selectinload(SaleItem.vendor),
         )
@@ -306,6 +312,7 @@ async def get_sale(
         select(Sale)
         .options(
             selectinload(Sale.cashier),
+            selectinload(Sale.voided_by_user),
             selectinload(Sale.items).selectinload(SaleItem.item).selectinload(Item.vendor),
             selectinload(Sale.items).selectinload(SaleItem.vendor),
         )

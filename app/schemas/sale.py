@@ -51,10 +51,19 @@ class SaleResponse(BaseModel):
     gift_card_amount: Optional[Decimal] = None
     gift_card_barcode: Optional[str] = None
     receipt_email: Optional[str] = None
+    is_voided: bool = False
+    voided_at: Optional[datetime] = None
+    voided_by: Optional[int] = None
+    voided_by_name: Optional[str] = None
+    void_reason: Optional[str] = None
     created_at: datetime
     line_items: List[SaleItemResponse] = []
 
     model_config = {"from_attributes": True}
+
+
+class VoidSaleRequest(BaseModel):
+    reason: Optional[str] = None
 
 
 class PoyntChargeRequest(BaseModel):

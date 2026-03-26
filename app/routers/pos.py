@@ -19,7 +19,7 @@ from app.models.item_image import ItemImage
 from app.models.sale import Sale, SaleItem
 from app.models.gift_card import GiftCard, GiftCardTransaction
 from app.schemas.sale import (
-    SaleCreate, SaleResponse, SaleItemResponse,
+    SaleCreate, SaleResponse, SaleItemResponse, VoidSaleRequest,
     PoyntChargeRequest, PoyntChargeResponse, PoyntStatusResponse,
 )
 from app.schemas.gift_card import (
@@ -273,8 +273,8 @@ async def pos_create_sale(
         cash_tendered=cash_tendered,
         change_given=change_given,
         card_transaction_id=data.card_transaction_id,
-        gift_card_amount=gc_amount_applied,
-        gift_card_barcode=data.gift_card_barcode if gc_amount_applied else None,
+        gift_card_amount=gc_amount_applied if gc_amount_applied else (total if data.payment_method == "gift_card" and data.gift_card_barcode else None),
+        gift_card_barcode=data.gift_card_barcode if (gc_amount_applied or data.payment_method == "gift_card") else None,
         receipt_email=data.receipt_email,
     )
     db.add(sale)
@@ -411,6 +411,148 @@ async def pos_create_sale(
     )
 
 
+@router.post("/sale/{sale_id}/void", response_model=SaleResponse)
+async def void_sale(
+    sale_id: int,
+    data: VoidSaleRequest = VoidSaleRequest(),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Not authorized to void sales")
+
+    lock_result = await db.execute(
+        select(Sale).where(Sale.id == sale_id).with_for_update()
+    )
+    sale_locked = lock_result.scalar_one_or_none()
+    if not sale_locked:
+        raise HTTPException(status_code=404, detail="Sale not found")
+    if sale_locked.is_voided:
+        raise HTTPException(status_code=400, detail="Sale is already voided")
+
+    result = await db.execute(
+        select(Sale)
+        .options(
+            selectinload(Sale.cashier),
+            selectinload(Sale.voided_by_user),
+            selectinload(Sale.items).selectinload(SaleItem.item).selectinload(Item.vendor),
+            selectinload(Sale.items).selectinload(SaleItem.vendor),
+        )
+        .where(Sale.id == sale_id)
+    )
+    sale = result.scalar_one()
+
+    sale.is_voided = True
+    sale.voided_at = datetime.utcnow()
+    sale.voided_by = current_user.id
+    sale.void_reason = data.reason
+
+    vendor_credits = {}
+    for si in sale.items:
+        item = si.item
+        if item:
+            item.quantity = item.quantity + si.quantity
+            if item.status == "sold":
+                item.status = "active"
+
+        vendor_credit = si.line_total
+        if si.consignment_amount is not None:
+            vendor_credit = (si.line_total - si.consignment_amount).quantize(
+                Decimal("0.01"), ROUND_HALF_UP
+            )
+        vendor_credits[si.vendor_id] = (
+            vendor_credits.get(si.vendor_id, Decimal("0")) + vendor_credit
+        )
+
+    for vendor_id, amount in vendor_credits.items():
+        vb_result = await db.execute(
+            select(VendorBalance).where(VendorBalance.vendor_id == vendor_id)
+        )
+        balance_row = vb_result.scalar_one_or_none()
+        if balance_row:
+            balance_row.balance = (
+                Decimal(str(balance_row.balance)) - amount
+            ).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+    if sale.gift_card_barcode and sale.payment_method in ("gift_card", "split"):
+        gc_amount = Decimal(str(sale.gift_card_amount or sale.total))
+        gc_result = await db.execute(
+            select(GiftCard).where(GiftCard.barcode == sale.gift_card_barcode).with_for_update()
+        )
+        gc = gc_result.scalar_one_or_none()
+        if gc:
+            new_balance = (Decimal(str(gc.balance)) + gc_amount).quantize(
+                Decimal("0.01"), ROUND_HALF_UP
+            )
+            gc.balance = new_balance
+            db.add(GiftCardTransaction(
+                gift_card_id=gc.id,
+                amount=gc_amount,
+                transaction_type="refund",
+                sale_id=sale.id,
+                cashier_id=current_user.id,
+                balance_after=new_balance,
+                notes=f"Void sale #{sale.id}",
+            ))
+
+    await db.commit()
+
+    result = await db.execute(
+        select(Sale)
+        .options(
+            selectinload(Sale.cashier),
+            selectinload(Sale.voided_by_user),
+            selectinload(Sale.items).selectinload(SaleItem.item).selectinload(Item.vendor),
+            selectinload(Sale.items).selectinload(SaleItem.vendor),
+        )
+        .where(Sale.id == sale.id)
+    )
+    sale = result.scalar_one()
+
+    line_items = []
+    for si in sale.items:
+        line_items.append(
+            SaleItemResponse(
+                id=si.id,
+                item_id=si.item_id,
+                vendor_id=si.vendor_id,
+                item_name=si.item.name if si.item else "Unknown",
+                booth_number=si.vendor.booth_number if si.vendor else None,
+                sku=si.item.sku if si.item else "",
+                quantity=si.quantity,
+                unit_price=si.unit_price,
+                line_total=si.line_total,
+                is_consignment=si.is_consignment,
+                consignment_rate=si.consignment_rate,
+                consignment_amount=si.consignment_amount,
+            )
+        )
+
+    return SaleResponse(
+        id=sale.id,
+        cashier_id=sale.cashier_id,
+        cashier_name=sale.cashier.name if sale.cashier else None,
+        subtotal=sale.subtotal,
+        tax_rate=sale.tax_rate,
+        tax_amount=sale.tax_amount,
+        total=sale.total,
+        payment_method=sale.payment_method,
+        cash_tendered=sale.cash_tendered,
+        change_given=sale.change_given,
+        card_transaction_id=sale.card_transaction_id,
+        gift_card_amount=sale.gift_card_amount,
+        gift_card_barcode=sale.gift_card_barcode,
+        receipt_email=sale.receipt_email,
+        is_voided=sale.is_voided,
+        voided_at=sale.voided_at,
+        voided_by=sale.voided_by,
+        voided_by_name=sale.voided_by_user.name if sale.voided_by_user else None,
+        void_reason=sale.void_reason,
+        created_at=sale.created_at,
+        line_items=line_items,
+    )
+
+
 @router.post("/payment-callback", status_code=status.HTTP_200_OK)
 async def payment_callback(current_user: Vendor = Depends(get_current_user)):
     return {"status": "ok"}
@@ -486,7 +628,14 @@ async def end_of_day_report(
     gift_card_count = 0
     cashier_breakdown = {}
 
+    voided_count = 0
+    voided_total = Decimal("0")
     for sale in sales:
+        if sale.is_voided:
+            voided_count += 1
+            voided_total += sale.total
+            continue
+
         total_revenue += sale.total
         total_tax += sale.tax_amount
 
@@ -539,7 +688,7 @@ async def end_of_day_report(
 
     total_transactions = cash_count + card_count + split_count + gift_card_count
     items_sold = sum(
-        si.quantity for sale in sales for si in sale.items
+        si.quantity for sale in sales if not sale.is_voided for si in sale.items
     )
 
     return {
@@ -548,6 +697,7 @@ async def end_of_day_report(
         "total_tax": float(total_tax),
         "total_transactions": total_transactions,
         "items_sold": items_sold,
+        "voided": {"count": voided_count, "total": float(voided_total)},
         "cash": {"total": float(total_cash), "count": cash_count},
         "card": {"total": float(total_card), "count": card_count},
         "split": {"total": float(total_split), "count": split_count},

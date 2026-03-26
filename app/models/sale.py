@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List
-from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey
+from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -22,9 +22,14 @@ class Sale(Base):
     gift_card_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
     gift_card_barcode: Mapped[Optional[str]] = mapped_column(String(100))
     receipt_email: Mapped[Optional[str]] = mapped_column(String(255))
+    is_voided: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    voided_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
+    voided_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("vendors.id"), nullable=True)
+    void_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=datetime.utcnow)
 
     cashier: Mapped[Optional["Vendor"]] = relationship("Vendor", foreign_keys=[cashier_id])
+    voided_by_user: Mapped[Optional["Vendor"]] = relationship("Vendor", foreign_keys=[voided_by])
     items: Mapped[List["SaleItem"]] = relationship("SaleItem", back_populates="sale", cascade="all, delete-orphan")
 
 
