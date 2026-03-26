@@ -1346,6 +1346,45 @@
         window.location.href = '/vendor/login.html';
     }
 
+    // ─── Scan sounds ───────────────────────────────────────────────────────────
+    var _audioCtx = null;
+    function _getAudioCtx() {
+        if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        return _audioCtx;
+    }
+    function playSuccessBeep() {
+        try {
+            var ctx = _getAudioCtx();
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.frequency.setValueAtTime(1174, ctx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.18, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.2);
+        } catch (e) {}
+    }
+    function playErrorSound() {
+        try {
+            var ctx = _getAudioCtx();
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(200, ctx.currentTime);
+            osc.frequency.setValueAtTime(150, ctx.currentTime + 0.15);
+            gain.gain.setValueAtTime(0.15, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.35);
+        } catch (e) {}
+    }
+
     // ─── Barcode scanning ─────────────────────────────────────────────────────
     async function addByBarcode() {
         const input = document.getElementById('barcode-input');
@@ -1356,9 +1395,11 @@
         try {
             const item = await apiGet(`/api/v1/pos/barcode/${encodeURIComponent(barcode)}`);
             addToCart(item);
+            playSuccessBeep();
             input.value = '';
             input.focus();
         } catch (err) {
+            playErrorSound();
             setScanError(err.message || 'Item not found');
             input.select();
         }
@@ -2082,8 +2123,10 @@ table { width: 100%; border-collapse: collapse; }
         try {
             const item = await apiGet('/api/v1/pos/barcode/' + encodeURIComponent(barcode));
             addToCart(item);
+            playSuccessBeep();
             showToast('Added: ' + item.name, 'success');
         } catch (err) {
+            playErrorSound();
             setScanError('Item not found: ' + barcode);
         }
     }
