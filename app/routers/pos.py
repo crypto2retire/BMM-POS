@@ -241,11 +241,19 @@ async def pos_create_sale(
                     status_code=400,
                     detail=f"Cash tendered ${cash_tendered} is less than remaining ${remainder}",
                 )
-    elif data.payment_method in ("cash", "split"):
+    elif data.payment_method == "split":
+        if data.cash_tendered is not None:
+            cash_tendered = Decimal(str(data.cash_tendered)).quantize(Decimal("0.01"), ROUND_HALF_UP)
+            cash_portion = min(cash_tendered, total)
+            change_given = max(
+                (cash_tendered - cash_portion).quantize(Decimal("0.01"), ROUND_HALF_UP),
+                Decimal("0.00"),
+            )
+    elif data.payment_method == "cash":
         if data.cash_tendered is None:
             raise HTTPException(status_code=400, detail="cash_tendered is required for cash payments")
         cash_tendered = Decimal(str(data.cash_tendered)).quantize(Decimal("0.01"), ROUND_HALF_UP)
-        if data.payment_method == "cash" and cash_tendered < total:
+        if cash_tendered < total:
             raise HTTPException(
                 status_code=400,
                 detail=f"Cash tendered ${cash_tendered} is less than total ${total}",
