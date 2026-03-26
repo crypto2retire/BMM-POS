@@ -19,6 +19,8 @@ class Sale(Base):
     cash_tendered: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
     change_given: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
     card_transaction_id: Mapped[Optional[str]] = mapped_column(String(255))
+    gift_card_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
+    gift_card_barcode: Mapped[Optional[str]] = mapped_column(String(100))
     receipt_email: Mapped[Optional[str]] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=datetime.utcnow)
 

@@ -31,7 +31,7 @@ The frontend design adheres to Bowenstreet Market branding with a dark (`#38383B
 
 ### Feature Specifications
 
-- **POS Terminal**: Supports barcode scanning, cart management, cash and card payments (via Poynt API), gift card management (activate, load, redeem), and receipt generation. Includes features like suspend/hold orders, receipt lookup, and online order management.
+- **POS Terminal**: Supports barcode scanning, cart management, cash and card payments (via Poynt API), gift card management (activate, load, redeem), split payments (gift card + cash or gift card + card), and receipt generation. Includes features like suspend/hold orders, receipt lookup, and online order management. Split payments store `gift_card_amount` and `gift_card_barcode` on the Sale model.
 - **Vendor Management**: CRUD operations for vendors (admin-only management), with vendor-specific dashboards displaying balance and item statistics.
 - **Item Management**: CRUD operations for items, including automatic SKU/barcode generation and PDF label printing. Vendors can only manage their own items.
 - **Sales Management**: Records sales, tracks inventory decrement, and credits vendor balances. Supports consignment items with configurable rates.

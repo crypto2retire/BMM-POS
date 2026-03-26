@@ -222,7 +222,26 @@ async def pos_create_sale(
 
     change_given = None
     cash_tendered = None
-    if data.payment_method in ("cash", "split"):
+    gc_amount_applied = None
+
+    if data.payment_method == "split" and data.gift_card_barcode and data.gift_card_amount:
+        gc_amount_applied = Decimal(str(data.gift_card_amount)).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        remainder = (total - gc_amount_applied).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        if remainder < Decimal("0"):
+            gc_amount_applied = total
+            remainder = Decimal("0.00")
+        if data.cash_tendered is not None:
+            cash_tendered = Decimal(str(data.cash_tendered)).quantize(Decimal("0.01"), ROUND_HALF_UP)
+            change_given = max(
+                (cash_tendered - remainder).quantize(Decimal("0.01"), ROUND_HALF_UP),
+                Decimal("0.00"),
+            )
+            if cash_tendered < remainder:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cash tendered ${cash_tendered} is less than remaining ${remainder}",
+                )
+    elif data.payment_method in ("cash", "split"):
         if data.cash_tendered is None:
             raise HTTPException(status_code=400, detail="cash_tendered is required for cash payments")
         cash_tendered = Decimal(str(data.cash_tendered)).quantize(Decimal("0.01"), ROUND_HALF_UP)
@@ -246,6 +265,8 @@ async def pos_create_sale(
         cash_tendered=cash_tendered,
         change_given=change_given,
         card_transaction_id=data.card_transaction_id,
+        gift_card_amount=gc_amount_applied,
+        gift_card_barcode=data.gift_card_barcode if gc_amount_applied else None,
         receipt_email=data.receipt_email,
     )
     db.add(sale)
@@ -297,9 +318,7 @@ async def pos_create_sale(
         else:
             db.add(VendorBalance(vendor_id=vendor_id, balance=amount))
 
-    if data.payment_method == "gift_card":
-        if not data.gift_card_barcode:
-            raise HTTPException(status_code=400, detail="gift_card_barcode is required for gift card payments")
+    if data.payment_method in ("gift_card", "split") and data.gift_card_barcode:
         gc_result = await db.execute(
             select(GiftCard).where(GiftCard.barcode == data.gift_card_barcode).with_for_update()
         )
@@ -309,22 +328,26 @@ async def pos_create_sale(
         if not gc.is_active:
             raise HTTPException(status_code=400, detail="Gift card is deactivated")
         gc_balance = Decimal(str(gc.balance))
-        if total > gc_balance:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Insufficient gift card balance: ${gc_balance:.2f} available, ${total:.2f} needed"
-            )
-        new_gc_balance = (gc_balance - total).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        if data.payment_method == "gift_card":
+            deduct_amount = total
+            if total > gc_balance:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Insufficient gift card balance: ${gc_balance:.2f} available, ${total:.2f} needed"
+                )
+        else:
+            deduct_amount = min(gc_amount_applied or total, gc_balance)
+        new_gc_balance = (gc_balance - deduct_amount).quantize(Decimal("0.01"), ROUND_HALF_UP)
         gc.balance = new_gc_balance
         gc.last_used_at = datetime.utcnow()
         db.add(GiftCardTransaction(
             gift_card_id=gc.id,
-            amount=total,
+            amount=deduct_amount,
             transaction_type="redeem",
             sale_id=sale.id,
             cashier_id=current_user.id,
             balance_after=new_gc_balance,
-            notes=f"Sale #{sale.id}",
+            notes=f"Sale #{sale.id}" + (" (split)" if data.payment_method == "split" else ""),
         ))
 
     await db.commit()
@@ -467,9 +490,15 @@ async def end_of_day_report(
             sale_card = sale.total
             card_count += 1
         elif sale.payment_method == "split":
-            split_cash = min(sale.cash_tendered or Decimal("0"), sale.total)
-            sale_cash = split_cash
-            sale_card = sale.total - split_cash
+            gc_part = sale.gift_card_amount or Decimal("0")
+            remaining = sale.total - gc_part
+            if sale.cash_tendered is not None:
+                split_cash = min(sale.cash_tendered, remaining)
+                sale_cash = split_cash
+                sale_card = max(remaining - split_cash, Decimal("0"))
+            else:
+                sale_card = remaining
+            total_gift_card += gc_part
             split_count += 1
         elif sale.payment_method == "gift_card":
             total_gift_card += sale.total

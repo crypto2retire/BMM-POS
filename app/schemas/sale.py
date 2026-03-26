@@ -16,6 +16,7 @@ class SaleCreate(BaseModel):
     card_transaction_id: Optional[str] = None
     receipt_email: Optional[str] = None
     gift_card_barcode: Optional[str] = None
+    gift_card_amount: Optional[Decimal] = None
 
 
 class SaleItemResponse(BaseModel):
@@ -47,6 +48,8 @@ class SaleResponse(BaseModel):
     cash_tendered: Optional[Decimal] = None
     change_given: Optional[Decimal] = None
     card_transaction_id: Optional[str] = None
+    gift_card_amount: Optional[Decimal] = None
+    gift_card_barcode: Optional[str] = None
     receipt_email: Optional[str] = None
     created_at: datetime
     line_items: List[SaleItemResponse] = []
