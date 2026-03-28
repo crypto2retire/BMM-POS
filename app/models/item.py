@@ -29,6 +29,7 @@ class Item(Base):
     image_path: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     is_consignment: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     consignment_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 4), nullable=True)
+    label_printed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     vendor = relationship("Vendor", back_populates="items")
     sale_items = relationship("SaleItem", back_populates="item")

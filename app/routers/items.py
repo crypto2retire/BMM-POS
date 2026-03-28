@@ -54,6 +54,7 @@ def item_to_response(item: Item) -> ItemResponse:
         image_path=item.image_path,
         created_at=item.created_at,
         booth_number=booth_number,
+        label_printed=item.label_printed,
     )
 
 
@@ -186,6 +187,11 @@ async def get_batch_labels(
     items_sorted = sorted(items, key=lambda it: id_order.get(it.id, 0))
 
     pdf_bytes = generate_label_sheet(items_sorted)
+
+    for item in items:
+        item.label_printed = True
+    await db.commit()
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -210,6 +216,10 @@ async def get_item_label(
         raise HTTPException(status_code=403, detail="Access denied")
 
     pdf_bytes = generate_label_pdf(item)
+
+    item.label_printed = True
+    await db.commit()
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -234,6 +244,9 @@ async def get_dymo_label(
         raise HTTPException(status_code=403, detail="Access denied")
 
     xml = generate_dymo_xml(item)
+
+    item.label_printed = True
+    await db.commit()
     return Response(
         content=xml,
         media_type="text/xml",

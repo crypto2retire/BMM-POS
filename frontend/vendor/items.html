@@ -247,8 +247,14 @@
     <div id="batch-actions-bar" style="display:none; align-items:center; gap:0.75rem; margin-bottom:1rem; padding:0.75rem 1rem; background:var(--surface); border:1px solid var(--warm-border); flex-wrap:wrap">
         <span style="font-size:0.8rem; color:var(--text)"><strong id="selected-count">0</strong> selected</span>
         <button class="btn btn-primary" id="batch-print-btn" onclick="printSelectedLabels()" style="font-size:0.75rem; padding:0.4rem 1rem">Print Selected Labels</button>
+        <button class="btn btn-outline" onclick="selectUnprinted()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select Unprinted</button>
         <button class="btn btn-outline" onclick="toggleSelectAll()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select All</button>
         <button class="btn btn-secondary" onclick="clearSelection()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Clear</button>
+    </div>
+
+    <div id="unprinted-banner" style="display:none; align-items:center; gap:0.75rem; margin-bottom:0.75rem; padding:0.6rem 1rem; background:#2D1F0E; border:1px solid #C9A96E; flex-wrap:wrap; cursor:pointer" onclick="selectUnprintedAndShow()">
+        <span style="font-size:0.85rem; color:#C9A96E; font-weight:700">🏷️ <span id="unprinted-count">0</span> items need labels</span>
+        <button class="btn btn-primary" style="font-size:0.72rem; padding:0.3rem 0.8rem; margin-left:auto">Select &amp; Print</button>
     </div>
 
     <div class="status-filter-bar" id="status-filter-bar">
@@ -710,6 +716,8 @@
             window.open(url, '_blank');
             setTimeout(() => URL.revokeObjectURL(url), 60000);
             showAlert('alert-container', `${ids.length} label(s) generated.`, 'success');
+            selectedItemIds.clear();
+            await loadItems();
         } catch (e) {
             showAlert('alert-container', e.message || 'Batch label generation failed.', 'error');
         } finally {
@@ -722,6 +730,36 @@
         selectedItemIds.clear();
         updateSelectionUI();
         displayItems();
+    }
+
+    function selectUnprinted() {
+        var unprinted = allItems.filter(function(i) { return !i.label_printed && i.status === 'active'; });
+        if (unprinted.length === 0) {
+            showAlert('alert-container', 'All active items already have labels printed.', 'info');
+            return;
+        }
+        selectedItemIds.clear();
+        unprinted.forEach(function(i) { selectedItemIds.add(i.id); });
+        sortColumn = 'created_at';
+        sortDirection = 'desc';
+        updateSelectionUI();
+        displayItems();
+        showAlert('alert-container', unprinted.length + ' unprinted item(s) selected.', 'success');
+    }
+
+    function selectUnprintedAndShow() {
+        selectUnprinted();
+    }
+
+    function updateUnprintedBanner() {
+        var unprinted = allItems.filter(function(i) { return !i.label_printed && i.status === 'active'; });
+        var banner = document.getElementById('unprinted-banner');
+        if (unprinted.length > 0) {
+            banner.style.display = 'flex';
+            document.getElementById('unprinted-count').textContent = unprinted.length;
+        } else {
+            banner.style.display = 'none';
+        }
     }
 
     // ── Inline photo upload on card ─────────────────────────────────────
@@ -1204,6 +1242,7 @@
             if (sortColumn === 'name') { va = (a.name || '').toLowerCase(); vb = (b.name || '').toLowerCase(); }
             else if (sortColumn === 'price') { va = parseFloat(a.price) || 0; vb = parseFloat(b.price) || 0; }
             else if (sortColumn === 'status') { va = a.status || ''; vb = b.status || ''; }
+            else if (sortColumn === 'created_at') { va = a.created_at || ''; vb = b.created_at || ''; }
             else { va = ''; vb = ''; }
             if (va < vb) return sortDirection === 'asc' ? -1 : 1;
             if (va > vb) return sortDirection === 'asc' ? 1 : -1;
@@ -1229,6 +1268,7 @@
             else if (s === 'inactive') b.textContent = 'Inactive (' + inactiveCount + ')';
             else b.textContent = 'All (' + allItems.length + ')';
         });
+        updateUnprintedBanner();
 
         const grid = document.getElementById('items-grid');
         if (currentView === 'list') {
@@ -1294,7 +1334,7 @@
                         <div class="item-card-name">${item.name}</div>
                         <div class="item-card-price">${priceHtml}</div>
                         <div class="item-card-meta">${item.category || '—'} &middot; Qty: ${item.quantity}${vendorMeta}</div>
-                        <div style="margin-top:4px">${statusBadge(item.status)} ${labelBadge(style)}</div>
+                        <div style="margin-top:4px">${statusBadge(item.status)} ${labelBadge(style)}${!item.label_printed ? ' <span style="font-size:0.65rem;padding:2px 6px;background:#5C3D00;color:#FFD580;border-radius:3px;font-weight:600">NEEDS LABEL</span>' : ''}</div>
                     </div>
                 </div>
                 <div class="item-card-actions">
@@ -1384,7 +1424,7 @@
                 <td class="sku-cell">${item.sku || '&mdash;'}</td>
                 <td>${priceHtml}</td>
                 <td>${salePriceHtml}</td>
-                <td>${statusBadge(item.status)}</td>
+                <td>${statusBadge(item.status)}${!item.label_printed ? ' <span style="font-size:0.6rem;padding:1px 4px;background:#5C3D00;color:#FFD580;border-radius:3px;font-weight:600">NEW</span>' : ''}</td>
                 <td><div class="actions-cell">
                     <button class="btn btn-outline" onclick="openModal(${itemJson})">Edit</button>
                     <button class="btn btn-secondary" onclick="printLabelAuto(${item.id}, '${style}')">Label</button>

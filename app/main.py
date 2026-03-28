@@ -60,6 +60,10 @@ async def lifespan(app: FastAPI):
                 "consignment_rate NUMERIC(5,4)"
             ))
             await session.execute(text(
+                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
+                "label_printed BOOLEAN NOT NULL DEFAULT false"
+            ))
+            await session.execute(text(
                 "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS "
                 "is_consignment BOOLEAN NOT NULL DEFAULT false"
             ))

@@ -73,6 +73,7 @@ class ItemResponse(BaseModel):
     image_path: Optional[str] = None
     created_at: datetime
     booth_number: Optional[str] = None
+    label_printed: Optional[bool] = False
 
     class Config:
         from_attributes = True
