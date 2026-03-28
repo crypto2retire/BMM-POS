@@ -164,7 +164,8 @@ def generate_dymo_xml(item) -> str:
     price_str = saxutils.escape(f"${active_price:.2f}")
     if on_sale:
         price_str += saxutils.escape(f"  (was ${item.price:.2f})")
-    name_str = saxutils.escape((item.name or "")[:35])
+    max_name_len = 25 if label_size == "30347" else 35
+    name_str = saxutils.escape((item.name or "")[:max_name_len])
     barcode_str = saxutils.escape(item.barcode or "")
     booth_str = saxutils.escape(f"Booth {booth_number}") if booth_number else ""
 
@@ -172,22 +173,26 @@ def generate_dymo_xml(item) -> str:
         paper_name = "30252 Address"
         lw = 5040
         lh = 1620
+    elif label_size == "30347":
+        paper_name = "30347 1 in x 1-1/2 in"
+        lw = 2160
+        lh = 1440
     else:
         paper_name = "30336 1 in x 2-1/8 in"
         lw = 3060
         lh = 1440
 
-    m = 60
+    m = 40 if label_size == "30347" else 60
     usable_w = lw - (m * 2)
 
     name_y = lh - m - 10
-    name_h = int(lh * 0.18)
+    name_h = int(lh * 0.16) if label_size == "30347" else int(lh * 0.18)
     price_w = int(usable_w * 0.55)
     booth_w = usable_w - price_w - 20
     price_y = name_y - name_h - 5
-    price_h = int(lh * 0.16)
+    price_h = int(lh * 0.14) if label_size == "30347" else int(lh * 0.16)
     barcode_h = lh - m - (name_h + price_h + 30) - m
-    barcode_h = max(barcode_h, int(lh * 0.42))
+    barcode_h = max(barcode_h, int(lh * 0.38))
     barcode_y = m
 
     xml = f"""<?xml version="1.0" encoding="utf-8"?>
@@ -214,7 +219,7 @@ def generate_dymo_xml(item) -> str:
         <Element>
           <String>{name_str}</String>
           <Attributes>
-            <Font Family="Arial" Size="14" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
+            <Font Family="Arial" Size="{'11' if label_size == '30347' else '14'}" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
           </Attributes>
         </Element>
       </StyledText>
@@ -247,7 +252,7 @@ def generate_dymo_xml(item) -> str:
         <Element>
           <String>{price_str}</String>
           <Attributes>
-            <Font Family="Arial" Size="14" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
+            <Font Family="Arial" Size="{'11' if label_size == '30347' else '14'}" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
           </Attributes>
         </Element>
       </StyledText>
@@ -314,8 +319,8 @@ def generate_dymo_xml(item) -> str:
       <Type>Code128Auto</Type>
       <Size>Large</Size>
       <TextPosition>Bottom</TextPosition>
-      <TextFont Family="Arial" Size="7" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
-      <CheckSumFont Family="Arial" Size="7" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
+      <TextFont Family="Arial" Size="{'6' if label_size == '30347' else '7'}" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
+      <CheckSumFont Family="Arial" Size="{'6' if label_size == '30347' else '7'}" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
       <TextEmbedding>None</TextEmbedding>
       <ECLevel>0</ECLevel>
       <HorizontalAlignment>Center</HorizontalAlignment>
