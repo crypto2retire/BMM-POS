@@ -1,4 +1,5 @@
 import io
+import math
 import datetime
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas as pdf_canvas
@@ -9,7 +10,15 @@ LABEL_WIDTH = 2.25 * inch
 LABEL_HEIGHT = 1.25 * inch
 
 THERMAL_DPI = 203
-DOT_SIZE = 72.0 / THERMAL_DPI
+DOT = 72.0 / THERMAL_DPI
+
+
+def _snap_down(val):
+    return math.floor(val / DOT) * DOT
+
+
+def _snap_up(val):
+    return math.ceil(val / DOT) * DOT
 
 
 def generate_label_pdf(item) -> bytes:
@@ -34,10 +43,10 @@ def generate_label_sheet(items) -> bytes:
 def _draw_label(c, item, x_offset, y_offset):
     w = LABEL_WIDTH
     h = LABEL_HEIGHT
-    margin = 2
+    margin = _snap_up(3)
 
-    inner_left = margin + 3
-    inner_right = w - margin - 3
+    inner_left = _snap_up(margin + 3)
+    inner_right = _snap_down(w - margin - 3)
 
     booth = getattr(item, "vendor", None)
     booth_number = ""
@@ -45,19 +54,19 @@ def _draw_label(c, item, x_offset, y_offset):
         booth_number = getattr(booth, "booth_number", "") or ""
 
     name = (item.name or "")[:40]
-    name_y = h - margin - 13
+    name_y = _snap_down(h - margin - 13)
 
     if len(name) > 28:
         c.setFont("Helvetica-Bold", 8)
     elif len(name) > 20:
-        c.setFont("Helvetica-Bold", 9.5)
+        c.setFont("Helvetica-Bold", 10)
     else:
         c.setFont("Helvetica-Bold", 11)
     c.drawString(inner_left, name_y, name)
 
-    divider_y = name_y - 5
-    c.setStrokeColorRGB(0.5, 0.5, 0.5)
-    c.setLineWidth(0.5)
+    divider_y = _snap_down(name_y - 5)
+    c.setStrokeColorRGB(0.4, 0.4, 0.4)
+    c.setLineWidth(DOT)
     c.line(inner_left, divider_y, inner_right, divider_y)
 
     today = datetime.date.today()
@@ -73,7 +82,7 @@ def _draw_label(c, item, x_offset, y_offset):
         on_sale = True
 
     price_str = f"${active_price:.2f}"
-    price_y = divider_y - 16
+    price_y = _snap_down(divider_y - 16)
     c.setFont("Helvetica-Bold", 14)
     c.setFillColorRGB(0, 0, 0)
     c.drawString(inner_left, price_y, price_str)
@@ -83,12 +92,12 @@ def _draw_label(c, item, x_offset, y_offset):
         price_w = c.stringWidth(price_str, "Helvetica-Bold", 14)
         c.setFont("Helvetica", 8)
         c.setFillColorRGB(0.35, 0.35, 0.35)
-        orig_x = inner_left + price_w + 4
-        c.drawString(orig_x, price_y + 1, orig_str)
+        orig_x = _snap_up(inner_left + price_w + 4)
+        c.drawString(orig_x, price_y + DOT, orig_str)
         orig_w = c.stringWidth(orig_str, "Helvetica", 8)
         c.setStrokeColorRGB(0.35, 0.35, 0.35)
-        c.setLineWidth(0.6)
-        strike_y = price_y + 4.5
+        c.setLineWidth(DOT)
+        strike_y = _snap_down(price_y + 4.5)
         c.line(orig_x, strike_y, orig_x + orig_w, strike_y)
         c.setFillColorRGB(0, 0, 0)
 
@@ -100,18 +109,18 @@ def _draw_label(c, item, x_offset, y_offset):
     if barcode_val:
         avail_w = w - margin * 2
 
-        barcode_text_y = margin + 1
-        barcode_y = barcode_text_y + 14
+        barcode_text_y = _snap_up(margin + 1)
+        barcode_y = _snap_up(barcode_text_y + 14)
 
-        bar_h = price_y - 8 - barcode_y
-        bar_h = max(bar_h, 0.32 * inch)
+        bar_h = _snap_down(price_y - 8 - barcode_y)
+        bar_h = max(bar_h, _snap_down(0.32 * inch))
 
         probe = code128.Code128(barcode_val, barHeight=10, barWidth=1.0,
                                 humanReadable=False, quiet=False)
         min_modules = probe.width
 
-        bar_w = avail_w / min_modules
-        bar_w = max(bar_w, DOT_SIZE)
+        raw_bar_w = avail_w / min_modules
+        bar_w = max(math.floor(raw_bar_w / DOT), 1) * DOT
 
         barcode_obj = code128.Code128(
             barcode_val,
@@ -122,7 +131,7 @@ def _draw_label(c, item, x_offset, y_offset):
         )
 
         barcode_w = barcode_obj.width
-        barcode_x = (w - barcode_w) / 2
+        barcode_x = _snap_down((w - barcode_w) / 2)
         barcode_obj.drawOn(c, barcode_x, barcode_y)
 
         c.setFont("Helvetica-Bold", 10)
