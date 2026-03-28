@@ -224,38 +224,41 @@ async def pos_create_sale(
     cash_tendered = None
     gc_amount_applied = None
 
-    if data.payment_method == "split" and data.gift_card_barcode and data.gift_card_amount:
-        gc_amount_applied = Decimal(str(data.gift_card_amount)).quantize(Decimal("0.01"), ROUND_HALF_UP)
-        remainder = (total - gc_amount_applied).quantize(Decimal("0.01"), ROUND_HALF_UP)
-        if remainder < Decimal("0"):
-            gc_amount_applied = total
-            remainder = Decimal("0.00")
-        if data.cash_tendered is not None and data.card_transaction_id:
-            cash_tendered = Decimal(str(data.cash_tendered)).quantize(Decimal("0.01"), ROUND_HALF_UP)
-            cash_portion = min(cash_tendered, remainder)
-            change_given = max(
-                (cash_tendered - cash_portion).quantize(Decimal("0.01"), ROUND_HALF_UP),
-                Decimal("0.00"),
+    if data.payment_method == "split":
+        remainder = total
+        if data.gift_card_barcode and data.gift_card_amount:
+            gc_pre_check = await db.execute(
+                select(GiftCard).where(GiftCard.barcode == data.gift_card_barcode)
             )
-        elif data.cash_tendered is not None:
-            cash_tendered = Decimal(str(data.cash_tendered)).quantize(Decimal("0.01"), ROUND_HALF_UP)
-            change_given = max(
-                (cash_tendered - remainder).quantize(Decimal("0.01"), ROUND_HALF_UP),
-                Decimal("0.00"),
+            gc_pre = gc_pre_check.scalar_one_or_none()
+            if not gc_pre or not gc_pre.is_active:
+                raise HTTPException(status_code=400, detail="Gift card not found or inactive")
+            gc_avail = Decimal(str(gc_pre.balance))
+            gc_amount_applied = min(
+                Decimal(str(data.gift_card_amount)).quantize(Decimal("0.01"), ROUND_HALF_UP),
+                gc_avail,
+                remainder,
             )
-            if cash_tendered < remainder:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Cash tendered ${cash_tendered} is less than remaining ${remainder}",
-                )
-    elif data.payment_method == "split":
+            remainder = (remainder - gc_amount_applied).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
         if data.cash_tendered is not None:
             cash_tendered = Decimal(str(data.cash_tendered)).quantize(Decimal("0.01"), ROUND_HALF_UP)
-            cash_portion = min(cash_tendered, total)
-            change_given = max(
-                (cash_tendered - cash_portion).quantize(Decimal("0.01"), ROUND_HALF_UP),
-                Decimal("0.00"),
-            )
+            if data.card_transaction_id:
+                cash_portion = min(cash_tendered, remainder)
+                change_given = max(
+                    (cash_tendered - cash_portion).quantize(Decimal("0.01"), ROUND_HALF_UP),
+                    Decimal("0.00"),
+                )
+            else:
+                if cash_tendered < remainder:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Cash tendered ${cash_tendered} is less than remaining ${remainder}",
+                    )
+                change_given = max(
+                    (cash_tendered - remainder).quantize(Decimal("0.01"), ROUND_HALF_UP),
+                    Decimal("0.00"),
+                )
     elif data.payment_method == "cash":
         if data.cash_tendered is None:
             raise HTTPException(status_code=400, detail="cash_tendered is required for cash payments")

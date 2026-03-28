@@ -1168,76 +1168,66 @@
 
 <!-- Split Payment Modal -->
 <div class="pos-modal-overlay hidden" id="split-modal">
-    <div class="pos-modal" style="max-width:460px">
-        <h2>✂ Split Payment</h2>
-        <div class="total-display">
-            <small>Order Total</small>
-            <span id="split-total-display">$0.00</span>
-        </div>
-
-        <div id="split-type-picker" style="margin:1rem 0">
-            <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.5rem;font-family:'Roboto',sans-serif">Split between</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-                <button class="pay-btn cash" id="split-type-cashcard" onclick="splitPickType('cash_card')" style="flex:1;min-width:120px;padding:0.55rem;font-size:0.8rem;opacity:0.5">💵+💳 Cash & Card</button>
-                <button class="pay-btn card" id="split-type-gcash" onclick="splitPickType('gc_cash')" style="flex:1;min-width:120px;padding:0.55rem;font-size:0.8rem;opacity:0.5;background:#7C3AED;border-color:#7C3AED">🎁+💵 GC & Cash</button>
-                <button class="pay-btn card" id="split-type-gcard" onclick="splitPickType('gc_card')" style="flex:1;min-width:120px;padding:0.55rem;font-size:0.8rem;opacity:0.5;background:#7C3AED;border-color:#7C3AED">🎁+💳 GC & Card</button>
-                <button class="pay-btn card" id="split-type-gcashcard" onclick="splitPickType('gc_cash_card')" style="flex:1;min-width:120px;padding:0.55rem;font-size:0.8rem;opacity:0.5;background:#0E7490;border-color:#0E7490">🎁+💵+💳 All Three</button>
+    <div class="pos-modal" style="max-width:480px">
+        <h2>Split Payment</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;background:#2D2D30;padding:0.6rem 0.8rem;margin-bottom:0.75rem">
+            <div>
+                <small style="color:#A8A6A1;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em">Order Total</small>
+                <div id="split-total-display" style="font-size:1.2rem;font-weight:700;color:#F0EDE8">$0.00</div>
+            </div>
+            <div style="text-align:right">
+                <small style="color:#A8A6A1;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em">Remaining</small>
+                <div id="split-remaining-display" style="font-size:1.2rem;font-weight:700;color:#F59E0B">$0.00</div>
             </div>
         </div>
 
-        <div id="split-gc-section" style="display:none;margin:0.75rem 0">
-            <div id="split-step-gc">
-                <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.4rem;font-family:'Roboto',sans-serif">Scan Gift Card</div>
-                <div style="display:flex;gap:6px;align-items:flex-end">
-                    <div style="flex:1">
-                        <input type="text" id="split-gc-barcode" placeholder="Scan or type barcode" inputmode="numeric" pattern="[0-9]*" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.5rem 0.6rem;font-size:0.95rem;box-sizing:border-box">
-                    </div>
-                    <button class="confirm-btn" id="split-gc-apply-btn" onclick="splitApplyGiftCard()" style="padding:0.5rem 1rem;background:#7C3AED;white-space:nowrap;font-size:0.85rem">Apply</button>
+        <div id="split-applied-list" style="margin-bottom:0.6rem"></div>
+
+        <div id="split-add-buttons" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0.75rem">
+            <button class="pay-btn card" id="split-add-gc-btn" onclick="splitShowGcInput()" style="flex:1;min-width:100px;padding:0.5rem;font-size:0.8rem;background:#7C3AED;border-color:#7C3AED">+ Gift Card</button>
+            <button class="pay-btn cash" id="split-add-cash-btn" onclick="splitShowCashInput()" style="flex:1;min-width:100px;padding:0.5rem;font-size:0.8rem">+ Cash</button>
+            <button class="pay-btn card" id="split-add-card-btn" onclick="splitAddCard()" style="flex:1;min-width:100px;padding:0.5rem;font-size:0.8rem;background:#0E7490;border-color:#0E7490">+ Card (rest)</button>
+        </div>
+
+        <div id="split-gc-input-section" style="display:none;margin:0.5rem 0;background:#1a1a2e;border:1px solid #7C3AED;padding:0.6rem 0.8rem">
+            <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#C4B5FD;margin-bottom:0.4rem;font-family:'Roboto',sans-serif">Scan Gift Card</div>
+            <div style="display:flex;gap:6px;align-items:flex-end">
+                <div style="flex:1">
+                    <input type="text" id="split-gc-barcode" placeholder="Scan or type barcode" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.5rem 0.6rem;font-size:0.95rem;box-sizing:border-box">
                 </div>
-                <div id="split-gc-info" style="min-height:24px;margin-top:0.3rem"></div>
+                <button class="confirm-btn" onclick="splitApplyGiftCard()" style="padding:0.5rem 1rem;background:#7C3AED;white-space:nowrap;font-size:0.85rem">Apply</button>
             </div>
-            <div id="split-gc-applied" style="display:none;background:#1a1a2e;border:1px solid #7C3AED;padding:0.6rem 0.8rem;font-size:0.85rem">
-                <div style="display:flex;justify-content:space-between;align-items:center">
-                    <div>
-                        <span style="color:#C4B5FD">Gift Card Applied</span>
-                        <span id="split-gc-applied-amount" style="color:#34D399;font-weight:700;margin-left:6px"></span>
-                    </div>
-                    <button onclick="splitRemoveGiftCard()" style="background:none;border:none;color:#F87171;cursor:pointer;font-size:0.8rem;text-decoration:underline">Remove</button>
+            <div style="display:flex;gap:6px;align-items:center;margin-top:0.4rem">
+                <div style="flex:1">
+                    <label class="form-label" style="font-size:0.75rem">Amount to apply (leave blank for max)</label>
+                    <input type="number" id="split-gc-custom-amount" placeholder="Full balance" min="0.01" step="0.01" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.4rem 0.6rem;font-size:0.85rem;box-sizing:border-box">
                 </div>
-                <div style="color:#A8A6A1;font-size:0.75rem;margin-top:2px">Remaining card balance: <span id="split-gc-remaining-bal">$0.00</span></div>
             </div>
+            <div id="split-gc-info" style="min-height:20px;margin-top:0.3rem;font-size:0.8rem"></div>
+            <button onclick="splitCancelInput()" style="background:none;border:none;color:#A8A6A1;cursor:pointer;font-size:0.75rem;text-decoration:underline;margin-top:0.2rem">Cancel</button>
         </div>
 
-        <div id="split-cash-card-section" style="display:none;margin:0.75rem 0">
-            <div style="background:#0E7490;color:#F0EDE8;padding:0.5rem 0.8rem;font-size:0.9rem;font-weight:700;display:flex;justify-content:space-between;margin-bottom:0.6rem">
-                <span id="split-cash-label">Cash Portion</span>
-                <span>of <span id="split-cashable-total">$0.00</span></span>
-            </div>
+        <div id="split-cash-input-section" style="display:none;margin:0.5rem 0;background:#1a2e1a;border:1px solid #22C55E;padding:0.6rem 0.8rem">
+            <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#86EFAC;margin-bottom:0.4rem;font-family:'Roboto',sans-serif">Cash Payment</div>
             <div class="form-group" style="margin-bottom:0.4rem">
-                <label class="form-label">Cash Amount</label>
-                <input class="form-control" type="number" id="split-cash-amount" min="0" step="0.01" placeholder="0.00" oninput="splitUpdateCashCard()">
+                <label class="form-label" style="font-size:0.75rem">Cash Amount</label>
+                <input class="form-control" type="number" id="split-cash-amount" min="0.01" step="0.01" placeholder="0.00" oninput="splitCashAmountChanged()">
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0.5rem" class="quick-cash">
                 <button onclick="splitQuickCash(5)">$5</button>
                 <button onclick="splitQuickCash(10)">$10</button>
                 <button onclick="splitQuickCash(20)">$20</button>
                 <button onclick="splitQuickCash(50)">$50</button>
-            </div>
-            <div id="split-card-remainder" style="background:#2D2D30;padding:0.5rem 0.8rem;font-size:0.85rem;display:flex;justify-content:space-between;margin-bottom:0.4rem">
-                <span style="color:#A8A6A1">Goes on Card</span>
-                <span id="split-card-portion" style="color:#60A5FA;font-weight:700">$0.00</span>
+                <button onclick="splitQuickCashAll()">Exact</button>
             </div>
             <div class="form-group" style="margin-bottom:0.4rem">
-                <label class="form-label">Cash Tendered</label>
-                <input class="form-control" type="number" id="split-tendered-input" min="0" step="0.01" placeholder="0.00" oninput="splitUpdateChange()">
+                <label class="form-label" style="font-size:0.75rem">Cash Tendered</label>
+                <input class="form-control" type="number" id="split-tendered-input" min="0" step="0.01" placeholder="0.00" oninput="splitTenderedChanged()">
             </div>
             <div class="change-display zero" id="split-change-display">Change: $0.00</div>
-        </div>
-
-        <div id="split-card-only-section" style="display:none;margin:0.75rem 0">
-            <div style="background:#2D2D30;padding:0.6rem 0.8rem;font-size:0.9rem;display:flex;justify-content:space-between;align-items:center">
-                <span style="color:#A8A6A1">Remaining on Card</span>
-                <span id="split-card-only-amount" style="color:#60A5FA;font-weight:700;font-size:1.1rem">$0.00</span>
+            <div style="display:flex;gap:6px;margin-top:0.4rem">
+                <button onclick="splitCancelInput()" style="background:none;border:none;color:#A8A6A1;cursor:pointer;font-size:0.75rem;text-decoration:underline">Cancel</button>
+                <button class="confirm-btn" id="split-cash-confirm-btn" onclick="splitConfirmCash()" disabled style="padding:0.4rem 0.8rem;font-size:0.8rem;margin-left:auto">Apply Cash</button>
             </div>
         </div>
 
@@ -2716,39 +2706,31 @@ table { width: 100%; border-collapse: collapse; }
         }
     }
 
-    // ─── Split Payment ──────────────────────────────────────────────────────
-    let splitType = null;
-    let splitGcBarcode = null;
-    let splitGcAmount = 0;
-    let splitGcBalance = 0;
-    let splitCashAmount = 0;
+    // ─── Split Payment (flexible order) ─────────────────────────────────────
+    let splitPayments = [];
+    let splitCashTendered = 0;
+
+    function splitGetTotal() {
+        var { total } = calcTotals();
+        return total;
+    }
+
+    function splitGetApplied() {
+        var sum = 0;
+        for (var p of splitPayments) sum += p.amount;
+        return Math.round(sum * 100) / 100;
+    }
+
+    function splitGetRemaining() {
+        return Math.max(Math.round((splitGetTotal() - splitGetApplied()) * 100) / 100, 0);
+    }
 
     function openSplitModal() {
         if (cart.length === 0) return;
-        var { total } = calcTotals();
-        splitType = null;
-        splitGcBarcode = null;
-        splitGcAmount = 0;
-        splitGcBalance = 0;
-        splitCashAmount = 0;
-        document.getElementById('split-total-display').textContent = '$' + total.toFixed(2);
-        document.getElementById('split-type-cashcard').style.opacity = '0.5';
-        document.getElementById('split-type-gcash').style.opacity = '0.5';
-        document.getElementById('split-type-gcard').style.opacity = '0.5';
-        document.getElementById('split-type-gcashcard').style.opacity = '0.5';
-        document.getElementById('split-gc-section').style.display = 'none';
-        document.getElementById('split-cash-card-section').style.display = 'none';
-        document.getElementById('split-card-only-section').style.display = 'none';
-        document.getElementById('split-step-gc').style.display = '';
-        document.getElementById('split-gc-applied').style.display = 'none';
-        document.getElementById('split-gc-barcode').value = '';
-        document.getElementById('split-gc-info').innerHTML = '';
-        document.getElementById('split-cash-amount').value = '';
-        document.getElementById('split-tendered-input').value = '';
-        document.getElementById('split-change-display').textContent = 'Change: $0.00';
-        document.getElementById('split-change-display').className = 'change-display zero';
+        splitPayments = [];
+        splitCashTendered = 0;
+        splitRefreshUI();
         document.getElementById('split-error').textContent = '';
-        document.getElementById('split-complete-btn').disabled = true;
         document.getElementById('split-modal').classList.remove('hidden');
     }
 
@@ -2757,47 +2739,95 @@ table { width: 100%; border-collapse: collapse; }
         document.getElementById('barcode-input').focus();
     }
 
-    function splitPickType(type) {
-        splitType = type;
-        splitGcBarcode = null;
-        splitGcAmount = 0;
-        splitGcBalance = 0;
-        splitCashAmount = 0;
-        document.getElementById('split-type-cashcard').style.opacity = type === 'cash_card' ? '1' : '0.5';
-        document.getElementById('split-type-gcash').style.opacity = type === 'gc_cash' ? '1' : '0.5';
-        document.getElementById('split-type-gcard').style.opacity = type === 'gc_card' ? '1' : '0.5';
-        document.getElementById('split-type-gcashcard').style.opacity = type === 'gc_cash_card' ? '1' : '0.5';
-        document.getElementById('split-complete-btn').disabled = true;
-        document.getElementById('split-error').textContent = '';
+    function splitRefreshUI() {
+        var total = splitGetTotal();
+        var remaining = splitGetRemaining();
+        document.getElementById('split-total-display').textContent = '$' + total.toFixed(2);
+        document.getElementById('split-remaining-display').textContent = '$' + remaining.toFixed(2);
+        document.getElementById('split-remaining-display').style.color = remaining <= 0 ? '#34D399' : '#F59E0B';
 
-        if (type === 'cash_card') {
-            document.getElementById('split-gc-section').style.display = 'none';
-            document.getElementById('split-card-only-section').style.display = 'none';
-            var { total } = calcTotals();
-            document.getElementById('split-cashable-total').textContent = '$' + total.toFixed(2);
-            document.getElementById('split-cash-label').textContent = 'Cash Portion';
-            document.getElementById('split-cash-amount').value = '';
-            document.getElementById('split-card-portion').textContent = '$' + total.toFixed(2);
-            document.getElementById('split-card-portion').parentElement.style.display = '';
-            document.getElementById('split-tendered-input').value = '';
-            document.getElementById('split-change-display').textContent = 'Change: $0.00';
-            document.getElementById('split-change-display').className = 'change-display zero';
-            document.getElementById('split-cash-card-section').style.display = '';
-            setTimeout(function() { document.getElementById('split-cash-amount').focus(); }, 50);
-        } else if (type === 'gc_cash' || type === 'gc_card' || type === 'gc_cash_card') {
-            document.getElementById('split-cash-card-section').style.display = 'none';
-            document.getElementById('split-card-only-section').style.display = 'none';
-            document.getElementById('split-step-gc').style.display = '';
-            document.getElementById('split-gc-applied').style.display = 'none';
-            document.getElementById('split-gc-barcode').value = '';
-            document.getElementById('split-gc-info').innerHTML = '';
-            document.getElementById('split-gc-section').style.display = '';
-            setTimeout(function() { document.getElementById('split-gc-barcode').focus(); }, 50);
+        var listEl = document.getElementById('split-applied-list');
+        if (splitPayments.length === 0) {
+            listEl.innerHTML = '<div style="text-align:center;color:#666;font-size:0.8rem;padding:0.5rem">No payments added yet</div>';
+        } else {
+            var html = '';
+            for (var i = 0; i < splitPayments.length; i++) {
+                var p = splitPayments[i];
+                var color = p.type === 'gc' ? '#C4B5FD' : p.type === 'cash' ? '#86EFAC' : '#60A5FA';
+                var icon = p.type === 'gc' ? '🎁' : p.type === 'cash' ? '💵' : '💳';
+                var label = p.type === 'gc' ? 'Gift Card' : p.type === 'cash' ? 'Cash' : 'Card';
+                var extra = '';
+                if (p.type === 'cash' && p.tendered > p.amount) {
+                    extra = ' <span style="color:#A8A6A1;font-size:0.75rem">(tendered $' + p.tendered.toFixed(2) + ', change $' + (p.tendered - p.amount).toFixed(2) + ')</span>';
+                }
+                html += '<div style="display:flex;justify-content:space-between;align-items:center;background:#2D2D30;padding:0.4rem 0.6rem;margin-bottom:3px;font-size:0.85rem">';
+                html += '<span style="color:' + color + '">' + icon + ' ' + escHtml(label) + extra + '</span>';
+                html += '<span style="display:flex;align-items:center;gap:8px"><span style="color:#F0EDE8;font-weight:700">$' + p.amount.toFixed(2) + '</span>';
+                html += '<button onclick="splitRemovePayment(' + i + ')" style="background:none;border:none;color:#F87171;cursor:pointer;font-size:0.75rem">✕</button></span>';
+                html += '</div>';
+            }
+            listEl.innerHTML = html;
         }
+
+        var hasGc = splitPayments.some(function(p) { return p.type === 'gc'; });
+        var hasCash = splitPayments.some(function(p) { return p.type === 'cash'; });
+        var hasCard = splitPayments.some(function(p) { return p.type === 'card'; });
+
+        document.getElementById('split-add-gc-btn').style.display = (hasGc || remaining <= 0) ? 'none' : '';
+        document.getElementById('split-add-cash-btn').style.display = (hasCash || remaining <= 0) ? 'none' : '';
+        document.getElementById('split-add-card-btn').style.display = (hasCard || remaining <= 0) ? 'none' : '';
+        document.getElementById('split-add-buttons').style.display = (remaining <= 0) ? 'none' : '';
+
+        document.getElementById('split-gc-input-section').style.display = 'none';
+        document.getElementById('split-cash-input-section').style.display = 'none';
+
+        document.getElementById('split-complete-btn').disabled = remaining > 0 || splitPayments.length < 2;
+        document.getElementById('split-error').textContent = '';
+    }
+
+    function splitRemovePayment(index) {
+        splitPayments.splice(index, 1);
+        splitRefreshUI();
+    }
+
+    function splitCancelInput() {
+        document.getElementById('split-gc-input-section').style.display = 'none';
+        document.getElementById('split-cash-input-section').style.display = 'none';
+        document.getElementById('split-add-buttons').style.display = '';
+    }
+
+    function splitShowGcInput() {
+        document.getElementById('split-add-buttons').style.display = 'none';
+        document.getElementById('split-cash-input-section').style.display = 'none';
+        document.getElementById('split-gc-barcode').value = '';
+        document.getElementById('split-gc-custom-amount').value = '';
+        document.getElementById('split-gc-info').innerHTML = '';
+        document.getElementById('split-gc-input-section').style.display = '';
+        setTimeout(function() { document.getElementById('split-gc-barcode').focus(); }, 50);
+    }
+
+    function splitShowCashInput() {
+        document.getElementById('split-add-buttons').style.display = 'none';
+        document.getElementById('split-gc-input-section').style.display = 'none';
+        var remaining = splitGetRemaining();
+        document.getElementById('split-cash-amount').value = '';
+        document.getElementById('split-tendered-input').value = '';
+        document.getElementById('split-change-display').textContent = 'Change: $0.00';
+        document.getElementById('split-change-display').className = 'change-display zero';
+        document.getElementById('split-cash-confirm-btn').disabled = true;
+        document.getElementById('split-cash-input-section').style.display = '';
+        setTimeout(function() { document.getElementById('split-cash-amount').focus(); }, 50);
+    }
+
+    function splitAddCard() {
+        var remaining = splitGetRemaining();
+        if (remaining <= 0) return;
+        splitPayments.push({ type: 'card', amount: remaining });
+        splitRefreshUI();
     }
 
     async function splitApplyGiftCard() {
-        var bc = document.getElementById('split-gc-barcode').value.replace(/\D/g, '').trim();
+        var bc = document.getElementById('split-gc-barcode').value.trim();
         var infoEl = document.getElementById('split-gc-info');
         if (!bc) { infoEl.innerHTML = '<span style="color:#F87171">Scan or enter a gift card barcode</span>'; return; }
         infoEl.innerHTML = '<span style="color:#A8A6A1">Checking...</span>';
@@ -2808,104 +2838,63 @@ table { width: 100%; border-collapse: collapse; }
                 infoEl.innerHTML = '<span style="color:#F87171">Gift card has $0.00 balance</span>';
                 return;
             }
-            var { total } = calcTotals();
-            var applyAmount = Math.min(balance, total);
-            splitGcBarcode = bc;
-            splitGcAmount = applyAmount;
-            splitGcBalance = balance;
-            var remainder = Math.max(total - applyAmount, 0);
-
-            document.getElementById('split-gc-applied-amount').textContent = '-$' + applyAmount.toFixed(2);
-            document.getElementById('split-gc-remaining-bal').textContent = '$' + (balance - applyAmount).toFixed(2);
-            document.getElementById('split-gc-applied').style.display = '';
-            document.getElementById('split-step-gc').style.display = 'none';
-
-            if (remainder <= 0) {
-                document.getElementById('split-cash-card-section').style.display = 'none';
-                document.getElementById('split-card-only-section').style.display = 'none';
-                document.getElementById('split-complete-btn').disabled = false;
-            } else if (splitType === 'gc_cash') {
-                document.getElementById('split-cashable-total').textContent = '$' + remainder.toFixed(2);
-                document.getElementById('split-cash-label').textContent = 'Cash Portion';
-                document.getElementById('split-cash-amount').value = remainder.toFixed(2);
-                document.getElementById('split-card-portion').parentElement.style.display = 'none';
-                document.getElementById('split-tendered-input').value = '';
-                document.getElementById('split-change-display').textContent = 'Change: $0.00';
-                document.getElementById('split-change-display').className = 'change-display zero';
-                document.getElementById('split-cash-card-section').style.display = '';
-                document.getElementById('split-card-only-section').style.display = 'none';
-                splitCashAmount = remainder;
-                setTimeout(function() { document.getElementById('split-tendered-input').focus(); }, 50);
-            } else if (splitType === 'gc_cash_card') {
-                document.getElementById('split-cashable-total').textContent = '$' + remainder.toFixed(2);
-                document.getElementById('split-cash-label').textContent = 'Cash Portion (remainder goes on card)';
-                document.getElementById('split-cash-amount').value = '';
-                document.getElementById('split-card-portion').textContent = '$' + remainder.toFixed(2);
-                document.getElementById('split-card-portion').parentElement.style.display = '';
-                document.getElementById('split-tendered-input').value = '';
-                document.getElementById('split-change-display').textContent = 'Change: $0.00';
-                document.getElementById('split-change-display').className = 'change-display zero';
-                document.getElementById('split-cash-card-section').style.display = '';
-                document.getElementById('split-card-only-section').style.display = 'none';
-                setTimeout(function() { document.getElementById('split-cash-amount').focus(); }, 50);
+            var remaining = splitGetRemaining();
+            var customAmt = parseFloat(document.getElementById('split-gc-custom-amount').value);
+            var applyAmount;
+            if (customAmt > 0) {
+                applyAmount = Math.min(customAmt, balance, remaining);
             } else {
-                document.getElementById('split-card-only-amount').textContent = '$' + remainder.toFixed(2);
-                document.getElementById('split-card-only-section').style.display = '';
-                document.getElementById('split-cash-card-section').style.display = 'none';
-                document.getElementById('split-complete-btn').disabled = false;
+                applyAmount = Math.min(balance, remaining);
             }
+            applyAmount = Math.round(applyAmount * 100) / 100;
+            if (applyAmount <= 0) {
+                infoEl.innerHTML = '<span style="color:#F87171">Nothing to apply</span>';
+                return;
+            }
+            splitPayments.push({ type: 'gc', amount: applyAmount, barcode: bc, gcBalance: balance });
+            splitRefreshUI();
         } catch (err) {
             infoEl.innerHTML = '<span style="color:#F87171">' + escHtml(err.message || 'Card not found') + '</span>';
         }
     }
 
-    function splitRemoveGiftCard() {
-        splitGcBarcode = null;
-        splitGcAmount = 0;
-        splitGcBalance = 0;
-        splitCashAmount = 0;
-        document.getElementById('split-gc-applied').style.display = 'none';
-        document.getElementById('split-step-gc').style.display = '';
-        document.getElementById('split-gc-barcode').value = '';
-        document.getElementById('split-gc-info').innerHTML = '';
-        document.getElementById('split-cash-card-section').style.display = 'none';
-        document.getElementById('split-card-only-section').style.display = 'none';
-        document.getElementById('split-card-portion').parentElement.style.display = '';
-        document.getElementById('split-complete-btn').disabled = true;
-        document.getElementById('split-error').textContent = '';
-    }
-
-    function splitUpdateCashCard() {
-        var { total } = calcTotals();
-        var cashableTotal = Math.max(total - splitGcAmount, 0);
+    function splitCashAmountChanged() {
+        var remaining = splitGetRemaining();
         var cashAmt = parseFloat(document.getElementById('split-cash-amount').value) || 0;
-        if (cashAmt < 0) cashAmt = 0;
-        if (cashAmt > cashableTotal) cashAmt = cashableTotal;
-        splitCashAmount = cashAmt;
-        var cardAmt = Math.max(cashableTotal - cashAmt, 0);
-        document.getElementById('split-card-portion').textContent = '$' + cardAmt.toFixed(2);
+        if (cashAmt <= 0 || cashAmt > remaining) {
+            document.getElementById('split-cash-confirm-btn').disabled = true;
+        }
         document.getElementById('split-tendered-input').value = '';
         document.getElementById('split-change-display').textContent = 'Change: $0.00';
         document.getElementById('split-change-display').className = 'change-display zero';
-        document.getElementById('split-complete-btn').disabled = true;
-        if (cashAmt > 0) {
-            document.getElementById('split-complete-btn').disabled = true;
-        } else {
-            document.getElementById('split-complete-btn').disabled = false;
-        }
+        document.getElementById('split-cash-confirm-btn').disabled = true;
     }
 
     function splitQuickCash(amount) {
-        document.getElementById('split-cash-amount').value = amount;
-        splitUpdateCashCard();
+        var remaining = splitGetRemaining();
+        document.getElementById('split-cash-amount').value = Math.min(amount, remaining).toFixed(2);
+        splitCashAmountChanged();
+        document.getElementById('split-tendered-input').focus();
     }
 
-    function splitUpdateChange() {
+    function splitQuickCashAll() {
+        var remaining = splitGetRemaining();
+        document.getElementById('split-cash-amount').value = remaining.toFixed(2);
+        splitCashAmountChanged();
+        document.getElementById('split-tendered-input').focus();
+    }
+
+    function splitTenderedChanged() {
+        var cashAmt = parseFloat(document.getElementById('split-cash-amount').value) || 0;
         var tendered = parseFloat(document.getElementById('split-tendered-input').value) || 0;
-        var cashNeeded = splitCashAmount;
-        var change = tendered - cashNeeded;
+        var remaining = splitGetRemaining();
+        if (cashAmt <= 0 || cashAmt > remaining) {
+            document.getElementById('split-cash-confirm-btn').disabled = true;
+            return;
+        }
+        var change = tendered - cashAmt;
         var el = document.getElementById('split-change-display');
-        var btn = document.getElementById('split-complete-btn');
+        var btn = document.getElementById('split-cash-confirm-btn');
         if (tendered > 0 && change >= 0) {
             el.textContent = 'Change Due: $' + change.toFixed(2);
             el.className = change > 0 ? 'change-display positive' : 'change-display zero';
@@ -2921,6 +2910,15 @@ table { width: 100%; border-collapse: collapse; }
         }
     }
 
+    function splitConfirmCash() {
+        var cashAmt = parseFloat(document.getElementById('split-cash-amount').value) || 0;
+        var tendered = parseFloat(document.getElementById('split-tendered-input').value) || 0;
+        var remaining = splitGetRemaining();
+        if (cashAmt <= 0 || cashAmt > remaining || tendered < cashAmt) return;
+        splitPayments.push({ type: 'cash', amount: Math.round(cashAmt * 100) / 100, tendered: Math.round(tendered * 100) / 100 });
+        splitRefreshUI();
+    }
+
     async function completeSplitSale() {
         var btn = document.getElementById('split-complete-btn');
         var errEl = document.getElementById('split-error');
@@ -2928,59 +2926,26 @@ table { width: 100%; border-collapse: collapse; }
         btn.textContent = 'Processing...';
         errEl.textContent = '';
         try {
-            var payload = buildSalePayload('split');
-            if (splitGcBarcode && splitGcAmount > 0) {
-                payload.gift_card_barcode = splitGcBarcode;
-                payload.gift_card_amount = splitGcAmount;
+            if (splitGetRemaining() > 0) {
+                errEl.textContent = 'Total not fully covered';
+                btn.disabled = false;
+                btn.textContent = 'Complete Split Sale';
+                return;
             }
+            var payload = buildSalePayload('split');
+            var gcPayment = splitPayments.find(function(p) { return p.type === 'gc'; });
+            var cashPayment = splitPayments.find(function(p) { return p.type === 'cash'; });
+            var cardPayment = splitPayments.find(function(p) { return p.type === 'card'; });
 
-            if (splitType === 'cash_card') {
-                var cashAmt = splitCashAmount;
-                var tendered = parseFloat(document.getElementById('split-tendered-input').value) || 0;
-                if (cashAmt > 0 && tendered < cashAmt) {
-                    errEl.textContent = 'Insufficient cash tendered';
-                    btn.disabled = false;
-                    btn.textContent = 'Complete Split Sale';
-                    return;
-                }
-                if (cashAmt > 0) payload.cash_tendered = tendered;
+            if (gcPayment) {
+                payload.gift_card_barcode = gcPayment.barcode;
+                payload.gift_card_amount = gcPayment.amount;
+            }
+            if (cashPayment) {
+                payload.cash_tendered = cashPayment.tendered;
+            }
+            if (cardPayment) {
                 payload.card_transaction_id = 'SPLIT-CARD-' + Date.now();
-            } else if (splitType === 'gc_cash') {
-                var { total } = calcTotals();
-                var remainder = Math.max(total - splitGcAmount, 0);
-                if (remainder > 0) {
-                    var tendered = parseFloat(document.getElementById('split-tendered-input').value) || 0;
-                    if (tendered < remainder) {
-                        errEl.textContent = 'Insufficient cash tendered';
-                        btn.disabled = false;
-                        btn.textContent = 'Complete Split Sale';
-                        return;
-                    }
-                    payload.cash_tendered = tendered;
-                }
-            } else if (splitType === 'gc_card') {
-                var { total } = calcTotals();
-                var remainder = Math.max(total - splitGcAmount, 0);
-                if (remainder > 0) {
-                    payload.card_transaction_id = 'SPLIT-CARD-' + Date.now();
-                }
-            } else if (splitType === 'gc_cash_card') {
-                var { total } = calcTotals();
-                var remainder = Math.max(total - splitGcAmount, 0);
-                if (remainder > 0) {
-                    var cashAmt = splitCashAmount;
-                    if (cashAmt > 0) {
-                        var tendered = parseFloat(document.getElementById('split-tendered-input').value) || 0;
-                        if (tendered < cashAmt) {
-                            errEl.textContent = 'Insufficient cash tendered';
-                            btn.disabled = false;
-                            btn.textContent = 'Complete Split Sale';
-                            return;
-                        }
-                        payload.cash_tendered = tendered;
-                    }
-                    payload.card_transaction_id = 'SPLIT-CARD-' + Date.now();
-                }
             }
             var sale = await apiPost('/api/v1/pos/sale', payload);
             currentSale = sale;
@@ -2997,10 +2962,6 @@ table { width: 100%; border-collapse: collapse; }
 
     document.getElementById('split-gc-barcode').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') splitApplyGiftCard();
-    });
-
-    document.getElementById('split-gc-barcode').addEventListener('input', function() {
-        this.value = this.value.replace(/\D/g, '');
     });
 
     // ─── Receipt Lookup ──────────────────────────────────────────────────────
