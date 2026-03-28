@@ -15,7 +15,7 @@ from app.models.item_image import ItemImage
 from app.models.vendor import Vendor
 from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse
 from app.routers.auth import get_current_user
-from app.services.barcode import generate_sku
+from app.services.barcode import generate_sku, generate_short_barcode
 from app.services.labels import generate_label_pdf, generate_label_sheet, generate_dymo_xml
 
 PHOTO_UPLOAD_DIR = "frontend/static/images/items"
@@ -114,12 +114,7 @@ async def create_item(
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Barcode already exists")
     else:
-        barcode_val = str(uuid.uuid4().int)[:12]
-        while True:
-            existing = await db.execute(select(Item).where(Item.barcode == barcode_val))
-            if not existing.scalar_one_or_none():
-                break
-            barcode_val = str(uuid.uuid4().int)[:12]
+        barcode_val = await generate_short_barcode(db)
 
     item = Item(
         vendor_id=vendor_id,

@@ -11,7 +11,7 @@ from app.database import get_db
 from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
 from app.routers.auth import get_current_user, get_password_hash
-from app.services.barcode import generate_sku
+from app.services.barcode import generate_sku, generate_short_barcode
 
 from sqlalchemy import text
 
@@ -249,9 +249,11 @@ async def bulk_import_inventory(
         is_tax_exempt = clean_row.get("tax_exempt", "").lower() in ("true", "yes", "1", "y")
 
         if not barcode:
-            barcode = str(uuid.uuid4().int)[:12]
+            import random, string
+            _bc_chars = string.digits + string.ascii_uppercase
+            barcode = "".join(random.choices(_bc_chars, k=6))
             while barcode in existing_barcodes:
-                barcode = str(uuid.uuid4().int)[:12]
+                barcode = "".join(random.choices(_bc_chars, k=6))
         existing_barcodes.add(barcode)
 
         try:
@@ -554,7 +556,8 @@ async def batch_import_items(
             errors.append({"row": row_num, "name": name, "error": f"Vendor not found: {vref}"})
             continue
 
-        barcode = clean.get("barcode") or str(uuid.uuid4().int)[:12]
+        import random as _rnd, string as _stg
+        barcode = clean.get("barcode") or "".join(_rnd.choices(_stg.digits + _stg.ascii_uppercase, k=6))
         sku = clean.get("sku") or f"BSM-{vendor_id:04d}-{row_num:06d}"
 
         try:

@@ -55,11 +55,7 @@ def _draw_label(c, item, x_offset, y_offset):
         c.setFont("Helvetica-Bold", 11)
     c.drawString(inner_left, name_y, name)
 
-    if booth_number:
-        c.setFont("Helvetica-Bold", 9)
-        c.drawRightString(inner_right, name_y, "Booth " + booth_number)
-
-    divider_y = name_y - 6
+    divider_y = name_y - 5
     c.setStrokeColorRGB(0.5, 0.5, 0.5)
     c.setLineWidth(0.5)
     c.line(inner_left, divider_y, inner_right, divider_y)
@@ -77,24 +73,28 @@ def _draw_label(c, item, x_offset, y_offset):
         on_sale = True
 
     price_str = f"${active_price:.2f}"
-    price_y = divider_y - 17
-    c.setFont("Helvetica-Bold", 16)
+    price_y = divider_y - 16
+    c.setFont("Helvetica-Bold", 14)
     c.setFillColorRGB(0, 0, 0)
     c.drawString(inner_left, price_y, price_str)
 
     if on_sale:
         orig_str = f"${item.price:.2f}"
-        price_w = c.stringWidth(price_str, "Helvetica-Bold", 16)
+        price_w = c.stringWidth(price_str, "Helvetica-Bold", 14)
         c.setFont("Helvetica", 8)
         c.setFillColorRGB(0.35, 0.35, 0.35)
-        orig_x = inner_left + price_w + 5
-        c.drawString(orig_x, price_y + 2, orig_str)
+        orig_x = inner_left + price_w + 4
+        c.drawString(orig_x, price_y + 1, orig_str)
         orig_w = c.stringWidth(orig_str, "Helvetica", 8)
         c.setStrokeColorRGB(0.35, 0.35, 0.35)
         c.setLineWidth(0.6)
-        strike_y = price_y + 5.5
+        strike_y = price_y + 4.5
         c.line(orig_x, strike_y, orig_x + orig_w, strike_y)
         c.setFillColorRGB(0, 0, 0)
+
+    if booth_number:
+        c.setFont("Helvetica-Bold", 14)
+        c.drawRightString(inner_right, price_y, "B" + booth_number)
 
     barcode_val = item.barcode or ""
     if barcode_val:
