@@ -84,6 +84,20 @@ async def update_vendor(
     await db.refresh(vendor)
     return vendor
 
+@router.patch("/me/label-preference")
+async def update_label_preference(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    pref = body.get("label_preference", "standard")
+    if pref not in ("standard", "dymo"):
+        raise HTTPException(status_code=400, detail="Must be 'standard' or 'dymo'")
+    current_user.label_preference = pref
+    await db.commit()
+    return {"label_preference": pref}
+
+
 @router.post("/{vendor_id}/reset-password")
 async def reset_vendor_password(
     vendor_id: int,

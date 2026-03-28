@@ -37,6 +37,7 @@ class VendorUpdate(BaseModel):
     zelle_handle: Optional[str] = None
     status: Optional[str] = None
     rent_flagged: Optional[bool] = None
+    label_preference: Optional[str] = None
 
 class VendorResponse(BaseModel):
     id: int
@@ -53,6 +54,7 @@ class VendorResponse(BaseModel):
     rent_flagged: Optional[bool] = False
     payout_method: Optional[str] = None
     zelle_handle: Optional[str] = None
+    label_preference: Optional[str] = "standard"
     created_at: datetime
 
     class Config:

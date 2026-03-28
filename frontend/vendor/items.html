@@ -257,10 +257,19 @@
         <button class="btn btn-primary" style="font-size:0.72rem; padding:0.3rem 0.8rem; margin-left:auto">Select &amp; Print</button>
     </div>
 
-    <div class="status-filter-bar" id="status-filter-bar">
-        <button class="active" data-status="active" onclick="setStatusFilter('active')">Active</button>
-        <button data-status="inactive" onclick="setStatusFilter('inactive')">Inactive</button>
-        <button data-status="all" onclick="setStatusFilter('all')">All</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem">
+        <div class="status-filter-bar" id="status-filter-bar" style="margin-bottom:0">
+            <button class="active" data-status="active" onclick="setStatusFilter('active')">Active</button>
+            <button data-status="inactive" onclick="setStatusFilter('inactive')">Inactive</button>
+            <button data-status="all" onclick="setStatusFilter('all')">All</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+            <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Default Label:</label>
+            <select id="label-pref-select" class="form-control" onchange="saveLabelPref()" style="width:auto;min-width:120px;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
+                <option value="standard">Standard PDF</option>
+                <option value="dymo">Dymo LabelWriter</option>
+            </select>
+        </div>
     </div>
 
     <!-- items toolbar: search + view toggle -->
@@ -534,6 +543,7 @@
     let miniChatOpen = false;
     let miniChatBusy = false;
     let selectedItemIds = new Set();
+    let vendorLabelPref = 'standard';
 
     let allItems = [];
     let currentView = localStorage.getItem('bmm_items_view') || 'grid';
@@ -642,13 +652,32 @@
         var url = URL.createObjectURL(blob);
         var win = window.open('', '_blank');
         if (!win) { window.open(url, '_blank'); return; }
+        var payload = parseToken();
+        var role = payload ? payload.role : 'vendor';
+        var navHtml = '<a href="/vendor/items.html">Back to Items</a>';
+        if (role === 'admin') {
+            navHtml += ' <a href="/admin/index.html">Admin Dashboard</a>';
+        } else if (role === 'cashier') {
+            navHtml += ' <a href="/pos/index.html">POS Terminal</a>';
+        } else {
+            navHtml += ' <a href="/vendor/dashboard.html">Dashboard</a>';
+        }
         win.document.write('<!DOCTYPE html><html><head><title>Print Labels</title>'
-            + '<style>@page{size:2.25in 1.25in;margin:0}body{margin:0;background:#555}'
-            + '.hint{font-family:sans-serif;color:#fff;text-align:center;padding:10px;font-size:13px}'
-            + '.hint b{color:#FFD580}</style></head><body>'
-            + '<div class="hint">Set paper size to <b>2.25 x 1.25 in</b> &bull; Scale: <b>100% (Actual Size)</b> &bull; Margins: <b>None</b></div>'
+            + '<style>@page{size:2.25in 1.25in;margin:0}@media print{.toolbar{display:none!important}}'
+            + 'body{margin:0;background:#38383B;font-family:Roboto,sans-serif}'
+            + '.toolbar{display:flex;align-items:center;gap:12px;padding:8px 16px;background:#2A2A2D;border-bottom:1px solid #C9A96E}'
+            + '.toolbar a{color:#C9A96E;text-decoration:none;font-size:13px;padding:6px 14px;border:1px solid rgba(201,169,110,0.3);transition:background 0.15s}'
+            + '.toolbar a:hover{background:rgba(201,169,110,0.15)}'
+            + '.toolbar .close-btn{margin-left:auto;background:#C9A96E;color:#38383B;font-weight:700;border:none;padding:6px 18px;cursor:pointer;font-size:13px}'
+            + '.hint{color:#A8A6A1;text-align:center;padding:8px;font-size:12px}'
+            + '.hint b{color:#C9A96E}'
+            + '</style></head><body>'
+            + '<div class="toolbar">' + navHtml
+            + '<button class="close-btn" onclick="window.close()">Close Window</button>'
+            + '</div>'
+            + '<div class="hint">Print settings: paper <b>2.25 x 1.25 in</b> &bull; scale <b>Actual Size / 100%</b> &bull; margins <b>None</b></div>'
             + '<embed src="' + url + '" type="application/pdf" width="100%" '
-            + 'style="height:calc(100vh - 40px)">'
+            + 'style="height:calc(100vh - 82px)">'
             + '</body></html>');
         win.document.close();
         setTimeout(function() { URL.revokeObjectURL(url); }, 120000);
@@ -913,7 +942,7 @@
         const rateVal = item?.consignment_rate ? (parseFloat(item.consignment_rate) * 100).toFixed(2) : '';
         document.getElementById('f-consignment-rate').value = rateVal;
         toggleConsignmentRate();
-        document.getElementById('f-label-style').value = item?.label_style || 'standard';
+        document.getElementById('f-label-style').value = item?.label_style || vendorLabelPref || 'standard';
 
         clearPhotoPreview();
         // Show image_path preview if available
@@ -1605,8 +1634,31 @@
             document.getElementById('page-title').textContent = 'My Items';
         }
 
+        try {
+            var vendorInfo = await apiGet('/api/v1/vendors/' + payload.vendor_id);
+            vendorLabelPref = vendorInfo.label_preference || 'standard';
+            updateLabelPrefUI();
+        } catch (e) { /* fallback to standard */ }
+
         setView(currentView);
         await loadItems();
+    }
+
+    function updateLabelPrefUI() {
+        var sel = document.getElementById('label-pref-select');
+        if (sel) sel.value = vendorLabelPref;
+    }
+
+    async function saveLabelPref() {
+        var sel = document.getElementById('label-pref-select');
+        var newPref = sel.value;
+        try {
+            await apiFetch('PATCH', '/api/v1/vendors/me/label-preference', { label_preference: newPref });
+            vendorLabelPref = newPref;
+            showAlert('alert-container', 'Default label type set to ' + (newPref === 'dymo' ? 'Dymo LabelWriter' : 'Standard PDF') + '.', 'success');
+        } catch (e) {
+            showAlert('alert-container', e.message || 'Failed to save label preference.', 'error');
+        }
     }
 
     init();

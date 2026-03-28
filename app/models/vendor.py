@@ -26,6 +26,7 @@ class Vendor(Base):
     is_vendor: Mapped[bool] = mapped_column(Boolean, default=False)
     password_changed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     commission_rate: Mapped[Decimal] = mapped_column(Numeric(5, 4), default=Decimal("0.10"))
+    label_preference: Mapped[str] = mapped_column(String(20), default="standard", nullable=False)
 
     items = relationship("Item", back_populates="vendor")
     sales = relationship("Sale", back_populates="cashier", foreign_keys="[Sale.cashier_id]")
