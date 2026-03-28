@@ -34,38 +34,34 @@ def generate_label_sheet(items) -> bytes:
 def _draw_label(c, item, x_offset, y_offset):
     w = LABEL_WIDTH
     h = LABEL_HEIGHT
-    margin = 4
+    margin = 2
 
-    c.setStrokeColorRGB(0.15, 0.15, 0.15)
-    c.setLineWidth(0.6)
-    c.rect(margin, margin, w - margin * 2, h - margin * 2)
-
-    inner_left = margin + 5
-    inner_right = w - margin - 5
-
-    name = (item.name or "")[:36]
-    name_y = h - margin - 14
+    inner_left = margin + 3
+    inner_right = w - margin - 3
 
     booth = getattr(item, "vendor", None)
     booth_number = ""
     if booth:
         booth_number = getattr(booth, "booth_number", "") or ""
 
-    if len(name) > 22:
+    name = (item.name or "")[:40]
+    name_y = h - margin - 13
+
+    if len(name) > 28:
         c.setFont("Helvetica-Bold", 8)
-    elif len(name) > 16:
+    elif len(name) > 20:
         c.setFont("Helvetica-Bold", 9.5)
     else:
         c.setFont("Helvetica-Bold", 11)
     c.drawString(inner_left, name_y, name)
 
     if booth_number:
-        c.setFont("Helvetica", 8)
-        c.drawRightString(inner_right, name_y, f"Booth {booth_number}")
+        c.setFont("Helvetica-Bold", 9)
+        c.drawRightString(inner_right, name_y, "Booth " + booth_number)
 
-    divider_y = name_y - 5
-    c.setStrokeColorRGB(0.6, 0.6, 0.6)
-    c.setLineWidth(0.3)
+    divider_y = name_y - 6
+    c.setStrokeColorRGB(0.5, 0.5, 0.5)
+    c.setLineWidth(0.5)
     c.line(inner_left, divider_y, inner_right, divider_y)
 
     today = datetime.date.today()
@@ -81,29 +77,28 @@ def _draw_label(c, item, x_offset, y_offset):
         on_sale = True
 
     price_str = f"${active_price:.2f}"
-    price_y = divider_y - 16
-    c.setFont("Helvetica-Bold", 14)
+    price_y = divider_y - 17
+    c.setFont("Helvetica-Bold", 16)
     c.setFillColorRGB(0, 0, 0)
     c.drawString(inner_left, price_y, price_str)
 
     if on_sale:
         orig_str = f"${item.price:.2f}"
-        price_w = c.stringWidth(price_str, "Helvetica-Bold", 14)
-        c.setFont("Helvetica", 7.5)
-        c.setFillColorRGB(0.4, 0.4, 0.4)
-        orig_x = inner_left + price_w + 4
+        price_w = c.stringWidth(price_str, "Helvetica-Bold", 16)
+        c.setFont("Helvetica", 8)
+        c.setFillColorRGB(0.35, 0.35, 0.35)
+        orig_x = inner_left + price_w + 5
         c.drawString(orig_x, price_y + 2, orig_str)
-        orig_w = c.stringWidth(orig_str, "Helvetica", 7.5)
-        c.setStrokeColorRGB(0.4, 0.4, 0.4)
-        c.setLineWidth(0.5)
-        strike_y = price_y + 5
+        orig_w = c.stringWidth(orig_str, "Helvetica", 8)
+        c.setStrokeColorRGB(0.35, 0.35, 0.35)
+        c.setLineWidth(0.6)
+        strike_y = price_y + 5.5
         c.line(orig_x, strike_y, orig_x + orig_w, strike_y)
         c.setFillColorRGB(0, 0, 0)
 
     barcode_val = item.barcode or ""
     if barcode_val:
-        bc_margin = margin + 1
-        avail_w = w - bc_margin * 2
+        avail_w = w - margin * 2
 
         probe = code128.Code128(barcode_val, barHeight=10, barWidth=1.0, humanReadable=False, quiet=False)
         modules = probe.width
@@ -111,9 +106,11 @@ def _draw_label(c, item, x_offset, y_offset):
         dots_per_module = max(int(avail_w / modules / DOT_SIZE), 2)
         bar_w = dots_per_module * DOT_SIZE
 
-        barcode_y = margin + 12
-        bar_h = price_y - 4 - barcode_y
-        bar_h = max(bar_h, 0.35 * inch)
+        barcode_text_y = margin + 2
+        barcode_y = barcode_text_y + 10
+
+        bar_h = price_y - 6 - barcode_y
+        bar_h = max(bar_h, 0.30 * inch)
 
         barcode_obj = code128.Code128(
             barcode_val,
@@ -138,8 +135,8 @@ def _draw_label(c, item, x_offset, y_offset):
         barcode_x = (w - barcode_w) / 2
         barcode_obj.drawOn(c, barcode_x, barcode_y)
 
-        c.setFont("Helvetica", 6)
-        c.drawCentredString(w / 2, margin + 4, barcode_val)
+        c.setFont("Helvetica", 7)
+        c.drawCentredString(w / 2, barcode_text_y, barcode_val)
 
 
 def generate_dymo_xml(item) -> str:

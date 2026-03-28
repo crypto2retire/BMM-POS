@@ -250,6 +250,7 @@
     display: flex;
     flex-direction: column;
     transition: border-color 0.25s, box-shadow 0.25s, transform 0.25s;
+    cursor: pointer;
   }
 
   .item-card:hover {
@@ -862,6 +863,21 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="detail-overlay" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+  <div class="modal" style="max-width:560px">
+    <button class="modal-close" id="detail-close" aria-label="Close">&#10005;</button>
+    <div id="detail-body">
+      <div id="detail-image-wrap" style="margin:-1.5rem -1.5rem 1rem;overflow:hidden;max-height:320px;background:#2a2a2e;display:flex;align-items:center;justify-content:center"></div>
+      <h2 id="detail-title" style="font-family:'EB Garamond',Georgia,serif;font-size:1.5rem;font-weight:500;color:var(--text);margin-bottom:0.35rem"></h2>
+      <div id="detail-booth" style="font-size:0.85rem;color:var(--text-dim);margin-bottom:0.75rem"></div>
+      <div id="detail-pricing" style="margin-bottom:0.75rem"></div>
+      <div id="detail-category" style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.75rem"></div>
+      <div id="detail-desc" style="font-size:0.9rem;line-height:1.6;color:var(--text);margin-bottom:1.25rem;white-space:pre-wrap"></div>
+      <div id="detail-actions" style="display:flex;gap:0.5rem"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 (function () {
   'use strict';
@@ -999,15 +1015,13 @@
       <div class="card-body" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
         <div class="card-name" itemprop="name">${escHtml(item.name)}</div>
         <div class="card-vendor">
-          <strong itemprop="brand">${escHtml(item.vendor_name || 'Bowenstreet Market')}</strong>
-          ${item.booth_number ? ' &nbsp;·&nbsp; Booth ' + escHtml(item.booth_number) : ''}
+          ${item.booth_number ? 'Booth ' + escHtml(item.booth_number) : ''}
         </div>
         <div class="card-pricing">${priceHtml}</div>
         <div class="card-tax">+ 5% tax &nbsp;·&nbsp; Total: $${fmt(totalPrice)}</div>
         <meta itemprop="price" content="${fmt(basePrice)}">
         <meta itemprop="priceCurrency" content="USD">
         <meta itemprop="availability" content="https://schema.org/InStock">
-        <div class="card-desc" itemprop="description">${escHtml(item.description || '')}</div>
       </div>
       <div class="card-footer">
         <button class="${btnClass}" data-id="${item.id}" data-name="${escAttr(item.name)}"${btnDisabled}>
@@ -1016,7 +1030,13 @@
       </div>
     `;
 
-    card.querySelector('.btn-reserve').addEventListener('click', function () {
+    card.addEventListener('click', function (e) {
+      if (e.target.closest('.btn-reserve')) return;
+      openItemDetail(item);
+    });
+
+    card.querySelector('.btn-reserve').addEventListener('click', function (e) {
+      e.stopPropagation();
       if (!this.disabled) openModal(item.id, item.name);
     });
 
@@ -1052,7 +1072,7 @@
       <div class="list-info">
         <div class="list-name">${escHtml(item.name)}</div>
         <div class="list-desc">${escHtml(item.description || '')}</div>
-        <div class="list-vendor">${escHtml(item.vendor_name || 'Bowenstreet Market')}${item.booth_number ? ' \u00B7 Booth ' + escHtml(item.booth_number) : ''}</div>
+        <div class="list-vendor">${item.booth_number ? 'Booth ' + escHtml(item.booth_number) : ''}</div>
       </div>
       <div class="list-price">${priceHtml}<div class="card-tax" style="font-size:0.65rem;margin-top:2px">Total: $${fmt(totalPrice)}</div></div>
       <div class="list-action">
@@ -1060,7 +1080,13 @@
       </div>
     `;
 
-    row.querySelector('.btn-reserve').addEventListener('click', function () {
+    row.addEventListener('click', function (e) {
+      if (e.target.closest('.btn-reserve')) return;
+      openItemDetail(item);
+    });
+
+    row.querySelector('.btn-reserve').addEventListener('click', function (e) {
+      e.stopPropagation();
       if (!this.disabled) openModal(item.id, item.name);
     });
 
@@ -1279,6 +1305,64 @@
     this.classList.add('active');
     document.getElementById('view-grid-btn').classList.remove('active');
     applyFiltersAndRender();
+  });
+
+  // ── Item Detail Modal ──────────────────────────────────────────────
+  function openItemDetail(item) {
+    const TAX_RATE = 0.05;
+    const hasSale = item.sale_price != null;
+    const basePrice = hasSale ? parseFloat(item.sale_price) : parseFloat(item.price);
+    const totalPrice = basePrice * (1 + TAX_RATE);
+    const isReserved = reservedIds.has(item.id);
+
+    const imgSrc = item.image_path || item.photo_url || null;
+    const imgWrap = document.getElementById('detail-image-wrap');
+    if (imgSrc) {
+      imgWrap.innerHTML = '<img src="' + escAttr(imgSrc) + '" alt="' + escAttr(item.name) + '" style="width:100%;height:auto;display:block;max-height:320px;object-fit:cover">';
+      imgWrap.style.display = '';
+    } else {
+      imgWrap.style.display = 'none';
+    }
+
+    document.getElementById('detail-title').textContent = item.name || '';
+    document.getElementById('detail-booth').textContent = item.booth_number ? 'Booth ' + item.booth_number : '';
+
+    var pricingHtml = '';
+    if (hasSale) {
+      pricingHtml = '<span style="text-decoration:line-through;color:var(--text-dim);font-size:0.95rem">$' + fmt(item.price) + '</span> '
+        + '<span style="color:var(--sale);font-size:1.3rem;font-weight:600">$' + fmt(item.sale_price) + '</span>'
+        + ' <span style="background:var(--sale);color:#1a1a1c;padding:2px 8px;font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em">SALE</span>';
+    } else {
+      pricingHtml = '<span style="font-size:1.3rem;font-weight:600;color:var(--text)">$' + fmt(item.price) + '</span>';
+    }
+    pricingHtml += '<div style="font-size:0.78rem;color:var(--text-dim);margin-top:4px">+ 5% tax &middot; Total: $' + fmt(totalPrice) + '</div>';
+    document.getElementById('detail-pricing').innerHTML = pricingHtml;
+
+    document.getElementById('detail-category').textContent = item.category ? 'Category: ' + item.category : '';
+    document.getElementById('detail-desc').textContent = item.description || 'No description available.';
+
+    var btnClass = isReserved ? 'btn-primary reserved' : 'btn-primary';
+    var btnLabel = isReserved ? 'Reserved \u2713' : 'Pay & Reserve';
+    var actionsEl = document.getElementById('detail-actions');
+    actionsEl.innerHTML = '<button class="' + btnClass + '" style="flex:1;padding:0.75rem 1.5rem"'
+      + (isReserved ? ' disabled' : '') + '>' + btnLabel + '</button>';
+    if (!isReserved) {
+      actionsEl.querySelector('button').addEventListener('click', function () {
+        closeItemDetail();
+        openModal(item.id, item.name);
+      });
+    }
+
+    document.getElementById('detail-overlay').classList.add('open');
+  }
+
+  function closeItemDetail() {
+    document.getElementById('detail-overlay').classList.remove('open');
+  }
+
+  document.getElementById('detail-close').addEventListener('click', closeItemDetail);
+  document.getElementById('detail-overlay').addEventListener('click', function (e) {
+    if (e.target === this) closeItemDetail();
   });
 
   // ── Init ──────────────────────────────────────────────────────────

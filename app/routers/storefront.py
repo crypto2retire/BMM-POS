@@ -119,7 +119,7 @@ async def get_shop_items(
             "sale_price": float(row.sale_price) if row.sale_price else None,
             "category": row.category,
             "vendor_name": row.vendor_name,
-            "vendor_booth": row.vendor_booth,
+            "booth_number": row.vendor_booth,
             "quantity": row.quantity,
             "image_path": row.image_path,
             "photo_url": photo_url,

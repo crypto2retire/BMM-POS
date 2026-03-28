@@ -230,7 +230,14 @@ async def pos_create_sale(
         if remainder < Decimal("0"):
             gc_amount_applied = total
             remainder = Decimal("0.00")
-        if data.cash_tendered is not None:
+        if data.cash_tendered is not None and data.card_transaction_id:
+            cash_tendered = Decimal(str(data.cash_tendered)).quantize(Decimal("0.01"), ROUND_HALF_UP)
+            cash_portion = min(cash_tendered, remainder)
+            change_given = max(
+                (cash_tendered - cash_portion).quantize(Decimal("0.01"), ROUND_HALF_UP),
+                Decimal("0.00"),
+            )
+        elif data.cash_tendered is not None:
             cash_tendered = Decimal(str(data.cash_tendered)).quantize(Decimal("0.01"), ROUND_HALF_UP)
             change_given = max(
                 (cash_tendered - remainder).quantize(Decimal("0.01"), ROUND_HALF_UP),
