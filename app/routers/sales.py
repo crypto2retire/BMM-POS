@@ -216,9 +216,41 @@ async def list_sales(
     vendor_id: Optional[int] = Query(None),
     limit: Optional[int] = Query(200, ge=1, le=500),
     search_date: Optional[str] = Query(None),
+    date_from: Optional[str] = Query(None),
+    date_to: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
+    def _parse_date(s, label="date"):
+        try:
+            return date.fromisoformat(s)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Invalid {label} format. Use YYYY-MM-DD.")
+
+    def _apply_date_filters(q):
+        if date_from and date_to:
+            d1 = _parse_date(date_from, "date_from")
+            d2 = _parse_date(date_to, "date_to")
+            if d2 < d1:
+                d1, d2 = d2, d1
+            start_utc = datetime(d1.year, d1.month, d1.day, tzinfo=_STORE_TZ).astimezone(timezone.utc)
+            end_utc = datetime(d2.year, d2.month, d2.day, tzinfo=_STORE_TZ).astimezone(timezone.utc) + timedelta(days=1)
+            q = q.where(Sale.created_at >= start_utc, Sale.created_at < end_utc)
+        elif date_from:
+            d1 = _parse_date(date_from, "date_from")
+            start_utc = datetime(d1.year, d1.month, d1.day, tzinfo=_STORE_TZ).astimezone(timezone.utc)
+            q = q.where(Sale.created_at >= start_utc)
+        elif date_to:
+            d2 = _parse_date(date_to, "date_to")
+            end_utc = datetime(d2.year, d2.month, d2.day, tzinfo=_STORE_TZ).astimezone(timezone.utc) + timedelta(days=1)
+            q = q.where(Sale.created_at < end_utc)
+        elif search_date:
+            d = _parse_date(search_date, "search_date")
+            start_utc = datetime(d.year, d.month, d.day, tzinfo=_STORE_TZ).astimezone(timezone.utc)
+            end_utc = start_utc + timedelta(days=1)
+            q = q.where(Sale.created_at >= start_utc, Sale.created_at < end_utc)
+        return q
+
     if current_user.role in ("admin", "cashier"):
         q = (
             select(Sale)
@@ -231,14 +263,7 @@ async def list_sales(
         )
         if vendor_id:
             q = q.join(SaleItem, SaleItem.sale_id == Sale.id).where(SaleItem.vendor_id == vendor_id).distinct()
-        if search_date:
-            try:
-                d = date.fromisoformat(search_date)
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
-            start_utc = datetime(d.year, d.month, d.day, tzinfo=_STORE_TZ).astimezone(timezone.utc)
-            end_utc = start_utc + timedelta(days=1)
-            q = q.where(Sale.created_at >= start_utc, Sale.created_at < end_utc)
+        q = _apply_date_filters(q)
         q = q.limit(limit)
         result = await db.execute(q)
         sales = result.scalars().all()
@@ -255,14 +280,7 @@ async def list_sales(
             .order_by(Sale.created_at.desc())
             .distinct()
         )
-        if search_date:
-            try:
-                d = date.fromisoformat(search_date)
-            except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD.")
-            start_utc = datetime(d.year, d.month, d.day, tzinfo=_STORE_TZ).astimezone(timezone.utc)
-            end_utc = start_utc + timedelta(days=1)
-            vq = vq.where(Sale.created_at >= start_utc, Sale.created_at < end_utc)
+        vq = _apply_date_filters(vq)
         result = await db.execute(vq)
         sales = result.scalars().all()
 

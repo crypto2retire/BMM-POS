@@ -1056,11 +1056,30 @@
 <div class="pos-modal-overlay hidden" id="receipt-modal-lookup">
     <div class="pos-modal" style="max-width:560px">
         <h2>🔍 Receipt Lookup</h2>
-        <div style="display:flex;gap:8px;margin-bottom:1rem">
-            <input type="text" id="receipt-search-input" placeholder="Sale # or date (e.g. 2026-03-12)" style="flex:1;background:#2D2D30;border:1px solid #555558;color:#F0EDE8;padding:0.5rem 0.75rem;font-size:0.9rem">
-            <button class="confirm-btn" onclick="searchReceipts()" style="padding:0.5rem 1rem">Search</button>
+        <div style="margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:4px">Search by Sale #</label>
+            <div style="display:flex;gap:8px">
+                <input type="text" id="receipt-search-input" placeholder="e.g. 12345" inputmode="numeric" onkeydown="if(event.key==='Enter')searchReceiptById()" style="flex:1;background:#2D2D30;border:1px solid #555558;color:#F0EDE8;padding:0.5rem 0.75rem;font-size:0.9rem">
+                <button class="confirm-btn" onclick="searchReceiptById()" style="padding:0.5rem 1rem">Find</button>
+            </div>
         </div>
-        <div id="receipt-search-results" style="max-height:55vh;overflow-y:auto"></div>
+        <div style="border-top:1px solid #555558;padding-top:0.75rem;margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:4px">Search by Date Range</label>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <input type="date" id="receipt-date-from" style="flex:1;min-width:130px;background:#2D2D30;border:1px solid #555558;color:#F0EDE8;padding:0.5rem 0.5rem;font-size:0.85rem">
+                <span style="color:#A8A6A1;font-size:0.8rem">to</span>
+                <input type="date" id="receipt-date-to" style="flex:1;min-width:130px;background:#2D2D30;border:1px solid #555558;color:#F0EDE8;padding:0.5rem 0.5rem;font-size:0.85rem">
+                <button class="confirm-btn" onclick="searchReceiptsByDate()" style="padding:0.5rem 1rem">Search</button>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+                <button onclick="setReceiptDatePreset('today')" style="background:#3A3A3D;color:#C9A96E;border:1px solid #555;padding:3px 10px;font-size:0.72rem;cursor:pointer">Today</button>
+                <button onclick="setReceiptDatePreset('yesterday')" style="background:#3A3A3D;color:#C9A96E;border:1px solid #555;padding:3px 10px;font-size:0.72rem;cursor:pointer">Yesterday</button>
+                <button onclick="setReceiptDatePreset('week')" style="background:#3A3A3D;color:#C9A96E;border:1px solid #555;padding:3px 10px;font-size:0.72rem;cursor:pointer">This Week</button>
+                <button onclick="setReceiptDatePreset('month')" style="background:#3A3A3D;color:#C9A96E;border:1px solid #555;padding:3px 10px;font-size:0.72rem;cursor:pointer">This Month</button>
+                <button onclick="setReceiptDatePreset('last30')" style="background:#3A3A3D;color:#C9A96E;border:1px solid #555;padding:3px 10px;font-size:0.72rem;cursor:pointer">Last 30 Days</button>
+            </div>
+        </div>
+        <div id="receipt-search-results" style="max-height:45vh;overflow-y:auto"></div>
         <div class="modal-actions" style="margin-top:1rem">
             <button class="cancel-btn" onclick="document.getElementById('receipt-modal-lookup').classList.add('hidden')">Close</button>
         </div>
@@ -2969,62 +2988,100 @@ table { width: 100%; border-collapse: collapse; }
 
     function openReceiptLookup() {
         document.getElementById('receipt-search-input').value = '';
-        document.getElementById('receipt-search-results').innerHTML = '<p style="text-align:center;color:#999;padding:2rem">Enter a sale number or date and click Search</p>';
+        document.getElementById('receipt-date-from').value = '';
+        document.getElementById('receipt-date-to').value = '';
+        document.getElementById('receipt-search-results').innerHTML = '<p style="text-align:center;color:#999;padding:2rem">Enter a sale number or select a date range</p>';
         document.getElementById('receipt-modal-lookup').classList.remove('hidden');
         setTimeout(() => document.getElementById('receipt-search-input').focus(), 100);
     }
 
-    async function searchReceipts() {
-        const q = document.getElementById('receipt-search-input').value.trim();
-        const results = document.getElementById('receipt-search-results');
-        if (!q) { results.innerHTML = '<p style="color:#F87171;text-align:center">Please enter a sale # or date</p>'; return; }
+    function setReceiptDatePreset(preset) {
+        var today = new Date();
+        var toStr = today.toISOString().slice(0, 10);
+        var fromStr = toStr;
+        if (preset === 'yesterday') {
+            var y = new Date(today); y.setDate(y.getDate() - 1);
+            fromStr = y.toISOString().slice(0, 10);
+            toStr = fromStr;
+        } else if (preset === 'week') {
+            var d = new Date(today); d.setDate(d.getDate() - d.getDay());
+            fromStr = d.toISOString().slice(0, 10);
+        } else if (preset === 'month') {
+            fromStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-01';
+        } else if (preset === 'last30') {
+            var d30 = new Date(today); d30.setDate(d30.getDate() - 30);
+            fromStr = d30.toISOString().slice(0, 10);
+        }
+        document.getElementById('receipt-date-from').value = fromStr;
+        document.getElementById('receipt-date-to').value = toStr;
+        searchReceiptsByDate();
+    }
 
+    async function searchReceiptById() {
+        var q = document.getElementById('receipt-search-input').value.trim();
+        var results = document.getElementById('receipt-search-results');
+        if (!q) { results.innerHTML = '<p style="color:#F87171;text-align:center">Please enter a sale number</p>'; return; }
         results.innerHTML = '<p style="text-align:center;color:#999">Searching...</p>';
-
         try {
-            const saleNum = parseInt(q);
-            if (!isNaN(saleNum) && String(saleNum) === q) {
-                const sale = await apiGet(`/api/v1/sales/${saleNum}`);
-                renderReceiptResults([sale]);
-            } else {
-                var dateMatch = q.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-                if (dateMatch) {
-                    var sales = await apiGet('/api/v1/sales/?search_date=' + encodeURIComponent(q) + '&limit=200');
-                    renderReceiptResults(sales);
-                } else {
-                    var sales = await apiGet('/api/v1/sales/?limit=100');
-                    var filtered = sales.filter(function(s) {
-                        var d = new Date(s.created_at);
-                        var readableDate = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                        return readableDate.toLowerCase().includes(q.toLowerCase());
-                    });
-                    renderReceiptResults(filtered);
-                }
-            }
+            var saleNum = parseInt(q);
+            if (isNaN(saleNum)) { results.innerHTML = '<p style="color:#F87171;text-align:center">Please enter a valid sale number</p>'; return; }
+            var sale = await apiGet('/api/v1/sales/' + saleNum);
+            renderReceiptResults([sale]);
         } catch (err) {
-            results.innerHTML = `<p style="color:#F87171;text-align:center">${err.message || 'Not found'}</p>`;
+            results.innerHTML = '<p style="color:#F87171;text-align:center">' + (err.message || 'Not found') + '</p>';
         }
     }
 
-    function renderReceiptResults(sales) {
-        const results = document.getElementById('receipt-search-results');
+    async function searchReceiptsByDate() {
+        var dateFrom = document.getElementById('receipt-date-from').value;
+        var dateTo = document.getElementById('receipt-date-to').value;
+        var results = document.getElementById('receipt-search-results');
+        if (!dateFrom && !dateTo) { results.innerHTML = '<p style="color:#F87171;text-align:center">Please select at least one date</p>'; return; }
+        if (!dateTo) dateTo = dateFrom;
+        if (!dateFrom) dateFrom = dateTo;
+        results.innerHTML = '<p style="text-align:center;color:#999">Searching...</p>';
+        try {
+            var url = '/api/v1/sales/?date_from=' + encodeURIComponent(dateFrom) + '&date_to=' + encodeURIComponent(dateTo) + '&limit=500';
+            var sales = await apiGet(url);
+            var d1 = new Date(dateFrom + 'T00:00:00');
+            var d2 = new Date(dateTo + 'T00:00:00');
+            var rangeLabel = d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            if (dateFrom !== dateTo) {
+                rangeLabel += ' – ' + d2.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            }
+            renderReceiptResults(sales, rangeLabel);
+        } catch (err) {
+            results.innerHTML = '<p style="color:#F87171;text-align:center">' + (err.message || 'Search failed') + '</p>';
+        }
+    }
+
+    function renderReceiptResults(sales, rangeLabel) {
+        var results = document.getElementById('receipt-search-results');
         if (!sales || sales.length === 0) {
             results.innerHTML = '<p style="text-align:center;color:#999;padding:1rem">No receipts found</p>';
             return;
         }
-        results.innerHTML = sales.slice(0, 50).map(s => {
-            const d = new Date(s.created_at);
-            const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-            const itemCount = (s.line_items || []).reduce((sum, li) => sum + li.quantity, 0);
+        var header = '';
+        if (rangeLabel) {
+            var totalAmt = sales.filter(function(s){ return !s.is_voided; }).reduce(function(sum,s){ return sum + parseFloat(s.total); }, 0);
+            header = '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.75rem;background:#333;margin-bottom:6px;font-size:0.8rem">'
+                + '<span style="color:#A8A6A1">' + rangeLabel + ' · ' + sales.length + ' receipt(s)</span>'
+                + '<span style="color:#C9A96E;font-weight:700">Total: $' + totalAmt.toFixed(2) + '</span>'
+                + '</div>';
+        }
+        results.innerHTML = header + sales.slice(0, 200).map(function(s) {
+            var d = new Date(s.created_at);
+            var dateStr = (d.getMonth()+1) + '/' + d.getDate() + '/' + d.getFullYear();
+            var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            var itemCount = (s.line_items || []).reduce(function(sum, li){ return sum + li.quantity; }, 0);
             var voidTag = s.is_voided ? ' · <span style="color:#F87171;font-weight:700">VOIDED</span>' : '';
-            return `<div onclick="viewReceiptDetail(${s.id})" style="background:#2D2D30;padding:0.65rem 0.75rem;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center${s.is_voided ? ';opacity:0.6' : ''}">
-                <div>
-                    <div style="font-weight:600;color:#F0EDE8">Sale #${s.id}${voidTag}</div>
-                    <div style="font-size:0.8rem;color:#A8A6A1">${dateStr} ${timeStr} · ${itemCount} item(s) · ${{'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[s.payment_method] || (s.payment_method||'').toUpperCase()}</div>
-                </div>
-                <div style="font-weight:700;color:${s.is_voided ? '#F87171' : '#C9A96E'};font-size:1.05rem">${s.is_voided ? '-' : ''}$${parseFloat(s.total).toFixed(2)}</div>
-            </div>`;
+            return '<div onclick="viewReceiptDetail(' + s.id + ')" style="background:#2D2D30;padding:0.65rem 0.75rem;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center' + (s.is_voided ? ';opacity:0.6' : '') + '">'
+                + '<div>'
+                + '<div style="font-weight:600;color:#F0EDE8">Sale #' + s.id + voidTag + '</div>'
+                + '<div style="font-size:0.8rem;color:#A8A6A1">' + dateStr + ' ' + timeStr + ' · ' + itemCount + ' item(s) · ' + ({'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[s.payment_method] || (s.payment_method||'').toUpperCase()) + '</div>'
+                + '</div>'
+                + '<div style="font-weight:700;color:' + (s.is_voided ? '#F87171' : '#C9A96E') + ';font-size:1.05rem">' + (s.is_voided ? '-' : '') + '$' + parseFloat(s.total).toFixed(2) + '</div>'
+                + '</div>';
         }).join('');
     }
 
