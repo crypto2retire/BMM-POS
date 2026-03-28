@@ -497,6 +497,26 @@
     </div>
 </div>
 
+<div class="modal-overlay hidden" id="label-qty-overlay">
+    <div class="modal" style="max-width:480px">
+        <div class="modal-header">
+            <h3 class="modal-title">Label Quantities</h3>
+            <button class="modal-close" onclick="closeLabelQtyModal()">✕</button>
+        </div>
+        <div class="modal-body" style="max-height:50vh;overflow-y:auto;padding:0.75rem 1rem">
+            <p style="font-size:0.78rem;color:var(--text-light);margin:0 0 0.75rem">Set how many labels to print for each item. Defaults to stock quantity.</p>
+            <div id="label-qty-list"></div>
+        </div>
+        <div class="modal-footer" style="justify-content:space-between;align-items:center">
+            <span style="font-size:0.78rem;color:var(--text-light)">Total labels: <strong id="label-qty-total">0</strong></span>
+            <div style="display:flex;gap:0.5rem">
+                <button class="btn btn-secondary" onclick="closeLabelQtyModal()">Cancel</button>
+                <button class="btn btn-primary" id="label-qty-print-btn" onclick="confirmPrintLabels()">Print Labels</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="/static/js/api.js"></script>
 <script src="/static/js/assistant-panel.js"></script>
 <script>initAssistantPanel('The vendor is managing their inventory items at Bowenstreet Market.');</script>
@@ -505,6 +525,7 @@
     let pendingPhotoFile = null;
     let pendingPhotoBase64 = null;
     let pendingPhotoMime = null;
+    function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
     let currentRole = 'vendor';
     let isVendorMode = false;
     let allVendors = [];
@@ -694,35 +715,92 @@
         });
     }
 
-    async function printSelectedLabels() {
-        const ids = Array.from(selectedItemIds);
+    function printSelectedLabels() {
+        var ids = Array.from(selectedItemIds);
         if (ids.length === 0) return;
-        const token = sessionStorage.getItem('bmm_token');
-        const btn = document.getElementById('batch-print-btn');
+        var list = document.getElementById('label-qty-list');
+        var html = '';
+        ids.forEach(function(id) {
+            var item = allItems.find(function(i) { return i.id === id; });
+            if (!item) return;
+            var name = escHtml(item.name);
+            var qty = item.quantity || 1;
+            html += '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.5rem 0;border-bottom:1px solid var(--warm-border)">'
+                + '<div style="flex:1;min-width:0">'
+                + '<div style="font-size:0.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + name + '</div>'
+                + '<div style="font-size:0.72rem;color:var(--text-light)">Stock: ' + qty + '</div>'
+                + '</div>'
+                + '<div style="display:flex;align-items:center;gap:4px">'
+                + '<button type="button" class="btn btn-outline" style="width:28px;height:28px;padding:0;font-size:1rem;line-height:1" onclick="adjustLabelQty(' + id + ',-1)">−</button>'
+                + '<input type="number" id="lq-' + id + '" class="label-qty-input" value="' + qty + '" min="1" max="99" '
+                + 'style="width:44px;height:28px;text-align:center;font-size:0.85rem;border:1px solid var(--warm-border);background:var(--bg);color:var(--text);padding:0 2px" '
+                + 'oninput="updateLabelTotal()">'
+                + '<button type="button" class="btn btn-outline" style="width:28px;height:28px;padding:0;font-size:1rem;line-height:1" onclick="adjustLabelQty(' + id + ',1)">+</button>'
+                + '</div></div>';
+        });
+        list.innerHTML = html;
+        updateLabelTotal();
+        document.getElementById('label-qty-overlay').classList.remove('hidden');
+    }
+
+    function closeLabelQtyModal() {
+        document.getElementById('label-qty-overlay').classList.add('hidden');
+    }
+
+    function adjustLabelQty(id, delta) {
+        var inp = document.getElementById('lq-' + id);
+        if (!inp) return;
+        var v = parseInt(inp.value) || 1;
+        v = Math.max(1, Math.min(99, v + delta));
+        inp.value = v;
+        updateLabelTotal();
+    }
+
+    function updateLabelTotal() {
+        var total = 0;
+        document.querySelectorAll('.label-qty-input').forEach(function(inp) {
+            total += parseInt(inp.value) || 1;
+        });
+        document.getElementById('label-qty-total').textContent = total;
+    }
+
+    async function confirmPrintLabels() {
+        var entries = [];
+        var ids = Array.from(selectedItemIds);
+        ids.forEach(function(id) {
+            var inp = document.getElementById('lq-' + id);
+            var qty = inp ? (parseInt(inp.value) || 1) : 1;
+            entries.push({ item_id: id, quantity: qty });
+        });
+        if (entries.length === 0) return;
+        var btn = document.getElementById('label-qty-print-btn');
         btn.disabled = true;
         btn.textContent = 'Generating…';
+        var token = sessionStorage.getItem('bmm_token');
         try {
-            const res = await fetch('/api/v1/items/labels/batch', {
+            var res = await fetch('/api/v1/items/labels/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                body: JSON.stringify({ item_ids: ids }),
+                body: JSON.stringify({ items: entries }),
             });
             if (!res.ok) {
-                const err = await res.json().catch(() => ({ detail: 'Failed' }));
+                var err = await res.json().catch(function() { return { detail: 'Failed' }; });
                 throw new Error(err.detail || 'Label generation failed');
             }
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
+            var blob = await res.blob();
+            var url = URL.createObjectURL(blob);
             window.open(url, '_blank');
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-            showAlert('alert-container', `${ids.length} label(s) generated.`, 'success');
+            setTimeout(function() { URL.revokeObjectURL(url); }, 60000);
+            var totalLabels = entries.reduce(function(s, e) { return s + e.quantity; }, 0);
+            showAlert('alert-container', totalLabels + ' label(s) generated for ' + entries.length + ' item(s).', 'success');
+            closeLabelQtyModal();
             selectedItemIds.clear();
             await loadItems();
         } catch (e) {
             showAlert('alert-container', e.message || 'Batch label generation failed.', 'error');
         } finally {
             btn.disabled = false;
-            btn.textContent = 'Print Selected Labels';
+            btn.textContent = 'Print Labels';
         }
     }
 

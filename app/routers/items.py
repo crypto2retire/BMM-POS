@@ -167,9 +167,20 @@ async def get_batch_labels(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    item_ids = data.get("item_ids", [])
+    entries = data.get("items", None)
+    if entries:
+        item_ids = [e["item_id"] for e in entries]
+        qty_map = {e["item_id"]: max(1, min(99, int(e.get("quantity", 1)))) for e in entries}
+    else:
+        item_ids = data.get("item_ids", [])
+        qty_map = {iid: 1 for iid in item_ids}
+
     if not item_ids or len(item_ids) > 200:
         raise HTTPException(status_code=400, detail="Provide 1-200 item IDs")
+
+    total_labels = sum(qty_map.values())
+    if total_labels > 500:
+        raise HTTPException(status_code=400, detail="Maximum 500 labels per batch")
 
     result = await db.execute(
         select(Item).options(selectinload(Item.vendor)).where(Item.id.in_(item_ids))
@@ -186,7 +197,13 @@ async def get_batch_labels(
     id_order = {iid: idx for idx, iid in enumerate(item_ids)}
     items_sorted = sorted(items, key=lambda it: id_order.get(it.id, 0))
 
-    pdf_bytes = generate_label_sheet(items_sorted)
+    expanded = []
+    for item in items_sorted:
+        count = qty_map.get(item.id, 1)
+        for _ in range(count):
+            expanded.append(item)
+
+    pdf_bytes = generate_label_sheet(expanded)
 
     for item in items:
         item.label_printed = True
