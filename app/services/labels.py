@@ -100,17 +100,18 @@ def _draw_label(c, item, x_offset, y_offset):
     if barcode_val:
         avail_w = w - margin * 2
 
-        probe = code128.Code128(barcode_val, barHeight=10, barWidth=1.0, humanReadable=False, quiet=False)
-        modules = probe.width
+        barcode_text_y = margin + 1
+        barcode_y = barcode_text_y + 14
 
-        dots_per_module = max(int(avail_w / modules / DOT_SIZE), 2)
-        bar_w = dots_per_module * DOT_SIZE
+        bar_h = price_y - 8 - barcode_y
+        bar_h = max(bar_h, 0.32 * inch)
 
-        barcode_text_y = margin + 2
-        barcode_y = barcode_text_y + 10
+        probe = code128.Code128(barcode_val, barHeight=10, barWidth=1.0,
+                                humanReadable=False, quiet=False)
+        min_modules = probe.width
 
-        bar_h = price_y - 6 - barcode_y
-        bar_h = max(bar_h, 0.30 * inch)
+        bar_w = avail_w / min_modules
+        bar_w = max(bar_w, DOT_SIZE)
 
         barcode_obj = code128.Code128(
             barcode_val,
@@ -120,22 +121,11 @@ def _draw_label(c, item, x_offset, y_offset):
             quiet=False,
         )
 
-        if barcode_obj.width > avail_w:
-            dots_per_module = max(dots_per_module - 1, 2)
-            bar_w = dots_per_module * DOT_SIZE
-            barcode_obj = code128.Code128(
-                barcode_val,
-                barHeight=bar_h,
-                barWidth=bar_w,
-                humanReadable=False,
-                quiet=False,
-            )
-
         barcode_w = barcode_obj.width
         barcode_x = (w - barcode_w) / 2
         barcode_obj.drawOn(c, barcode_x, barcode_y)
 
-        c.setFont("Helvetica", 7)
+        c.setFont("Helvetica-Bold", 10)
         c.drawCentredString(w / 2, barcode_text_y, barcode_val)
 
 
