@@ -1,6 +1,7 @@
 import time
 from collections import defaultdict
 from datetime import date
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -12,6 +13,7 @@ from app.database import get_db
 from app.models.item import Item
 from app.models.vendor import Vendor
 from app.models.reservation import Reservation
+from app.routers.settings import get_tax_rate
 
 router = APIRouter(prefix="/storefront", tags=["shop"])
 
@@ -159,6 +161,12 @@ async def get_shop_items(
         "total_pages": (total + per_page - 1) // per_page,
     }
 
+@router.get("/tax-rate")
+async def get_storefront_tax_rate(db: AsyncSession = Depends(get_db)):
+    rate = await get_tax_rate(db)
+    return {"tax_rate": rate}
+
+
 @router.get("/categories")
 async def get_categories(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -242,9 +250,10 @@ async def create_payment(
     if item.quantity < 1:
         raise HTTPException(status_code=400, detail="Item is out of stock")
 
-    from decimal import Decimal
     price = Decimal(str(item.sale_price or item.price))
-    tax_amount = (price * Decimal("0.05")).quantize(Decimal("0.01"))
+    db_tax_rate = await get_tax_rate(db)
+    tax_rate = Decimal(str(db_tax_rate)).quantize(Decimal("0.0001"))
+    tax_amount = (price * tax_rate).quantize(Decimal("0.01"))
     total = price + tax_amount
 
     reservation = Reservation(
@@ -260,14 +269,14 @@ async def create_payment(
     await db.refresh(reservation)
 
     return {
-        "reservation_id": reservation.id,
+        "reservation_id": reservation.public_id,
         "total": float(total),
         "message": "Reservation created. In-store payment required.",
     }
 
 
 class ConfirmPaymentRequest(BaseModel):
-    reservation_id: int
+    reservation_id: str
 
 
 @router.post("/payment-confirmed")
@@ -278,7 +287,7 @@ async def payment_confirmed(
 ):
     _check_rate_limit(request)
     result = await db.execute(
-        select(Reservation).where(Reservation.id == req.reservation_id)
+        select(Reservation).where(Reservation.public_id == req.reservation_id)
     )
     reservation = result.scalar_one_or_none()
     if not reservation:

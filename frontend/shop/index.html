@@ -886,8 +886,11 @@
   'use strict';
 
   const API_ITEMS          = '/api/v1/storefront/items';
+  const API_TAX_RATE       = '/api/v1/storefront/tax-rate';
   const API_CREATE_PAYMENT = '/api/v1/storefront/create-payment';
   const API_CONFIRM        = '/api/v1/storefront/payment-confirmed';
+
+  let SHOP_TAX_RATE = 0.05;
 
   let pendingItemId   = null;
   let pendingItemName = null;
@@ -899,6 +902,16 @@
   let currentSort   = 'name-az';
 
   // ── Load items ────────────────────────────────────────────────────
+  async function loadTaxRate() {
+    try {
+      var res = await fetch(API_TAX_RATE);
+      if (res.ok) {
+        var data = await res.json();
+        if (typeof data.tax_rate === 'number') SHOP_TAX_RATE = data.tax_rate;
+      }
+    } catch (_) {}
+  }
+
   async function loadItems(search) {
     const grid   = document.getElementById('item-grid');
     const status = document.getElementById('status-text');
@@ -994,9 +1007,9 @@
     const isReserved = reservedIds.has(item.id);
     const hasSale    = item.sale_price != null;
 
-    const TAX_RATE   = 0.05;
     const basePrice  = hasSale ? parseFloat(item.sale_price) : parseFloat(item.price);
-    const totalPrice = basePrice * (1 + TAX_RATE);
+    const totalPrice = basePrice * (1 + SHOP_TAX_RATE);
+    const taxPct     = (SHOP_TAX_RATE * 100).toFixed(2).replace(/\.?0+$/, '');
 
     const priceHtml = hasSale
       ? `<span class="price-original struck">$${fmt(item.price)}</span>
@@ -1021,7 +1034,7 @@
           ${item.booth_number ? 'Booth ' + escHtml(item.booth_number) : ''}
         </div>
         <div class="card-pricing">${priceHtml}</div>
-        <div class="card-tax">+ 5% tax &nbsp;·&nbsp; Total: $${fmt(totalPrice)}</div>
+        <div class="card-tax">+ ${taxPct}% tax &nbsp;·&nbsp; Total: $${fmt(totalPrice)}</div>
         <meta itemprop="price" content="${fmt(basePrice)}">
         <meta itemprop="priceCurrency" content="USD">
         <meta itemprop="availability" content="https://schema.org/InStock">
@@ -1053,9 +1066,8 @@
 
     const isReserved = reservedIds.has(item.id);
     const hasSale    = item.sale_price != null;
-    const TAX_RATE   = 0.05;
     const basePrice  = hasSale ? parseFloat(item.sale_price) : parseFloat(item.price);
-    const totalPrice = basePrice * (1 + TAX_RATE);
+    const totalPrice = basePrice * (1 + SHOP_TAX_RATE);
 
     const listImgSrc = item.image_path || item.photo_url || null;
     const imageHtml = listImgSrc
@@ -1207,7 +1219,7 @@
       const res  = await fetch(API_CONFIRM, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reservation_id: parseInt(ref, 10) }),
+        body: JSON.stringify({ reservation_id: ref }),
       });
       const data = await res.json();
       showBanner(
@@ -1326,10 +1338,9 @@
 
   // ── Item Detail Modal ──────────────────────────────────────────────
   function openItemDetail(item) {
-    const TAX_RATE = 0.05;
     const hasSale = item.sale_price != null;
     const basePrice = hasSale ? parseFloat(item.sale_price) : parseFloat(item.price);
-    const totalPrice = basePrice * (1 + TAX_RATE);
+    const totalPrice = basePrice * (1 + SHOP_TAX_RATE);
     const isReserved = reservedIds.has(item.id);
 
     const imgSrc = item.image_path || item.photo_url || null;
@@ -1352,7 +1363,8 @@
     } else {
       pricingHtml = '<span style="font-size:1.3rem;font-weight:600;color:var(--text)">$' + fmt(item.price) + '</span>';
     }
-    pricingHtml += '<div style="font-size:0.78rem;color:var(--text-dim);margin-top:4px">+ 5% tax &middot; Total: $' + fmt(totalPrice) + '</div>';
+    var taxPct = (SHOP_TAX_RATE * 100).toFixed(2).replace(/\.?0+$/, '');
+    pricingHtml += '<div style="font-size:0.78rem;color:var(--text-dim);margin-top:4px">+ ' + taxPct + '% tax &middot; Total: $' + fmt(totalPrice) + '</div>';
     document.getElementById('detail-pricing').innerHTML = pricingHtml;
 
     document.getElementById('detail-category').textContent = item.category ? 'Category: ' + item.category : '';
@@ -1384,7 +1396,7 @@
 
   // ── Init ──────────────────────────────────────────────────────────
   handlePaymentReturn();
-  loadItems(null);
+  loadTaxRate().then(function () { loadItems(null); });
 })();
 </script>
 </body>

@@ -103,6 +103,33 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS "
                 "customer_email VARCHAR(200)"
             ))
+            await session.execute(text(
+                "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS "
+                "public_id VARCHAR(36)"
+            ))
+            backfill_result = await session.execute(text(
+                "SELECT id FROM reservations WHERE public_id IS NULL"
+            ))
+            import uuid as _uuid_mod
+            for row in backfill_result.fetchall():
+                await session.execute(
+                    text("UPDATE reservations SET public_id = :pid WHERE id = :rid"),
+                    {"pid": str(_uuid_mod.uuid4()), "rid": row[0]}
+                )
+            await session.execute(text("""
+                DO $$ BEGIN
+                    ALTER TABLE reservations
+                        ALTER COLUMN public_id SET NOT NULL;
+                EXCEPTION WHEN others THEN NULL;
+                END $$
+            """))
+            await session.execute(text("""
+                DO $$ BEGIN
+                    CREATE UNIQUE INDEX IF NOT EXISTS ix_reservations_public_id
+                        ON reservations (public_id);
+                EXCEPTION WHEN others THEN NULL;
+                END $$
+            """))
             await session.execute(text("""
                 CREATE TABLE IF NOT EXISTS balance_adjustments (
                     id SERIAL PRIMARY KEY,
