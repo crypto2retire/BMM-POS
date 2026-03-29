@@ -36,7 +36,7 @@ def generate_barcode_image(barcode_value: str, output_path: str) -> str:
     import barcode
     from barcode.writer import ImageWriter
 
-    code128 = barcode.get("code128", barcode_value, writer=ImageWriter())
+    code39 = barcode.get("code39", barcode_value, writer=ImageWriter(), add_checksum=False)
     filename = output_path.replace(".png", "")
-    saved = code128.save(filename)
+    saved = code39.save(filename)
     return saved
