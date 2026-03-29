@@ -13,7 +13,7 @@ from app.models.item import Item
 from app.routers.auth import get_current_user, get_password_hash
 from app.services.barcode import generate_sku, generate_short_barcode
 
-from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 router = APIRouter(prefix="/bulk-import", tags=["bulk-import"])
 
@@ -586,37 +586,22 @@ async def batch_import_items(
                 pass
 
         batch_params.append({
-            "vid": vendor_id, "name": name[:200],
-            "desc": clean.get("description"), "price": float(price),
-            "sp": float(sp) if sp else None, "qty": qty,
-            "cat": clean.get("category"), "bc": barcode, "sku": sku,
-            "tax": is_tax_exempt, "cons": is_consignment,
-            "cr": float(cr) if cr else None,
+            "vendor_id": vendor_id, "name": name[:200],
+            "description": clean.get("description"), "price": float(price),
+            "sale_price": float(sp) if sp else None, "quantity": qty,
+            "category": clean.get("category"), "barcode": barcode, "sku": sku,
+            "is_tax_exempt": is_tax_exempt, "is_consignment": is_consignment,
+            "consignment_rate": float(cr) if cr else None,
+            "status": "active",
         })
 
     if batch_params:
         BATCH_SIZE = 100
         for i in range(0, len(batch_params), BATCH_SIZE):
             chunk = batch_params[i:i + BATCH_SIZE]
-            values_parts = []
-            bind_params = {}
-            for j, p in enumerate(chunk):
-                prefix = f"p{j}_"
-                values_parts.append(
-                    f"(:{prefix}vid, :{prefix}name, :{prefix}desc, :{prefix}price, "
-                    f":{prefix}sp, :{prefix}qty, :{prefix}cat, :{prefix}bc, :{prefix}sku, "
-                    f":{prefix}tax, :{prefix}cons, :{prefix}cr, 'active')"
-                )
-                for k, v in p.items():
-                    bind_params[f"{prefix}{k}"] = v
-            sql = text(
-                "INSERT INTO items (vendor_id, name, description, price, sale_price, "
-                "quantity, category, barcode, sku, is_tax_exempt, is_consignment, "
-                "consignment_rate, status) VALUES " + ", ".join(values_parts) +
-                " ON CONFLICT DO NOTHING"
-            )
+            stmt = pg_insert(Item.__table__).values(chunk).on_conflict_do_nothing()
             try:
-                result = await db.execute(sql, bind_params)
+                result = await db.execute(stmt)
                 created += result.rowcount
                 skipped += len(chunk) - result.rowcount
             except Exception as e:
