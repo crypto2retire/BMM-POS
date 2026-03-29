@@ -8,6 +8,146 @@ BRAND_GOLD = "#C9A96E"
 BRAND_TEXT = "#F0EDE8"
 BRAND_SURFACE = "#2a2a2d"
 
+EMAIL_TEMPLATE_DEFAULTS = {
+    "product_sold": {
+        "label": "Item Sold",
+        "subject": "Item Sold: {item_name}",
+        "greeting": "Hello {vendor_name},",
+        "body": "One of your items has been sold at Bowenstreet Market!",
+        "closing": "Your vendor balance has been credited. You can view your full sales history in your vendor dashboard.",
+        "variables": ["vendor_name", "item_name", "item_sku", "sale_price", "sale_id", "sold_at"],
+    },
+    "payout_processed": {
+        "label": "Payout Processed",
+        "subject": "Payout Processed: ${payout_amount}",
+        "greeting": "Hello {vendor_name},",
+        "body": "Your vendor payout has been processed.",
+        "closing": "If you have questions about this payout, please contact the front desk.",
+        "variables": ["vendor_name", "payout_amount", "period", "method"],
+    },
+    "payout_with_rent": {
+        "label": "Payout with Rent Deducted",
+        "subject": "Payout Processed: ${net_payout} — {period}",
+        "greeting": "Hello {vendor_name},",
+        "body": "Your vendor payout for {period} has been processed. Booth rent has been deducted from your sales.",
+        "closing": "If you have questions about this payout, please contact the front desk.",
+        "variables": ["vendor_name", "gross_sales", "rent_deducted", "net_payout", "period", "method"],
+    },
+    "rent_due": {
+        "label": "Rent Due Reminder",
+        "subject": "Rent Due: ${amount} — {due_date}",
+        "greeting": "Hello {vendor_name},",
+        "body": "This is a friendly reminder that your booth rent is coming due.",
+        "closing": "You can pay by cash, check, Zelle, or Square at the front desk. Thank you!",
+        "variables": ["vendor_name", "amount", "due_date", "booth"],
+    },
+    "rent_overdue_15day": {
+        "label": "Rent Overdue (15 Days)",
+        "subject": "Rent Past Due: ${amount} — {period}",
+        "greeting": "Hello {vendor_name},",
+        "body": "This is a reminder that your booth rent for {period} is now 15 days past due.",
+        "closing": "Please arrange payment at your earliest convenience. You can pay by cash, check, Zelle, or Square at the front desk.\n\nIf you have already made this payment, please disregard this notice and contact the front desk so we can update your account.",
+        "variables": ["vendor_name", "amount", "booth", "period"],
+    },
+    "rent_overdue_27day": {
+        "label": "Rent Overdue — Final Notice (27 Days)",
+        "subject": "URGENT: Rent Past Due ${amount} — Final Notice",
+        "greeting": "Hello {vendor_name},",
+        "body": "This is a final notice that your booth rent for {period} is now 27 days past due.",
+        "closing": "Please arrange payment immediately. Failure to pay may result in suspension of your booth privileges.\n\nIf you have already made this payment or need to discuss payment arrangements, please contact the front desk as soon as possible.",
+        "variables": ["vendor_name", "amount", "booth", "period"],
+    },
+    "rent_shortfall": {
+        "label": "Rent Shortfall Notice",
+        "subject": "Rent Balance Due: ${shortfall} — {period}",
+        "greeting": "Hello {vendor_name},",
+        "body": "Your sales for {period} were not enough to cover your booth rent. The remaining balance is due.",
+        "closing": "Please arrange payment for the remaining balance at the front desk by cash, check, Zelle, or Square.",
+        "variables": ["vendor_name", "gross_sales", "rent_amount", "shortfall", "booth", "period"],
+    },
+    "vendor_welcome": {
+        "label": "Vendor Welcome",
+        "subject": "Welcome to Bowenstreet Market!",
+        "greeting": "Hello {vendor_name},",
+        "body": "Welcome to the Bowenstreet Market vendor family! Your account has been created and is ready to use.",
+        "closing": "Please change your password after your first login. If you have any questions, visit the front desk or reply to this email.",
+        "variables": ["vendor_name", "email", "password", "booth", "login_url"],
+    },
+    "expiring_items": {
+        "label": "Items Expiring Soon",
+        "subject": "{count} Item(s) Expiring Soon",
+        "greeting": "Hello {vendor_name},",
+        "body": "You have items that have been on the floor too long. Please review and update or remove these items.",
+        "closing": "",
+        "variables": ["vendor_name", "count", "days_threshold"],
+    },
+    "weekly_report": {
+        "label": "Weekly Sales Report",
+        "subject": "Weekly Report: {period_label}",
+        "greeting": "Hello {vendor_name},",
+        "body": "Here is your weekly summary for {period_label}.",
+        "closing": "Log into your vendor dashboard for full details.",
+        "variables": ["vendor_name", "period_label", "total_sales", "items_sold", "current_balance", "active_items"],
+    },
+    "order_confirmation": {
+        "label": "Order Confirmation",
+        "subject": "Order Confirmation #{sale_id}",
+        "greeting": "Hello{customer_name_with_space},",
+        "body": "Thank you for your purchase at Bowenstreet Market! Here is your order confirmation.",
+        "closing": "Thank you for shopping at Bowenstreet Market!",
+        "variables": ["customer_name", "sale_id"],
+    },
+}
+
+
+async def get_custom_template(template_key: str, db=None) -> dict:
+    if not db:
+        return {}
+    try:
+        from sqlalchemy import select
+        from app.models.store_setting import StoreSetting
+
+        prefix = f"email_tpl_{template_key}_"
+        result = await db.execute(
+            select(StoreSetting).where(StoreSetting.key.like(f"email_tpl_{template_key}_%"))
+        )
+        rows = result.scalars().all()
+        custom = {}
+        for row in rows:
+            field = row.key.replace(prefix, "")
+            if row.value and row.value.strip():
+                custom[field] = row.value
+        return custom
+    except Exception:
+        return {}
+
+
+def _apply_custom(defaults: dict, custom: dict, variables: dict) -> tuple:
+    tpl_key = defaults.get("_key", "")
+    subject = custom.get("subject") or defaults.get("subject", "")
+    greeting = custom.get("greeting") or defaults.get("greeting", "")
+    body_text = custom.get("body") or defaults.get("body", "")
+    closing = custom.get("closing") or defaults.get("closing", "")
+
+    try:
+        subject = subject.format(**variables)
+    except (KeyError, IndexError):
+        pass
+    try:
+        greeting = greeting.format(**variables)
+    except (KeyError, IndexError):
+        pass
+    try:
+        body_text = body_text.format(**variables)
+    except (KeyError, IndexError):
+        pass
+    try:
+        closing = closing.format(**variables)
+    except (KeyError, IndexError):
+        pass
+
+    return subject, greeting, body_text, closing
+
 
 def _base_template(title: str, body_html: str) -> str:
     return f"""<!DOCTYPE html>
@@ -60,18 +200,24 @@ def _now_str() -> str:
     return datetime.now(CST).strftime("%-m/%-d/%Y %-I:%M %p")
 
 
-def product_sold_email(
+async def product_sold_email(
     vendor_name: str,
     item_name: str,
     item_sku: str,
     sale_price: float,
     sale_id: int,
     sold_at: str,
+    db=None,
 ) -> tuple[str, str, str]:
-    subject = f"Item Sold: {item_name}"
+    custom = await get_custom_template("product_sold", db)
+    variables = dict(vendor_name=vendor_name, item_name=item_name, item_sku=item_sku,
+                     sale_price=f"{sale_price:.2f}", sale_id=str(sale_id), sold_at=sold_at)
+    defaults = EMAIL_TEMPLATE_DEFAULTS["product_sold"]
+    subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
+
     body = (
-        _p(f"Hello {vendor_name},")
-        + _p("One of your items has been sold at Bowenstreet Market!")
+        _p(greeting)
+        + _p(body_text)
         + _info_table([
             ("Item", item_name),
             ("SKU", item_sku),
@@ -79,31 +225,36 @@ def product_sold_email(
             ("Sale #", str(sale_id)),
             ("Date", sold_at),
         ])
-        + _p("Your vendor balance has been credited. You can view your full sales history in your vendor dashboard.")
+        + (_p(closing) if closing else "")
     )
-    plain = f"Hello {vendor_name}, your item '{item_name}' (SKU: {item_sku}) sold for ${sale_price:.2f}. Sale #{sale_id} on {sold_at}."
+    plain = f"{greeting} {body_text} Item: {item_name}, SKU: {item_sku}, ${sale_price:.2f}. Sale #{sale_id} on {sold_at}."
     return subject, _base_template("Item Sold", body), plain
 
 
-def payout_processed_email(
+async def payout_processed_email(
     vendor_name: str,
     payout_amount: float,
     period: str,
     method: str,
+    db=None,
 ) -> tuple[str, str, str]:
-    subject = f"Payout Processed: ${payout_amount:.2f}"
+    custom = await get_custom_template("payout_processed", db)
+    variables = dict(vendor_name=vendor_name, payout_amount=f"{payout_amount:.2f}", period=period, method=method)
+    defaults = EMAIL_TEMPLATE_DEFAULTS["payout_processed"]
+    subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
+
     body = (
-        _p(f"Hello {vendor_name},")
-        + _p("Your vendor payout has been processed.")
+        _p(greeting)
+        + _p(body_text)
         + _info_table([
             ("Amount", f"${payout_amount:.2f}"),
             ("Period", period),
             ("Method", method),
             ("Processed", _now_str()),
         ])
-        + _p("If you have questions about this payout, please contact the front desk.")
+        + (_p(closing) if closing else "")
     )
-    plain = f"Hello {vendor_name}, your payout of ${payout_amount:.2f} for {period} has been processed via {method}."
+    plain = f"{greeting} {body_text} Amount: ${payout_amount:.2f}, period: {period}, method: {method}."
     return subject, _base_template("Payout Processed", body), plain
 
 
@@ -154,47 +305,57 @@ def weekly_report_email(
     return subject, _base_template("Weekly Sales Report", body), plain
 
 
-def rent_due_email(
+async def rent_due_email(
     vendor_name: str,
     amount: float,
     due_date: str,
     booth: str,
+    db=None,
 ) -> tuple[str, str, str]:
-    subject = f"Rent Due: ${amount:.2f} — {due_date}"
+    custom = await get_custom_template("rent_due", db)
+    variables = dict(vendor_name=vendor_name, amount=f"{amount:.2f}", due_date=due_date, booth=booth)
+    defaults = EMAIL_TEMPLATE_DEFAULTS["rent_due"]
+    subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
+
     body = (
-        _p(f"Hello {vendor_name},")
-        + _p("This is a friendly reminder that your booth rent is coming due.")
+        _p(greeting)
+        + _p(body_text)
         + _info_table([
             ("Booth", booth),
             ("Amount Due", f"${amount:.2f}"),
             ("Due Date", due_date),
         ])
-        + _p("You can pay by cash, check, Zelle, or Square at the front desk. Thank you!")
+        + (_p(closing) if closing else "")
     )
-    plain = f"Hello {vendor_name}, rent of ${amount:.2f} is due on {due_date} for booth {booth}."
+    plain = f"{greeting} {body_text} Booth: {booth}, ${amount:.2f} due {due_date}."
     return subject, _base_template("Rent Due Reminder", body), plain
 
 
-def vendor_welcome_email(
+async def vendor_welcome_email(
     vendor_name: str,
     email: str,
     password: str,
     booth: str,
     login_url: str,
+    db=None,
 ) -> tuple[str, str, str]:
-    subject = "Welcome to Bowenstreet Market!"
+    custom = await get_custom_template("vendor_welcome", db)
+    variables = dict(vendor_name=vendor_name, email=email, password=password, booth=booth, login_url=login_url)
+    defaults = EMAIL_TEMPLATE_DEFAULTS["vendor_welcome"]
+    subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
+
     body = (
-        _p(f"Hello {vendor_name},")
-        + _p("Welcome to the Bowenstreet Market vendor family! Your account has been created and is ready to use.")
+        _p(greeting)
+        + _p(body_text)
         + _info_table([
             ("Booth", booth),
             ("Email", email),
             ("Temporary Password", password),
         ])
         + f'<p style="margin:20px 0;text-align:center"><a href="{login_url}" style="display:inline-block;background:{BRAND_GOLD};color:#1a1a1a;text-decoration:none;padding:12px 32px;font-size:14px;font-weight:600;font-family:Arial,sans-serif;letter-spacing:1px;text-transform:uppercase">Log In to Your Dashboard</a></p>'
-        + _p("Please change your password after your first login. If you have any questions, visit the front desk or reply to this email.")
+        + (_p(closing) if closing else "")
     )
-    plain = f"Hello {vendor_name}, welcome to Bowenstreet Market! Log in at {login_url} with email: {email} and password: {password}. Please change your password after first login."
+    plain = f"{greeting} {body_text} Log in at {login_url} with email: {email} and password: {password}."
     return subject, _base_template("Welcome!", body), plain
 
 
@@ -247,70 +408,79 @@ def test_email(admin_name: str) -> tuple[str, str, str]:
     return subject, _base_template("Test Email", body), plain
 
 
-def rent_overdue_15day_email(
+async def rent_overdue_15day_email(
     vendor_name: str,
     amount: float,
     booth: str,
     period: str,
+    db=None,
 ) -> tuple[str, str, str]:
-    subject = f"Rent Past Due: ${amount:.2f} — {period}"
+    custom = await get_custom_template("rent_overdue_15day", db)
+    variables = dict(vendor_name=vendor_name, amount=f"{amount:.2f}", booth=booth, period=period)
+    defaults = EMAIL_TEMPLATE_DEFAULTS["rent_overdue_15day"]
+    subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
+
     body = (
-        _p(f"Hello {vendor_name},")
-        + _p(f"This is a reminder that your booth rent for <strong>{period}</strong> is now <strong>15 days past due</strong>.")
+        _p(greeting)
+        + _p(body_text)
         + _info_table([
             ("Booth", booth),
             ("Amount Due", f"${amount:.2f}"),
             ("Period", period),
             ("Status", "Past Due — 15 Days"),
         ])
-        + _p("Please arrange payment at your earliest convenience. You can pay by cash, check, Zelle, or Square at the front desk.")
-        + _p("If you have already made this payment, please disregard this notice and contact the front desk so we can update your account.")
+        + (_p(closing) if closing else "")
     )
-    plain = (
-        f"Hello {vendor_name}, your booth rent of ${amount:.2f} for {period} (Booth {booth}) "
-        f"is 15 days past due. Please arrange payment at the front desk."
-    )
+    plain = f"{greeting} {body_text} Booth: {booth}, ${amount:.2f}, {period}."
     return subject, _base_template("Rent Past Due — 15 Days", body), plain
 
 
-def rent_overdue_27day_email(
+async def rent_overdue_27day_email(
     vendor_name: str,
     amount: float,
     booth: str,
     period: str,
+    db=None,
 ) -> tuple[str, str, str]:
-    subject = f"URGENT: Rent Past Due ${amount:.2f} — Final Notice"
+    custom = await get_custom_template("rent_overdue_27day", db)
+    variables = dict(vendor_name=vendor_name, amount=f"{amount:.2f}", booth=booth, period=period)
+    defaults = EMAIL_TEMPLATE_DEFAULTS["rent_overdue_27day"]
+    subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
+
     body = (
-        _p(f"Hello {vendor_name},")
-        + _p(f"This is a <strong>final notice</strong> that your booth rent for <strong>{period}</strong> is now <strong>27 days past due</strong>.")
+        _p(greeting)
+        + _p(body_text)
         + _info_table([
             ("Booth", booth),
             ("Amount Due", f"${amount:.2f}"),
             ("Period", period),
             ("Status", "Past Due — 27 Days (Final Notice)"),
         ])
-        + _p("<strong>Please arrange payment immediately.</strong> Failure to pay may result in suspension of your booth privileges.")
-        + _p("If you have already made this payment or need to discuss payment arrangements, please contact the front desk as soon as possible.")
+        + (_p(closing) if closing else "")
     )
-    plain = (
-        f"FINAL NOTICE: Hello {vendor_name}, your booth rent of ${amount:.2f} for {period} (Booth {booth}) "
-        f"is 27 days past due. Please arrange payment immediately or contact the front desk."
-    )
+    plain = f"FINAL NOTICE: {greeting} {body_text} Booth: {booth}, ${amount:.2f}, {period}."
     return subject, _base_template("Final Notice — Rent Past Due", body), plain
 
 
-def payout_with_rent_email(
+async def payout_with_rent_email(
     vendor_name: str,
     gross_sales: float,
     rent_deducted: float,
     net_payout: float,
     period: str,
     method: str,
+    db=None,
 ) -> tuple[str, str, str]:
-    subject = f"Payout Processed: ${net_payout:.2f} — {period}"
+    custom = await get_custom_template("payout_with_rent", db)
+    variables = dict(vendor_name=vendor_name, gross_sales=f"{gross_sales:.2f}",
+                     rent_deducted=f"{rent_deducted:.2f}", net_payout=f"{net_payout:.2f}",
+                     period=period, method=method)
+    defaults = EMAIL_TEMPLATE_DEFAULTS["payout_with_rent"]
+    subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
+
     body = (
-        _p(f"Hello {vendor_name},")
-        + _p(f"Your vendor payout for <strong>{period}</strong> has been processed. Booth rent has been deducted from your sales.")
+        _p(greeting)
+        + _p(body_text)
         + _info_table([
             ("Gross Sales", f"${gross_sales:.2f}"),
             ("Rent Deducted", f"-${rent_deducted:.2f}"),
@@ -319,28 +489,31 @@ def payout_with_rent_email(
             ("Method", method),
             ("Processed", _now_str()),
         ])
-        + _p("If you have questions about this payout, please contact the front desk.")
+        + (_p(closing) if closing else "")
     )
-    plain = (
-        f"Hello {vendor_name}, your payout for {period} has been processed. "
-        f"Gross sales: ${gross_sales:.2f}, rent deducted: ${rent_deducted:.2f}, net payout: ${net_payout:.2f} via {method}."
-    )
+    plain = f"{greeting} {body_text} Gross: ${gross_sales:.2f}, rent: ${rent_deducted:.2f}, net: ${net_payout:.2f} via {method}."
     return subject, _base_template("Payout Processed", body), plain
 
 
-def rent_shortfall_email(
+async def rent_shortfall_email(
     vendor_name: str,
     gross_sales: float,
     rent_amount: float,
     shortfall: float,
     booth: str,
     period: str,
+    db=None,
 ) -> tuple[str, str, str]:
-    subject = f"Rent Balance Due: ${shortfall:.2f} — {period}"
+    custom = await get_custom_template("rent_shortfall", db)
+    variables = dict(vendor_name=vendor_name, gross_sales=f"{gross_sales:.2f}",
+                     rent_amount=f"{rent_amount:.2f}", shortfall=f"{shortfall:.2f}",
+                     booth=booth, period=period)
+    defaults = EMAIL_TEMPLATE_DEFAULTS["rent_shortfall"]
+    subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
+
     body = (
-        _p(f"Hello {vendor_name},")
-        + _p(f"Your sales for <strong>{period}</strong> were not enough to cover your booth rent. "
-             f"The remaining balance is due.")
+        _p(greeting)
+        + _p(body_text)
         + _info_table([
             ("Booth", booth),
             ("Gross Sales", f"${gross_sales:.2f}"),
@@ -348,10 +521,7 @@ def rent_shortfall_email(
             ("Sales Applied to Rent", f"${gross_sales:.2f}"),
             ("Remaining Balance Due", f"${shortfall:.2f}"),
         ])
-        + _p("Please arrange payment for the remaining balance at the front desk by cash, check, Zelle, or Square.")
+        + (_p(closing) if closing else "")
     )
-    plain = (
-        f"Hello {vendor_name}, your sales of ${gross_sales:.2f} for {period} did not cover your rent of "
-        f"${rent_amount:.2f}. Remaining balance due: ${shortfall:.2f}. Please pay at the front desk."
-    )
+    plain = f"{greeting} {body_text} Booth: {booth}, shortfall: ${shortfall:.2f}."
     return subject, _base_template("Rent Balance Due", body), plain

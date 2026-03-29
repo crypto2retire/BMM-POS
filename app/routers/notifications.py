@@ -11,11 +11,12 @@ from app.database import get_db
 from app.models.store_setting import StoreSetting
 from app.models.vendor import Vendor
 from app.routers.auth import get_current_user, require_admin
-from app.services.email import send_email, send_email_safe
+from app.services.email import send_email, send_email_safe, _get_gmail_access_token, _get_sender_email
 from app.services.email_templates import (
     test_email,
     product_sold_email,
     vendor_welcome_email,
+    EMAIL_TEMPLATE_DEFAULTS,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,6 +30,28 @@ async def _is_notification_enabled(db: AsyncSession, key: str) -> bool:
     )
     val = result.scalar_one_or_none()
     return val == "true" or val == "1"
+
+
+@router.get("/connected-email")
+async def get_connected_email(
+    _admin: Vendor = Depends(require_admin),
+):
+    try:
+        access_token = await _get_gmail_access_token()
+        email_address = await _get_sender_email(access_token)
+        if email_address and email_address != "me":
+            return {"connected": True, "email": email_address}
+        return {"connected": True, "email": None}
+    except Exception as e:
+        logger.warning(f"Could not get connected email: {e}")
+        return {"connected": False, "email": None, "error": str(e)}
+
+
+@router.get("/email-templates")
+async def get_email_templates(
+    _admin: Vendor = Depends(require_admin),
+):
+    return EMAIL_TEMPLATE_DEFAULTS
 
 
 class TestEmailPayload(BaseModel):
@@ -70,13 +93,14 @@ async def notify_product_sold(
     if not vendor.email:
         return
 
-    subject, html_body, plain_body = product_sold_email(
+    subject, html_body, plain_body = await product_sold_email(
         vendor_name=vendor.name or "Vendor",
         item_name=item_name,
         item_sku=item_sku,
         sale_price=sale_price,
         sale_id=sale_id,
         sold_at=sold_at,
+        db=db,
     )
     await send_email_safe(vendor.email, subject, html_body, plain_body)
 
@@ -94,11 +118,12 @@ async def notify_vendor_welcome(
     if not email:
         return
 
-    subject, html_body, plain_body = vendor_welcome_email(
+    subject, html_body, plain_body = await vendor_welcome_email(
         vendor_name=vendor_name,
         email=email,
         password=password,
         booth=booth,
         login_url=login_url,
+        db=db,
     )
     await send_email_safe(email, subject, html_body, plain_body)

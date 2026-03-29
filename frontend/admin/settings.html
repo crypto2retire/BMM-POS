@@ -613,6 +613,15 @@
     <!-- ─── Notifications ──────────────────────────────────── -->
     <div class="settings-panel" id="panel-notifications">
         <div class="settings-section">
+            <div class="settings-section-header">Connected Email Account</div>
+            <div class="settings-section-body">
+                <div id="connected-email-status" style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+                    <span style="font-size:0.85rem;color:var(--text-light)">Checking connection...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
             <div class="settings-section-header">Vendor Notifications</div>
             <div class="settings-section-body">
                 <p style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.75rem">Control which notifications are sent to vendors.</p>
@@ -649,6 +658,89 @@
                 <div class="setting-row">
                     <div><div class="setting-label">Low Stock Alert</div><div class="setting-desc">Alert when items hit zero stock</div></div>
                     <label class="toggle-switch"><input type="checkbox" id="s-notify_low_stock"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-header">Email Templates</div>
+            <div class="settings-section-body">
+                <p style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.75rem">Customize the subject line and message for each email type. Leave blank to use the default text. Use <code style="background:rgba(201,169,110,0.12);padding:1px 5px;font-size:0.78rem">{variable_name}</code> placeholders for dynamic values.</p>
+                <div class="form-group" style="margin-bottom:1rem">
+                    <label>Email Template</label>
+                    <select id="tpl-selector" onchange="selectTemplate()" style="max-width:320px">
+                        <option value="">— Select a template to edit —</option>
+                    </select>
+                </div>
+                <div id="tpl-hidden-fields" style="display:none">
+                    <input type="hidden" id="s-email_tpl_product_sold_subject">
+                    <input type="hidden" id="s-email_tpl_product_sold_greeting">
+                    <input type="hidden" id="s-email_tpl_product_sold_body">
+                    <input type="hidden" id="s-email_tpl_product_sold_closing">
+                    <input type="hidden" id="s-email_tpl_payout_processed_subject">
+                    <input type="hidden" id="s-email_tpl_payout_processed_greeting">
+                    <input type="hidden" id="s-email_tpl_payout_processed_body">
+                    <input type="hidden" id="s-email_tpl_payout_processed_closing">
+                    <input type="hidden" id="s-email_tpl_payout_with_rent_subject">
+                    <input type="hidden" id="s-email_tpl_payout_with_rent_greeting">
+                    <input type="hidden" id="s-email_tpl_payout_with_rent_body">
+                    <input type="hidden" id="s-email_tpl_payout_with_rent_closing">
+                    <input type="hidden" id="s-email_tpl_rent_due_subject">
+                    <input type="hidden" id="s-email_tpl_rent_due_greeting">
+                    <input type="hidden" id="s-email_tpl_rent_due_body">
+                    <input type="hidden" id="s-email_tpl_rent_due_closing">
+                    <input type="hidden" id="s-email_tpl_rent_overdue_15day_subject">
+                    <input type="hidden" id="s-email_tpl_rent_overdue_15day_greeting">
+                    <input type="hidden" id="s-email_tpl_rent_overdue_15day_body">
+                    <input type="hidden" id="s-email_tpl_rent_overdue_15day_closing">
+                    <input type="hidden" id="s-email_tpl_rent_overdue_27day_subject">
+                    <input type="hidden" id="s-email_tpl_rent_overdue_27day_greeting">
+                    <input type="hidden" id="s-email_tpl_rent_overdue_27day_body">
+                    <input type="hidden" id="s-email_tpl_rent_overdue_27day_closing">
+                    <input type="hidden" id="s-email_tpl_rent_shortfall_subject">
+                    <input type="hidden" id="s-email_tpl_rent_shortfall_greeting">
+                    <input type="hidden" id="s-email_tpl_rent_shortfall_body">
+                    <input type="hidden" id="s-email_tpl_rent_shortfall_closing">
+                    <input type="hidden" id="s-email_tpl_vendor_welcome_subject">
+                    <input type="hidden" id="s-email_tpl_vendor_welcome_greeting">
+                    <input type="hidden" id="s-email_tpl_vendor_welcome_body">
+                    <input type="hidden" id="s-email_tpl_vendor_welcome_closing">
+                    <input type="hidden" id="s-email_tpl_expiring_items_subject">
+                    <input type="hidden" id="s-email_tpl_expiring_items_greeting">
+                    <input type="hidden" id="s-email_tpl_expiring_items_body">
+                    <input type="hidden" id="s-email_tpl_expiring_items_closing">
+                    <input type="hidden" id="s-email_tpl_weekly_report_subject">
+                    <input type="hidden" id="s-email_tpl_weekly_report_greeting">
+                    <input type="hidden" id="s-email_tpl_weekly_report_body">
+                    <input type="hidden" id="s-email_tpl_weekly_report_closing">
+                    <input type="hidden" id="s-email_tpl_order_confirmation_subject">
+                    <input type="hidden" id="s-email_tpl_order_confirmation_greeting">
+                    <input type="hidden" id="s-email_tpl_order_confirmation_body">
+                    <input type="hidden" id="s-email_tpl_order_confirmation_closing">
+                </div>
+                <div id="tpl-editor" style="display:none">
+                    <div id="tpl-variables" style="font-size:0.72rem;color:var(--text-light);margin-bottom:1rem;padding:0.5rem 0.75rem;background:rgba(201,169,110,0.06);border:1px solid rgba(201,169,110,0.12)"></div>
+                    <div class="form-group" style="margin-bottom:0.75rem">
+                        <label>Subject Line</label>
+                        <input type="text" id="tpl-subject" placeholder="Default subject">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.75rem">
+                        <label>Greeting</label>
+                        <input type="text" id="tpl-greeting" placeholder="Default greeting">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.75rem">
+                        <label>Message Body</label>
+                        <textarea id="tpl-body" rows="3" placeholder="Default body text" style="resize:vertical"></textarea>
+                    </div>
+                    <div class="form-group" style="margin-bottom:0.75rem">
+                        <label>Closing</label>
+                        <textarea id="tpl-closing" rows="2" placeholder="Default closing text" style="resize:vertical"></textarea>
+                    </div>
+                    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+                        <button class="btn-save" onclick="saveEmailTemplate()">Save Template</button>
+                        <button class="btn-cancel" onclick="resetTemplate()" style="background:transparent;border:1px solid var(--border);color:var(--text-light);padding:0.45rem 1rem;cursor:pointer;font-size:0.78rem">Reset to Default</button>
+                        <span id="tpl-save-status" style="font-size:0.82rem"></span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -957,6 +1049,119 @@
         }
     }
 
+    var emailTemplateDefaults = {};
+    var currentTplKey = '';
+
+    async function loadConnectedEmail() {
+        try {
+            var data = await apiGet('/api/v1/notifications/connected-email');
+            var el = document.getElementById('connected-email-status');
+            if (data.connected && data.email) {
+                el.innerHTML = '<span style="display:inline-block;width:10px;height:10px;background:#4ade80;border-radius:50%;flex-shrink:0"></span>'
+                    + '<span style="font-size:0.9rem;color:var(--text)"><strong>Connected</strong> &mdash; sending from <span style="color:var(--gold)">' + escHtml(data.email) + '</span></span>';
+            } else if (data.connected) {
+                el.innerHTML = '<span style="display:inline-block;width:10px;height:10px;background:#fbbf24;border-radius:50%;flex-shrink:0"></span>'
+                    + '<span style="font-size:0.9rem;color:var(--text)"><strong>Connected</strong> &mdash; Gmail account linked (address not available)</span>';
+            } else {
+                el.innerHTML = '<span style="display:inline-block;width:10px;height:10px;background:#f87171;border-radius:50%;flex-shrink:0"></span>'
+                    + '<span style="font-size:0.9rem;color:var(--text)"><strong>Not connected</strong> &mdash; Gmail integration needs to be configured</span>';
+            }
+        } catch (e) {
+            document.getElementById('connected-email-status').innerHTML = '<span style="font-size:0.85rem;color:var(--text-light)">Could not check email connection</span>';
+        }
+    }
+
+    function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+    async function loadEmailTemplates() {
+        try {
+            emailTemplateDefaults = await apiGet('/api/v1/notifications/email-templates');
+            var sel = document.getElementById('tpl-selector');
+            Object.keys(emailTemplateDefaults).forEach(function(key) {
+                var opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = emailTemplateDefaults[key].label;
+                sel.appendChild(opt);
+            });
+        } catch (e) {}
+    }
+
+    function selectTemplate() {
+        var key = document.getElementById('tpl-selector').value;
+        var editor = document.getElementById('tpl-editor');
+        if (!key) {
+            editor.style.display = 'none';
+            currentTplKey = '';
+            return;
+        }
+        currentTplKey = key;
+        editor.style.display = 'block';
+        var tpl = emailTemplateDefaults[key];
+
+        var varsHtml = '<strong style="color:var(--gold)">Available variables:</strong> ';
+        varsHtml += tpl.variables.map(function(v) { return '<code style="background:rgba(201,169,110,0.12);padding:1px 5px;font-size:0.72rem">{' + v + '}</code>'; }).join(' ');
+        document.getElementById('tpl-variables').innerHTML = varsHtml;
+
+        var subjectEl = document.getElementById('tpl-subject');
+        var greetingEl = document.getElementById('tpl-greeting');
+        var bodyEl = document.getElementById('tpl-body');
+        var closingEl = document.getElementById('tpl-closing');
+
+        var savedSubject = document.getElementById('s-email_tpl_' + key + '_subject');
+        var savedGreeting = document.getElementById('s-email_tpl_' + key + '_greeting');
+        var savedBody = document.getElementById('s-email_tpl_' + key + '_body');
+        var savedClosing = document.getElementById('s-email_tpl_' + key + '_closing');
+
+        subjectEl.value = (savedSubject && savedSubject.value) ? savedSubject.value : '';
+        greetingEl.value = (savedGreeting && savedGreeting.value) ? savedGreeting.value : '';
+        bodyEl.value = (savedBody && savedBody.value) ? savedBody.value : '';
+        closingEl.value = (savedClosing && savedClosing.value) ? savedClosing.value : '';
+
+        subjectEl.placeholder = tpl.subject;
+        greetingEl.placeholder = tpl.greeting;
+        bodyEl.placeholder = tpl.body;
+        closingEl.placeholder = tpl.closing;
+
+        document.getElementById('tpl-save-status').innerHTML = '';
+    }
+
+    async function saveEmailTemplate() {
+        if (!currentTplKey) return;
+        var data = {};
+        data['email_tpl_' + currentTplKey + '_subject'] = document.getElementById('tpl-subject').value;
+        data['email_tpl_' + currentTplKey + '_greeting'] = document.getElementById('tpl-greeting').value;
+        data['email_tpl_' + currentTplKey + '_body'] = document.getElementById('tpl-body').value;
+        data['email_tpl_' + currentTplKey + '_closing'] = document.getElementById('tpl-closing').value;
+
+        var statusEl = document.getElementById('tpl-save-status');
+        try {
+            await apiPost('/api/v1/admin/settings', data);
+
+            var subH = document.getElementById('s-email_tpl_' + currentTplKey + '_subject');
+            var greH = document.getElementById('s-email_tpl_' + currentTplKey + '_greeting');
+            var bodH = document.getElementById('s-email_tpl_' + currentTplKey + '_body');
+            var cloH = document.getElementById('s-email_tpl_' + currentTplKey + '_closing');
+            if (subH) subH.value = data['email_tpl_' + currentTplKey + '_subject'];
+            if (greH) greH.value = data['email_tpl_' + currentTplKey + '_greeting'];
+            if (bodH) bodH.value = data['email_tpl_' + currentTplKey + '_body'];
+            if (cloH) cloH.value = data['email_tpl_' + currentTplKey + '_closing'];
+
+            statusEl.innerHTML = '<span style="color:#4ade80">Template saved</span>';
+            setTimeout(function() { statusEl.innerHTML = ''; }, 4000);
+        } catch (e) {
+            statusEl.innerHTML = '<span style="color:#f87171">' + (e.message || 'Failed to save') + '</span>';
+        }
+    }
+
+    function resetTemplate() {
+        if (!currentTplKey) return;
+        document.getElementById('tpl-subject').value = '';
+        document.getElementById('tpl-greeting').value = '';
+        document.getElementById('tpl-body').value = '';
+        document.getElementById('tpl-closing').value = '';
+        document.getElementById('tpl-save-status').innerHTML = '<span style="color:var(--text-light)">Fields cleared — click Save to apply defaults</span>';
+    }
+
     async function sendTestEmail() {
         var btn = document.getElementById('btn-test-email');
         var statusEl = document.getElementById('test-email-status');
@@ -982,6 +1187,8 @@
     }
 
     loadSettings();
+    loadConnectedEmail();
+    loadEmailTemplates();
 </script>
 <script src="/static/js/change-password.js"></script>
 </body>

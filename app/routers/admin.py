@@ -475,23 +475,25 @@ async def process_payouts(
         if v.email:
             try:
                 if shortfall > 0:
-                    subj, html, plain = rent_shortfall_email(
+                    subj, html, plain = await rent_shortfall_email(
                         vendor_name=v.name or "Vendor",
                         gross_sales=float(gross),
                         rent_amount=float(rent),
                         shortfall=float(shortfall),
                         booth=v.booth_number or "—",
                         period=period_label,
+                        db=db,
                     )
                     await send_email_safe(v.email, subj, html, plain)
                 elif net > 0:
-                    subj, html, plain = payout_with_rent_email(
+                    subj, html, plain = await payout_with_rent_email(
                         vendor_name=v.name or "Vendor",
                         gross_sales=float(gross),
                         rent_deducted=float(min(gross, rent_to_deduct)),
                         net_payout=float(net),
                         period=period_label,
                         method=v.payout_method or "TBD",
+                        db=db,
                     )
                     await send_email_safe(v.email, subj, html, plain)
             except Exception as e:
@@ -554,20 +556,22 @@ async def send_rent_reminders(
         period_label = current_period.strftime("%B %Y")
 
         if days_overdue >= 27:
-            subj, html, plain = rent_overdue_27day_email(
+            subj, html, plain = await rent_overdue_27day_email(
                 vendor_name=v.name or "Vendor",
                 amount=rent_amount,
                 booth=booth,
                 period=period_label,
+                db=db,
             )
             await send_email_safe(v.email, subj, html, plain)
             sent_27 += 1
         elif days_overdue >= 15:
-            subj, html, plain = rent_overdue_15day_email(
+            subj, html, plain = await rent_overdue_15day_email(
                 vendor_name=v.name or "Vendor",
                 amount=rent_amount,
                 booth=booth,
                 period=period_label,
+                db=db,
             )
             await send_email_safe(v.email, subj, html, plain)
             sent_15 += 1
