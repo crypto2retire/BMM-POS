@@ -1,8 +1,10 @@
+import time
+from collections import defaultdict
 from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, field_validator
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +14,22 @@ from app.models.vendor import Vendor
 from app.models.reservation import Reservation
 
 router = APIRouter(prefix="/storefront", tags=["shop"])
+
+_rate_limit_store: dict = defaultdict(list)
+_RATE_LIMIT_WINDOW = 60
+_RATE_LIMIT_MAX = 10
+
+
+def _check_rate_limit(request: Request, max_requests: int = _RATE_LIMIT_MAX):
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    window_start = now - _RATE_LIMIT_WINDOW
+    _rate_limit_store[client_ip] = [
+        t for t in _rate_limit_store[client_ip] if t > window_start
+    ]
+    if len(_rate_limit_store[client_ip]) >= max_requests:
+        raise HTTPException(status_code=429, detail="Too many requests. Please try again later.")
+    _rate_limit_store[client_ip].append(now)
 
 class ShopItemResponse(BaseModel):
     id: int
@@ -180,12 +198,40 @@ class CreatePaymentRequest(BaseModel):
     customer_phone: str
     customer_email: Optional[str] = None
 
+    @field_validator("customer_name")
+    @classmethod
+    def validate_name(cls, v):
+        v = v.strip()
+        if len(v) < 1 or len(v) > 200:
+            raise ValueError("Name must be 1-200 characters")
+        return v
+
+    @field_validator("customer_phone")
+    @classmethod
+    def validate_phone(cls, v):
+        v = v.strip()
+        if len(v) < 7 or len(v) > 50:
+            raise ValueError("Phone must be 7-50 characters")
+        return v
+
+    @field_validator("customer_email")
+    @classmethod
+    def validate_email(cls, v):
+        if v is None:
+            return v
+        v = v.strip()
+        if len(v) > 200 or "@" not in v:
+            raise ValueError("Invalid email address")
+        return v
+
 
 @router.post("/create-payment")
 async def create_payment(
+    request: Request,
     req: CreatePaymentRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    _check_rate_limit(request)
     item_result = await db.execute(
         select(Item).where(Item.id == req.item_id, Item.status == "active")
     )
@@ -226,9 +272,11 @@ class ConfirmPaymentRequest(BaseModel):
 
 @router.post("/payment-confirmed")
 async def payment_confirmed(
+    request: Request,
     req: ConfirmPaymentRequest,
     db: AsyncSession = Depends(get_db),
 ):
+    _check_rate_limit(request)
     result = await db.execute(
         select(Reservation).where(Reservation.id == req.reservation_id)
     )

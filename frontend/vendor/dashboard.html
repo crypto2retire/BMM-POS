@@ -158,6 +158,13 @@
 })();
 </script>
 <script>
+    function escHtml(s) {
+        if (!s) return '';
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
     function handleLogout() {
         clearToken();
         sessionStorage.removeItem('bmm_booth_mode');
@@ -205,9 +212,9 @@
                 <div class="item-card-top">
                     <div class="item-card-photo">${photoHtml}</div>
                     <div class="item-card-info">
-                        <div class="item-card-name">${item.name}</div>
+                        <div class="item-card-name">${escHtml(item.name)}</div>
                         <div class="item-card-price">${ap.display}</div>
-                        <div class="item-card-meta">${item.category || '—'} &middot; Qty: ${item.quantity} &middot; ${statusBadge(item.status)}</div>
+                        <div class="item-card-meta">${escHtml(item.category) || '—'} &middot; Qty: ${item.quantity} &middot; ${statusBadge(item.status)}</div>
                     </div>
                 </div>
                 <div class="item-card-actions">
@@ -225,8 +232,8 @@
         return items.slice(0, 10).map(item => {
             const ap = activePrice(item);
             return `<tr>
-                <td><a href="${itemsPageUrl}">${item.name}</a></td>
-                <td>${item.category || "—"}</td>
+                <td><a href="${itemsPageUrl}">${escHtml(item.name)}</a></td>
+                <td>${escHtml(item.category) || "—"}</td>
                 <td>$${parseFloat(item.price).toFixed(2)}</td>
                 <td>${item.sale_price ? `<span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>` : "—"}</td>
                 <td>${statusBadge(item.status)}</td>

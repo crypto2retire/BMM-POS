@@ -229,10 +229,10 @@ app = FastAPI(
 
 _replit_domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
 _replit_domains = os.environ.get("REPLIT_DOMAINS", "")
-_allowed_origins = ["*"] if not _replit_domain else [
+_allowed_origins = [
     f"https://{_replit_domain}",
     *[f"https://{d.strip()}" for d in _replit_domains.split(",") if d.strip()],
-]
+] if _replit_domain else ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -249,7 +249,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     traceback.print_exc(file=sys.stderr)
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error", "type": type(exc).__name__},
+        content={"detail": "Internal server error"},
     )
 
 

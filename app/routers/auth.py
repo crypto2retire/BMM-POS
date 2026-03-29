@@ -22,7 +22,7 @@ _LOGIN_MAX = 10
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "bmm-pos-dev-fallback-key")
+SECRET_KEY = os.environ.get("SECRET_KEY") or os.environ.get("REPL_ID", "bmm-pos-dev-fallback-key")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480
 

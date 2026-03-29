@@ -35,8 +35,8 @@ async def get_optional_user(
         return None
     try:
         from jose import jwt
-        from app.config import settings
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+        from app.routers.auth import SECRET_KEY, ALGORITHM
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
         if not email:
             return None
