@@ -240,7 +240,10 @@
             var msgs = document.getElementById('bmm-assistant-messages');
             var el = document.createElement('div');
             el.className = 'bmm-msg bmm-msg-image';
-            el.innerHTML = '<img src="' + dataUrl + '" alt="Photo">';
+            var img = document.createElement('img');
+            img.src = dataUrl;
+            img.alt = 'Photo';
+            el.appendChild(img);
             msgs.appendChild(el);
             scrollToBottom();
         }
