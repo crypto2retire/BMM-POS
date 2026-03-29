@@ -15,6 +15,7 @@ class Reservation(Base):
     item_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("items.id"), nullable=True)
     customer_name: Mapped[Optional[str]] = mapped_column(String(200))
     customer_phone: Mapped[Optional[str]] = mapped_column(String(50))
+    customer_email: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     square_payment_id: Mapped[Optional[str]] = mapped_column(String(200))
     amount_paid: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")

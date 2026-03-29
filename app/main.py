@@ -99,6 +99,10 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE sales ADD COLUMN IF NOT EXISTS "
                 "void_reason TEXT"
             ))
+            await session.execute(text(
+                "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS "
+                "customer_email VARCHAR(200)"
+            ))
             await session.execute(text("""
                 CREATE TABLE IF NOT EXISTS balance_adjustments (
                     id SERIAL PRIMARY KEY,

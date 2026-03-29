@@ -1120,8 +1120,9 @@
 <div class="pos-modal-overlay hidden" id="online-orders-modal">
     <div class="pos-modal" style="max-width:560px">
         <h2>📦 Online Orders</h2>
-        <div style="display:flex;gap:8px;margin-bottom:1rem">
+        <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
             <button class="confirm-btn" onclick="loadOnlineOrders('pending')" id="filter-pending" style="padding:0.4rem 1rem;font-size:0.8rem;background:#92400E;color:#FDE68A">Pending</button>
+            <button class="cancel-btn" onclick="loadOnlineOrders('ready')" id="filter-ready" style="padding:0.4rem 1rem;font-size:0.8rem">Ready</button>
             <button class="cancel-btn" onclick="loadOnlineOrders('completed')" id="filter-completed" style="padding:0.4rem 1rem;font-size:0.8rem">Completed</button>
             <button class="cancel-btn" onclick="loadOnlineOrders('')" id="filter-all" style="padding:0.4rem 1rem;font-size:0.8rem">All</button>
         </div>
@@ -3198,7 +3199,10 @@ table { width: 100%; border-collapse: collapse; }
             b.style.background = '#374151'; b.style.color = '#D1D5DB';
         });
         const activeBtn = document.getElementById(`filter-${statusFilter || 'all'}`);
-        if (activeBtn) { activeBtn.style.background = '#92400E'; activeBtn.style.color = '#FDE68A'; }
+        if (activeBtn) {
+            if (statusFilter === 'ready') { activeBtn.style.background = '#1E3A5F'; activeBtn.style.color = '#93C5FD'; }
+            else { activeBtn.style.background = '#92400E'; activeBtn.style.color = '#FDE68A'; }
+        }
 
         try {
             const data = await apiGet('/api/v1/admin/reports/reservations');
@@ -3215,18 +3219,24 @@ table { width: 100%; border-collapse: collapse; }
                 const d = new Date(o.date || o.created_at);
                 const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                const statusColor = o.status === 'pending' ? '#FDE68A' : o.status === 'completed' ? '#6EE7B7' : '#D1D5DB';
-                const statusBg = o.status === 'pending' ? '#92400E' : o.status === 'completed' ? '#065F46' : '#374151';
-                const pickupBtn = o.status === 'pending'
-                    ? `<button onclick="markPickedUp(${o.id})" style="background:#065F46;color:#6EE7B7;border:none;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.75rem;margin-top:4px">Mark Picked Up</button>`
-                    : '';
+                const statusColor = o.status === 'pending' ? '#FDE68A' : o.status === 'ready' ? '#93C5FD' : o.status === 'completed' ? '#6EE7B7' : '#D1D5DB';
+                const statusBg = o.status === 'pending' ? '#92400E' : o.status === 'ready' ? '#1E3A5F' : o.status === 'completed' ? '#065F46' : '#374151';
+                var actionBtns = '';
+                if (o.status === 'pending') {
+                    actionBtns = `<button onclick="markReady(${o.id})" style="background:#1E3A5F;color:#93C5FD;border:none;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.75rem;margin-top:4px" id="ready-btn-${o.id}">Notify Ready</button>`
+                        + ` <button onclick="markPickedUp(${o.id})" style="background:#065F46;color:#6EE7B7;border:none;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.75rem;margin-top:4px">Picked Up</button>`;
+                } else if (o.status === 'ready') {
+                    actionBtns = `<button onclick="markPickedUp(${o.id})" style="background:#065F46;color:#6EE7B7;border:none;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.75rem;margin-top:4px">Mark Picked Up</button>`;
+                }
+                var emailLine = o.customer_email ? `<div style="font-size:0.7rem;color:#6B7280;margin-top:1px">${escHtml(o.customer_email)}</div>` : '';
                 return `<div style="background:#2D2D30;padding:0.75rem;margin-bottom:6px">
                     <div style="display:flex;justify-content:space-between;align-items:start">
                         <div>
                             <div style="font-weight:600;color:#F0EDE8">${escHtml(o.item_name || 'Item #' + o.item_id)}</div>
                             <div style="font-size:0.8rem;color:#A8A6A1;margin-top:2px">${escHtml(o.customer_name || 'Unknown')} · ${escHtml(o.customer_phone || '')}</div>
+                            ${emailLine}
                             <div style="font-size:0.75rem;color:#6B7280;margin-top:2px">${dateStr} ${timeStr}</div>
-                            ${pickupBtn}
+                            ${actionBtns}
                         </div>
                         <div style="text-align:right">
                             <div style="font-weight:700;color:#C9A96E">$${parseFloat(o.amount_paid || 0).toFixed(2)}</div>
@@ -3245,6 +3255,19 @@ table { width: 100%; border-collapse: collapse; }
         loadOnlineOrders('pending');
         sessionStorage.setItem('bmm_last_order_count', String(onlineOrdersCache.filter(o => o.status === 'pending').length));
         updateOrdersBadge(0);
+    }
+
+    async function markReady(reservationId) {
+        var btn = document.getElementById('ready-btn-' + reservationId);
+        if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+        try {
+            var result = await apiPost(`/api/v1/admin/reports/reservations/${reservationId}/ready`, {});
+            showToast(result.message || 'Order marked as ready', 'success');
+            loadOnlineOrders('pending');
+        } catch (err) {
+            showToast(err.message || 'Failed to update order', 'error');
+            if (btn) { btn.disabled = false; btn.textContent = 'Notify Ready'; }
+        }
     }
 
     async function markPickedUp(reservationId) {

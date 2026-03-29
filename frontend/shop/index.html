@@ -843,6 +843,9 @@
       <label for="input-phone">Phone Number</label>
       <input type="tel" id="input-phone" placeholder="(920) 555-0000" autocomplete="tel">
 
+      <label for="input-email">Email <span style="font-weight:normal;color:#A8A6A1">(for pickup notification)</span></label>
+      <input type="email" id="input-email" placeholder="jane@example.com" autocomplete="email">
+
       <p class="modal-notice">
         Payment is required to reserve this item. You'll be redirected to our secure checkout.
         All sales are final. No returns or refunds.
@@ -1101,6 +1104,7 @@
     document.getElementById('modal-item-name').textContent = itemName;
     document.getElementById('input-name').value  = '';
     document.getElementById('input-phone').value = '';
+    document.getElementById('input-email').value = '';
     document.getElementById('modal-error').style.display = 'none';
     document.getElementById('modal-error').textContent    = '';
     document.getElementById('modal-form-body').style.display = 'block';
@@ -1130,6 +1134,7 @@
   document.getElementById('modal-submit').addEventListener('click', async function () {
     const name  = document.getElementById('input-name').value.trim();
     const phone = document.getElementById('input-phone').value.trim();
+    const email = document.getElementById('input-email').value.trim();
     const errEl = document.getElementById('modal-error');
 
     if (!name) {
@@ -1150,10 +1155,12 @@
     this.textContent = 'Processing\u2026';
 
     try {
+      var payload = { item_id: pendingItemId, customer_name: name, customer_phone: phone };
+      if (email) payload.customer_email = email;
       const res  = await fetch(API_CREATE_PAYMENT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ item_id: pendingItemId, customer_name: name, customer_phone: phone }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
 
@@ -1165,8 +1172,18 @@
         return;
       }
 
-      // Redirect to Square checkout
-      window.location.href = data.payment_url;
+      if (data.payment_url) {
+        window.location.href = data.payment_url;
+      } else {
+        document.getElementById('modal-form-body').style.display = 'none';
+        var successEl = document.getElementById('modal-success');
+        if (successEl) {
+          successEl.style.display = 'block';
+          successEl.innerHTML = '<p style="color:#6EE7B7;font-weight:600;text-align:center;margin-bottom:0.5rem">Item Reserved!</p>'
+            + '<p style="color:#A8A6A1;text-align:center;font-size:0.9rem">Reservation #' + data.reservation_id + '</p>'
+            + '<p style="color:#A8A6A1;text-align:center;font-size:0.85rem">Please visit the store to pay and pick up your item. We\'ll email you when it\'s ready.</p>';
+        }
+      }
 
     } catch (err) {
       errEl.textContent   = 'Network error. Please try again.';

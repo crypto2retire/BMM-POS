@@ -97,6 +97,14 @@ EMAIL_TEMPLATE_DEFAULTS = {
         "closing": "Thank you for shopping at Bowenstreet Market!",
         "variables": ["customer_name", "sale_id", "subtotal", "tax", "total", "payment_method"],
     },
+    "order_ready_pickup": {
+        "label": "Order Ready for Pickup",
+        "subject": "Your Order is Ready for Pickup!",
+        "greeting": "Hello {customer_name},",
+        "body": "Great news! Your order from Bowenstreet Market is ready for pickup.",
+        "closing": "We look forward to seeing you!",
+        "variables": ["customer_name", "item_name", "store_hours"],
+    },
 }
 
 
@@ -426,6 +434,36 @@ def test_email(admin_name: str) -> tuple[str, str, str]:
     )
     plain = f"Test email from BMM-POS sent at {_now_str()}. Email is working correctly."
     return subject, _base_template("Test Email", body), plain
+
+
+async def order_ready_pickup_email(
+    customer_name: str,
+    item_name: str,
+    store_hours: str,
+    store_address: str = "2837 Bowen St, Oshkosh WI 54901",
+    db=None,
+) -> tuple[str, str, str]:
+    custom = await get_custom_template("order_ready_pickup", db)
+    variables = dict(customer_name=customer_name or "Customer", item_name=item_name,
+                     store_hours=store_hours)
+    defaults = EMAIL_TEMPLATE_DEFAULTS["order_ready_pickup"]
+    subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
+
+    body = (
+        _p(greeting)
+        + _p(body_text)
+        + _info_table([
+            ("Item", item_name),
+            ("Pickup Location", store_address),
+        ])
+        + f'<div style="background:#2D2D30;padding:16px 20px;margin:16px 0">'
+        + f'<div style="font-size:11px;color:{BRAND_GOLD};text-transform:uppercase;letter-spacing:1px;font-family:Arial,sans-serif;margin-bottom:8px">Store Hours</div>'
+        + f'<div style="font-size:13px;color:{BRAND_TEXT};font-family:Arial,sans-serif;white-space:pre-line">{store_hours}</div>'
+        + f'</div>'
+        + (_p(closing) if closing else "")
+    )
+    plain = f"{greeting} {body_text} Item: {item_name}. Pickup at: {store_address}. Hours: {store_hours}."
+    return subject, _base_template("Order Ready for Pickup", body), plain
 
 
 async def rent_overdue_15day_email(

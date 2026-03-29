@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.item import Item
 from app.models.vendor import Vendor
+from app.models.reservation import Reservation
 
 router = APIRouter(prefix="/storefront", tags=["shop"])
 
@@ -171,3 +172,49 @@ async def get_shop_vendors(db: AsyncSession = Depends(get_db)):
         {"id": row.id, "name": row.name, "booth_number": row.booth_number, "item_count": row.item_count}
         for row in result.all()
     ]
+
+
+class CreatePaymentRequest(BaseModel):
+    item_id: int
+    customer_name: str
+    customer_phone: str
+    customer_email: Optional[str] = None
+
+
+@router.post("/create-payment")
+async def create_payment(
+    req: CreatePaymentRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    item_result = await db.execute(
+        select(Item).where(Item.id == req.item_id, Item.status == "active")
+    )
+    item = item_result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found or no longer available")
+
+    if item.quantity < 1:
+        raise HTTPException(status_code=400, detail="Item is out of stock")
+
+    from decimal import Decimal
+    price = Decimal(str(item.sale_price or item.price))
+    tax_amount = (price * Decimal("0.05")).quantize(Decimal("0.01"))
+    total = price + tax_amount
+
+    reservation = Reservation(
+        item_id=req.item_id,
+        customer_name=req.customer_name,
+        customer_phone=req.customer_phone,
+        customer_email=req.customer_email,
+        amount_paid=total,
+        status="pending",
+    )
+    db.add(reservation)
+    await db.commit()
+    await db.refresh(reservation)
+
+    return {
+        "reservation_id": reservation.id,
+        "total": float(total),
+        "message": "Reservation created. In-store payment required.",
+    }

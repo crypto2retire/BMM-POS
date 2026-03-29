@@ -1,7 +1,10 @@
+import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, extract, cast, Date
 from sqlalchemy.orm import selectinload
@@ -678,6 +681,7 @@ async def report_reservations(
             "id": r.id,
             "customer_name": r.customer_name or "",
             "customer_phone": r.customer_phone or "",
+            "customer_email": r.customer_email or "",
             "item_name": r.item.name if r.item else "Unknown",
             "amount_paid": float(r.amount_paid) if r.amount_paid else 0,
             "date": _to_local(r.created_at).isoformat() if r.created_at else None,
@@ -685,6 +689,76 @@ async def report_reservations(
         })
 
     return {"reservations": reservations_list}
+
+
+@router.post("/reservations/{reservation_id}/ready")
+async def mark_reservation_ready(
+    reservation_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_cashier_or_admin),
+):
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(
+        select(Reservation).options(selectinload(Reservation.item))
+        .where(Reservation.id == reservation_id)
+    )
+    reservation = result.scalar_one_or_none()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    if reservation.status == "completed":
+        raise HTTPException(status_code=400, detail="Order already completed")
+    if reservation.status == "ready":
+        return {"message": "Order is already marked as ready for pickup", "email_sent": False}
+
+    reservation.status = "ready"
+    await db.commit()
+
+    email_sent = False
+    if reservation.customer_email:
+        try:
+            from app.routers.notifications import _is_notification_enabled
+            if await _is_notification_enabled(db, "notify_order_ready_pickup"):
+                from app.services.email_templates import order_ready_pickup_email
+                from app.services.email import send_email_safe
+
+                hours_keys = [
+                    ("Monday", "hours_monday"), ("Tuesday", "hours_tuesday"),
+                    ("Wednesday", "hours_wednesday"), ("Thursday", "hours_thursday"),
+                    ("Friday", "hours_friday"), ("Saturday", "hours_saturday"),
+                    ("Sunday", "hours_sunday"),
+                ]
+                from app.models.store_setting import StoreSetting
+                hours_lines = []
+                for day, key in hours_keys:
+                    r = await db.execute(
+                        select(StoreSetting.value).where(StoreSetting.key == key)
+                    )
+                    val = r.scalar_one_or_none() or "Closed"
+                    hours_lines.append(f"{day}: {val}")
+                store_hours = "\n".join(hours_lines)
+
+                item_name = reservation.item.name if reservation.item else "your item"
+                subject, html_body, plain_body = await order_ready_pickup_email(
+                    customer_name=reservation.customer_name or "Customer",
+                    item_name=item_name,
+                    store_hours=store_hours,
+                    db=db,
+                )
+                await send_email_safe(reservation.customer_email, subject, html_body, plain_body)
+                email_sent = True
+        except Exception as e:
+            logger.warning(f"Failed to send ready-for-pickup email: {e}")
+
+    msg = "Order marked as ready for pickup"
+    if email_sent:
+        msg += " — pickup notification email sent"
+    elif reservation.customer_email:
+        msg += " — email notification failed"
+    else:
+        msg += " (no customer email on file)"
+
+    return {"message": msg, "email_sent": email_sent}
 
 
 @router.post("/reservations/{reservation_id}/pickup")
