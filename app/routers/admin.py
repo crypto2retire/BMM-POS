@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.vendor import Vendor, VendorBalance
+from app.models.item import Item
+from app.models.sale import Sale, SaleItem
 from app.models.rent import RentPayment
 from app.models.payout import Payout
 from app.routers.auth import get_current_user, require_admin, require_cashier_or_admin
@@ -20,6 +22,7 @@ from app.services.email_templates import (
     rent_overdue_15day_email,
     rent_overdue_27day_email,
 )
+from app.routers.notifications import notify_weekly_report
 
 logger = logging.getLogger(__name__)
 
@@ -581,5 +584,71 @@ async def send_rent_reminders(
         "message": f"Rent reminders sent: {sent_15} at 15 days, {sent_27} at 27 days.",
         "sent_15_day": sent_15,
         "sent_27_day": sent_27,
+        "skipped_no_email": skipped,
+    }
+
+
+@router.post("/send-weekly-reports")
+async def send_weekly_reports(
+    db: AsyncSession = Depends(get_db),
+    _: Vendor = Depends(require_admin),
+):
+    today = date.today()
+    week_start = today - timedelta(days=7)
+    period_label = f"{week_start.strftime('%-m/%-d')} – {today.strftime('%-m/%-d/%Y')}"
+
+    from datetime import timezone as tz
+    from zoneinfo import ZoneInfo
+    cst = ZoneInfo("America/Chicago")
+    start_utc = datetime(week_start.year, week_start.month, week_start.day, tzinfo=cst).astimezone(tz.utc)
+    end_utc = datetime(today.year, today.month, today.day, tzinfo=cst).astimezone(tz.utc) + timedelta(days=1)
+
+    vendors_result = await db.execute(
+        select(Vendor).where(Vendor.status == "active").order_by(Vendor.name)
+    )
+    vendors = vendors_result.scalars().all()
+
+    sent = 0
+    skipped = 0
+
+    for v in vendors:
+        if not v.email:
+            skipped += 1
+            continue
+
+        sales_result = await db.execute(
+            select(func.count(SaleItem.id), func.coalesce(func.sum(SaleItem.line_total), 0))
+            .join(Sale, SaleItem.sale_id == Sale.id)
+            .where(
+                SaleItem.vendor_id == v.id,
+                Sale.is_voided == False,
+                Sale.created_at >= start_utc,
+                Sale.created_at < end_utc,
+            )
+        )
+        row = sales_result.one()
+        items_sold = row[0] or 0
+        total_sales = float(row[1] or 0)
+
+        bal_result = await db.execute(
+            select(VendorBalance.balance).where(VendorBalance.vendor_id == v.id)
+        )
+        current_balance = float(bal_result.scalar_one_or_none() or 0)
+
+        active_result = await db.execute(
+            select(func.count(Item.id)).where(Item.vendor_id == v.id, Item.status == "active")
+        )
+        active_items = active_result.scalar_one() or 0
+
+        await notify_weekly_report(
+            db, v, period_label,
+            total_sales, items_sold, current_balance, active_items,
+        )
+        sent += 1
+
+    return {
+        "success": True,
+        "message": f"Weekly reports sent to {sent} vendors.",
+        "sent": sent,
         "skipped_no_email": skipped,
     }

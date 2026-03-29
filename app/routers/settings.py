@@ -63,6 +63,7 @@ DEFAULT_SETTINGS = {
     "notify_payout": "false",
     "notify_expiring": "false",
     "notify_weekly_report": "true",
+    "notify_order_confirmation": "true",
     "notify_rent_due": "false",
     "notify_admin_daily": "false",
     "notify_low_stock": "false",

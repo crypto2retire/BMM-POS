@@ -1,7 +1,9 @@
+import asyncio
 import math
 import os
 import base64
 import io
+import logging
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from decimal import Decimal, ROUND_HALF_UP
@@ -28,6 +30,7 @@ from app.schemas.gift_card import (
 )
 from app.services import poynt
 from app.config import settings
+from app.routers.notifications import bg_notify_product_sold, bg_notify_order_confirmation
 from app.routers.settings import get_tax_rate
 
 router = APIRouter(prefix="/pos", tags=["pos"])
@@ -400,6 +403,40 @@ async def pos_create_sale(
                 consignment_amount=si.consignment_amount,
             )
         )
+
+    _logger = logging.getLogger(__name__)
+    sold_at_str = sale.created_at.strftime("%-m/%-d/%Y %-I:%M %p") if sale.created_at else ""
+    for si in sale.items:
+        if si.item and si.vendor and si.vendor.email:
+            try:
+                asyncio.ensure_future(bg_notify_product_sold(
+                    vendor_name=si.vendor.name or "Vendor",
+                    vendor_email=si.vendor.email,
+                    item_name=si.item.name,
+                    item_sku=si.item.sku or "",
+                    sale_price=float(si.line_total),
+                    sale_id=sale.id,
+                    sold_at=sold_at_str,
+                ))
+            except Exception as e:
+                _logger.warning(f"Failed to queue product sold notification: {e}")
+
+    if sale.receipt_email:
+        try:
+            email_items = [{"name": si.item.name if si.item else "Unknown",
+                            "price": float(si.unit_price)} for si in sale.items]
+            asyncio.ensure_future(bg_notify_order_confirmation(
+                receipt_email=sale.receipt_email,
+                customer_name="",
+                sale_id=sale.id,
+                items=email_items,
+                subtotal=float(sale.subtotal),
+                tax=float(sale.tax_amount),
+                total=float(sale.total),
+                payment_method=sale.payment_method,
+            ))
+        except Exception as e:
+            _logger.warning(f"Failed to queue order confirmation: {e}")
 
     return SaleResponse(
         id=sale.id,

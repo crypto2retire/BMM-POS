@@ -275,6 +275,7 @@
     <div class="action-bar">
         <button class="process-btn" id="process-btn" onclick="confirmProcess()">Process Payouts</button>
         <button class="reminder-btn" id="reminder-btn" onclick="sendReminders()">Send Rent Reminders</button>
+        <button class="reminder-btn" id="weekly-btn" onclick="sendWeeklyReports()" style="background:#2a5a3a;border-color:#3a7a4a">Send Weekly Reports</button>
         <span id="processed-badge" style="display:none"></span>
     </div>
 
@@ -456,6 +457,21 @@
         } finally {
             btn.disabled = false;
             btn.textContent = 'Send Rent Reminders';
+        }
+    }
+
+    async function sendWeeklyReports() {
+        var btn = document.getElementById('weekly-btn');
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+        try {
+            var result = await apiPost('/api/v1/admin/send-weekly-reports', {});
+            showAlert('alert-container', result.message, 'success');
+        } catch (err) {
+            showAlert('alert-container', err.message || 'Failed to send weekly reports.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Send Weekly Reports';
         }
     }
 

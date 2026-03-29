@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_db, AsyncSessionLocal
 from app.models.store_setting import StoreSetting
 from app.models.vendor import Vendor
 from app.routers.auth import get_current_user, require_admin
@@ -16,6 +16,8 @@ from app.services.email_templates import (
     test_email,
     product_sold_email,
     vendor_welcome_email,
+    order_confirmation_email,
+    weekly_report_email,
     EMAIL_TEMPLATE_DEFAULTS,
 )
 
@@ -29,6 +31,9 @@ async def _is_notification_enabled(db: AsyncSession, key: str) -> bool:
         select(StoreSetting.value).where(StoreSetting.key == key)
     )
     val = result.scalar_one_or_none()
+    if val is None:
+        from app.routers.settings import DEFAULT_SETTINGS
+        val = DEFAULT_SETTINGS.get(key, "false")
     return val == "true" or val == "1"
 
 
@@ -127,3 +132,106 @@ async def notify_vendor_welcome(
         db=db,
     )
     await send_email_safe(email, subject, html_body, plain_body)
+
+
+async def notify_order_confirmation(
+    db: AsyncSession,
+    receipt_email: str,
+    customer_name: str,
+    sale_id: int,
+    items: list[dict],
+    subtotal: float,
+    tax: float,
+    total: float,
+    payment_method: str,
+):
+    if not await _is_notification_enabled(db, "notify_order_confirmation"):
+        return
+    if not receipt_email:
+        return
+
+    subject, html_body, plain_body = await order_confirmation_email(
+        customer_name=customer_name,
+        sale_id=sale_id,
+        items=items,
+        subtotal=subtotal,
+        tax=tax,
+        total=total,
+        payment_method=payment_method,
+        db=db,
+    )
+    await send_email_safe(receipt_email, subject, html_body, plain_body)
+
+
+async def bg_notify_product_sold(
+    vendor_name: str,
+    vendor_email: str,
+    item_name: str,
+    item_sku: str,
+    sale_price: float,
+    sale_id: int,
+    sold_at: str,
+):
+    try:
+        async with AsyncSessionLocal() as db:
+            if not await _is_notification_enabled(db, "notify_product_sold"):
+                return
+            subject, html_body, plain_body = await product_sold_email(
+                vendor_name=vendor_name, item_name=item_name, item_sku=item_sku,
+                sale_price=sale_price, sale_id=sale_id, sold_at=sold_at, db=db,
+            )
+            await send_email_safe(vendor_email, subject, html_body, plain_body)
+    except Exception as e:
+        logger.warning(f"Background product sold notification failed: {e}")
+
+
+async def bg_notify_order_confirmation(
+    receipt_email: str,
+    customer_name: str,
+    sale_id: int,
+    items: list[dict],
+    subtotal: float,
+    tax: float,
+    total: float,
+    payment_method: str,
+):
+    try:
+        async with AsyncSessionLocal() as db:
+            if not await _is_notification_enabled(db, "notify_order_confirmation"):
+                return
+            subject, html_body, plain_body = await order_confirmation_email(
+                customer_name=customer_name, sale_id=sale_id, items=items,
+                subtotal=subtotal, tax=tax, total=total,
+                payment_method=payment_method, db=db,
+            )
+            await send_email_safe(receipt_email, subject, html_body, plain_body)
+    except Exception as e:
+        logger.warning(f"Background order confirmation failed: {e}")
+
+
+async def notify_weekly_report(
+    db: AsyncSession,
+    vendor: Vendor,
+    period_label: str,
+    total_sales: float,
+    items_sold: int,
+    current_balance: float,
+    active_items: int,
+    expiring_count: int = 0,
+):
+    if not await _is_notification_enabled(db, "notify_weekly_report"):
+        return
+    if not vendor.email:
+        return
+
+    subject, html_body, plain_body = await weekly_report_email(
+        vendor_name=vendor.name or "Vendor",
+        period_label=period_label,
+        total_sales=total_sales,
+        items_sold=items_sold,
+        current_balance=current_balance,
+        active_items=active_items,
+        expiring_count=expiring_count,
+        db=db,
+    )
+    await send_email_safe(vendor.email, subject, html_body, plain_body)

@@ -92,10 +92,10 @@ EMAIL_TEMPLATE_DEFAULTS = {
     "order_confirmation": {
         "label": "Order Confirmation",
         "subject": "Order Confirmation #{sale_id}",
-        "greeting": "Hello{customer_name_with_space},",
+        "greeting": "Hello,",
         "body": "Thank you for your purchase at Bowenstreet Market! Here is your order confirmation.",
         "closing": "Thank you for shopping at Bowenstreet Market!",
-        "variables": ["customer_name", "sale_id"],
+        "variables": ["customer_name", "sale_id", "subtotal", "tax", "total", "payment_method"],
     },
 }
 
@@ -258,28 +258,34 @@ async def payout_processed_email(
     return subject, _base_template("Payout Processed", body), plain
 
 
-def expiring_items_email(
+async def expiring_items_email(
     vendor_name: str,
     items: list[dict],
     days_threshold: int = 90,
+    db=None,
 ) -> tuple[str, str, str]:
+    custom = await get_custom_template("expiring_items", db)
     count = len(items)
-    subject = f"{count} Item{'s' if count != 1 else ''} Expiring Soon"
+    variables = dict(vendor_name=vendor_name, count=str(count), days_threshold=str(days_threshold))
+    defaults = EMAIL_TEMPLATE_DEFAULTS["expiring_items"]
+    subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
+
     item_rows = ""
     for it in items[:20]:
         item_rows += f'<tr><td style="padding:6px 12px;font-size:13px;color:{BRAND_TEXT};font-family:Arial,sans-serif;border-bottom:1px solid #444">{it.get("name","")}</td><td style="padding:6px 12px;font-size:13px;color:#aaa;font-family:Arial,sans-serif;border-bottom:1px solid #444">{it.get("sku","")}</td><td style="padding:6px 12px;font-size:13px;color:#aaa;font-family:Arial,sans-serif;border-bottom:1px solid #444">{it.get("days","")} days</td></tr>'
     body = (
-        _p(f"Hello {vendor_name},")
-        + _p(f"You have {count} item{'s' if count != 1 else ''} that {'have' if count != 1 else 'has'} been on the floor for over {days_threshold} days. Please review and update or remove these items.")
+        _p(greeting)
+        + _p(body_text)
         + f'<table width="100%" cellpadding="0" cellspacing="0" style="background:{BRAND_BG};margin:16px 0"><tr><td style="padding:8px 12px;font-size:11px;color:{BRAND_GOLD};font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #555">Item</td><td style="padding:8px 12px;font-size:11px;color:{BRAND_GOLD};font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #555">SKU</td><td style="padding:8px 12px;font-size:11px;color:{BRAND_GOLD};font-family:Arial,sans-serif;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #555">Age</td></tr>{item_rows}</table>'
         + (_p(f"...and {count - 20} more.") if count > 20 else "")
+        + (_p(closing) if closing else "")
     )
     names = ", ".join(it.get("name", "") for it in items[:5])
-    plain = f"Hello {vendor_name}, {count} items are expiring soon: {names}."
+    plain = f"{greeting} {body_text} {names}."
     return subject, _base_template("Items Expiring Soon", body), plain
 
 
-def weekly_report_email(
+async def weekly_report_email(
     vendor_name: str,
     period_label: str,
     total_sales: float,
@@ -287,11 +293,18 @@ def weekly_report_email(
     current_balance: float,
     active_items: int,
     expiring_count: int = 0,
+    db=None,
 ) -> tuple[str, str, str]:
-    subject = f"Weekly Report: {period_label}"
+    custom = await get_custom_template("weekly_report", db)
+    variables = dict(vendor_name=vendor_name, period_label=period_label,
+                     total_sales=f"{total_sales:.2f}", items_sold=str(items_sold),
+                     current_balance=f"{current_balance:.2f}", active_items=str(active_items))
+    defaults = EMAIL_TEMPLATE_DEFAULTS["weekly_report"]
+    subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
+
     body = (
-        _p(f"Hello {vendor_name},")
-        + _p(f"Here is your weekly summary for <strong>{period_label}</strong>.")
+        _p(greeting)
+        + _p(body_text)
         + _info_table([
             ("Items Sold", str(items_sold)),
             ("Total Sales", f"${total_sales:.2f}"),
@@ -299,9 +312,9 @@ def weekly_report_email(
             ("Active Items", str(active_items)),
         ])
         + (_p(f"&#9888; You have {expiring_count} item{'s' if expiring_count != 1 else ''} that may need attention.") if expiring_count else "")
-        + _p("Log into your vendor dashboard for full details.")
+        + (_p(closing) if closing else "")
     )
-    plain = f"Hello {vendor_name}, weekly report for {period_label}: {items_sold} items sold, ${total_sales:.2f} total, balance ${current_balance:.2f}."
+    plain = f"{greeting} {body_text} {items_sold} items sold, ${total_sales:.2f} total, balance ${current_balance:.2f}."
     return subject, _base_template("Weekly Sales Report", body), plain
 
 
@@ -359,7 +372,7 @@ async def vendor_welcome_email(
     return subject, _base_template("Welcome!", body), plain
 
 
-def order_confirmation_email(
+async def order_confirmation_email(
     customer_name: str,
     sale_id: int,
     items: list[dict],
@@ -367,14 +380,21 @@ def order_confirmation_email(
     tax: float,
     total: float,
     payment_method: str,
+    db=None,
 ) -> tuple[str, str, str]:
-    subject = f"Order Confirmation #{sale_id}"
+    custom = await get_custom_template("order_confirmation", db)
+    variables = dict(customer_name=customer_name or "Customer", sale_id=str(sale_id),
+                     subtotal=f"{subtotal:.2f}", tax=f"{tax:.2f}", total=f"{total:.2f}",
+                     payment_method=payment_method)
+    defaults = EMAIL_TEMPLATE_DEFAULTS["order_confirmation"]
+    subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
+
     item_rows = ""
     for it in items:
         item_rows += f'<tr><td style="padding:6px 12px;font-size:13px;color:{BRAND_TEXT};font-family:Arial,sans-serif;border-bottom:1px solid #444">{it.get("name","")}</td><td style="padding:6px 12px;font-size:13px;color:#aaa;font-family:Arial,sans-serif;border-bottom:1px solid #444;text-align:right">${it.get("price",0):.2f}</td></tr>'
     body = (
-        _p(f"Hello{(' ' + customer_name) if customer_name else ''},")
-        + _p(f"Thank you for your purchase at Bowenstreet Market! Here is your order confirmation.")
+        _p(greeting)
+        + _p(body_text)
         + _info_table([
             ("Sale #", str(sale_id)),
             ("Date", _now_str()),
@@ -386,7 +406,7 @@ def order_confirmation_email(
             ("Tax", f"${tax:.2f}"),
             ("Total", f"<strong>${total:.2f}</strong>"),
         ])
-        + _p("Thank you for shopping at Bowenstreet Market!")
+        + (_p(closing) if closing else "")
     )
     names = ", ".join(it.get("name", "") for it in items[:5])
     plain = f"Order #{sale_id} confirmed. Items: {names}. Total: ${total:.2f}. Payment: {payment_method}."
