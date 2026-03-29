@@ -429,9 +429,10 @@
                 </div>
             </div>
             <div id="import-results" style="margin-top:0.75rem;max-height:300px;overflow-y:auto"></div>
-            <div style="margin-top:0.75rem;border-top:1px solid var(--border);padding-top:0.75rem">
-                <button class="btn btn-sm" onclick="clearTestData()" style="background:#991B1B;color:#FCA5A5;font-size:0.75rem">Clear All Test Vendors &amp; Inventory</button>
-                <span style="font-size:0.7rem;color:var(--text-light);margin-left:8px">Only works when no sales exist. Use for pre-launch testing.</span>
+            <div style="margin-top:0.75rem;border-top:1px solid var(--border);padding-top:0.75rem;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                <button class="btn btn-sm" onclick="clearTestData()" style="background:#991B1B;color:#FCA5A5;font-size:0.75rem">Clear Test Data (no sales)</button>
+                <button class="btn btn-sm" onclick="resetAllData()" style="background:#7F1D1D;color:#FCA5A5;font-size:0.75rem;border:1px solid #DC2626">Reset Everything &amp; Start Fresh</button>
+                <span style="font-size:0.7rem;color:var(--text-light)">Reset clears ALL vendors, items, sales, gift cards, etc. Only admin/cashier accounts and settings are kept.</span>
             </div>
         </div>
     </div>
@@ -1047,6 +1048,28 @@
             results.innerHTML = '<p style="color:#F87171">' + escapeHtml(err.message) + '</p>';
         } finally {
             btn.disabled = false; btn.textContent = 'Upload Inventory';
+        }
+    }
+
+    async function resetAllData() {
+        var first = prompt('This will permanently DELETE all vendors, inventory, sales, gift cards, studio classes, reservations, rent payments, and payouts.\n\nOnly admin/cashier accounts and store settings will be kept.\n\nType CLEAR ALL DATA to confirm:');
+        if (first !== 'CLEAR ALL DATA') { showAlert('alert-container', 'Reset cancelled.', 'info'); return; }
+        if (!confirm('FINAL WARNING: This cannot be undone. All data will be permanently erased. Are you absolutely sure?')) return;
+        var results = document.getElementById('import-results');
+        results.innerHTML = '<p style="color:var(--text-light)">Resetting all data...</p>';
+        try {
+            var token = sessionStorage.getItem('bmm_token');
+            var resp = await fetch('/api/v1/admin/reset-data', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ confirm: 'CLEAR ALL DATA' })
+            });
+            var data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || 'Failed to reset data');
+            results.innerHTML = '<div style="padding:0.75rem;background:var(--surface);color:var(--accent)">' + escapeHtml(data.message) + '</div>';
+            loadVendors();
+        } catch (err) {
+            results.innerHTML = '<p style="color:#F87171">' + escapeHtml(err.message) + '</p>';
         }
     }
 
