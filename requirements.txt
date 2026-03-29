@@ -23,7 +23,7 @@ openpyxl==3.1.5
 packaging==26.0
 passlib==1.7.4
 pillow==12.1.1
-pyasn1==0.6.2
+pyasn1==0.6.3
 pycparser==3.0
 pydantic==2.12.5
 pydantic-settings==2.13.1
