@@ -295,6 +295,7 @@
         <button class="settings-tab" data-tab="roles" onclick="switchTab('roles')">User Roles</button>
         <button class="settings-tab" data-tab="labels" onclick="switchTab('labels')">Labels</button>
         <button class="settings-tab" data-tab="notifications" onclick="switchTab('notifications')">Notifications</button>
+        <button class="settings-tab" data-tab="webstore" onclick="switchTab('webstore')">Online Store</button>
     </div>
 
     <!-- ─── Store Details ──────────────────────────────────── -->
@@ -659,6 +660,173 @@
                     </div>
                 </div>
                 <div id="test-email-status" style="font-size:0.82rem;margin-top:0.25rem"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Online Store ──────────────────────────────────── -->
+    <div class="settings-panel" id="panel-webstore">
+        <div class="settings-section">
+            <div class="settings-section-header">General</div>
+            <div class="settings-section-body">
+                <div class="setting-row">
+                    <div><div class="setting-label">Enable Online Store</div><div class="setting-desc">Make your storefront publicly accessible for online shopping</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-webstore_enabled"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Homepage Title</label>
+                        <input type="text" id="s-webstore_title" placeholder="Bowenstreet Market — Handcrafted, Vintage &amp; More">
+                        <small>Appears in search engines and browser tabs</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Homepage Description</label>
+                        <input type="text" id="s-webstore_description" placeholder="Shop handcrafted, vintage, and antique items from 120+ local vendors">
+                        <small>Meta description for SEO</small>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Default Sort</label>
+                        <select id="s-webstore_sort">
+                            <option value="newest">Newest to Oldest</option>
+                            <option value="oldest">Oldest to Newest</option>
+                            <option value="price_low">Price: Low to High</option>
+                            <option value="price_high">Price: High to Low</option>
+                            <option value="name_az">Name: A to Z</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Items Per Page</label>
+                        <select id="s-webstore_per_page">
+                            <option value="24">24</option>
+                            <option value="48">48</option>
+                            <option value="96">96</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-header">Payments</div>
+            <div class="settings-section-body">
+                <div class="setting-row">
+                    <div><div class="setting-label">Online Card Processing</div><div class="setting-desc">Accept credit/debit card payments via Square for online orders</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-webstore_cards_enabled"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Gift Cards</div><div class="setting-desc">Allow customers to pay with in-house gift cards online</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-webstore_giftcards_enabled"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-header">Fulfillment</div>
+            <div class="settings-section-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Order Fulfillment Method</label>
+                        <select id="s-webstore_fulfillment">
+                            <option value="pickup">In-Store Pickup Only</option>
+                            <option value="shipping">Shipping Only</option>
+                            <option value="both">Pickup + Shipping</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Pickup Instructions</label>
+                        <input type="text" id="s-webstore_pickup_instructions" placeholder="Pick up at front desk during business hours">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-header">Order Email Notifications</div>
+            <div class="settings-section-body">
+                <p style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.75rem">Automatic emails sent when order status changes.</p>
+                <div class="setting-row">
+                    <div><div class="setting-label">New → Prepared</div><div class="setting-desc">Email customer when their order is ready for pickup/shipping</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-webstore_email_prepared"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Prepared → Fulfilled</div><div class="setting-desc">Email customer when their order has been picked up or shipped</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-webstore_email_fulfilled"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Order Confirmation</div><div class="setting-desc">Email customer a receipt immediately after purchase</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-webstore_email_confirmation"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-header">Social Links</div>
+            <div class="settings-section-body">
+                <p style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.75rem">Links displayed in the storefront footer. Toggle each to show/hide.</p>
+                <div class="setting-row">
+                    <div style="flex:1">
+                        <div class="setting-label">Facebook</div>
+                        <div style="margin-top:0.4rem"><input type="url" id="s-webstore_facebook_url" placeholder="https://www.facebook.com/bowenstreetmarket" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.45rem 0.65rem;font-size:0.82rem;font-family:'Roboto',sans-serif;box-sizing:border-box"></div>
+                    </div>
+                    <label class="toggle-switch" style="margin-left:1rem"><input type="checkbox" id="s-webstore_facebook_on"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div style="flex:1">
+                        <div class="setting-label">Instagram</div>
+                        <div style="margin-top:0.4rem"><input type="url" id="s-webstore_instagram_url" placeholder="https://www.instagram.com/bowenstreetmarket" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.45rem 0.65rem;font-size:0.82rem;font-family:'Roboto',sans-serif;box-sizing:border-box"></div>
+                    </div>
+                    <label class="toggle-switch" style="margin-left:1rem"><input type="checkbox" id="s-webstore_instagram_on"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div style="flex:1">
+                        <div class="setting-label">TikTok</div>
+                        <div style="margin-top:0.4rem"><input type="url" id="s-webstore_tiktok_url" placeholder="https://www.tiktok.com/@bowenstreetmarket" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.45rem 0.65rem;font-size:0.82rem;font-family:'Roboto',sans-serif;box-sizing:border-box"></div>
+                    </div>
+                    <label class="toggle-switch" style="margin-left:1rem"><input type="checkbox" id="s-webstore_tiktok_on"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div style="flex:1">
+                        <div class="setting-label">Twitter / X</div>
+                        <div style="margin-top:0.4rem"><input type="url" id="s-webstore_twitter_url" placeholder="https://twitter.com/bowenstreetmkt" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.45rem 0.65rem;font-size:0.82rem;font-family:'Roboto',sans-serif;box-sizing:border-box"></div>
+                    </div>
+                    <label class="toggle-switch" style="margin-left:1rem"><input type="checkbox" id="s-webstore_twitter_on"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-header">SEO &amp; Tracking</div>
+            <div class="settings-section-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Google Analytics ID</label>
+                        <input type="text" id="s-webstore_ga_id" placeholder="G-XXXXXXXXXX">
+                        <small>Google Analytics GA4 or legacy UA Tracking ID</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Google Tag Manager ID</label>
+                        <input type="text" id="s-webstore_gtm_id" placeholder="GTM-XXXXXXXXX">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Facebook Pixel ID</label>
+                        <input type="text" id="s-webstore_fb_pixel" placeholder="Facebook Pixel ID">
+                    </div>
+                    <div class="form-group">
+                        <label>Google Site Verification</label>
+                        <input type="text" id="s-webstore_google_verification" placeholder="Verification content key">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Pinterest Website Claim</label>
+                        <input type="text" id="s-webstore_pinterest_key" placeholder="Pinterest content key">
+                    </div>
+                    <div class="form-group"></div>
+                </div>
             </div>
         </div>
     </div>
