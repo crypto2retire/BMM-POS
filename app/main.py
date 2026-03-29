@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse, PlainTextResponse, Response
+from fastapi.responses import JSONResponse, PlainTextResponse, Response, FileResponse, HTMLResponse
 from pathlib import Path
 from sqlalchemy import text
 
@@ -130,6 +130,30 @@ async def lifespan(app: FastAPI):
                 EXCEPTION WHEN others THEN NULL;
                 END $$
             """))
+            landing_cols = [
+                "landing_page_enabled BOOLEAN DEFAULT FALSE",
+                "landing_slug VARCHAR(100)",
+                "landing_about TEXT",
+                "landing_contact_email VARCHAR(200)",
+                "landing_contact_phone VARCHAR(50)",
+                "landing_website VARCHAR(300)",
+                "landing_facebook VARCHAR(300)",
+                "landing_instagram VARCHAR(300)",
+                "landing_tiktok VARCHAR(300)",
+                "landing_twitter VARCHAR(300)",
+                "landing_etsy VARCHAR(300)",
+                "landing_meta_title VARCHAR(200)",
+                "landing_meta_desc VARCHAR(500)",
+            ]
+            for col_def in landing_cols:
+                col_name = col_def.split()[0]
+                await session.execute(text(
+                    f"ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS {col_def}"
+                ))
+            await session.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_booth_showcases_landing_slug "
+                "ON booth_showcases (landing_slug) WHERE landing_slug IS NOT NULL"
+            ))
             await session.execute(text("""
                 CREATE TABLE IF NOT EXISTS balance_adjustments (
                     id SERIAL PRIMARY KEY,
@@ -334,6 +358,14 @@ async def sitemap_xml():
   </url>
 </urlset>'''
     return Response(content=xml, media_type="application/xml")
+
+
+@app.get("/v/{slug}")
+async def vendor_landing_page(slug: str):
+    page = Path("frontend/shop/vendor-page.html")
+    if page.exists():
+        return FileResponse(page, media_type="text/html")
+    return HTMLResponse("<h1>Page not found</h1>", status_code=404)
 
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

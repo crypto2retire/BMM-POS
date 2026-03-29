@@ -456,7 +456,11 @@ function openModal(index) {
     var meta = [];
     if (b.vendor_name && b.title) meta.push('Vendor: ' + b.vendor_name);
     if (b.item_count > 0) meta.push(b.item_count + ' items in booth');
-    document.getElementById('modal-meta').innerHTML = meta.map(function(m) { return '<span>' + escHtml(m) + '</span>'; }).join('');
+    var metaHtml = meta.map(function(m) { return '<span>' + escHtml(m) + '</span>'; }).join('');
+    if (b.landing_slug) {
+        metaHtml += '<a href="/v/' + escHtml(b.landing_slug) + '" style="color:#C9A96E;text-decoration:none;font-size:0.78rem;border-bottom:1px solid rgba(201,169,110,0.3);padding-bottom:1px" onclick="event.stopPropagation()">Visit Vendor Page &rarr;</a>';
+    }
+    document.getElementById('modal-meta').innerHTML = metaHtml;
 
     document.getElementById('booth-modal').classList.add('open');
     document.body.style.overflow = 'hidden';

@@ -276,6 +276,124 @@
         </div>
         <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/webm" style="display:none" onchange="uploadVideo(this.files[0])">
     </div>
+
+    <div id="landing-section" style="display:none">
+        <div style="margin:1.5rem 0 0.5rem;display:flex;align-items:center;gap:0.5rem">
+            <h2 style="font-family:'EB Garamond',serif;font-style:italic;font-size:1.3rem;color:var(--text)">Vendor Landing Page</h2>
+            <span style="background:var(--accent);color:var(--bg);font-size:0.6rem;font-weight:500;padding:0.15rem 0.45rem;letter-spacing:0.1em;text-transform:uppercase">$10/mo Add-On</span>
+        </div>
+        <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1.25rem;line-height:1.6">
+            Your own page on the Bowenstreet Market website. Share your link to grow your brand, get found on search engines, and connect with customers directly.
+        </p>
+
+        <div id="landing-disabled-msg" style="display:none;background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.3);color:var(--accent);padding:1rem;font-size:0.82rem;margin-bottom:1rem">
+            Your landing page is not yet activated. Contact the market office to get started for $10/month.
+        </div>
+
+        <div id="landing-editor" style="display:none">
+            <div class="showcase-card">
+                <h3>Your Page URL</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Choose a custom URL for your landing page. This is the link you can share on social media, business cards, etc.
+                </p>
+                <div style="display:flex;align-items:center;gap:0;margin-bottom:0.5rem">
+                    <span style="background:var(--bg);border:1px solid var(--border);border-right:none;padding:0.55rem 0.5rem;font-size:0.8rem;color:var(--text-light);white-space:nowrap">bowenstreetmm.com/v/</span>
+                    <input type="text" id="landing-slug" placeholder="your-booth-name" maxlength="100" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.85rem;font-family:'Roboto',sans-serif">
+                </div>
+                <div style="display:flex;gap:0.5rem;align-items:center">
+                    <button class="btn btn-primary btn-sm" onclick="saveSlug()">Save URL</button>
+                    <span id="slug-status" style="font-size:0.75rem;color:var(--text-light)"></span>
+                </div>
+                <div id="landing-link-box" style="display:none;margin-top:0.75rem;background:rgba(72,133,89,0.1);border:1px solid rgba(72,133,89,0.25);padding:0.6rem 0.8rem">
+                    <div style="font-size:0.72rem;color:var(--text-light);margin-bottom:0.3rem">YOUR PAGE LINK</div>
+                    <div style="display:flex;align-items:center;gap:0.5rem">
+                        <a id="landing-link" href="#" target="_blank" style="font-size:0.85rem;color:#6EE7B7;word-break:break-all"></a>
+                        <button onclick="copyLandingLink()" style="background:transparent;border:1px solid rgba(110,231,183,0.3);color:#6EE7B7;padding:0.2rem 0.5rem;font-size:0.7rem;cursor:pointer">Copy</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="showcase-card">
+                <h3>About Your Business</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Tell your story in more detail. This is your chance to connect with customers and share what makes you unique.
+                </p>
+                <div class="form-group">
+                    <textarea id="landing-about" placeholder="Share your story — how you got started, what inspires your work, why customers love your booth..." maxlength="5000" style="min-height:180px"></textarea>
+                    <div class="char-count"><span id="about-count">0</span> / 5000</div>
+                </div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                    <button class="ai-btn" id="ai-about-btn" onclick="generateAbout()">&#10024; AI Assist — Write About Section</button>
+                    <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save</button>
+                </div>
+            </div>
+
+            <div class="showcase-card">
+                <h3>Contact Information</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Add your contact details so customers can reach you directly. All fields are optional — only share what you are comfortable with.
+                </p>
+                <div class="form-group">
+                    <label for="landing-email">Email Address</label>
+                    <input type="text" id="landing-email" placeholder="you@example.com" maxlength="200">
+                </div>
+                <div class="form-group">
+                    <label for="landing-phone">Phone Number</label>
+                    <input type="text" id="landing-phone" placeholder="(920) 555-0123" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="landing-website">Website</label>
+                    <input type="text" id="landing-website" placeholder="https://www.yoursite.com" maxlength="300">
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save Contact Info</button>
+            </div>
+
+            <div class="showcase-card">
+                <h3>Social Media</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Link your social accounts so customers can follow you. Your socials will be displayed alongside the market's socials on your landing page.
+                </p>
+                <div class="form-group">
+                    <label for="landing-facebook">Facebook URL</label>
+                    <input type="text" id="landing-facebook" placeholder="https://facebook.com/yourbusiness" maxlength="300">
+                </div>
+                <div class="form-group">
+                    <label for="landing-instagram">Instagram URL</label>
+                    <input type="text" id="landing-instagram" placeholder="https://instagram.com/yourbusiness" maxlength="300">
+                </div>
+                <div class="form-group">
+                    <label for="landing-tiktok">TikTok URL</label>
+                    <input type="text" id="landing-tiktok" placeholder="https://tiktok.com/@yourbusiness" maxlength="300">
+                </div>
+                <div class="form-group">
+                    <label for="landing-twitter">X (Twitter) URL</label>
+                    <input type="text" id="landing-twitter" placeholder="https://x.com/yourbusiness" maxlength="300">
+                </div>
+                <div class="form-group">
+                    <label for="landing-etsy">Etsy Shop URL</label>
+                    <input type="text" id="landing-etsy" placeholder="https://etsy.com/shop/yourbusiness" maxlength="300">
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save Socials</button>
+            </div>
+
+            <div class="showcase-card">
+                <h3>SEO Settings</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Help search engines find your page. These will appear in Google search results.
+                </p>
+                <div class="form-group">
+                    <label for="landing-meta-title">Page Title (shown in search results and browser tab)</label>
+                    <input type="text" id="landing-meta-title" placeholder="e.g. Grandma's Treasures — Handcrafted Quilts at Bowenstreet Market" maxlength="200">
+                </div>
+                <div class="form-group">
+                    <label for="landing-meta-desc">Page Description (shown below the title in search results)</label>
+                    <textarea id="landing-meta-desc" placeholder="A short summary (120-160 characters) of what you sell and why people should visit..." maxlength="500" style="min-height:60px"></textarea>
+                    <div class="char-count"><span id="meta-desc-count">0</span> / 500</div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save SEO</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <nav class="mobile-bottom-nav">
@@ -342,6 +460,7 @@ async function loadShowcase() {
 
         renderPhotos();
         renderVideo();
+        renderLandingSection();
     } catch (err) {
         showStatus(err.message, 'error');
     }
@@ -532,6 +651,152 @@ async function generateDescription() {
     } finally {
         btn.disabled = false;
         btn.textContent = '\u2728 AI Assist \u2014 Write Description';
+    }
+}
+
+function renderLandingSection() {
+    var section = document.getElementById('landing-section');
+    section.style.display = 'block';
+
+    if (!showcase.landing_page_enabled) {
+        document.getElementById('landing-disabled-msg').style.display = 'block';
+        document.getElementById('landing-editor').style.display = 'none';
+        return;
+    }
+
+    document.getElementById('landing-disabled-msg').style.display = 'none';
+    document.getElementById('landing-editor').style.display = 'block';
+
+    document.getElementById('landing-slug').value = showcase.landing_slug || '';
+    document.getElementById('landing-about').value = showcase.landing_about || '';
+    document.getElementById('landing-email').value = showcase.landing_contact_email || '';
+    document.getElementById('landing-phone').value = showcase.landing_contact_phone || '';
+    document.getElementById('landing-website').value = showcase.landing_website || '';
+    document.getElementById('landing-facebook').value = showcase.landing_facebook || '';
+    document.getElementById('landing-instagram').value = showcase.landing_instagram || '';
+    document.getElementById('landing-tiktok').value = showcase.landing_tiktok || '';
+    document.getElementById('landing-twitter').value = showcase.landing_twitter || '';
+    document.getElementById('landing-etsy').value = showcase.landing_etsy || '';
+    document.getElementById('landing-meta-title').value = showcase.landing_meta_title || '';
+    document.getElementById('landing-meta-desc').value = showcase.landing_meta_desc || '';
+    updateAboutCount();
+    updateMetaDescCount();
+    updateLandingLink();
+}
+
+function updateAboutCount() {
+    var el = document.getElementById('about-count');
+    if (el) el.textContent = (document.getElementById('landing-about').value || '').length;
+}
+
+function updateMetaDescCount() {
+    var el = document.getElementById('meta-desc-count');
+    if (el) el.textContent = (document.getElementById('landing-meta-desc').value || '').length;
+}
+
+document.getElementById('landing-about').addEventListener('input', updateAboutCount);
+document.getElementById('landing-meta-desc').addEventListener('input', updateMetaDescCount);
+
+function updateLandingLink() {
+    var slug = showcase.landing_slug;
+    var box = document.getElementById('landing-link-box');
+    if (slug) {
+        var url = window.location.origin + '/v/' + slug;
+        var link = document.getElementById('landing-link');
+        link.href = url;
+        link.textContent = 'bowenstreetmm.com/v/' + slug;
+        box.style.display = 'block';
+    } else {
+        box.style.display = 'none';
+    }
+}
+
+function copyLandingLink() {
+    var slug = showcase.landing_slug;
+    if (!slug) return;
+    var url = 'https://www.bowenstreetmm.com/v/' + slug;
+    navigator.clipboard.writeText(url).then(function() {
+        showStatus('Link copied to clipboard!', 'success');
+    });
+}
+
+async function saveSlug() {
+    var token = sessionStorage.getItem('bmm_token');
+    var slug = document.getElementById('landing-slug').value.trim().toLowerCase();
+    if (!slug) { showStatus('Please enter a URL slug.', 'error'); return; }
+    var statusEl = document.getElementById('slug-status');
+    statusEl.textContent = 'Saving...';
+    statusEl.style.color = 'var(--text-light)';
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine/landing-slug', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: slug })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Failed to save URL');
+        showcase = data;
+        document.getElementById('landing-slug').value = showcase.landing_slug || '';
+        updateLandingLink();
+        statusEl.textContent = 'Saved!';
+        statusEl.style.color = '#6EE7B7';
+        showStatus('Your page URL has been saved!', 'success');
+    } catch (err) {
+        statusEl.textContent = err.message;
+        statusEl.style.color = '#FCA5A5';
+        showStatus(err.message, 'error');
+    }
+}
+
+async function saveLandingDetails() {
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                landing_about: document.getElementById('landing-about').value.trim(),
+                landing_contact_email: document.getElementById('landing-email').value.trim(),
+                landing_contact_phone: document.getElementById('landing-phone').value.trim(),
+                landing_website: document.getElementById('landing-website').value.trim(),
+                landing_facebook: document.getElementById('landing-facebook').value.trim(),
+                landing_instagram: document.getElementById('landing-instagram').value.trim(),
+                landing_tiktok: document.getElementById('landing-tiktok').value.trim(),
+                landing_twitter: document.getElementById('landing-twitter').value.trim(),
+                landing_etsy: document.getElementById('landing-etsy').value.trim(),
+                landing_meta_title: document.getElementById('landing-meta-title').value.trim(),
+                landing_meta_desc: document.getElementById('landing-meta-desc').value.trim()
+            })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Failed to save');
+        showcase = data;
+        showStatus('Landing page details saved!', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+}
+
+async function generateAbout() {
+    var btn = document.getElementById('ai-about-btn');
+    btn.disabled = true;
+    btn.textContent = 'Writing...';
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine/ai-landing-about', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'AI failed');
+        document.getElementById('landing-about').value = data.about;
+        updateAboutCount();
+        showStatus('AI about section generated! Review and edit, then click Save.', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '\u2728 AI Assist \u2014 Write About Section';
     }
 }
 
