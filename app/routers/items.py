@@ -117,6 +117,9 @@ async def create_item(
     else:
         barcode_val = await generate_short_barcode(db)
 
+    has_photos = bool(data.photo_urls and len(data.photo_urls) > 0)
+    is_online_val = data.is_online if has_photos else False
+
     item = Item(
         vendor_id=vendor_id,
         sku=sku,
@@ -127,7 +130,7 @@ async def create_item(
         price=data.price,
         quantity=data.quantity,
         photo_urls=data.photo_urls,
-        is_online=data.is_online,
+        is_online=is_online_val,
         is_tax_exempt=data.is_tax_exempt,
         is_consignment=data.is_consignment or False,
         consignment_rate=data.consignment_rate,
@@ -308,6 +311,11 @@ async def update_item(
         raise HTTPException(status_code=403, detail="Access denied")
 
     update_data = data.model_dump(exclude_none=True)
+    if update_data.get("is_online"):
+        current_photos = item.photo_urls or []
+        has_image = bool(item.image_path) if hasattr(item, 'image_path') else False
+        if not current_photos and not has_image:
+            raise HTTPException(status_code=400, detail="Items must have a photo to be listed online")
     for field, value in update_data.items():
         setattr(item, field, value)
 

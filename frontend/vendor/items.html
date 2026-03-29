@@ -54,6 +54,13 @@
         .item-card-photos .add-photo-btn:hover { border-color:var(--gold-dim); color:var(--gold); }
         .item-card-photos .add-photo-btn input { position:absolute; inset:0; opacity:0; cursor:pointer; }
 
+        .online-photo-note {
+            display:block; font-size:0.7rem; color:var(--gold-dim); opacity:0.85;
+            margin-left:0.25rem; font-style:italic;
+        }
+        #f-is-online:disabled { opacity:0.35; cursor:not-allowed; }
+        #online-check-label.disabled-online { opacity:0.6; cursor:not-allowed; }
+
         .status-toggle {
             position:relative; display:inline-block; width:40px; height:22px; flex-shrink:0;
         }
@@ -479,9 +486,10 @@
                 </div>
 
                 <div class="form-group" style="display:flex; gap:1.5rem; flex-wrap:wrap; padding-top:0.25rem">
-                    <label class="form-check">
+                    <label class="form-check" id="online-check-label">
                         <input type="checkbox" id="f-is-online">
                         List Online
+                        <span id="online-photo-note" class="online-photo-note" style="display:none">Upload a photo to list online</span>
                     </label>
                     <label class="form-check">
                         <input type="checkbox" id="f-is-tax-exempt">
@@ -567,6 +575,32 @@
         }
     });
 
+    function itemHasPhoto() {
+        if (pendingPhotoFile) return true;
+        var existingList = document.getElementById('existing-photos-list');
+        if (existingList && existingList.children.length > 0) return true;
+        var previewImg = document.querySelector('#photo-preview-container .image-path-preview');
+        if (previewImg) return true;
+        return false;
+    }
+
+    function updateOnlineCheckbox() {
+        var cb = document.getElementById('f-is-online');
+        var note = document.getElementById('online-photo-note');
+        var label = document.getElementById('online-check-label');
+        var hasPhoto = itemHasPhoto();
+        if (hasPhoto) {
+            cb.disabled = false;
+            note.style.display = 'none';
+            label.classList.remove('disabled-online');
+        } else {
+            cb.checked = false;
+            cb.disabled = true;
+            note.style.display = '';
+            label.classList.add('disabled-online');
+        }
+    }
+
     // ── Photo upload ───────────────────────────────────────────────────
     function triggerPhotoInput() {
         document.getElementById('f-photo').click();
@@ -589,6 +623,7 @@
                 <div class="photo-upload-label" style="margin-top:4px">Tap to change photo</div>`;
             document.getElementById('ai-describe-wrap').style.display = 'flex';
             dismissSuggestions();
+            updateOnlineCheckbox();
         };
         reader.readAsDataURL(file);
     }
@@ -605,6 +640,7 @@
             document.getElementById('ai-describe-wrap').style.display = 'none';
         }
         dismissSuggestions();
+        updateOnlineCheckbox();
     }
 
     function renderExistingPhotos(photoUrls) {
@@ -629,6 +665,7 @@
         try {
             const updated = await apiFetch('DELETE', `/api/v1/items/${editingId}/photo?photo_url=${encodeURIComponent(url)}`);
             renderExistingPhotos(updated.photo_urls);
+            updateOnlineCheckbox();
             await loadItems();
         } catch (e) {
             showAlert('modal-alert', e.message, 'error');
@@ -953,6 +990,7 @@
                 <div class="photo-upload-label" style="margin-top:4px">Tap to change photo</div>`;
         }
         renderExistingPhotos(item?.photo_urls || []);
+        updateOnlineCheckbox();
 
         // AI button: always visible in edit mode, hidden in add mode until photo selected
         document.getElementById('ai-describe-wrap').style.display = item ? 'flex' : 'none';

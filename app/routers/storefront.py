@@ -60,6 +60,13 @@ async def get_shop_items(
         .where(Item.status == "active")
         .where(Item.quantity > 0)
         .where(Vendor.is_active == True)
+        .where(Item.is_online == True)
+        .where(
+            or_(
+                Item.image_path.isnot(None),
+                Item.photo_urls != [],
+            )
+        )
     )
 
     if search:
