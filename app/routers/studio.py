@@ -34,7 +34,7 @@ async def get_optional_user(
     if not token:
         return None
     try:
-        from jose import jwt
+        import jwt
         from app.routers.auth import SECRET_KEY, ALGORITHM
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
