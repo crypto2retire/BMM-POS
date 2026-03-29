@@ -23,6 +23,7 @@ from app.services.email_templates import (
     rent_overdue_27day_email,
 )
 from app.routers.notifications import notify_weekly_report
+from app.routers.settings import get_setting
 
 logger = logging.getLogger(__name__)
 
@@ -415,6 +416,9 @@ async def process_payouts(
     shortfall_count = 0
     total_net = Decimal("0")
 
+    payout_emails_on = (await get_setting(db, "notify_payout")) == "true"
+    rent_emails_on = (await get_setting(db, "notify_rent_due")) == "true"
+
     for v in vendors:
         bal_result = await db.execute(
             select(VendorBalance).where(VendorBalance.vendor_id == v.id)
@@ -477,7 +481,7 @@ async def process_payouts(
 
         if v.email:
             try:
-                if shortfall > 0:
+                if shortfall > 0 and rent_emails_on:
                     subj, html, plain = await rent_shortfall_email(
                         vendor_name=v.name or "Vendor",
                         gross_sales=float(gross),
@@ -488,7 +492,7 @@ async def process_payouts(
                         db=db,
                     )
                     await send_email_safe(v.email, subj, html, plain)
-                elif net > 0:
+                elif net > 0 and payout_emails_on:
                     subj, html, plain = await payout_with_rent_email(
                         vendor_name=v.name or "Vendor",
                         gross_sales=float(gross),
@@ -518,6 +522,16 @@ async def send_rent_reminders(
     db: AsyncSession = Depends(get_db),
     _: Vendor = Depends(require_admin),
 ):
+    rent_emails_on = (await get_setting(db, "notify_rent_due")) == "true"
+    if not rent_emails_on:
+        return {
+            "success": True,
+            "message": "Rent reminder emails are turned off in Settings > Notifications.",
+            "sent_15_day": 0,
+            "sent_27_day": 0,
+            "skipped_no_email": 0,
+        }
+
     today = date.today()
     current_period = date(today.year, today.month, 1)
 
