@@ -41,6 +41,8 @@ The frontend design adheres to Bowenstreet Market branding with a dark (`#38383B
 - **Rent Tracking**: Monthly rent tracking for vendors, including payment methods and overdue flagging. Admin can record rent payments from the dashboard (Pay button on due/overdue rows, or via detail panel). Payment modal supports cash/check/zelle/square/other with duplicate-month prevention.
 - **Admin Settings Panel**: Tabbed settings page (`/admin/settings.html`) with 7 tabs: Store Details, Taxes & Policies, POS & Receipts, Features, User Roles, Labels, Notifications. Uses key-value `store_settings` table. Features tab has toggleable modules (Rent, Studio, Gift Cards, AI Assistant, CSV Import, Time Clock, Split Payments, Consignment). User Roles tab has a permission matrix grid (Vendor/Cashier columns with checkboxes; Admin always full access). Settings are persisted via `POST /api/v1/admin/settings` and loaded via `GET /api/v1/admin/settings`. New keys are auto-seeded with defaults on first load.
 
+- **Email Notifications**: Gmail API integration via Replit connector (`app/services/email.py`). Branded HTML email templates (`app/services/email_templates.py`) for: product sold, payout processed, expiring items, weekly reports, rent due, vendor welcome, order confirmations, and test emails. Notification toggles in admin settings control which emails are sent. Test email endpoint at `POST /api/v1/notifications/test-email`.
+
 ## External Dependencies
 
 - **Database**: PostgreSQL (via Replit's `DATABASE_URL`).

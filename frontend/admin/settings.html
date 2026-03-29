@@ -643,6 +643,24 @@
                 </div>
             </div>
         </div>
+
+        <div class="settings-section">
+            <div class="settings-section-header">Test Email</div>
+            <div class="settings-section-body">
+                <p style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.75rem">Send a test email to verify your email notifications are working correctly.</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Recipient Email</label>
+                        <input type="email" id="test-email-address" placeholder="Enter email address">
+                        <small>Leave blank to send to your admin email</small>
+                    </div>
+                    <div class="form-group" style="display:flex;align-items:flex-end;padding-bottom:1.4rem">
+                        <button class="btn-save" id="btn-test-email" onclick="sendTestEmail()" style="white-space:nowrap">Send Test Email</button>
+                    </div>
+                </div>
+                <div id="test-email-status" style="font-size:0.82rem;margin-top:0.25rem"></div>
+            </div>
+        </div>
     </div>
 
     <div class="save-bar">
@@ -760,6 +778,30 @@
             setTimeout(function() { statusEl.innerHTML = ''; }, 4000);
         } catch (e) {
             statusEl.innerHTML = '<span style="color:#f87171">' + (e.message || 'Failed to save') + '</span>';
+        }
+    }
+
+    async function sendTestEmail() {
+        var btn = document.getElementById('btn-test-email');
+        var statusEl = document.getElementById('test-email-status');
+        var emailInput = document.getElementById('test-email-address');
+        var toEmail = emailInput.value.trim();
+
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        statusEl.innerHTML = '';
+
+        try {
+            var body = {};
+            if (toEmail) body.to_email = toEmail;
+            var result = await apiPost('/api/v1/notifications/test-email', body);
+            statusEl.innerHTML = '<span style="color:#4ade80">' + (result.message || 'Test email sent successfully!') + '</span>';
+        } catch (e) {
+            statusEl.innerHTML = '<span style="color:#f87171">Failed: ' + (e.message || 'Could not send test email') + '</span>';
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Send Test Email';
+            setTimeout(function() { statusEl.innerHTML = ''; }, 8000);
         }
     }
 

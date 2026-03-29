@@ -12,7 +12,7 @@ from pathlib import Path
 from sqlalchemy import text
 
 from app.database import AsyncSessionLocal, engine, Base
-from app.routers import auth, vendors, items, sales, pos, assistant, storefront, rent, admin, reports, settings, studio, bulk_import
+from app.routers import auth, vendors, items, sales, pos, assistant, storefront, rent, admin, reports, settings, studio, bulk_import, notifications
 
 
 @asynccontextmanager
@@ -263,6 +263,7 @@ app.include_router(reports.router, prefix="/api/v1")
 app.include_router(settings.router, prefix="/api/v1")
 app.include_router(studio.router, prefix="/api/v1")
 app.include_router(bulk_import.router, prefix="/api/v1")
+app.include_router(notifications.router, prefix="/api/v1")
 
 @app.get("/llms.txt", response_class=PlainTextResponse)
 async def llms_txt():
