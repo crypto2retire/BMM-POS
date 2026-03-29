@@ -34,7 +34,10 @@ async def rent_status(
     _: Vendor = Depends(require_cashier_or_admin),
 ):
     vendors_result = await db.execute(
-        select(Vendor).where(Vendor.status == "active").order_by(Vendor.name)
+        select(Vendor).where(
+            Vendor.status == "active",
+            Vendor.monthly_rent > 0,
+        ).order_by(Vendor.name)
     )
     vendors = vendors_result.scalars().all()
 

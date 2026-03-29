@@ -544,9 +544,7 @@
                 + '<td>' + payDate + '</td>'
                 + '<td>' + statusBadge(v.status) + '</td>'
                 + '<td onclick="event.stopPropagation()">'
-                + (v.status !== 'current'
-                    ? '<button class="record-pay-btn" onclick="openPayModalFor(' + v.id + ')">Pay</button> '
-                    : '')
+                + '<button class="record-pay-btn" onclick="openPayModalFor(' + v.id + ')">Pay</button> '
                 + flagBtn(v)
                 + '</td>'
                 + '</tr>';
