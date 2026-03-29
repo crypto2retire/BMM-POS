@@ -79,12 +79,19 @@
             font-style: italic;
         }
 
+        .report-table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
         @media (max-width: 767px) {
             .main-content { padding-bottom: 70px; }
             .report-controls { flex-direction: column; align-items: stretch; }
             .report-controls select,
             .report-controls input { max-width: 100%; }
+            .report-controls button { width: 100%; min-height: 44px; }
             .summary-grid { grid-template-columns: 1fr 1fr; }
+            .summary-card .val { font-size: 1.4rem; }
         }
     </style>
 </head>

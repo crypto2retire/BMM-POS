@@ -101,7 +101,15 @@
             border-color:var(--gold-dim); color:var(--text);
         }
 
-        @media (max-width: 767px) { .desktop-only { display:none !important; } }
+        @media (max-width: 767px) {
+            .desktop-only { display:none !important; }
+            .items-toolbar { gap: 0.5rem; }
+            .items-toolbar .search-input { min-width: 0; width: 100%; order: -1; }
+            .filter-label-bar { flex-direction: column; align-items: stretch !important; gap: 0.6rem !important; }
+            .filter-label-bar .status-filter-bar { justify-content: flex-start; }
+            .filter-label-bar > div[style*="display:flex"] { width: 100%; }
+            .filter-label-bar select { width: 100% !important; min-width: 0 !important; }
+        }
         @media (min-width: 768px) { .mobile-only { display:none !important; } }
 
         /* ── In-form AI styles ──────────────────────────────── */
@@ -264,7 +272,7 @@
         <button class="btn btn-primary" style="font-size:0.72rem; padding:0.3rem 0.8rem; margin-left:auto">Select &amp; Print</button>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem">
+    <div class="filter-label-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem">
         <div class="status-filter-bar" id="status-filter-bar" style="margin-bottom:0">
             <button class="active" data-status="active" onclick="setStatusFilter('active')">Active</button>
             <button data-status="inactive" onclick="setStatusFilter('inactive')">Inactive</button>

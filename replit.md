@@ -14,7 +14,7 @@ The system is built on a Python FastAPI backend with PostgreSQL for data persist
 
 ### UI/UX Decisions
 
-The frontend design adheres to Bowenstreet Market branding with a dark (`#38383B`) and accent (`#A8A6A1`) color scheme, using EB Garamond for headings and Roboto for body text. All design elements feature 0px radius. The UI is fully mobile-first responsive, adapting layouts for various screen sizes (375px/390px/768px/1024px) with considerations for touch targets and input readability. Special print styles are implemented for thermal-printer-compatible receipts (80mm width).
+The frontend design adheres to Bowenstreet Market branding with a dark (`#38383B`) and accent (`#A8A6A1`) color scheme, using EB Garamond for headings and Roboto for body text. All design elements feature 0px radius. The UI is fully mobile-first responsive, adapting layouts for various screen sizes (375px/390px/768px/1024px) with considerations for touch targets and input readability. Special print styles are implemented for thermal-printer-compatible receipts (80mm width). Admin pages use a consistent mobile pattern: hamburger nav dropdown (`.mobile-nav-dropdown.open`), `admin-bottom-nav` with 5 key links, and mobile card views (`.vendor-mob-card`, `.payout-mob-card`, `.rent-mob-card`) that replace data tables below 767px.
 
 ### Technical Implementations
 

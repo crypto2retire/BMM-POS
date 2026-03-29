@@ -175,9 +175,34 @@
         }
         .confirm-go:hover { background: #6ab890; }
 
+        .payout-cards-mobile { display: none; flex-direction: column; gap: 0.75rem; }
+        .payout-mob-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1rem;
+        }
+        .payout-mob-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        .payout-mob-name { font-family: 'EB Garamond', serif; font-size: 1.05rem; font-weight: 500; }
+        .payout-mob-booth { font-size: 0.75rem; color: var(--text-light); margin-top: 2px; }
+        .payout-mob-net { font-family: 'EB Garamond', serif; font-size: 1.15rem; font-weight: 600; color: #7BC4A0; text-align: right; }
+        .payout-mob-row { display: flex; justify-content: space-between; font-size: 0.82rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.04); }
+        .payout-mob-label { color: var(--text-light); }
+
         @media (max-width: 767px) {
             .payout-stat-value { font-size: 1.6rem; }
             .main-content { padding-bottom: 70px; }
+            .table-wrapper { display: none; }
+            .payout-cards-mobile { display: flex; }
+            .action-bar { flex-direction: column; }
+            .action-bar .process-btn,
+            .action-bar .reminder-btn { width: 100%; text-align: center; min-height: 48px; }
+            .confirm-actions { flex-direction: column-reverse; }
+            .confirm-actions button { width: 100%; min-height: 48px; }
         }
     </style>
 </head>
@@ -273,6 +298,7 @@
                 </table>
             </div>
         </div>
+        <div class="payout-cards-mobile" id="payout-cards-mobile"></div>
     </div>
 </div>
 
@@ -313,30 +339,42 @@
 
     function renderTable(vendors) {
         var tbody = document.getElementById('payout-table-body');
+        var mobileCards = document.getElementById('payout-cards-mobile');
         if (!vendors || vendors.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No vendors found.</td></tr>';
+            mobileCards.innerHTML = '<div class="empty-state">No vendors found.</div>';
             return;
         }
-        tbody.innerHTML = vendors.map(function(v) {
-            var statusHtml = '';
-            if (v.shortfall > 0) {
-                statusHtml = '<span class="shortfall-badge">Shortfall $' + v.shortfall.toFixed(2) + '</span>';
-            } else if (v.rent_already_paid) {
-                statusHtml = '<span class="rent-paid-badge">Rent Paid</span>';
-            } else if (v.rent_to_deduct > 0) {
-                statusHtml = '<span style="font-size:0.75rem;color:var(--text-light)">Rent from sales</span>';
-            } else {
-                statusHtml = '<span style="font-size:0.75rem;color:var(--text-light)">No rent</span>';
-            }
 
+        function statusHtml(v) {
+            if (v.shortfall > 0) return '<span class="shortfall-badge">Shortfall $' + v.shortfall.toFixed(2) + '</span>';
+            if (v.rent_already_paid) return '<span class="rent-paid-badge">Rent Paid</span>';
+            if (v.rent_to_deduct > 0) return '<span style="font-size:0.75rem;color:var(--text-light)">Rent from sales</span>';
+            return '<span style="font-size:0.75rem;color:var(--text-light)">No rent</span>';
+        }
+
+        tbody.innerHTML = vendors.map(function(v) {
             return '<tr>'
                 + '<td><strong>' + esc(v.name) + '</strong></td>'
                 + '<td>' + esc(v.booth_number) + '</td>'
                 + '<td>$' + v.gross_sales.toFixed(2) + '</td>'
                 + '<td>' + (v.rent_already_paid ? '<s style="color:var(--text-light)">$' + v.monthly_rent.toFixed(2) + '</s> <small style="color:#7BC4A0">paid</small>' : '$' + v.rent_to_deduct.toFixed(2)) + '</td>'
                 + '<td style="font-weight:600;color:#7BC4A0">$' + v.net_payout.toFixed(2) + '</td>'
-                + '<td>' + statusHtml + '</td>'
+                + '<td>' + statusHtml(v) + '</td>'
                 + '</tr>';
+        }).join('');
+
+        mobileCards.innerHTML = vendors.map(function(v) {
+            return '<div class="payout-mob-card">'
+                + '<div class="payout-mob-top">'
+                + '<div><div class="payout-mob-name">' + esc(v.name) + '</div>'
+                + '<div class="payout-mob-booth">Booth ' + esc(v.booth_number) + '</div></div>'
+                + '<div class="payout-mob-net">$' + v.net_payout.toFixed(2) + '</div>'
+                + '</div>'
+                + '<div class="payout-mob-row"><span class="payout-mob-label">Gross Sales</span><span>$' + v.gross_sales.toFixed(2) + '</span></div>'
+                + '<div class="payout-mob-row"><span class="payout-mob-label">Rent</span><span>' + (v.rent_already_paid ? '<s>$' + v.monthly_rent.toFixed(2) + '</s> paid' : '$' + v.rent_to_deduct.toFixed(2)) + '</span></div>'
+                + '<div class="payout-mob-row"><span class="payout-mob-label">Status</span><span>' + statusHtml(v) + '</span></div>'
+                + '</div>';
         }).join('');
     }
 

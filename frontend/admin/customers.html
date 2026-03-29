@@ -47,6 +47,34 @@
         .expand-arrow { display:inline-block; transition:transform 0.2s; color: var(--gold-dim); }
         .expand-arrow.open { transform:rotate(90deg); }
         .balance-tag { font-weight:700; color:var(--success); font-family: 'EB Garamond', serif; }
+
+        .vendor-cards-mobile { display: none; flex-direction: column; gap: 0.75rem; }
+        .vendor-mob-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .vendor-mob-card:hover { border-color: var(--warm-border); }
+        .vendor-mob-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+        .vendor-mob-name { font-family: 'EB Garamond', serif; font-size: 1.1rem; font-weight: 500; }
+        .vendor-mob-meta { font-size: 0.78rem; color: var(--text-light); margin-top: 4px; }
+        .vendor-mob-right { text-align: right; flex-shrink: 0; }
+        .vendor-mob-detail { display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.06); }
+        .vendor-mob-detail.open { display: block; }
+
+        @media (max-width: 767px) {
+            .main-content { padding-bottom: 70px; }
+            .card[style*="padding:0"] .table-wrapper { display: none; }
+            .vendor-cards-mobile { display: flex; }
+            .search-bar .form-control { max-width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -70,8 +98,22 @@
             <a href="/pos/index.html">POS Terminal</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
     </div>
 </nav>
+<div class="mobile-nav-dropdown" id="mobile-nav">
+    <a href="/admin/index.html">Dashboard</a>
+    <a href="/admin/vendors.html">Vendors</a>
+    <a href="/admin/rent.html">Rent</a>
+    <a href="/vendor/items.html">Items</a>
+    <a href="/admin/customers.html" class="active">Vendor Directory</a>
+    <a href="/admin/studio.html">Studio</a>
+    <a href="/admin/reports.html">Reports</a>
+    <a href="/admin/payouts.html">Payouts</a>
+    <a href="/admin/settings.html">Settings</a>
+    <a href="/pos/index.html">POS Terminal</a>
+    <a href="#" onclick="handleLogout()">Logout</a>
+</div>
 <div class="main-content">
     <div id="alert-container"></div>
     <div class="page-header">
@@ -108,7 +150,17 @@
             </table>
         </div>
     </div>
+
+    <div class="vendor-cards-mobile" id="vendor-cards-mobile"></div>
 </div>
+
+<nav class="admin-bottom-nav">
+    <a href="/admin/index.html"><span class="nav-icon">&#127968;</span>Dashboard</a>
+    <a href="/admin/vendors.html"><span class="nav-icon">&#128101;</span>Vendors</a>
+    <a href="/admin/rent.html"><span class="nav-icon">&#128179;</span>Rent</a>
+    <a href="/vendor/items.html"><span class="nav-icon">&#127991;&#65039;</span>Items</a>
+    <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
+</nav>
 
 <script src="/static/js/api.js"></script>
 <script>
@@ -120,6 +172,17 @@
         window.location.href = '/vendor/login.html';
     }
 
+    function toggleMobileNav() {
+        document.getElementById('mobile-nav').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+        var nav = document.getElementById('mobile-nav');
+        var btn = document.getElementById('hamburger-btn');
+        if (nav && nav.classList.contains('open') && !nav.contains(e.target) && e.target !== btn) {
+            nav.classList.remove('open');
+        }
+    });
+
     function filterVendors() {
         const q = document.getElementById('search-input').value.toLowerCase().trim();
         const rows = document.querySelectorAll('.vendor-main-row');
@@ -129,6 +192,10 @@
             const show = !q || text.includes(q);
             row.style.display = show ? '' : 'none';
             if (expRow) expRow.style.display = 'none';
+        });
+        document.querySelectorAll('.vendor-mob-card').forEach(card => {
+            const text = card.dataset.searchText || '';
+            card.style.display = (!q || text.includes(q)) ? '' : 'none';
         });
     }
 
@@ -210,11 +277,13 @@
 
     function renderVendors(vendors) {
         const tbody = document.getElementById('vendors-tbody');
+        const mobileContainer = document.getElementById('vendor-cards-mobile');
         const vendorList = vendors.filter(v => v.role === 'vendor');
         document.getElementById('vendor-count').textContent = `${vendorList.length} vendors`;
 
         if (vendorList.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No vendors found.</td></tr>';
+            mobileContainer.innerHTML = '<div class="empty-state">No vendors found.</div>';
             return;
         }
 
@@ -245,6 +314,33 @@
                 </td>
             </tr>`;
         }).join('');
+
+        mobileContainer.innerHTML = vendorList.map(v => {
+            const balance = v.current_balance != null ? `$${parseFloat(v.current_balance).toFixed(2)}` : '$0.00';
+            const statusClass = v.status === 'active' ? 'badge-green' : 'badge-red';
+            return `<div class="vendor-mob-card" data-search-text="${(v.name + ' ' + v.email + ' ' + (v.booth_number || '')).toLowerCase()}" onclick="toggleMobCard(this)">
+                <div class="vendor-mob-card-top">
+                    <div>
+                        <div class="vendor-mob-name">${v.name}</div>
+                        <div class="vendor-mob-meta">Booth ${v.booth_number || '—'} &middot; <span class="badge ${statusClass}" style="font-size:0.6rem">${v.status}</span></div>
+                    </div>
+                    <div class="vendor-mob-right">
+                        <span class="balance-tag">${balance}</span>
+                    </div>
+                </div>
+                <div class="vendor-mob-detail">
+                    <div style="display:flex;gap:1.5rem;flex-wrap:wrap;font-size:0.85rem;margin-bottom:0.5rem">
+                        <span><label style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Email</label><br>${v.email}</span>
+                        <span><label style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Phone</label><br>${v.phone || '—'}</span>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function toggleMobCard(card) {
+        var detail = card.querySelector('.vendor-mob-detail');
+        if (detail) detail.classList.toggle('open');
     }
 
     async function init() {

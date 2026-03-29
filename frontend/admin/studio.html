@@ -181,6 +181,8 @@
             .cal-event { font-size: 0.55rem; }
             .calendar-header { flex-direction: column; align-items: flex-start; }
             .fm-row, .fm-row-3 { grid-template-columns: 1fr; }
+            .main-content { padding-bottom: 70px; }
+            .add-class-btn { width: 100%; text-align: center; min-height: 44px; }
         }
     </style>
 </head>
@@ -325,6 +327,14 @@
         </div>
     </div>
 </div>
+
+<nav class="admin-bottom-nav">
+    <a href="/admin/index.html"><span class="nav-icon">&#127968;</span>Dashboard</a>
+    <a href="/admin/vendors.html"><span class="nav-icon">&#128101;</span>Vendors</a>
+    <a href="/admin/rent.html"><span class="nav-icon">&#128179;</span>Rent</a>
+    <a href="/vendor/items.html"><span class="nav-icon">&#127991;&#65039;</span>Items</a>
+    <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
+</nav>
 
 <script src="/static/js/api.js"></script>
 <script>
@@ -630,7 +640,7 @@
         window.location.href = '/vendor/login.html';
     }
     function toggleMobileNav() {
-        document.getElementById('mobile-nav').classList.toggle('show');
+        document.getElementById('mobile-nav').classList.toggle('open');
     }
 
     init();

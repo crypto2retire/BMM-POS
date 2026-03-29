@@ -329,10 +329,35 @@
             font-style: italic;
         }
 
+        .rent-cards-mobile { display: none; flex-direction: column; gap: 0.75rem; }
+        .rent-mob-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .rent-mob-card:hover { border-color: var(--warm-border); }
+        .rent-mob-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        .rent-mob-name { font-family: 'EB Garamond', serif; font-size: 1.05rem; font-weight: 500; }
+        .rent-mob-sub { font-size: 0.75rem; color: var(--text-light); margin-top: 2px; }
+        .rent-mob-right { text-align: right; flex-shrink: 0; }
+        .rent-mob-row { display: flex; justify-content: space-between; font-size: 0.82rem; margin-top: 0.4rem; }
+        .rent-mob-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.04); }
+
         @media (max-width: 767px) {
             .rent-stat-value { font-size: 1.9rem; }
             .main-content { padding-bottom: 70px; }
             .detail-info-grid { grid-template-columns: 1fr; }
+            .table-wrapper { display: none; }
+            .rent-cards-mobile { display: flex; }
+            .search-bar { flex-direction: column; }
+            .search-bar input { max-width: 100%; }
         }
     </style>
 </head>
@@ -426,6 +451,7 @@
                 </table>
             </div>
         </div>
+        <div class="rent-cards-mobile" id="rent-cards-mobile"></div>
     </div>
 </div>
 
@@ -550,8 +576,10 @@
 
     function renderRows(vendors) {
         var tbody = document.getElementById('rent-table-body');
+        var mobileCards = document.getElementById('rent-cards-mobile');
         if (vendors.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No vendors found.</td></tr>';
+            mobileCards.innerHTML = '<div class="empty-state">No vendors found.</div>';
             return;
         }
         tbody.innerHTML = vendors.map(function(v) {
@@ -570,6 +598,25 @@
                 + flagBtn(v)
                 + '</td>'
                 + '</tr>';
+        }).join('');
+
+        mobileCards.innerHTML = vendors.map(function(v) {
+            var payDate = v.last_payment_date ? formatDateMDY(v.last_payment_date) : '—';
+            return '<div class="rent-mob-card" onclick="openVendorDetail(' + v.id + ')">'
+                + '<div class="rent-mob-top">'
+                + '<div>'
+                + '<div class="rent-mob-name">' + (v.rent_flagged ? '🚩 ' : '') + v.name + '</div>'
+                + '<div class="rent-mob-sub">Booth ' + v.booth_number + '</div>'
+                + '</div>'
+                + '<div class="rent-mob-right">' + statusBadge(v.status) + '</div>'
+                + '</div>'
+                + '<div class="rent-mob-row"><span style="color:var(--text-light)">Rent</span><span>$' + v.monthly_rent.toFixed(2) + '</span></div>'
+                + '<div class="rent-mob-row"><span style="color:var(--text-light)">Last Paid</span><span>' + payDate + '</span></div>'
+                + '<div class="rent-mob-actions" onclick="event.stopPropagation()">'
+                + '<button class="record-pay-btn" style="flex:1;min-height:40px" onclick="openPayModalFor(' + v.id + ')">Pay</button> '
+                + flagBtn(v)
+                + '</div>'
+                + '</div>';
         }).join('');
     }
 
@@ -598,19 +645,23 @@
                 v.rent_flagged = data.rent_flagged;
                 btn.className   = data.rent_flagged ? 'flag-btn flagged' : 'flag-btn';
                 btn.textContent = data.rent_flagged ? '🚩 Unflag' : '⚑ Flag';
-                const nameCell = btn.closest('tr').querySelector('.vendor-name-cell');
-                if (nameCell) {
-                    const existing = nameCell.querySelector('.flag-icon');
-                    if (data.rent_flagged && !existing) {
-                        const span = document.createElement('span');
-                        span.className = 'flag-icon';
-                        span.title = 'Flagged overdue';
-                        span.textContent = '🚩';
-                        nameCell.prepend(span);
-                    } else if (!data.rent_flagged && existing) {
-                        existing.remove();
+                var row = btn.closest('tr');
+                if (row) {
+                    var nameCell = row.querySelector('.vendor-name-cell');
+                    if (nameCell) {
+                        var existing = nameCell.querySelector('.flag-icon');
+                        if (data.rent_flagged && !existing) {
+                            var span = document.createElement('span');
+                            span.className = 'flag-icon';
+                            span.title = 'Flagged overdue';
+                            span.textContent = '🚩';
+                            nameCell.prepend(span);
+                        } else if (!data.rent_flagged && existing) {
+                            existing.remove();
+                        }
                     }
                 }
+                filterTable();
             }
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
