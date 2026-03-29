@@ -50,6 +50,12 @@ async def create_vendor(
     await db.refresh(db_vendor)
     return db_vendor
 
+@router.get("/label-sizes")
+async def list_label_sizes():
+    from app.services.labels import LABEL_SIZES
+    return [{"key": k, "name": v["name"], "width": v["w"], "height": v["h"]} for k, v in LABEL_SIZES.items()]
+
+
 @router.get("/{vendor_id}", response_model=VendorResponse)
 async def get_vendor(
     vendor_id: int,
@@ -94,8 +100,19 @@ async def update_label_preference(
     if pref not in ("standard", "dymo"):
         raise HTTPException(status_code=400, detail="Must be 'standard' or 'dymo'")
     current_user.label_preference = pref
+
+    pdf_size = body.get("pdf_label_size")
+    if pdf_size is not None:
+        from app.services.labels import LABEL_SIZES
+        if pdf_size not in LABEL_SIZES:
+            raise HTTPException(status_code=400, detail=f"Invalid label size. Options: {', '.join(LABEL_SIZES.keys())}")
+        current_user.pdf_label_size = pdf_size
+
     await db.commit()
-    return {"label_preference": pref}
+    return {
+        "label_preference": current_user.label_preference,
+        "pdf_label_size": current_user.pdf_label_size,
+    }
 
 
 @router.post("/{vendor_id}/reset-password")

@@ -22,7 +22,7 @@ The frontend design adheres to Bowenstreet Market branding with a dark (`#38383B
 - **Authentication**: JWT tokens (python-jose) secure API access, with bcrypt for password hashing. Tokens are stored in `sessionStorage` and expire after 8 hours.
 - **Frontend**: Plain HTML and vanilla JavaScript are used, minimizing external dependencies and ensuring high performance.
 - **Timezone Handling**: All timestamps are stored in UTC in PostgreSQL and converted to Central Time (America/Chicago) for display and reporting using `zoneinfo.ZoneInfo`.
-- **Barcode & Label Generation**: `python-barcode` generates Code 128 barcodes, and `ReportLab` creates 2.25 × 1.25 inch Zebra-compatible PDF labels.
+- **Barcode & Label Generation**: `python-barcode` generates Code 128 barcodes, and `ReportLab` creates PDF labels in configurable sizes (10 formats: Avery 5160/5162/5163/5164/5167/8462, thermal standard, square, medium, small). Label text/barcode scales proportionally to label dimensions. Vendors choose preferred size via `pdf_label_size` field. Sizes listed at `GET /api/v1/vendors/label-sizes`.
 - **SKU Generation**: A standardized SKU format `BSM-{vendor_id:04d}-{sequence:06d}` is used for items.
 - **Role-Based Access Control**: Differentiated access based on roles: `vendor`, `cashier`, `admin`.
 - **is_vendor Booth Mode**: Admins/cashiers who are also vendors can access a "booth mode" to manage their own inventory.

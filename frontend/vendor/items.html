@@ -271,10 +271,15 @@
             <button data-status="all" onclick="setStatusFilter('all')">All</button>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
-            <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Default Label:</label>
+            <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Label Type:</label>
             <select id="label-pref-select" class="form-control" onchange="saveLabelPref()" style="width:auto;min-width:120px;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
                 <option value="standard">Standard PDF</option>
                 <option value="dymo">Dymo LabelWriter</option>
+            </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px" id="label-size-container">
+            <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Label Size:</label>
+            <select id="label-size-select" class="form-control" onchange="saveLabelSize()" style="width:auto;min-width:180px;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
             </select>
         </div>
     </div>
@@ -552,6 +557,8 @@
     let miniChatBusy = false;
     let selectedItemIds = new Set();
     let vendorLabelPref = 'standard';
+    let vendorLabelSize = '2.25x1.25';
+    let labelSizesLoaded = false;
 
     let allItems = [];
     let currentView = localStorage.getItem('bmm_items_view') || 'grid';
@@ -724,7 +731,8 @@
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
         const token = sessionStorage.getItem('bmm_token');
         try {
-            const res = await fetch(`/api/v1/items/${id}/label`, {
+            var sizeParam = vendorLabelSize ? '?label_size=' + encodeURIComponent(vendorLabelSize) : '';
+            const res = await fetch(`/api/v1/items/${id}/label` + sizeParam, {
                 headers: { 'Authorization': 'Bearer ' + token }
             });
             if (!res.ok) throw new Error('Failed to generate label');
@@ -861,7 +869,7 @@
             var res = await fetch('/api/v1/items/labels/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                body: JSON.stringify({ items: entries }),
+                body: JSON.stringify({ items: entries, label_size: vendorLabelSize }),
             });
             if (!res.ok) {
                 var err = await res.json().catch(function() { return { detail: 'Failed' }; });
@@ -1696,16 +1704,48 @@
         try {
             var vendorInfo = await apiGet('/api/v1/vendors/' + payload.vendor_id);
             vendorLabelPref = vendorInfo.label_preference || 'standard';
+            vendorLabelSize = vendorInfo.pdf_label_size || '2.25x1.25';
             updateLabelPrefUI();
         } catch (e) { /* fallback to standard */ }
+
+        await loadLabelSizes();
 
         setView(currentView);
         await loadItems();
     }
 
+    async function loadLabelSizes() {
+        if (labelSizesLoaded) return;
+        try {
+            var sizes = await apiGet('/api/v1/vendors/label-sizes');
+            var sel = document.getElementById('label-size-select');
+            if (!sel) return;
+            sel.innerHTML = '';
+            sizes.forEach(function(s) {
+                var opt = document.createElement('option');
+                opt.value = s.key;
+                opt.textContent = s.name;
+                sel.appendChild(opt);
+            });
+            sel.value = vendorLabelSize;
+            labelSizesLoaded = true;
+        } catch (e) {
+            console.error('Failed to load label sizes', e);
+        }
+        toggleLabelSizeVisibility();
+    }
+
+    function toggleLabelSizeVisibility() {
+        var container = document.getElementById('label-size-container');
+        if (container) container.style.display = vendorLabelPref === 'standard' ? 'flex' : 'none';
+    }
+
     function updateLabelPrefUI() {
         var sel = document.getElementById('label-pref-select');
         if (sel) sel.value = vendorLabelPref;
+        var sizeSel = document.getElementById('label-size-select');
+        if (sizeSel) sizeSel.value = vendorLabelSize;
+        toggleLabelSizeVisibility();
     }
 
     async function saveLabelPref() {
@@ -1714,9 +1754,22 @@
         try {
             await apiFetch('PATCH', '/api/v1/vendors/me/label-preference', { label_preference: newPref });
             vendorLabelPref = newPref;
-            showAlert('alert-container', 'Default label type set to ' + (newPref === 'dymo' ? 'Dymo LabelWriter' : 'Standard PDF') + '.', 'success');
+            toggleLabelSizeVisibility();
+            showAlert('alert-container', 'Label type set to ' + (newPref === 'dymo' ? 'Dymo LabelWriter' : 'Standard PDF') + '.', 'success');
         } catch (e) {
             showAlert('alert-container', e.message || 'Failed to save label preference.', 'error');
+        }
+    }
+
+    async function saveLabelSize() {
+        var sel = document.getElementById('label-size-select');
+        var newSize = sel.value;
+        try {
+            await apiFetch('PATCH', '/api/v1/vendors/me/label-preference', { label_preference: vendorLabelPref, pdf_label_size: newSize });
+            vendorLabelSize = newSize;
+            showAlert('alert-container', 'Label size saved.', 'success');
+        } catch (e) {
+            showAlert('alert-container', e.message || 'Failed to save label size.', 'error');
         }
     }
 

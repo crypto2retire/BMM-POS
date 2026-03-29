@@ -206,7 +206,8 @@ async def get_batch_labels(
         for _ in range(count):
             expanded.append(item)
 
-    pdf_bytes = generate_label_sheet(expanded)
+    label_size = data.get("label_size") or getattr(current_user, "pdf_label_size", None) or "2.25x1.25"
+    pdf_bytes = generate_label_sheet(expanded, label_size=label_size)
 
     for item in items:
         item.label_printed = True
@@ -222,6 +223,7 @@ async def get_batch_labels(
 @router.get("/{item_id}/label")
 async def get_item_label(
     item_id: int,
+    label_size: Optional[str] = Query(None, description="Label size key e.g. 2.625x1"),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
@@ -235,7 +237,8 @@ async def get_item_label(
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    pdf_bytes = generate_label_pdf(item)
+    size = label_size or getattr(current_user, "pdf_label_size", None) or "2.25x1.25"
+    pdf_bytes = generate_label_pdf(item, label_size=size)
 
     item.label_printed = True
     await db.commit()

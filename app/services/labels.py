@@ -6,11 +6,28 @@ from reportlab.pdfgen import canvas as pdf_canvas
 from reportlab.graphics.barcode import code128
 
 
-LABEL_WIDTH = 2.25 * inch
-LABEL_HEIGHT = 1.25 * inch
-
 THERMAL_DPI = 203
 DOT = 72.0 / THERMAL_DPI
+
+LABEL_SIZES = {
+    "2.25x1.25": {"name": "2.25\" x 1.25\" (Thermal/Standard)", "w": 2.25, "h": 1.25},
+    "2.625x1":   {"name": "2-5/8\" x 1\" (Avery 5160/8160)", "w": 2.625, "h": 1.0},
+    "4x2":       {"name": "4\" x 2\" (Avery 5163/Shipping)", "w": 4.0, "h": 2.0},
+    "4x1.33":    {"name": "4\" x 1-1/3\" (Avery 5162)", "w": 4.0, "h": 1.33},
+    "4x3.33":    {"name": "4\" x 3-1/3\" (Avery 5164)", "w": 4.0, "h": 3.33},
+    "1.75x0.5":  {"name": "1-3/4\" x 1/2\" (Avery 5167)", "w": 1.75, "h": 0.5},
+    "3.5x1.125": {"name": "3-1/2\" x 1-1/8\" (Avery 8462)", "w": 3.5, "h": 1.125},
+    "2x2":       {"name": "2\" x 2\" (Square)", "w": 2.0, "h": 2.0},
+    "3x2":       {"name": "3\" x 2\" (Medium)", "w": 3.0, "h": 2.0},
+    "2x1":       {"name": "2\" x 1\" (Small)", "w": 2.0, "h": 1.0},
+}
+
+DEFAULT_LABEL_SIZE = "2.25x1.25"
+
+
+def _get_label_dims(size_key):
+    spec = LABEL_SIZES.get(size_key, LABEL_SIZES[DEFAULT_LABEL_SIZE])
+    return spec["w"] * inch, spec["h"] * inch
 
 
 def _snap_down(val):
@@ -21,50 +38,62 @@ def _snap_up(val):
     return math.ceil(val / DOT) * DOT
 
 
-def generate_label_pdf(item) -> bytes:
+def generate_label_pdf(item, label_size=None) -> bytes:
+    lw, lh = _get_label_dims(label_size)
     buffer = io.BytesIO()
-    c = pdf_canvas.Canvas(buffer, pagesize=(LABEL_WIDTH, LABEL_HEIGHT))
-    _draw_label(c, item, 0, 0)
+    c = pdf_canvas.Canvas(buffer, pagesize=(lw, lh))
+    _draw_label(c, item, 0, 0, lw, lh)
     c.save()
     return buffer.getvalue()
 
 
-def generate_label_sheet(items) -> bytes:
+def generate_label_sheet(items, label_size=None) -> bytes:
+    lw, lh = _get_label_dims(label_size)
     buffer = io.BytesIO()
-    c = pdf_canvas.Canvas(buffer, pagesize=(LABEL_WIDTH, LABEL_HEIGHT))
+    c = pdf_canvas.Canvas(buffer, pagesize=(lw, lh))
     for i, item in enumerate(items):
         if i > 0:
             c.showPage()
-        _draw_label(c, item, 0, 0)
+        _draw_label(c, item, 0, 0, lw, lh)
     c.save()
     return buffer.getvalue()
 
 
-def _draw_label(c, item, x_offset, y_offset):
-    w = LABEL_WIDTH
-    h = LABEL_HEIGHT
-    margin = _snap_up(3)
+def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
+    if w is None:
+        w = 2.25 * inch
+    if h is None:
+        h = 1.25 * inch
 
-    inner_left = _snap_up(margin + 3)
-    inner_right = _snap_down(w - margin - 3)
+    ref_w = 2.25 * inch
+    ref_h = 1.25 * inch
+    scale_w = w / ref_w
+    scale_h = h / ref_h
+    scale = min(scale_w, scale_h)
+
+    margin = _snap_up(max(3, 3 * scale))
+
+    inner_left = _snap_up(margin + 3 * scale)
+    inner_right = _snap_down(w - margin - 3 * scale)
 
     booth = getattr(item, "vendor", None)
     booth_number = ""
     if booth:
         booth_number = getattr(booth, "booth_number", "") or ""
 
-    name = (item.name or "")[:40]
-    name_y = _snap_down(h - margin - 13)
+    name = (item.name or "")[:50 if scale > 1.2 else 40]
+    name_y = _snap_down(h - margin - 13 * scale_h)
 
+    base_name_size = 11
     if len(name) > 28:
-        c.setFont("Helvetica-Bold", 8)
+        base_name_size = 8
     elif len(name) > 20:
-        c.setFont("Helvetica-Bold", 10)
-    else:
-        c.setFont("Helvetica-Bold", 11)
+        base_name_size = 10
+    name_size = max(6, min(24, base_name_size * scale))
+    c.setFont("Helvetica-Bold", name_size)
     c.drawString(inner_left, name_y, name)
 
-    divider_y = _snap_down(name_y - 5)
+    divider_y = _snap_down(name_y - 5 * scale_h)
     c.setStrokeColorRGB(0.4, 0.4, 0.4)
     c.setLineWidth(DOT)
     c.line(inner_left, divider_y, inner_right, divider_y)
@@ -82,38 +111,41 @@ def _draw_label(c, item, x_offset, y_offset):
         on_sale = True
 
     price_str = f"${active_price:.2f}"
-    price_y = _snap_down(divider_y - 16)
-    c.setFont("Helvetica-Bold", 14)
+    price_size = max(8, min(28, 14 * scale))
+    price_y = _snap_down(divider_y - 16 * scale_h)
+    c.setFont("Helvetica-Bold", price_size)
     c.setFillColorRGB(0, 0, 0)
     c.drawString(inner_left, price_y, price_str)
 
     if on_sale:
         orig_str = f"${item.price:.2f}"
-        price_w = c.stringWidth(price_str, "Helvetica-Bold", 14)
-        c.setFont("Helvetica", 8)
+        price_w = c.stringWidth(price_str, "Helvetica-Bold", price_size)
+        orig_size = max(6, min(16, 8 * scale))
+        c.setFont("Helvetica", orig_size)
         c.setFillColorRGB(0.35, 0.35, 0.35)
-        orig_x = _snap_up(inner_left + price_w + 4)
+        orig_x = _snap_up(inner_left + price_w + 4 * scale_w)
         c.drawString(orig_x, price_y + DOT, orig_str)
-        orig_w = c.stringWidth(orig_str, "Helvetica", 8)
+        orig_w = c.stringWidth(orig_str, "Helvetica", orig_size)
         c.setStrokeColorRGB(0.35, 0.35, 0.35)
         c.setLineWidth(DOT)
-        strike_y = _snap_down(price_y + 4.5)
+        strike_y = _snap_down(price_y + 4.5 * scale_h)
         c.line(orig_x, strike_y, orig_x + orig_w, strike_y)
         c.setFillColorRGB(0, 0, 0)
 
     if booth_number:
-        c.setFont("Helvetica-Bold", 14)
+        c.setFont("Helvetica-Bold", price_size)
         c.drawRightString(inner_right, price_y, "B" + booth_number)
 
     barcode_val = item.barcode or ""
     if barcode_val:
         avail_w = w - margin * 2
 
-        barcode_text_y = _snap_up(margin + 1)
-        barcode_y = _snap_up(barcode_text_y + 14)
+        barcode_text_size = max(6, min(16, 10 * scale))
+        barcode_text_y = _snap_up(margin + 1 * scale_h)
+        barcode_y = _snap_up(barcode_text_y + 14 * scale_h)
 
-        bar_h = _snap_down(price_y - 8 - barcode_y)
-        bar_h = max(bar_h, _snap_down(0.32 * inch))
+        bar_h = _snap_down(price_y - 8 * scale_h - barcode_y)
+        bar_h = max(bar_h, _snap_down(0.32 * inch * scale_h))
 
         probe = code128.Code128(barcode_val, barHeight=10, barWidth=1.0,
                                 humanReadable=False, quiet=False)
@@ -134,7 +166,7 @@ def _draw_label(c, item, x_offset, y_offset):
         barcode_x = _snap_down((w - barcode_w) / 2)
         barcode_obj.drawOn(c, barcode_x, barcode_y)
 
-        c.setFont("Helvetica-Bold", 10)
+        c.setFont("Helvetica-Bold", barcode_text_size)
         c.drawCentredString(w / 2, barcode_text_y, barcode_val)
 
 

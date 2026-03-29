@@ -55,6 +55,7 @@ class VendorResponse(BaseModel):
     payout_method: Optional[str] = None
     zelle_handle: Optional[str] = None
     label_preference: Optional[str] = "standard"
+    pdf_label_size: Optional[str] = "2.25x1.25"
     created_at: datetime
 
     class Config:
