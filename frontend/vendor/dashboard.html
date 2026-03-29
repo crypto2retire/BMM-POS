@@ -194,7 +194,7 @@
 
     function renderItemCards(items) {
         if (items.length === 0) {
-            return `<div class="card"><p class="empty-state">No items yet. <a href="/vendor/items.html">Add your first item</a>.</p></div>`;
+            return `<div class="card"><p class="empty-state">No items yet. <a href="${itemsPageUrl}">Add your first item</a>.</p></div>`;
         }
         return items.slice(0, 10).map(item => {
             const ap = activePrice(item);
@@ -211,8 +211,8 @@
                     </div>
                 </div>
                 <div class="item-card-actions">
-                    <a href="/vendor/items.html" class="btn btn-outline">Edit</a>
-                    <a href="/vendor/items.html" class="btn btn-secondary">Labels</a>
+                    <a href="${itemsPageUrl}" class="btn btn-outline">Edit</a>
+                    <a href="${itemsPageUrl}" class="btn btn-secondary">Labels</a>
                 </div>
             </div>`;
         }).join('');
@@ -220,12 +220,12 @@
 
     function renderItemTable(items) {
         if (items.length === 0) {
-            return `<tr><td colspan="6" class="empty-state">No items yet. <a href="/vendor/items.html">Add your first item</a>.</td></tr>`;
+            return `<tr><td colspan="6" class="empty-state">No items yet. <a href="${itemsPageUrl}">Add your first item</a>.</td></tr>`;
         }
         return items.slice(0, 10).map(item => {
             const ap = activePrice(item);
             return `<tr>
-                <td><a href="/vendor/items.html">${item.name}</a></td>
+                <td><a href="${itemsPageUrl}">${item.name}</a></td>
                 <td>${item.category || "—"}</td>
                 <td>$${parseFloat(item.price).toFixed(2)}</td>
                 <td>${item.sale_price ? `<span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>` : "—"}</td>
@@ -258,6 +258,13 @@
     }
 
     let cachedItems = [];
+    var itemsPageUrl = '/vendor/items.html';
+
+    function updateItemLinks() {
+        document.querySelectorAll('a[href="/vendor/items.html"]').forEach(function(a) {
+            a.href = itemsPageUrl;
+        });
+    }
 
     async function loadDashboard() {
         const token = sessionStorage.getItem('bmm_token');
@@ -268,6 +275,11 @@
         const hasBoothAccess = isVendorRole || (payload.is_vendor && boothMode);
         if (!payload || !hasBoothAccess) { window.location.href = '/vendor/login.html'; return; }
         document.getElementById("vendor-name").textContent = payload?.name || "Vendor";
+
+        if (payload.role !== 'vendor' && payload.vendor_id) {
+            itemsPageUrl = '/vendor/items.html?vendor_id=' + payload.vendor_id;
+        }
+        updateItemLinks();
 
         try {
             const vendor = await apiGet(`/api/v1/vendors/${payload.vendor_id}`);

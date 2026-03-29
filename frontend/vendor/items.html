@@ -1299,6 +1299,11 @@
                 sel.innerHTML += opt;
                 fSel.innerHTML += opt;
             });
+            var urlVid = new URLSearchParams(window.location.search).get('vendor_id');
+            if (urlVid) {
+                sel.value = urlVid;
+                selectedVendorId = parseInt(urlVid);
+            }
         } catch (e) { /* ignore */ }
     }
 
