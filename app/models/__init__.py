@@ -9,5 +9,6 @@ from app.models.studio_class import StudioClass
 from app.models.item_image import ItemImage
 from app.models.studio_image import StudioImage
 from app.models.class_registration import ClassRegistration
+from app.models.booth_showcase import BoothShowcase
 
-__all__ = ["Vendor", "VendorBalance", "Item", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting", "StudioClass", "ItemImage", "StudioImage", "ClassRegistration"]
+__all__ = ["Vendor", "VendorBalance", "Item", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting", "StudioClass", "ItemImage", "StudioImage", "ClassRegistration", "BoothShowcase"]

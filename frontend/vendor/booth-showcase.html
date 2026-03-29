@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booth Showcase — BMM-POS</title>
+    <meta name="description" content="Manage your booth showcase — add photos, videos, and a description to highlight your booth to customers.">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+    <style>
+        .showcase-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .showcase-card h3 {
+            font-family: 'EB Garamond', serif;
+            font-style: italic;
+            font-size: 1.1rem;
+            color: var(--text);
+            margin-bottom: 0.75rem;
+        }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label {
+            display: block;
+            font-size: 0.78rem;
+            color: var(--text-light);
+            margin-bottom: 0.35rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .form-group input[type="text"],
+        .form-group textarea {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.55rem 0.7rem;
+            font-size: 0.85rem;
+            font-family: 'Roboto', sans-serif;
+        }
+        .form-group textarea { min-height: 120px; resize: vertical; }
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .photo-item {
+            position: relative;
+            aspect-ratio: 1;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .photo-item .delete-photo {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(0,0,0,0.7);
+            color: #FCA5A5;
+            border: none;
+            width: 24px;
+            height: 24px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .video-preview {
+            max-width: 400px;
+            margin-bottom: 0.75rem;
+        }
+        .video-preview video {
+            width: 100%;
+            border: 1px solid var(--border);
+        }
+        .ai-btn {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+        }
+        .ai-btn:hover { background: var(--accent); color: var(--bg); }
+        .ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .publish-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+        .publish-toggle .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .publish-toggle .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .publish-toggle .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #555;
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+        .publish-toggle .slider:before {
+            content: "";
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        .publish-toggle input:checked + .slider { background: var(--accent); }
+        .publish-toggle input:checked + .slider:before { transform: translateX(20px); }
+        .stale-banner {
+            background: rgba(201,169,110,0.12);
+            border: 1px solid rgba(201,169,110,0.3);
+            color: var(--accent);
+            padding: 0.75rem 1rem;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .booth-number-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: var(--bg);
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 0.3rem 0.75rem;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.5rem;
+        }
+        .upload-area {
+            border: 2px dashed var(--border);
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .upload-area:hover { border-color: var(--accent); }
+        .upload-area p {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+        .char-count {
+            font-size: 0.7rem;
+            color: var(--text-light);
+            text-align: right;
+            margin-top: 0.2rem;
+        }
+        .status-msg {
+            padding: 0.6rem 0.8rem;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .status-msg.success { display: block; background: rgba(72,133,89,0.15); color: #6EE7B7; border: 1px solid rgba(72,133,89,0.3); }
+        .status-msg.error { display: block; background: rgba(153,27,27,0.15); color: #FCA5A5; border: 1px solid rgba(153,27,27,0.3); }
+    </style>
+</head>
+<body class="has-bottom-nav">
+<nav class="navbar" style="background:#1e1e20;">
+    <a href="/vendor/dashboard.html" class="navbar-brand">
+        <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
+    </a>
+    <div class="navbar-user">
+        <span id="vendor-name">Loading...</span>
+        <button class="nav-hamburger" id="hamburger-btn" onclick="toggleNav()" aria-label="Menu">☰</button>
+        <nav class="navbar-nav" id="main-nav">
+            <a href="/vendor/dashboard.html">Dashboard</a>
+            <a href="/vendor/items.html">My Items</a>
+            <a href="/vendor/booth-showcase.html" class="active">My Booth</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
+        </nav>
+    </div>
+</nav>
+
+<div class="main-content">
+    <div id="alert-container"></div>
+    <div id="stale-banner" class="stale-banner" style="display:none">
+        <span>&#9888;</span>
+        <span>Your booth photos are over 60 days old. Fresh photos help attract customers — consider updating them!</span>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+        <h1 style="font-family:'EB Garamond',serif;font-style:italic;font-size:1.5rem;color:var(--text)">My Booth Showcase</h1>
+        <div id="booth-badge" class="booth-number-badge" style="display:none"></div>
+    </div>
+
+    <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1.25rem;line-height:1.6">
+        Showcase your booth to customers browsing our website. Add photos or a short video of your booth,
+        write a description of what you offer, and publish it for the world to see.
+    </p>
+
+    <div id="status-msg" class="status-msg"></div>
+
+    <div class="publish-toggle">
+        <label class="toggle-switch">
+            <input type="checkbox" id="publish-toggle" onchange="togglePublish(this.checked)">
+            <span class="slider"></span>
+        </label>
+        <div>
+            <div style="font-size:0.85rem;color:var(--text)" id="publish-label">Not Published</div>
+            <div style="font-size:0.72rem;color:var(--text-light)">When published, your booth will appear on the public Booths page</div>
+        </div>
+    </div>
+
+    <div class="showcase-card">
+        <h3>Booth Details</h3>
+        <div class="form-group">
+            <label for="booth-title">Booth Name (optional — your vendor name is used if left blank)</label>
+            <input type="text" id="booth-title" placeholder="e.g. Grandma's Treasures, The Vintage Nook..." maxlength="200">
+        </div>
+        <div class="form-group">
+            <label for="booth-desc">Description</label>
+            <textarea id="booth-desc" placeholder="Tell customers about your booth, what you sell, and what makes it special..." maxlength="2000"></textarea>
+            <div class="char-count"><span id="desc-count">0</span> / 2000</div>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+            <button class="ai-btn" id="ai-btn" onclick="generateDescription()">&#10024; AI Assist — Write Description</button>
+            <button class="btn btn-primary btn-sm" onclick="saveDetails()">Save Details</button>
+        </div>
+    </div>
+
+    <div class="showcase-card">
+        <h3>Booth Photos</h3>
+        <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+            Add at least one photo of your booth. Show off your displays, products, and personality! (Max 8 photos, 5MB each)
+        </p>
+        <div id="photo-grid" class="photo-grid"></div>
+        <div class="upload-area" id="photo-upload-area" onclick="document.getElementById('photo-input').click()">
+            <p>Click to add photos or drag and drop</p>
+            <span style="font-size:0.72rem;color:var(--text-light)">JPG, PNG, GIF, or WebP — up to 5MB each</span>
+        </div>
+        <input type="file" id="photo-input" accept="image/*" multiple style="display:none" onchange="uploadPhotos(this.files)">
+    </div>
+
+    <div class="showcase-card">
+        <h3>Booth Video (Optional)</h3>
+        <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+            Add a short video tour of your booth. Keep it under 30 seconds for the best experience. (Max 50MB)
+        </p>
+        <div id="video-preview" class="video-preview" style="display:none"></div>
+        <div style="display:flex;gap:0.5rem">
+            <div class="upload-area" style="flex:1" onclick="document.getElementById('video-input').click()">
+                <p>Click to upload a video</p>
+                <span style="font-size:0.72rem;color:var(--text-light)">MP4, MOV, or WebM — up to 50MB</span>
+            </div>
+            <button class="btn btn-sm" id="remove-video-btn" onclick="removeVideo()" style="background:#991B1B;color:#FCA5A5;display:none;align-self:flex-start">Remove Video</button>
+        </div>
+        <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/webm" style="display:none" onchange="uploadVideo(this.files[0])">
+    </div>
+</div>
+
+<nav class="mobile-bottom-nav">
+    <a href="/vendor/dashboard.html">
+        <span class="nav-icon">&#127968;</span>
+        <span>Home</span>
+    </a>
+    <a href="/vendor/items.html">
+        <span class="nav-icon">&#127991;&#65039;</span>
+        <span>Items</span>
+    </a>
+    <a href="/vendor/booth-showcase.html" class="active">
+        <span class="nav-icon">&#127978;</span>
+        <span>My Booth</span>
+    </a>
+    <button onclick="handleLogout()">
+        <span class="nav-icon">&#128682;</span>
+        <span>Logout</span>
+    </button>
+</nav>
+
+<script src="/static/js/api.js"></script>
+<script>
+var showcase = null;
+
+function escHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function showStatus(msg, type) {
+    var el = document.getElementById('status-msg');
+    el.textContent = msg;
+    el.className = 'status-msg ' + type;
+    setTimeout(function() { el.className = 'status-msg'; }, 4000);
+}
+
+async function loadShowcase() {
+    try {
+        var token = sessionStorage.getItem('bmm_token');
+        if (!token) { window.location.href = '/vendor/login.html'; return; }
+
+        var decoded = JSON.parse(atob(token.split('.')[1]));
+        document.getElementById('vendor-name').textContent = decoded.name || 'Vendor';
+        if (decoded.booth_number) {
+            var badge = document.getElementById('booth-badge');
+            badge.textContent = 'Booth ' + escHtml(decoded.booth_number);
+            badge.style.display = 'inline-block';
+        }
+
+        var resp = await fetch('/api/v1/booth-showcase/mine', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!resp.ok) throw new Error('Failed to load showcase');
+        showcase = await resp.json();
+
+        document.getElementById('booth-title').value = showcase.title || '';
+        document.getElementById('booth-desc').value = showcase.description || '';
+        updateCharCount();
+
+        document.getElementById('publish-toggle').checked = showcase.is_published;
+        document.getElementById('publish-label').textContent = showcase.is_published ? 'Published' : 'Not Published';
+
+        if (showcase.photos_stale) {
+            document.getElementById('stale-banner').style.display = 'flex';
+        }
+
+        renderPhotos();
+        renderVideo();
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+}
+
+function renderPhotos() {
+    var grid = document.getElementById('photo-grid');
+    var photos = (showcase && showcase.photo_urls) || [];
+    if (photos.length === 0) {
+        grid.innerHTML = '<p style="font-size:0.78rem;color:var(--text-light);grid-column:1/-1">No photos yet</p>';
+        return;
+    }
+    grid.innerHTML = photos.map(function(url) {
+        return '<div class="photo-item">' +
+            '<img src="' + escHtml(url) + '" alt="Booth photo" loading="lazy">' +
+            '<button class="delete-photo" onclick="deletePhoto(\'' + escHtml(url) + '\')" title="Remove">&times;</button>' +
+            '</div>';
+    }).join('');
+}
+
+function renderVideo() {
+    var container = document.getElementById('video-preview');
+    var removeBtn = document.getElementById('remove-video-btn');
+    if (showcase && showcase.video_url) {
+        container.innerHTML = '<video src="' + escHtml(showcase.video_url) + '" controls preload="metadata"></video>';
+        container.style.display = 'block';
+        removeBtn.style.display = 'block';
+    } else {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        removeBtn.style.display = 'none';
+    }
+}
+
+function updateCharCount() {
+    var count = (document.getElementById('booth-desc').value || '').length;
+    document.getElementById('desc-count').textContent = count;
+}
+document.getElementById('booth-desc').addEventListener('input', updateCharCount);
+
+async function saveDetails() {
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: document.getElementById('booth-title').value.trim(),
+                description: document.getElementById('booth-desc').value.trim()
+            })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Failed to save');
+        showcase = data;
+        showStatus('Details saved!', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+}
+
+async function togglePublish(checked) {
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_published: checked })
+        });
+        var data = await resp.json();
+        if (!resp.ok) {
+            document.getElementById('publish-toggle').checked = !checked;
+            throw new Error(data.detail || 'Failed to update');
+        }
+        showcase = data;
+        document.getElementById('publish-label').textContent = checked ? 'Published' : 'Not Published';
+        showStatus(checked ? 'Your booth is now visible to customers!' : 'Booth showcase hidden from public view.', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+}
+
+async function uploadPhotos(files) {
+    var token = sessionStorage.getItem('bmm_token');
+    for (var i = 0; i < files.length; i++) {
+        var form = new FormData();
+        form.append('file', files[i]);
+        try {
+            var resp = await fetch('/api/v1/booth-showcase/mine/photo', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                body: form
+            });
+            var data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || 'Upload failed');
+            showcase = data;
+        } catch (err) {
+            showStatus(err.message, 'error');
+            break;
+        }
+    }
+    renderPhotos();
+    document.getElementById('photo-input').value = '';
+    if (showcase && showcase.photo_urls && showcase.photo_urls.length > 0) {
+        showStatus('Photos uploaded!', 'success');
+        document.getElementById('stale-banner').style.display = 'none';
+    }
+}
+
+async function deletePhoto(url) {
+    if (!confirm('Remove this photo?')) return;
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine/photo', {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ photo_url: url })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Failed to remove');
+        showcase = data;
+        renderPhotos();
+        document.getElementById('publish-toggle').checked = showcase.is_published;
+        document.getElementById('publish-label').textContent = showcase.is_published ? 'Published' : 'Not Published';
+        showStatus('Photo removed.', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+}
+
+async function uploadVideo(file) {
+    if (!file) return;
+    var token = sessionStorage.getItem('bmm_token');
+    showStatus('Uploading video...', 'success');
+    var form = new FormData();
+    form.append('file', file);
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine/video', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token },
+            body: form
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Upload failed');
+        showcase = data;
+        renderVideo();
+        showStatus('Video uploaded!', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+    document.getElementById('video-input').value = '';
+}
+
+async function removeVideo() {
+    if (!confirm('Remove the video?')) return;
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine/video', {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Failed to remove');
+        showcase = data;
+        renderVideo();
+        showStatus('Video removed.', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+}
+
+async function generateDescription() {
+    var btn = document.getElementById('ai-btn');
+    btn.disabled = true;
+    btn.textContent = 'Writing...';
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine/ai-description', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'AI failed');
+        document.getElementById('booth-desc').value = data.description;
+        updateCharCount();
+        showStatus('AI description generated! Review and edit as you like, then click Save Details.', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '\u2728 AI Assist \u2014 Write Description';
+    }
+}
+
+loadShowcase();
+</script>
+</body>
+</html>

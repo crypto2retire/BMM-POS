@@ -20,6 +20,7 @@ from app.models.studio_class import StudioClass
 from app.models.studio_image import StudioImage
 from app.models.class_registration import ClassRegistration
 from app.models.item_image import ItemImage
+from app.models.booth_showcase import BoothShowcase
 from app.routers.auth import get_current_user, require_admin, require_cashier_or_admin
 from app.services.email import send_email_safe
 from app.services.email_templates import (
@@ -692,6 +693,7 @@ async def reset_data(
     if not admin_ids:
         raise HTTPException(status_code=500, detail="No admin/cashier accounts found")
 
+    await db.execute(delete(BoothShowcase))
     await db.execute(delete(ClassRegistration))
     await db.execute(delete(StudioImage))
     await db.execute(delete(StudioClass))

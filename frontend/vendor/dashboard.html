@@ -26,6 +26,7 @@
         <nav class="navbar-nav" id="main-nav">
             <a href="/vendor/dashboard.html" class="active">Dashboard</a>
             <a href="/vendor/items.html">My Items</a>
+            <a href="/vendor/booth-showcase.html">My Booth</a>
             <a href="#" onclick="openPasswordModal();return false;">Change Password</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
@@ -34,6 +35,10 @@
 
 <div class="main-content">
     <div id="alert-container"></div>
+    <div id="booth-stale-banner" style="display:none;background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.3);color:#C9A96E;padding:0.75rem 1rem;font-size:0.8rem;margin-bottom:1rem;display:none;align-items:center;gap:0.5rem">
+        <span>&#9888;</span>
+        <span>Your booth photos are over 60 days old. <a href="/vendor/booth-showcase.html" style="color:#C9A96E;text-decoration:underline">Update them</a> to keep customers interested!</span>
+    </div>
 
     <!-- Mobile CTA -->
     <a href="/vendor/items.html" class="btn btn-primary btn-lg btn-full" id="mobile-add-btn"
@@ -137,11 +142,15 @@
         <span>Home</span>
     </a>
     <a href="/vendor/items.html">
-        <span class="nav-icon">🏷️</span>
+        <span class="nav-icon">&#127991;&#65039;</span>
         <span>Items</span>
     </a>
+    <a href="/vendor/booth-showcase.html">
+        <span class="nav-icon">&#127978;</span>
+        <span>My Booth</span>
+    </a>
     <button onclick="handleLogout()">
-        <span class="nav-icon">🚪</span>
+        <span class="nav-icon">&#128682;</span>
         <span>Logout</span>
     </button>
 </nav>
@@ -307,6 +316,13 @@
             document.getElementById("total-items").textContent = items.length;
             cachedItems = items;
             applyLayout(items);
+
+            try {
+                var staleData = await apiGet('/api/v1/booth-showcase/stale-check');
+                if (staleData.stale) {
+                    document.getElementById('booth-stale-banner').style.display = 'flex';
+                }
+            } catch (e) {}
         } catch (err) {
             showAlert("alert-container", err.message, "error");
         }
