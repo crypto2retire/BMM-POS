@@ -245,3 +245,113 @@ def test_email(admin_name: str) -> tuple[str, str, str]:
     )
     plain = f"Test email from BMM-POS sent at {_now_str()}. Email is working correctly."
     return subject, _base_template("Test Email", body), plain
+
+
+def rent_overdue_15day_email(
+    vendor_name: str,
+    amount: float,
+    booth: str,
+    period: str,
+) -> tuple[str, str, str]:
+    subject = f"Rent Past Due: ${amount:.2f} — {period}"
+    body = (
+        _p(f"Hello {vendor_name},")
+        + _p(f"This is a reminder that your booth rent for <strong>{period}</strong> is now <strong>15 days past due</strong>.")
+        + _info_table([
+            ("Booth", booth),
+            ("Amount Due", f"${amount:.2f}"),
+            ("Period", period),
+            ("Status", "Past Due — 15 Days"),
+        ])
+        + _p("Please arrange payment at your earliest convenience. You can pay by cash, check, Zelle, or Square at the front desk.")
+        + _p("If you have already made this payment, please disregard this notice and contact the front desk so we can update your account.")
+    )
+    plain = (
+        f"Hello {vendor_name}, your booth rent of ${amount:.2f} for {period} (Booth {booth}) "
+        f"is 15 days past due. Please arrange payment at the front desk."
+    )
+    return subject, _base_template("Rent Past Due — 15 Days", body), plain
+
+
+def rent_overdue_27day_email(
+    vendor_name: str,
+    amount: float,
+    booth: str,
+    period: str,
+) -> tuple[str, str, str]:
+    subject = f"URGENT: Rent Past Due ${amount:.2f} — Final Notice"
+    body = (
+        _p(f"Hello {vendor_name},")
+        + _p(f"This is a <strong>final notice</strong> that your booth rent for <strong>{period}</strong> is now <strong>27 days past due</strong>.")
+        + _info_table([
+            ("Booth", booth),
+            ("Amount Due", f"${amount:.2f}"),
+            ("Period", period),
+            ("Status", "Past Due — 27 Days (Final Notice)"),
+        ])
+        + _p("<strong>Please arrange payment immediately.</strong> Failure to pay may result in suspension of your booth privileges.")
+        + _p("If you have already made this payment or need to discuss payment arrangements, please contact the front desk as soon as possible.")
+    )
+    plain = (
+        f"FINAL NOTICE: Hello {vendor_name}, your booth rent of ${amount:.2f} for {period} (Booth {booth}) "
+        f"is 27 days past due. Please arrange payment immediately or contact the front desk."
+    )
+    return subject, _base_template("Final Notice — Rent Past Due", body), plain
+
+
+def payout_with_rent_email(
+    vendor_name: str,
+    gross_sales: float,
+    rent_deducted: float,
+    net_payout: float,
+    period: str,
+    method: str,
+) -> tuple[str, str, str]:
+    subject = f"Payout Processed: ${net_payout:.2f} — {period}"
+    body = (
+        _p(f"Hello {vendor_name},")
+        + _p(f"Your vendor payout for <strong>{period}</strong> has been processed. Booth rent has been deducted from your sales.")
+        + _info_table([
+            ("Gross Sales", f"${gross_sales:.2f}"),
+            ("Rent Deducted", f"-${rent_deducted:.2f}"),
+            ("Net Payout", f"${net_payout:.2f}"),
+            ("Period", period),
+            ("Method", method),
+            ("Processed", _now_str()),
+        ])
+        + _p("If you have questions about this payout, please contact the front desk.")
+    )
+    plain = (
+        f"Hello {vendor_name}, your payout for {period} has been processed. "
+        f"Gross sales: ${gross_sales:.2f}, rent deducted: ${rent_deducted:.2f}, net payout: ${net_payout:.2f} via {method}."
+    )
+    return subject, _base_template("Payout Processed", body), plain
+
+
+def rent_shortfall_email(
+    vendor_name: str,
+    gross_sales: float,
+    rent_amount: float,
+    shortfall: float,
+    booth: str,
+    period: str,
+) -> tuple[str, str, str]:
+    subject = f"Rent Balance Due: ${shortfall:.2f} — {period}"
+    body = (
+        _p(f"Hello {vendor_name},")
+        + _p(f"Your sales for <strong>{period}</strong> were not enough to cover your booth rent. "
+             f"The remaining balance is due.")
+        + _info_table([
+            ("Booth", booth),
+            ("Gross Sales", f"${gross_sales:.2f}"),
+            ("Monthly Rent", f"${rent_amount:.2f}"),
+            ("Sales Applied to Rent", f"${gross_sales:.2f}"),
+            ("Remaining Balance Due", f"${shortfall:.2f}"),
+        ])
+        + _p("Please arrange payment for the remaining balance at the front desk by cash, check, Zelle, or Square.")
+    )
+    plain = (
+        f"Hello {vendor_name}, your sales of ${gross_sales:.2f} for {period} did not cover your rent of "
+        f"${rent_amount:.2f}. Remaining balance due: ${shortfall:.2f}. Please pay at the front desk."
+    )
+    return subject, _base_template("Rent Balance Due", body), plain
