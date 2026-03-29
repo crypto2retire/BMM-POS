@@ -1,7 +1,9 @@
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -146,4 +148,81 @@ async def vendor_rent_history(
             }
             for p in payments
         ],
+    }
+
+
+@router.post("/vendors/{vendor_id}/record-rent")
+async def record_rent_payment(
+    vendor_id: int,
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_admin),
+):
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found.")
+
+    method = body.get("method", "cash")
+    if method not in ("cash", "check", "square", "zelle", "other"):
+        raise HTTPException(status_code=400, detail="Invalid payment method.")
+
+    amount = body.get("amount")
+    if amount is not None:
+        try:
+            amount = Decimal(str(amount))
+            if amount <= 0:
+                raise ValueError()
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid amount.")
+    else:
+        amount = vendor.monthly_rent
+
+    period_str = body.get("period")
+    if period_str:
+        try:
+            parts = period_str.split("-")
+            period = date(int(parts[0]), int(parts[1]), 1)
+        except (ValueError, IndexError):
+            raise HTTPException(status_code=400, detail="Invalid period. Use YYYY-MM.")
+    else:
+        today = date.today()
+        period = date(today.year, today.month, 1)
+
+    notes = body.get("notes", "")
+
+    existing = await db.execute(
+        select(RentPayment).where(
+            RentPayment.vendor_id == vendor_id,
+            RentPayment.period_month == period,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=409,
+            detail=f"Rent for {period.strftime('%B %Y')} is already recorded.",
+        )
+
+    payment = RentPayment(
+        vendor_id=vendor_id,
+        amount=amount,
+        period_month=period,
+        method=method,
+        status="paid",
+        notes=notes or f"Recorded by admin ({current_user.name})",
+    )
+    db.add(payment)
+    await db.commit()
+    await db.refresh(payment)
+
+    return {
+        "success": True,
+        "message": f"Rent payment of ${float(amount):.2f} recorded for {vendor.name} — {period.strftime('%B %Y')}.",
+        "payment": {
+            "id": payment.id,
+            "amount": float(payment.amount),
+            "period_month": payment.period_month.strftime("%B %Y"),
+            "method": payment.method,
+            "status": payment.status,
+        },
     }

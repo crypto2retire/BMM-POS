@@ -114,6 +114,91 @@
         }
         .vendor-name-link:hover { border-bottom-color: var(--gold); }
 
+        tr.rent-row { cursor: pointer; transition: background 0.15s; }
+        tr.rent-row:hover { background: rgba(201,169,110,0.06); }
+        tr.rent-row td { cursor: pointer; }
+
+        .record-pay-btn {
+            background: rgba(123,196,160,0.12);
+            color: #7BC4A0;
+            border: 1px solid rgba(123,196,160,0.3);
+            padding: 4px 12px;
+            font-size: 0.72rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .record-pay-btn:hover { background: rgba(123,196,160,0.22); border-color: rgba(123,196,160,0.5); }
+
+        .pay-modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            z-index: 950;
+            animation: fadeIn 0.2s;
+        }
+        .pay-modal-overlay.open { display: flex; align-items: center; justify-content: center; }
+        .pay-modal {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            width: min(420px, 92vw);
+            padding: 1.5rem;
+        }
+        .pay-modal h3 {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-weight: 500;
+            font-size: 1.25rem;
+            color: var(--text);
+            margin: 0 0 1rem;
+        }
+        .pay-modal label {
+            display: block;
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-light);
+            margin-bottom: 0.25rem;
+            font-family: 'Roboto', sans-serif;
+        }
+        .pay-modal input, .pay-modal select {
+            width: 100%;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem 0.65rem;
+            font-size: 0.9rem;
+            margin-bottom: 0.85rem;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+        .pay-modal-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+            margin-top: 0.5rem;
+        }
+        .pay-modal-actions button {
+            padding: 0.5rem 1.2rem;
+            font-size: 0.82rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+        }
+        .pay-cancel-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-light);
+        }
+        .pay-confirm-btn {
+            background: #7BC4A0;
+            border: 1px solid #7BC4A0;
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+        .pay-confirm-btn:hover { background: #6ab890; }
+
         .detail-overlay {
             display: none;
             position: fixed;
@@ -353,8 +438,36 @@
     </div>
     <div class="detail-body">
         <div class="detail-info-grid" id="detail-info-grid"></div>
+        <div style="margin:0.75rem 0">
+            <button class="record-pay-btn" id="detail-pay-btn" style="width:100%;padding:0.6rem;font-size:0.8rem" onclick="openPayModal()">Record Rent Payment</button>
+        </div>
         <div class="payment-history-title">Payment History</div>
         <div id="detail-payments"></div>
+    </div>
+</div>
+
+<div class="pay-modal-overlay" id="pay-modal-overlay" onclick="closePayModal()">
+    <div class="pay-modal" onclick="event.stopPropagation()">
+        <h3>Record Rent Payment</h3>
+        <div id="pay-vendor-label" style="color:var(--gold);font-size:0.9rem;margin-bottom:1rem;font-weight:600"></div>
+        <label>Amount ($)</label>
+        <input type="number" id="pay-amount" step="0.01" min="0.01" placeholder="200.00">
+        <label>Payment Method</label>
+        <select id="pay-method">
+            <option value="cash">Cash</option>
+            <option value="check">Check</option>
+            <option value="zelle">Zelle</option>
+            <option value="square">Square</option>
+            <option value="other">Other</option>
+        </select>
+        <label>Period</label>
+        <input type="month" id="pay-period">
+        <label>Notes (optional)</label>
+        <input type="text" id="pay-notes" placeholder="e.g. Check #1234">
+        <div class="pay-modal-actions">
+            <button class="pay-cancel-btn" onclick="closePayModal()">Cancel</button>
+            <button class="pay-confirm-btn" id="pay-submit-btn" onclick="submitRentPayment()">Record Payment</button>
+        </div>
     </div>
 </div>
 
@@ -408,32 +521,42 @@
     }
 
     function flagBtn(v) {
-        const cls   = v.rent_flagged ? 'flag-btn flagged' : 'flag-btn';
-        const label = v.rent_flagged ? '🚩 Unflag' : '⚑ Flag';
-        return `<button class="${cls}" onclick="toggleFlag(${v.id}, this)">${label}</button>`;
+        var cls   = v.rent_flagged ? 'flag-btn flagged' : 'flag-btn';
+        var label = v.rent_flagged ? '🚩 Unflag' : '⚑ Flag';
+        return '<button class="' + cls + '" onclick="event.stopPropagation();toggleFlag(' + v.id + ', this)">' + label + '</button>';
     }
 
     function renderRows(vendors) {
-        const tbody = document.getElementById('rent-table-body');
+        var tbody = document.getElementById('rent-table-body');
         if (vendors.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No vendors found.</td></tr>';
             return;
         }
-        tbody.innerHTML = vendors.map(v => `
-            <tr>
-                <td>
-                    <div class="vendor-name-cell">
-                        ${v.rent_flagged ? '<span class="flag-icon" title="Flagged overdue">🚩</span>' : ''}
-                        <strong class="vendor-name-link" onclick="openVendorDetail(${v.id})">${v.name}</strong>
-                    </div>
-                </td>
-                <td>${v.booth_number}</td>
-                <td>$${v.monthly_rent.toFixed(2)}</td>
-                <td>${v.last_payment_date || '—'}</td>
-                <td>${statusBadge(v.status)}</td>
-                <td>${flagBtn(v)}</td>
-            </tr>
-        `).join('');
+        tbody.innerHTML = vendors.map(function(v) {
+            var payDate = v.last_payment_date ? formatDateMDY(v.last_payment_date) : '—';
+            return '<tr class="rent-row" onclick="openVendorDetail(' + v.id + ')">'
+                + '<td><div class="vendor-name-cell">'
+                + (v.rent_flagged ? '<span class="flag-icon" title="Flagged overdue">🚩</span>' : '')
+                + '<strong class="vendor-name-link">' + v.name + '</strong>'
+                + '</div></td>'
+                + '<td>' + v.booth_number + '</td>'
+                + '<td>$' + v.monthly_rent.toFixed(2) + '</td>'
+                + '<td>' + payDate + '</td>'
+                + '<td>' + statusBadge(v.status) + '</td>'
+                + '<td onclick="event.stopPropagation()">'
+                + (v.status !== 'current'
+                    ? '<button class="record-pay-btn" onclick="openPayModalFor(' + v.id + ')">Pay</button> '
+                    : '')
+                + flagBtn(v)
+                + '</td>'
+                + '</tr>';
+        }).join('');
+    }
+
+    function formatDateMDY(isoStr) {
+        if (!isoStr) return '—';
+        var parts = isoStr.split('-');
+        return parseInt(parts[1]) + '/' + parseInt(parts[2]) + '/' + parts[0];
     }
 
     function filterTable() {
@@ -504,7 +627,10 @@
         }
     }
 
+    var detailVendorId = null;
+
     async function openVendorDetail(vendorId) {
+        detailVendorId = vendorId;
         document.getElementById('detail-vendor-name').textContent = 'Loading…';
         document.getElementById('detail-rent-status').innerHTML = '';
         document.getElementById('detail-info-grid').innerHTML = '';
@@ -555,8 +681,74 @@
     }
 
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') closeVendorDetail();
+        if (e.key === 'Escape') {
+            if (document.getElementById('pay-modal-overlay').classList.contains('open')) {
+                closePayModal();
+            } else {
+                closeVendorDetail();
+            }
+        }
     });
+
+    var payVendorId = null;
+
+    function openPayModalFor(vendorId) {
+        var v = allVendors.find(function(x) { return x.id === vendorId; });
+        if (!v) return;
+        payVendorId = vendorId;
+        document.getElementById('pay-vendor-label').textContent = v.name + ' — Booth ' + v.booth_number;
+        document.getElementById('pay-amount').value = v.monthly_rent.toFixed(2);
+        document.getElementById('pay-method').value = 'cash';
+        var now = new Date();
+        document.getElementById('pay-period').value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+        document.getElementById('pay-notes').value = '';
+        document.getElementById('pay-submit-btn').disabled = false;
+        document.getElementById('pay-modal-overlay').classList.add('open');
+    }
+
+    function openPayModal() {
+        if (detailVendorId) openPayModalFor(detailVendorId);
+    }
+
+    function closePayModal() {
+        document.getElementById('pay-modal-overlay').classList.remove('open');
+    }
+
+    async function submitRentPayment() {
+        if (!payVendorId) return;
+        var btn = document.getElementById('pay-submit-btn');
+        btn.disabled = true;
+        btn.textContent = 'Recording...';
+        var amount = parseFloat(document.getElementById('pay-amount').value);
+        var method = document.getElementById('pay-method').value;
+        var period = document.getElementById('pay-period').value;
+        var notes = document.getElementById('pay-notes').value.trim();
+        if (!amount || amount <= 0) {
+            showAlert('alert-container', 'Please enter a valid amount.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Record Payment';
+            return;
+        }
+        try {
+            var result = await apiPost('/api/v1/admin/vendors/' + payVendorId + '/record-rent', {
+                amount: amount,
+                method: method,
+                period: period,
+                notes: notes
+            });
+            closePayModal();
+            showAlert('alert-container', result.message, 'success');
+            await loadRentStatus();
+            if (document.getElementById('detail-panel').classList.contains('open')) {
+                openVendorDetail(payVendorId);
+            }
+        } catch (err) {
+            showAlert('alert-container', err.message || 'Failed to record payment.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Record Payment';
+        }
+    }
 
     loadRentStatus();
 </script>
