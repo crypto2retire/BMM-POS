@@ -178,7 +178,7 @@ async def record_rent_payment(
         raise HTTPException(status_code=404, detail="Vendor not found.")
 
     method = body.get("method", "cash")
-    if method not in ("cash", "check", "square", "zelle", "other"):
+    if method not in ("cash", "check", "square", "zelle", "card", "other"):
         raise HTTPException(status_code=400, detail="Invalid payment method.")
 
     amount = body.get("amount")
@@ -240,6 +240,76 @@ async def record_rent_payment(
             "status": payment.status,
         },
     }
+
+
+@router.post("/vendors/{vendor_id}/rent-charge-card")
+async def rent_charge_card(
+    vendor_id: int,
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_admin),
+):
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found.")
+
+    amount = body.get("amount")
+    if amount is not None:
+        try:
+            amount = float(amount)
+            if amount <= 0:
+                raise ValueError()
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Invalid amount.")
+    else:
+        amount = float(vendor.monthly_rent or 0)
+
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="No rent amount to charge.")
+
+    import math
+    amount_cents = math.ceil(amount * 100)
+
+    today = date.today()
+    month_label = today.strftime("%B %Y")
+    order_ref = f"RENT-{vendor_id}-{today.strftime('%Y%m')}"
+
+    try:
+        from app.services.poynt import create_terminal_order
+        order_id = await create_terminal_order(
+            amount_cents=amount_cents,
+            currency="USD",
+            order_ref=order_ref,
+        )
+        return {
+            "poynt_order_id": order_id,
+            "amount": amount,
+            "vendor_name": vendor.name,
+            "month": month_label,
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to initiate card payment: {str(exc)}")
+
+
+@router.get("/rent-charge-status/{poynt_order_id}")
+async def rent_charge_status(
+    poynt_order_id: str,
+    current_user: Vendor = Depends(require_admin),
+):
+    try:
+        from app.services.poynt import get_transaction_for_order
+        result = await get_transaction_for_order(poynt_order_id)
+        return {
+            "status": result["status"],
+            "transaction_id": result.get("transaction_id"),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to check payment status: {str(exc)}")
 
 
 @router.get("/payout-preview")

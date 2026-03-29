@@ -455,20 +455,40 @@
         <label>Amount ($)</label>
         <input type="number" id="pay-amount" step="0.01" min="0.01" placeholder="200.00">
         <label>Payment Method</label>
-        <select id="pay-method">
+        <select id="pay-method" onchange="onPayMethodChange()">
             <option value="cash">Cash</option>
             <option value="check">Check</option>
             <option value="zelle">Zelle</option>
-            <option value="square">Square</option>
+            <option value="card">Card (Terminal)</option>
             <option value="other">Other</option>
         </select>
+        <div id="card-info" style="display:none;background:rgba(201,169,110,0.08);border:1px solid rgba(201,169,110,0.2);padding:0.75rem;margin:0.5rem 0;font-size:0.82rem;color:var(--text-light);">
+            Payment will be sent to the GoDaddy/Poynt terminal. Have the vendor present their card on the terminal.
+        </div>
         <label>Period</label>
         <input type="month" id="pay-period">
-        <label>Notes (optional)</label>
+        <label id="notes-label">Notes (optional)</label>
         <input type="text" id="pay-notes" placeholder="e.g. Check #1234">
         <div class="pay-modal-actions">
             <button class="pay-cancel-btn" onclick="closePayModal()">Cancel</button>
             <button class="pay-confirm-btn" id="pay-submit-btn" onclick="submitRentPayment()">Record Payment</button>
+        </div>
+    </div>
+</div>
+
+<div class="pay-modal-overlay" id="terminal-overlay">
+    <div class="pay-modal" onclick="event.stopPropagation()" style="text-align:center;">
+        <h3 id="terminal-title">Processing Card Payment</h3>
+        <div id="terminal-vendor-label" style="color:var(--gold);font-size:0.9rem;margin-bottom:1rem;font-weight:600"></div>
+        <div id="terminal-status" style="margin:1.5rem 0;">
+            <div style="font-size:2.5rem;margin-bottom:0.75rem;">&#128179;</div>
+            <p style="color:var(--text);font-size:1rem;margin:0 0 0.5rem;">Present card on terminal</p>
+            <p style="color:var(--text-light);font-size:0.85rem;margin:0;">Waiting for payment&hellip;</p>
+        </div>
+        <div id="terminal-amount" style="font-family:'EB Garamond',Georgia,serif;font-size:2rem;color:var(--text);margin:1rem 0;"></div>
+        <div id="terminal-result" style="display:none;margin:1rem 0;padding:0.75rem;font-size:0.9rem;"></div>
+        <div class="pay-modal-actions" style="justify-content:center;">
+            <button class="pay-cancel-btn" id="terminal-cancel-btn" onclick="cancelTerminalPayment()">Cancel</button>
         </div>
     </div>
 </div>
@@ -692,13 +712,22 @@
 
     var payVendorId = null;
 
+    var terminalPollInterval = null;
+
+    function onPayMethodChange() {
+        var method = document.getElementById('pay-method').value;
+        document.getElementById('card-info').style.display = method === 'card' ? 'block' : 'none';
+        document.getElementById('pay-submit-btn').textContent = method === 'card' ? 'Charge Card' : 'Record Payment';
+    }
+
     function openPayModalFor(vendorId) {
         var v = allVendors.find(function(x) { return x.id === vendorId; });
         if (!v) return;
         payVendorId = vendorId;
-        document.getElementById('pay-vendor-label').textContent = v.name + ' — Booth ' + v.booth_number;
+        document.getElementById('pay-vendor-label').textContent = v.name + ' \u2014 Booth ' + v.booth_number;
         document.getElementById('pay-amount').value = v.monthly_rent.toFixed(2);
         document.getElementById('pay-method').value = 'cash';
+        onPayMethodChange();
         var now = new Date();
         document.getElementById('pay-period').value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
         document.getElementById('pay-notes').value = '';
@@ -717,18 +746,24 @@
     async function submitRentPayment() {
         if (!payVendorId) return;
         var btn = document.getElementById('pay-submit-btn');
-        btn.disabled = true;
-        btn.textContent = 'Recording...';
         var amount = parseFloat(document.getElementById('pay-amount').value);
         var method = document.getElementById('pay-method').value;
         var period = document.getElementById('pay-period').value;
         var notes = document.getElementById('pay-notes').value.trim();
+
         if (!amount || amount <= 0) {
             showAlert('alert-container', 'Please enter a valid amount.', 'error');
-            btn.disabled = false;
-            btn.textContent = 'Record Payment';
             return;
         }
+
+        if (method === 'card') {
+            closePayModal();
+            startCardRentPayment(payVendorId, amount, period, notes);
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Recording...';
         try {
             var result = await apiPost('/api/v1/admin/vendors/' + payVendorId + '/record-rent', {
                 amount: amount,
@@ -748,6 +783,102 @@
             btn.disabled = false;
             btn.textContent = 'Record Payment';
         }
+    }
+
+    async function startCardRentPayment(vendorId, amount, period, notes) {
+        var v = allVendors.find(function(x) { return x.id === vendorId; });
+        var vLabel = v ? (v.name + ' \u2014 Booth ' + v.booth_number) : 'Vendor #' + vendorId;
+
+        document.getElementById('terminal-vendor-label').textContent = vLabel;
+        document.getElementById('terminal-amount').textContent = '$' + amount.toFixed(2);
+        document.getElementById('terminal-title').textContent = 'Processing Card Payment';
+        document.getElementById('terminal-status').style.display = '';
+        document.getElementById('terminal-result').style.display = 'none';
+        document.getElementById('terminal-cancel-btn').textContent = 'Cancel';
+        document.getElementById('terminal-cancel-btn').disabled = false;
+        document.getElementById('terminal-overlay').classList.add('open');
+
+        try {
+            var charge = await apiPost('/api/v1/admin/vendors/' + vendorId + '/rent-charge-card', { amount: amount });
+            var orderId = charge.poynt_order_id;
+            pollTerminalStatus(orderId, vendorId, amount, period, notes);
+        } catch (err) {
+            showTerminalError(err.message || 'Failed to initiate card payment.');
+        }
+    }
+
+    function pollTerminalStatus(orderId, vendorId, amount, period, notes) {
+        var attempts = 0;
+        var maxAttempts = 90;
+
+        terminalPollInterval = setInterval(async function() {
+            attempts++;
+            if (attempts > maxAttempts) {
+                clearInterval(terminalPollInterval);
+                terminalPollInterval = null;
+                showTerminalError('Payment timed out. The terminal did not respond in time.');
+                return;
+            }
+            try {
+                var status = await apiGet('/api/v1/admin/rent-charge-status/' + orderId);
+                if (status.status === 'APPROVED') {
+                    clearInterval(terminalPollInterval);
+                    terminalPollInterval = null;
+                    await recordCardRentPayment(vendorId, amount, period, notes, status.transaction_id);
+                } else if (status.status === 'DECLINED') {
+                    clearInterval(terminalPollInterval);
+                    terminalPollInterval = null;
+                    showTerminalError('Card payment was declined.');
+                }
+            } catch (err) {
+                // keep polling on transient errors
+            }
+        }, 2000);
+    }
+
+    async function recordCardRentPayment(vendorId, amount, period, notes, transactionId) {
+        try {
+            var result = await apiPost('/api/v1/admin/vendors/' + vendorId + '/record-rent', {
+                amount: amount,
+                method: 'card',
+                period: period,
+                notes: (notes ? notes + ' | ' : '') + 'Poynt Txn: ' + (transactionId || 'N/A')
+            });
+            document.getElementById('terminal-status').style.display = 'none';
+            document.getElementById('terminal-title').textContent = 'Payment Approved';
+            document.getElementById('terminal-result').style.display = 'block';
+            document.getElementById('terminal-result').style.background = 'rgba(123,196,160,0.1)';
+            document.getElementById('terminal-result').style.color = '#7BC4A0';
+            document.getElementById('terminal-result').style.border = '1px solid rgba(123,196,160,0.3)';
+            document.getElementById('terminal-result').textContent = result.message;
+            document.getElementById('terminal-cancel-btn').textContent = 'Close';
+
+            await loadRentStatus();
+            if (document.getElementById('detail-panel').classList.contains('open')) {
+                openVendorDetail(vendorId);
+            }
+        } catch (err) {
+            showTerminalError('Card charged but failed to record: ' + (err.message || 'Unknown error'));
+        }
+    }
+
+    function showTerminalError(msg) {
+        document.getElementById('terminal-status').style.display = 'none';
+        document.getElementById('terminal-title').textContent = 'Payment Failed';
+        document.getElementById('terminal-result').style.display = 'block';
+        document.getElementById('terminal-result').style.background = 'rgba(200,112,112,0.1)';
+        document.getElementById('terminal-result').style.color = '#c87070';
+        document.getElementById('terminal-result').style.border = '1px solid rgba(200,112,112,0.3)';
+        document.getElementById('terminal-result').textContent = msg;
+        document.getElementById('terminal-cancel-btn').textContent = 'Close';
+    }
+
+    function cancelTerminalPayment() {
+        if (terminalPollInterval) {
+            clearInterval(terminalPollInterval);
+            terminalPollInterval = null;
+        }
+        document.getElementById('terminal-overlay').classList.remove('open');
     }
 
     loadRentStatus();
