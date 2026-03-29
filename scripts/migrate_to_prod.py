@@ -12,7 +12,9 @@ import httpx
 
 PROD_URL = "https://bowenstreetmm.com"
 ADMIN_EMAIL = "admin@bowenstreetmarket.com"
-ADMIN_PASSWORD = "admin123"
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+if not ADMIN_PASSWORD:
+    raise SystemExit("Set ADMIN_PASSWORD env var before running this script.")
 
 CHUNK_SIZE = 5000
 

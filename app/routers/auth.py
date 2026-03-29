@@ -11,7 +11,6 @@ import bcrypt
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
-import os
 from app.database import get_db
 from app.models.vendor import Vendor
 
@@ -23,7 +22,8 @@ _LOGIN_MAX = 10
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-SECRET_KEY = os.environ.get("SECRET_KEY") or os.environ.get("REPL_ID", "bmm-pos-dev-fallback-key")
+from app.config import settings as _cfg
+SECRET_KEY = _cfg.secret_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480
 

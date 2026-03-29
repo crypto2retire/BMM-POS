@@ -184,40 +184,45 @@ async def lifespan(app: FastAPI):
         from app.models.vendor import Vendor
         from sqlalchemy import select as sa_select
         import bcrypt
+        import secrets as _secrets
 
         def make_hash(pw):
             return bcrypt.hashpw(pw.encode('utf-8'), bcrypt.gensalt(rounds=12)).decode('utf-8')
 
+        _admin_pw = os.environ.get("ADMIN_PASSWORD") or _secrets.token_urlsafe(16)
+        _cashier_pw = os.environ.get("CASHIER_PASSWORD") or _secrets.token_urlsafe(16)
+        _vendor_pw = _secrets.token_urlsafe(16)
+
         seed_accounts = [
             dict(name="Admin", email="admin@bowenstreetmarket.com", phone="920-555-0001",
-                 booth_number="A-01", monthly_rent=0, password="admin123",
+                 booth_number="A-01", monthly_rent=0, password=_admin_pw,
                  role="admin", is_vendor=True, is_active=True, commission_rate=0.10),
             dict(name="Sarah Johnson", email="sarah@email.com", phone="920-555-0002",
-                 booth_number="A-12", monthly_rent=250, password="vendor123",
+                 booth_number="A-12", monthly_rent=250, password=_vendor_pw,
                  role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
             dict(name="Mike Chen", email="mike@email.com", phone="920-555-0003",
-                 booth_number="B-07", monthly_rent=300, password="vendor123",
+                 booth_number="B-07", monthly_rent=300, password=_vendor_pw,
                  role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
             dict(name="Linda Martinez", email="linda@email.com", phone="920-555-0004",
-                 booth_number="C-22", monthly_rent=200, password="vendor123",
+                 booth_number="C-22", monthly_rent=200, password=_vendor_pw,
                  role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
             dict(name="Cashier", email="cashier@bowenstreetmarket.com", phone="920-555-0005",
-                 booth_number="B-01", monthly_rent=0, password="cashier123",
+                 booth_number="B-01", monthly_rent=0, password=_cashier_pw,
                  role="cashier", is_vendor=True, is_active=True, commission_rate=0.10),
             dict(name="Nora Williams", email="nora@email.com", phone="920-555-0006",
-                 booth_number="D-01", monthly_rent=275, password="vendor123",
+                 booth_number="D-01", monthly_rent=275, password=_vendor_pw,
                  role="admin", is_vendor=True, is_active=True, commission_rate=0.10),
             dict(name="Sammy Davis", email="sammy@email.com", phone="920-555-0007",
-                 booth_number="D-05", monthly_rent=250, password="vendor123",
+                 booth_number="D-05", monthly_rent=250, password=_vendor_pw,
                  role="admin", is_vendor=True, is_active=True, commission_rate=0.10),
             dict(name="Ashley Brown", email="ashley@email.com", phone="920-555-0008",
-                 booth_number="E-02", monthly_rent=300, password="vendor123",
+                 booth_number="E-02", monthly_rent=300, password=_vendor_pw,
                  role="admin", is_vendor=True, is_active=True, commission_rate=0.10),
             dict(name="Anne Taylor", email="anne@email.com", phone="920-555-0009",
-                 booth_number="E-10", monthly_rent=225, password="vendor123",
+                 booth_number="E-10", monthly_rent=225, password=_vendor_pw,
                  role="admin", is_vendor=True, is_active=True, commission_rate=0.10),
             dict(name="Paula Garcia", email="paula@email.com", phone="920-555-0010",
-                 booth_number="F-03", monthly_rent=200, password="vendor123",
+                 booth_number="F-03", monthly_rent=200, password=_vendor_pw,
                  role="vendor", is_vendor=False, is_active=True, commission_rate=0.10),
         ]
 
@@ -232,13 +237,6 @@ async def lifespan(app: FastAPI):
                 existing = result.scalar_one_or_none()
                 if existing:
                     changed = False
-                    try:
-                        pw_ok = bcrypt.checkpw(pw.encode('utf-8'), existing.password_hash.encode('utf-8'))
-                    except Exception:
-                        pw_ok = False
-                    if not pw_ok:
-                        existing.password_hash = make_hash(pw)
-                        changed = True
                     if existing.role != acct.get("role"):
                         existing.role = acct["role"]
                         changed = True

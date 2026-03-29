@@ -56,5 +56,6 @@ The frontend design adheres to Bowenstreet Market branding with a dark (`#38383B
 - **Payment Gateway (Rent)**: Square Checkout API (for vendor rent payments).
 - **PDF Generation**: ReportLab (for item labels).
 - **Barcode Generation**: python-barcode (for Code 128 barcodes).
-- **Authentication**: `python-jose` (for JWT handling).
+- **Authentication**: `python-jose` (for JWT handling). JWT signing key loaded from `SECRET_KEY` Replit secret (required, no fallback).
 - **Password Hashing**: `bcrypt`.
+- **Credentials**: All sensitive credentials (SECRET_KEY, SQUARE_ACCESS_TOKEN, SQUARE_APPLICATION_ID, SQUARE_LOCATION_ID) stored as Replit Secrets. Seed account passwords for admin/cashier read from ADMIN_PASSWORD/CASHIER_PASSWORD env vars.

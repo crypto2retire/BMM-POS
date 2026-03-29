@@ -26,7 +26,7 @@
 | `ANTHROPIC_API_KEY` | reserved | in Replit Secrets |
 | `SQUARE_ACCESS_TOKEN` | Square API auth | in Replit Secrets |
 | `SQUARE_APPLICATION_ID` | Square app ID | in Replit Secrets |
-| `SQUARE_LOCATION_ID` | Square location | `G2KJFVAEVK3BZ` |
+| `SQUARE_LOCATION_ID` | Square location | in Replit Secrets |
 
 ### Run command
 ```bash
@@ -39,8 +39,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 5000
 
 | role | email | password |
 |------|-------|----------|
-| admin | `admin@bowenstreetmarket.com` | `admin123` |
-| cashier | `cashier@bowenstreetmarket.com` | `cashier123` |
+| admin | `admin@bowenstreetmarket.com` | set via `ADMIN_PASSWORD` env var |
+| cashier | `cashier@bowenstreetmarket.com` | set via `CASHIER_PASSWORD` env var |
 
 ---
 

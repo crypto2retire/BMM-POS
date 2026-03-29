@@ -37,7 +37,7 @@ VENDORS_DATA = [
     {
         "name": "Admin User",
         "email": "admin@bowenstreetmarket.com",
-        "password": "admin123",
+        "password": os.environ.get("ADMIN_PASSWORD", "admin123"),
         "role": "admin",
         "booth_number": None,
         "monthly_rent": 0,
@@ -48,7 +48,7 @@ VENDORS_DATA = [
     {
         "name": "Jane Doe",
         "email": "cashier@bowenstreetmarket.com",
-        "password": "cashier123",
+        "password": os.environ.get("CASHIER_PASSWORD", "cashier123"),
         "role": "cashier",
         "booth_number": None,
         "monthly_rent": 0,
@@ -59,7 +59,7 @@ VENDORS_DATA = [
     {
         "name": "Sarah Johnson",
         "email": "sarah@email.com",
-        "password": "vendor123",
+        "password": os.environ.get("VENDOR_PASSWORD", "vendor123"),
         "role": "vendor",
         "booth_number": "A-12",
         "monthly_rent": 175,
@@ -70,7 +70,7 @@ VENDORS_DATA = [
     {
         "name": "Mike Chen",
         "email": "mike@email.com",
-        "password": "vendor123",
+        "password": os.environ.get("VENDOR_PASSWORD", "vendor123"),
         "role": "vendor",
         "booth_number": "B-07",
         "monthly_rent": 200,
@@ -81,7 +81,7 @@ VENDORS_DATA = [
     {
         "name": "Linda Kowalski",
         "email": "linda@email.com",
-        "password": "vendor123",
+        "password": os.environ.get("VENDOR_PASSWORD", "vendor123"),
         "role": "vendor",
         "booth_number": "C-22",
         "monthly_rent": 150,
