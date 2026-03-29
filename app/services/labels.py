@@ -171,11 +171,12 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
         c.drawCentredString(w / 2, barcode_text_y, barcode_val)
 
 
-def generate_dymo_xml(item) -> str:
-    from app.config import settings
+def generate_dymo_xml(item, label_size: str = None) -> str:
     import xml.sax.saxutils as saxutils
 
-    label_size = settings.dymo_label_size
+    if not label_size:
+        from app.config import settings
+        label_size = settings.dymo_label_size
 
     booth_number = ""
     vendor = getattr(item, "vendor", None)
@@ -202,18 +203,15 @@ def generate_dymo_xml(item) -> str:
     barcode_str = saxutils.escape(item.barcode or "")
     booth_str = saxutils.escape(f"Booth {booth_number}") if booth_number else ""
 
-    if label_size == "30252":
-        paper_name = "30252 Address"
-        lw = 5040
-        lh = 1620
-    elif label_size == "30347":
-        paper_name = "30347 1 in x 1-1/2 in"
-        lw = 2160
-        lh = 1440
-    else:
-        paper_name = "30336 1 in x 2-1/8 in"
-        lw = 3060
-        lh = 1440
+    DYMO_PAPER = {
+        "30252": {"name": "30252 Address",                "w": 5040, "h": 1620},
+        "30336": {"name": "30336 Small Address",          "w": 3060, "h": 1440},
+        "30347": {"name": "30347 1 in x 1-1/2 in",       "w": 2160, "h": 1440},
+    }
+    spec = DYMO_PAPER.get(label_size, DYMO_PAPER["30347"])
+    paper_name = spec["name"]
+    lw = spec["w"]
+    lh = spec["h"]
 
     m = 40 if label_size == "30347" else 60
     usable_w = lw - (m * 2)

@@ -266,7 +266,9 @@ async def get_dymo_label(
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    xml = generate_dymo_xml(item)
+    from app.routers.settings import get_setting
+    dymo_size = await get_setting(db, "dymo_label_size") or "30347"
+    xml = generate_dymo_xml(item, label_size=dymo_size)
 
     item.label_printed = True
     await db.commit()
