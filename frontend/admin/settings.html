@@ -4,180 +4,767 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings — Bowenstreet Market</title>
+    <meta name="description" content="Admin settings and preferences for Bowenstreet Market POS system.">
     <link rel="stylesheet" href="/static/css/main.css">
-    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,700;1,400&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+    <style>
+        .settings-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .settings-tab {
+            padding: 0.65rem 1.1rem;
+            font-size: 0.72rem;
+            font-family: 'Roboto', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-light);
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            cursor: pointer;
+            transition: color 0.15s, border-color 0.15s;
+            white-space: nowrap;
+        }
+        .settings-tab:hover { color: var(--text); }
+        .settings-tab.active {
+            color: var(--gold);
+            border-bottom-color: var(--gold);
+        }
+
+        .settings-panel { display: none; }
+        .settings-panel.active { display: block; }
+
+        .settings-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            margin-bottom: 1.25rem;
+        }
+        .settings-section-header {
+            background: rgba(201,169,110,0.08);
+            border-bottom: 1px solid var(--border);
+            padding: 0.65rem 1.25rem;
+            font-size: 0.68rem;
+            font-family: 'Roboto', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--gold);
+            font-weight: 500;
+        }
+        .settings-section-body { padding: 1.25rem; }
+
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-label {
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+        .setting-desc {
+            font-size: 0.72rem;
+            color: var(--text-light);
+            margin-top: 0.15rem;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: #555;
+            border-radius: 12px;
+            transition: background 0.2s;
+        }
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: #4ade80;
+        }
+        .toggle-switch input:checked + .toggle-slider::before {
+            transform: translateX(20px);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .form-row.full { grid-template-columns: 1fr; }
+        @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+
+        .form-group { margin-bottom: 0; }
+        .form-group label {
+            display: block;
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-light);
+            margin-bottom: 0.3rem;
+            font-family: 'Roboto', sans-serif;
+        }
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.55rem 0.75rem;
+            font-size: 0.88rem;
+            font-family: 'Roboto', sans-serif;
+            box-sizing: border-box;
+            transition: border-color 0.15s;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--gold-dim);
+            box-shadow: 0 0 0 2px rgba(201,169,110,0.12);
+        }
+        .form-group small {
+            font-size: 0.7rem;
+            color: var(--text-light);
+            margin-top: 0.2rem;
+            display: block;
+        }
+
+        .save-bar {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem 0;
+            border-top: 1px solid var(--border);
+            margin-top: 1.5rem;
+        }
+        .save-bar .btn-save {
+            background: var(--gold);
+            color: #1a1a1a;
+            border: none;
+            padding: 0.6rem 2rem;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            transition: background 0.15s;
+        }
+        .save-bar .btn-save:hover { background: #b8963f; }
+        .save-bar .btn-reset {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            padding: 0.6rem 1.4rem;
+            font-size: 0.82rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+        }
+        #save-status {
+            font-size: 0.82rem;
+            margin-left: auto;
+        }
+
+        .role-grid {
+            display: grid;
+            grid-template-columns: 1fr repeat(3, 80px);
+            gap: 0;
+            border: 1px solid var(--border);
+        }
+        .role-grid-header {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-light);
+            padding: 0.6rem 0.5rem;
+            text-align: center;
+            background: rgba(201,169,110,0.06);
+            border-bottom: 1px solid var(--border);
+            font-family: 'Roboto', sans-serif;
+        }
+        .role-grid-header:first-child { text-align: left; padding-left: 1rem; }
+        .role-grid-row {
+            display: contents;
+        }
+        .role-grid-row > div {
+            padding: 0.6rem 0.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .role-grid-row > div:first-child {
+            justify-content: flex-start;
+            padding-left: 1rem;
+            font-size: 0.82rem;
+            color: var(--text);
+        }
+        .role-grid-row > div input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--gold);
+            cursor: pointer;
+        }
+
+        @media (max-width: 767px) {
+            .main-content { padding-bottom: 70px; }
+            .settings-tab { font-size: 0.65rem; padding: 0.55rem 0.75rem; }
+            .role-grid { grid-template-columns: 1fr repeat(3, 60px); }
+        }
+    </style>
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-brand">Bowenstreet Market</div>
-        <div class="nav-links">
+
+<nav class="navbar">
+    <a href="/admin/index.html" class="navbar-brand">
+        <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
+        <span class="store-name">Admin</span>
+    </a>
+    <div class="navbar-user">
+        <span id="user-name">Administrator</span>
+        <nav class="navbar-nav">
             <a href="/admin/index.html">Dashboard</a>
             <a href="/admin/vendors.html">Vendors</a>
             <a href="/admin/rent.html">Rent</a>
-            <a href="/admin/customers.html">Customers</a>
+            <a href="/vendor/items.html">Items</a>
             <a href="/admin/studio.html">Studio</a>
             <a href="/admin/reports.html">Reports</a>
             <a href="/admin/settings.html" class="active">Settings</a>
-            <a href="#" onclick="logout()">Logout</a>
-        </div>
-        <select class="mobile-nav" onchange="if(this.value)window.location=this.value">
-            <option value="">Menu</option>
-            <option value="/admin/index.html">Dashboard</option>
-            <option value="/admin/vendors.html">Vendors</option>
-            <option value="/admin/rent.html">Rent</option>
-            <option value="/admin/customers.html">Customers</option>
-            <option value="/admin/reports.html">Reports</option>
-            <option value="/admin/settings.html" selected>Settings</option>
-        </select>
-    </nav>
-    <div class="container" style="margin-top:80px">
-        <h1 style="font-family:'EB Garamond',serif;font-style:italic;font-size:2rem;margin-bottom:0.2em">Store Settings</h1>
-        <p style="color:#999;margin-bottom:1.5em;font-size:0.95rem">Configure store parameters, tax rates, and business information</p>
-        <div class="ornament"></div>
+            <a href="/pos/index.html">POS Terminal</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
+        </nav>
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
+    </div>
+</nav>
 
-        <div id="settingsForm" class="card" style="max-width:700px">
-            <h2 style="font-family:'EB Garamond',serif;font-size:1.3rem;margin-bottom:1em">General Settings</h2>
+<div class="mobile-nav-dropdown" id="mobile-nav">
+    <a href="/admin/index.html">Dashboard</a>
+    <a href="/admin/vendors.html">Vendors</a>
+    <a href="/admin/rent.html">Rent</a>
+    <a href="/vendor/items.html">Items</a>
+    <a href="/admin/studio.html">Studio</a>
+    <a href="/admin/reports.html">Reports</a>
+    <a href="/admin/settings.html" class="active">Settings</a>
+    <a href="/pos/index.html">POS Terminal</a>
+    <a href="#" onclick="handleLogout()">Logout</a>
+</div>
 
-            <div class="form-group" style="margin-bottom:1em">
-                <label class="form-label">Store Name</label>
-                <input type="text" id="store_name" class="form-control" placeholder="Bowenstreet Market Mall">
+<div class="main-content">
+    <div id="alert-container"></div>
+    <div class="page-header">
+        <h1 class="page-title">Settings</h1>
+        <p class="page-subtitle" style="font-family:'EB Garamond',Georgia,serif;font-style:italic;font-size:0.95rem;color:var(--text-light);margin-top:0.25rem">Configure store parameters, features, and access controls</p>
+    </div>
+
+    <div class="settings-tabs" id="settings-tabs">
+        <button class="settings-tab active" data-tab="store" onclick="switchTab('store')">Store Details</button>
+        <button class="settings-tab" data-tab="tax" onclick="switchTab('tax')">Taxes &amp; Policies</button>
+        <button class="settings-tab" data-tab="pos" onclick="switchTab('pos')">POS &amp; Receipts</button>
+        <button class="settings-tab" data-tab="features" onclick="switchTab('features')">Features</button>
+        <button class="settings-tab" data-tab="roles" onclick="switchTab('roles')">User Roles</button>
+        <button class="settings-tab" data-tab="labels" onclick="switchTab('labels')">Labels</button>
+        <button class="settings-tab" data-tab="notifications" onclick="switchTab('notifications')">Notifications</button>
+    </div>
+
+    <!-- ─── Store Details ──────────────────────────────────── -->
+    <div class="settings-panel active" id="panel-store">
+        <div class="settings-section">
+            <div class="settings-section-header">Store Information</div>
+            <div class="settings-section-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Store Name</label>
+                        <input type="text" id="s-store_name" placeholder="Bowenstreet Market">
+                    </div>
+                    <div class="form-group">
+                        <label>Store Phone</label>
+                        <input type="tel" id="s-store_phone" placeholder="(920) 555-0100">
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Store Address</label>
+                        <input type="text" id="s-store_address" placeholder="2837 Bowen St, Oshkosh, WI 54901">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Store Email</label>
+                        <input type="email" id="s-store_email" placeholder="info@bowenstreetmarket.com">
+                    </div>
+                    <div class="form-group">
+                        <label>State</label>
+                        <input type="text" id="s-store_state" placeholder="WI" maxlength="2">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Postcode</label>
+                        <input type="text" id="s-store_postcode" placeholder="54901">
+                    </div>
+                    <div class="form-group">
+                        <label>Country</label>
+                        <select id="s-store_country">
+                            <option value="US">United States</option>
+                            <option value="CA">Canada</option>
+                        </select>
+                    </div>
+                </div>
             </div>
-
-            <div class="form-group" style="margin-bottom:1em">
-                <label class="form-label">Store Address</label>
-                <input type="text" id="store_address" class="form-control" placeholder="2837 Bowen St, Oshkosh WI 54901">
-            </div>
-
-            <div class="form-group" style="margin-bottom:1em">
-                <label class="form-label">Store Phone</label>
-                <input type="tel" id="store_phone" class="form-control" placeholder="(920) 555-0100">
-            </div>
-
-            <div class="form-group" style="margin-bottom:1em">
-                <label class="form-label">Store Email</label>
-                <input type="email" id="store_email" class="form-control" placeholder="info@bowenstreetmarket.com">
-            </div>
-
-            <div class="ornament"></div>
-            <h2 style="font-family:'EB Garamond',serif;font-size:1.3rem;margin-bottom:1em">Tax & Financial</h2>
-
-            <div class="form-group" style="margin-bottom:1em">
-                <label class="form-label">Tax Rate (%)</label>
-                <input type="number" id="tax_rate" class="form-control" step="0.01" min="0" max="20" placeholder="5.0">
-            </div>
-
-            <div class="form-group" style="margin-bottom:1em">
-                <label class="form-label">Commission Rate (%)</label>
-                <input type="number" id="commission_rate" class="form-control" step="0.01" min="0" max="100" placeholder="10.0">
-                <small style="color:#999">Percentage deducted from vendor sales</small>
-            </div>
-
-            <div class="form-group" style="margin-bottom:1em">
-                <label class="form-label">Default Monthly Rent ($)</label>
-                <input type="number" id="default_rent" class="form-control" step="0.01" min="0" placeholder="200.00">
-            </div>
-
-            <div class="ornament"></div>
-            <h2 style="font-family:'EB Garamond',serif;font-size:1.3rem;margin-bottom:1em">Receipt & POS</h2>
-
-            <div class="form-group" style="margin-bottom:1em">
-                <label class="form-label">Receipt Header Text</label>
-                <textarea id="receipt_header" class="form-control" rows="3" placeholder="Thank you for shopping at Bowenstreet Market!"></textarea>
-            </div>
-
-            <div class="form-group" style="margin-bottom:1em">
-                <label class="form-label">Receipt Footer Text</label>
-                <textarea id="receipt_footer" class="form-control" rows="3" placeholder="Return policy: 30 days with receipt. No returns on sale items."></textarea>
-            </div>
-
-            <div class="form-group" style="margin-bottom:1em">
-                <label class="form-label">Return Policy (days)</label>
-                <input type="number" id="return_policy_days" class="form-control" min="0" max="365" placeholder="30">
-            </div>
-
-            <div style="margin-top:1.5em;display:flex;gap:1em">
-                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
-                <button class="btn" style="background:transparent;border:1px solid #666;color:#ccc" onclick="loadSettings()">Reset</button>
-            </div>
-
-            <div id="saveStatus" style="margin-top:1em"></div>
         </div>
 
-        <div class="card" style="max-width:700px;margin-top:2em">
-            <h2 style="font-family:'EB Garamond',serif;font-size:1.3rem;margin-bottom:1em">Change Your Password</h2>
-            <button class="btn btn-primary" onclick="openPasswordModal()">Change Password</button>
+        <div class="settings-section">
+            <div class="settings-section-header">Business Hours</div>
+            <div class="settings-section-body">
+                <div class="form-row">
+                    <div class="form-group"><label>Monday</label><input type="text" id="s-hours_monday" placeholder="Closed"></div>
+                    <div class="form-group"><label>Tuesday</label><input type="text" id="s-hours_tuesday" placeholder="10:00 AM - 6:00 PM"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Wednesday</label><input type="text" id="s-hours_wednesday" placeholder="10:00 AM - 6:00 PM"></div>
+                    <div class="form-group"><label>Thursday</label><input type="text" id="s-hours_thursday" placeholder="10:00 AM - 6:00 PM"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Friday</label><input type="text" id="s-hours_friday" placeholder="10:00 AM - 6:00 PM"></div>
+                    <div class="form-group"><label>Saturday</label><input type="text" id="s-hours_saturday" placeholder="10:00 AM - 6:00 PM"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Sunday</label><input type="text" id="s-hours_sunday" placeholder="11:00 AM - 4:00 PM"></div>
+                    <div class="form-group"></div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <script>
-        const TOKEN = sessionStorage.getItem('bmm_token');
-        if (!TOKEN) window.location = '/vendor/login.html';
+    <!-- ─── Taxes & Policies ───────────────────────────────── -->
+    <div class="settings-panel" id="panel-tax">
+        <div class="settings-section">
+            <div class="settings-section-header">Tax Configuration</div>
+            <div class="settings-section-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Default Tax Rate (%)</label>
+                        <input type="number" id="s-tax_rate" step="0.01" min="0" max="20" placeholder="5.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Multi Tax Rate Items</label>
+                        <div style="padding-top:0.4rem">
+                            <label class="toggle-switch"><input type="checkbox" id="s-multi_tax_enabled"><span class="toggle-slider"></span></label>
+                        </div>
+                        <small>Allow different tax rates per item</small>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        function logout() {
-            sessionStorage.removeItem('bmm_token');
-            window.location = '/vendor/login.html';
-        }
+        <div class="settings-section">
+            <div class="settings-section-header">Financial Defaults</div>
+            <div class="settings-section-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Default Commission Rate (%)</label>
+                        <input type="number" id="s-commission_rate" step="0.01" min="0" max="100" placeholder="10.0">
+                        <small>Percentage deducted from vendor sales</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Default Monthly Rent ($)</label>
+                        <input type="number" id="s-default_rent" step="0.01" min="0" placeholder="200.00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Rent Due Day</label>
+                        <input type="number" id="s-rent_due_day" min="1" max="31" placeholder="27">
+                        <small>Day of month rent is due</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Payout Day</label>
+                        <input type="number" id="s-payout_day" min="1" max="31" placeholder="1">
+                        <small>Day of month vendor payouts process</small>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        const SETTING_KEYS = [
-            'store_name', 'store_address', 'store_phone', 'store_email',
-            'tax_rate', 'commission_rate', 'default_rent',
-            'receipt_header', 'receipt_footer', 'return_policy_days'
-        ];
+        <div class="settings-section">
+            <div class="settings-section-header">Return Policy</div>
+            <div class="settings-section-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Return Policy (days)</label>
+                        <input type="number" id="s-return_policy_days" min="0" max="365" placeholder="30">
+                    </div>
+                    <div class="form-group"></div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Return Policy Text</label>
+                        <textarea id="s-return_policy_text" rows="2" placeholder="Sorry, no returns or refunds on any items." style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.75rem;font-size:0.88rem;font-family:'Roboto',sans-serif;box-sizing:border-box"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        async function loadSettings() {
-            try {
-                const resp = await fetch('/api/v1/admin/settings', {
-                    headers: { 'Authorization': `Bearer ${TOKEN}` }
-                });
-                if (!resp.ok) throw new Error('Failed to load settings');
-                const settings = await resp.json();
+    <!-- ─── POS & Receipts ─────────────────────────────────── -->
+    <div class="settings-panel" id="panel-pos">
+        <div class="settings-section">
+            <div class="settings-section-header">Receipt Configuration</div>
+            <div class="settings-section-body">
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Receipt Header Text</label>
+                        <textarea id="s-receipt_header" rows="2" placeholder="Thank you for shopping at Bowenstreet Market!" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.75rem;font-size:0.88rem;font-family:'Roboto',sans-serif;box-sizing:border-box"></textarea>
+                    </div>
+                </div>
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label>Receipt Footer Text</label>
+                        <textarea id="s-receipt_footer" rows="2" placeholder="Return policy: No returns or refunds." style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.75rem;font-size:0.88rem;font-family:'Roboto',sans-serif;box-sizing:border-box"></textarea>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Signature Line on Receipt</div><div class="setting-desc">Print a signature line at the bottom of receipts</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-receipt_signature"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Gift Receipts</div><div class="setting-desc">Allow printing gift receipts without prices</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-gift_receipts_enabled"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
 
-                for (const key of SETTING_KEYS) {
-                    const el = document.getElementById(key);
-                    if (el && settings[key] !== undefined && settings[key] !== null) {
-                        el.value = settings[key];
-                    }
+        <div class="settings-section">
+            <div class="settings-section-header">POS Options</div>
+            <div class="settings-section-body">
+                <div class="setting-row">
+                    <div><div class="setting-label">Advanced Cash Options</div><div class="setting-desc">Show denomination breakdown and quick-cash buttons at POS</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-advanced_cash"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Require Sale Reason for Voids</div><div class="setting-desc">Force cashiers to enter a reason when voiding a sale</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-require_void_reason"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Auto-Print Receipt</div><div class="setting-desc">Automatically print receipt after each sale completes</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-auto_print_receipt"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Features / Optional Modules ────────────────────── -->
+    <div class="settings-panel" id="panel-features">
+        <div class="settings-section">
+            <div class="settings-section-header">Preferences</div>
+            <div class="settings-section-body">
+                <div class="setting-row">
+                    <div><div class="setting-label">Aging on Tags</div><div class="setting-desc">Show how long items have been in stock on labels</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-aging_on_tags"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Automatic Vendor Credentials Email</div><div class="setting-desc">Email login credentials when a new vendor is created</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-auto_vendor_email"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Vendor Online Store Access</div><div class="setting-desc">Allow vendors to mark items for the online storefront</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-vendor_online_store"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Vendor Photo Uploads</div><div class="setting-desc">Allow vendors to upload product photos from their dashboard</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-vendor_photo_uploads"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-header">Optional Modules</div>
+            <div class="settings-section-body">
+                <div class="setting-row">
+                    <div><div class="setting-label">Automatic Vendor Booth Rent</div><div class="setting-desc">Enable monthly rent billing and tracking for vendor booths</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-module_rent"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Studio / Classes</div><div class="setting-desc">Enable studio class scheduling and registration</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-module_studio"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Gift Cards</div><div class="setting-desc">Enable in-house gift card system (activate, load, redeem)</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-module_gift_cards"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Consignment Tracking</div><div class="setting-desc">Track per-item consignment rates and vendor payouts</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-module_consignment"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">AI Assistant</div><div class="setting-desc">Enable AI-powered assistant for item descriptions, pricing, and help</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-module_ai_assistant"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Bulk CSV Import</div><div class="setting-desc">Allow admin bulk import of vendors and inventory via CSV</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-module_csv_import"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Time Clock</div><div class="setting-desc">Clock in/out function to enable employee timesheet entries and report hours</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-module_time_clock"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Split Payments</div><div class="setting-desc">Allow splitting a sale across cash, card, and gift card</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-module_split_payments"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── User Roles ─────────────────────────────────────── -->
+    <div class="settings-panel" id="panel-roles">
+        <div class="settings-section">
+            <div class="settings-section-header">Role-Based Access Controls</div>
+            <div class="settings-section-body">
+                <p style="font-size:0.8rem;color:var(--text-light);margin-bottom:1rem">Control which features each role can access. Admins always have full access.</p>
+                <div class="role-grid" id="role-grid">
+                    <div class="role-grid-header">Feature</div>
+                    <div class="role-grid-header">Vendor</div>
+                    <div class="role-grid-header">Cashier</div>
+                    <div class="role-grid-header">Admin</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Labels ─────────────────────────────────────────── -->
+    <div class="settings-panel" id="panel-labels">
+        <div class="settings-section">
+            <div class="settings-section-header">Label Configuration</div>
+            <div class="settings-section-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Default Label Format</label>
+                        <select id="s-default_label_format">
+                            <option value="standard">Standard PDF (2.25" x 1.25" thermal)</option>
+                            <option value="dymo">Dymo LabelWriter</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Dymo Label Size</label>
+                        <select id="s-dymo_label_size">
+                            <option value="30347">1" x 1.5" — DYMO 30347 (Book Spine)</option>
+                            <option value="30336">1" x 2-1/8" — DYMO 30336</option>
+                            <option value="30252">1-1/8" x 3.5" — DYMO 30252 (Address)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Show Price on Label</div><div class="setting-desc">Display item price on printed labels</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-label_show_price" checked><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Show Booth Number on Label</div><div class="setting-desc">Display vendor booth number on printed labels</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-label_show_booth" checked><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Aging on Labels</div><div class="setting-desc">Show the date an item was added on its label</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-label_show_aging"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Notifications ──────────────────────────────────── -->
+    <div class="settings-panel" id="panel-notifications">
+        <div class="settings-section">
+            <div class="settings-section-header">Vendor Notifications</div>
+            <div class="settings-section-body">
+                <p style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.75rem">Control which notifications are sent to vendors.</p>
+                <div class="setting-row">
+                    <div><div class="setting-label">Product Sold</div><div class="setting-desc">Notify vendors when one of their items sells</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-notify_product_sold"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Payout Processed</div><div class="setting-desc">Notify vendors when their payout is processed</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-notify_payout"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Products Soon to Expire</div><div class="setting-desc">Notify vendors when items have been on the floor too long</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-notify_expiring"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Weekly Sales &amp; Expire Report</div><div class="setting-desc">Send vendors a weekly summary of sales and expiring items</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-notify_weekly_report"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Rent Due Reminder</div><div class="setting-desc">Remind vendors when rent is coming due</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-notify_rent_due"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-header">Admin Notifications</div>
+            <div class="settings-section-body">
+                <div class="setting-row">
+                    <div><div class="setting-label">Daily Sales Summary</div><div class="setting-desc">Email admin the end-of-day sales summary</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-notify_admin_daily"><span class="toggle-slider"></span></label>
+                </div>
+                <div class="setting-row">
+                    <div><div class="setting-label">Low Stock Alert</div><div class="setting-desc">Alert when items hit zero stock</div></div>
+                    <label class="toggle-switch"><input type="checkbox" id="s-notify_low_stock"><span class="toggle-slider"></span></label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="save-bar">
+        <button class="btn-save" onclick="saveSettings()">Save Settings</button>
+        <button class="btn-reset" onclick="loadSettings()">Reset</button>
+        <span id="save-status"></span>
+    </div>
+</div>
+
+<nav class="admin-bottom-nav">
+    <a href="/admin/index.html"><span class="nav-icon">&#127968;</span>Dashboard</a>
+    <a href="/admin/vendors.html"><span class="nav-icon">&#128101;</span>Vendors</a>
+    <a href="/admin/rent.html"><span class="nav-icon">&#128179;</span>Rent</a>
+    <a href="/vendor/items.html"><span class="nav-icon">&#127991;&#65039;</span>Items</a>
+    <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
+</nav>
+
+<script src="/static/js/api.js"></script>
+<script>
+    function handleLogout() { clearToken(); window.location.href = '/vendor/login.html'; }
+    function toggleMobileNav() { document.getElementById('mobile-nav').classList.toggle('open'); }
+    document.addEventListener('click', function(e) {
+        var nav = document.getElementById('mobile-nav');
+        var btn = document.getElementById('hamburger-btn');
+        if (nav.classList.contains('open') && !nav.contains(e.target) && e.target !== btn) nav.classList.remove('open');
+    });
+
+    var ROLE_FEATURES = [
+        { key: 'role_view_dashboard', label: 'View Dashboard' },
+        { key: 'role_manage_items', label: 'Manage Items' },
+        { key: 'role_view_sales', label: 'View Sales History' },
+        { key: 'role_process_sales', label: 'Process Sales (POS)' },
+        { key: 'role_void_sales', label: 'Void Sales' },
+        { key: 'role_manage_gift_cards', label: 'Gift Card Operations' },
+        { key: 'role_view_reports', label: 'View Reports' },
+        { key: 'role_manage_vendors', label: 'Manage Vendors' },
+        { key: 'role_manage_rent', label: 'Manage Rent' },
+        { key: 'role_import_data', label: 'Bulk Import (CSV)' },
+        { key: 'role_change_settings', label: 'Change Settings' },
+        { key: 'role_balance_adjustments', label: 'Balance Adjustments' },
+        { key: 'role_print_labels', label: 'Print Labels' },
+        { key: 'role_view_ai_assistant', label: 'AI Assistant' },
+        { key: 'role_manage_studio', label: 'Manage Studio Classes' },
+    ];
+
+    function buildRoleGrid() {
+        var grid = document.getElementById('role-grid');
+        ROLE_FEATURES.forEach(function(feat) {
+            var row = document.createElement('div');
+            row.className = 'role-grid-row';
+            row.innerHTML = '<div>' + feat.label + '</div>'
+                + '<div><input type="checkbox" id="s-' + feat.key + '_vendor"></div>'
+                + '<div><input type="checkbox" id="s-' + feat.key + '_cashier"></div>'
+                + '<div><input type="checkbox" checked disabled title="Admins always have access" style="opacity:0.5"></div>';
+            grid.appendChild(row);
+        });
+    }
+    buildRoleGrid();
+
+    function switchTab(tab) {
+        document.querySelectorAll('.settings-tab').forEach(function(t) { t.classList.remove('active'); });
+        document.querySelectorAll('.settings-panel').forEach(function(p) { p.classList.remove('active'); });
+        document.querySelector('.settings-tab[data-tab="' + tab + '"]').classList.add('active');
+        document.getElementById('panel-' + tab).classList.add('active');
+    }
+
+    function getAllSettingIds() {
+        var ids = [];
+        document.querySelectorAll('[id^="s-"]').forEach(function(el) {
+            ids.push(el.id.replace('s-', ''));
+        });
+        return ids;
+    }
+
+    async function loadSettings() {
+        var token = sessionStorage.getItem('bmm_token');
+        if (!token) { window.location.href = '/vendor/login.html'; return; }
+        var payload = parseToken();
+        if (!payload || payload.role !== 'admin') { window.location.href = '/vendor/login.html'; return; }
+        document.getElementById('user-name').textContent = payload.name || 'Administrator';
+
+        try {
+            var settings = await apiGet('/api/v1/admin/settings');
+            getAllSettingIds().forEach(function(key) {
+                var el = document.getElementById('s-' + key);
+                if (!el) return;
+                var val = settings[key];
+                if (el.type === 'checkbox') {
+                    el.checked = val === 'true' || val === '1' || val === true;
+                } else if (val !== undefined && val !== null) {
+                    el.value = val;
                 }
-            } catch (e) {
-                console.error('Error loading settings:', e);
-            }
+            });
+        } catch (e) {
+            showAlert('alert-container', 'Failed to load settings: ' + e.message, 'error');
         }
+    }
 
-        async function saveSettings() {
-            const data = {};
-            for (const key of SETTING_KEYS) {
-                const el = document.getElementById(key);
-                if (el) data[key] = el.value;
+    async function saveSettings() {
+        var data = {};
+        getAllSettingIds().forEach(function(key) {
+            var el = document.getElementById('s-' + key);
+            if (!el) return;
+            if (el.type === 'checkbox') {
+                data[key] = el.checked ? 'true' : 'false';
+            } else {
+                data[key] = el.value;
             }
+        });
 
-            try {
-                const resp = await fetch('/api/v1/admin/settings', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${TOKEN}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-                if (!resp.ok) throw new Error('Failed to save settings');
-
-                document.getElementById('saveStatus').innerHTML =
-                    '<span style="color:#4ecdc4">Settings saved successfully</span>';
-                setTimeout(() => document.getElementById('saveStatus').innerHTML = '', 3000);
-            } catch (e) {
-                document.getElementById('saveStatus').innerHTML =
-                    `<span style="color:#ff6b6b">${e.message}</span>`;
-            }
+        var statusEl = document.getElementById('save-status');
+        try {
+            await apiPost('/api/v1/admin/settings', data);
+            statusEl.innerHTML = '<span style="color:#4ade80">Settings saved successfully</span>';
+            setTimeout(function() { statusEl.innerHTML = ''; }, 4000);
+        } catch (e) {
+            statusEl.innerHTML = '<span style="color:#f87171">' + (e.message || 'Failed to save') + '</span>';
         }
+    }
 
-        loadSettings();
-    </script>
-    <script src="/static/js/change-password.js"></script>
-    <script src="/static/js/assistant-panel.js"></script>
-    <script>
-        if (typeof initAssistantPanel === 'function') {
-            initAssistantPanel('Admin settings page — store configuration, tax rates, receipt text, commission rates', { buttonBottom: '70px' });
-        }
-    </script>
+    loadSettings();
+</script>
+<script src="/static/js/change-password.js"></script>
 </body>
 </html>

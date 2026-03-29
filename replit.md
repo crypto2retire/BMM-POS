@@ -38,7 +38,8 @@ The frontend design adheres to Bowenstreet Market branding with a dark (`#38383B
 - **Studio Class Management**: CRUD for studio classes, public class calendar, online registration, and image uploads.
 - **Gift Card System**: In-house gift cards with barcode, balance tracking, and transaction history.
 - **Bulk CSV Import**: Admin-only CSV upload for vendors and inventory items (`/api/v1/bulk-import/vendors`, `/api/v1/bulk-import/inventory`). Includes vendor deduplication by email, auto-generated secure passwords, per-row savepoints, and a clear-test-data endpoint (blocked when sales exist). Admin UI in the Data Import section of `/admin/index.html` with template downloads.
-- **Rent Tracking**: Monthly rent tracking for vendors, including payment methods and overdue flagging.
+- **Rent Tracking**: Monthly rent tracking for vendors, including payment methods and overdue flagging. Admin can record rent payments from the dashboard (Pay button on due/overdue rows, or via detail panel). Payment modal supports cash/check/zelle/square/other with duplicate-month prevention.
+- **Admin Settings Panel**: Tabbed settings page (`/admin/settings.html`) with 7 tabs: Store Details, Taxes & Policies, POS & Receipts, Features, User Roles, Labels, Notifications. Uses key-value `store_settings` table. Features tab has toggleable modules (Rent, Studio, Gift Cards, AI Assistant, CSV Import, Time Clock, Split Payments, Consignment). User Roles tab has a permission matrix grid (Vendor/Cashier columns with checkboxes; Admin always full access). Settings are persisted via `POST /api/v1/admin/settings` and loaded via `GET /api/v1/admin/settings`. New keys are auto-seeded with defaults on first load.
 
 ## External Dependencies
 
