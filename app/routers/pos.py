@@ -922,6 +922,24 @@ async def activate_gift_card(
     return card
 
 
+@router.get("/gift-cards/{barcode}/balance")
+async def get_gift_card_balance(
+    barcode: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+
+    result = await db.execute(
+        select(GiftCard).where(GiftCard.barcode == barcode)
+    )
+    card = result.scalar_one_or_none()
+    if not card:
+        raise HTTPException(status_code=404, detail="Gift card not found")
+    return {"barcode": card.barcode, "balance": float(card.balance), "status": card.status}
+
+
 @router.get("/gift-cards/{barcode}", response_model=GiftCardResponse)
 async def check_gift_card_balance(
     barcode: str,

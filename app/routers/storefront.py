@@ -218,3 +218,29 @@ async def create_payment(
         "total": float(total),
         "message": "Reservation created. In-store payment required.",
     }
+
+
+class ConfirmPaymentRequest(BaseModel):
+    reservation_id: int
+
+
+@router.post("/payment-confirmed")
+async def payment_confirmed(
+    req: ConfirmPaymentRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Reservation).where(Reservation.id == req.reservation_id)
+    )
+    reservation = result.scalar_one_or_none()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    if reservation.status == "completed":
+        return {"message": "Payment already confirmed."}
+
+    if reservation.status == "pending":
+        reservation.status = "pending"
+    await db.commit()
+
+    return {"message": "Payment confirmed! Your item has been reserved."}

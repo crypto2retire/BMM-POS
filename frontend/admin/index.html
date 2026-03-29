@@ -361,6 +361,7 @@
         <div class="card">
             <div style="display:flex;gap:8px;margin-bottom:1rem;padding:0.75rem">
                 <button onclick="loadAdminOrders('pending')" class="btn btn-sm" id="admin-filter-pending" style="background:#92400E;color:#FDE68A">Pending</button>
+                <button onclick="loadAdminOrders('ready')" class="btn btn-sm" id="admin-filter-ready">Ready</button>
                 <button onclick="loadAdminOrders('completed')" class="btn btn-sm" id="admin-filter-completed">Completed</button>
                 <button onclick="loadAdminOrders('')" class="btn btn-sm" id="admin-filter-all">All</button>
             </div>
@@ -755,7 +756,10 @@
             b.style.background = ''; b.style.color = '';
         });
         var activeBtn = document.getElementById('admin-filter-' + (statusFilter || 'all'));
-        if (activeBtn) { activeBtn.style.background = '#92400E'; activeBtn.style.color = '#FDE68A'; }
+        if (activeBtn) {
+            if (statusFilter === 'ready') { activeBtn.style.background = '#1E3A5F'; activeBtn.style.color = '#93C5FD'; }
+            else { activeBtn.style.background = '#92400E'; activeBtn.style.color = '#FDE68A'; }
+        }
 
         try {
             var data = await apiGet('/api/v1/admin/reports/reservations');
@@ -781,17 +785,23 @@
                 var d = new Date(o.date || o.created_at);
                 var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                 var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                var statusColor = o.status === 'pending' ? '#FDE68A' : '#6EE7B7';
-                var statusBg = o.status === 'pending' ? '#92400E' : '#065F46';
-                var pickupBtn = o.status === 'pending'
-                    ? '<button onclick="markAdminPickup(' + o.id + ')" class="btn btn-sm" style="background:#065F46;color:#6EE7B7;margin-top:4px;font-size:0.75rem">Mark Picked Up</button>'
-                    : '';
+                var statusColor = o.status === 'pending' ? '#FDE68A' : o.status === 'ready' ? '#93C5FD' : '#6EE7B7';
+                var statusBg = o.status === 'pending' ? '#92400E' : o.status === 'ready' ? '#1E3A5F' : '#065F46';
+                var actionBtns = '';
+                if (o.status === 'pending') {
+                    actionBtns = '<button onclick="markAdminReady(' + o.id + ')" class="btn btn-sm" id="admin-ready-btn-' + o.id + '" style="background:#1E3A5F;color:#93C5FD;margin-top:4px;font-size:0.75rem;margin-right:4px">Notify Ready</button>'
+                        + '<button onclick="markAdminPickup(' + o.id + ')" class="btn btn-sm" style="background:#065F46;color:#6EE7B7;margin-top:4px;font-size:0.75rem">Picked Up</button>';
+                } else if (o.status === 'ready') {
+                    actionBtns = '<button onclick="markAdminPickup(' + o.id + ')" class="btn btn-sm" style="background:#065F46;color:#6EE7B7;margin-top:4px;font-size:0.75rem">Mark Picked Up</button>';
+                }
+                var emailLine = o.customer_email ? '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:1px">' + o.customer_email.replace(/</g, '&lt;') + '</div>' : '';
                 return '<div style="background:var(--surface);border:1px solid var(--border);padding:0.75rem;margin-bottom:6px;display:flex;justify-content:space-between;align-items:start">'
                     + '<div>'
                     + '<div style="font-weight:600;color:var(--text)">' + (o.item_name || 'Item #' + o.item_id).replace(/</g, '&lt;') + '</div>'
                     + '<div style="font-size:0.85rem;color:var(--text-light);margin-top:2px">Customer: ' + (o.customer_name || 'Unknown').replace(/</g, '&lt;') + ' &middot; ' + (o.customer_phone || '').replace(/</g, '&lt;') + '</div>'
+                    + emailLine
                     + '<div style="font-size:0.8rem;color:var(--text-muted);margin-top:2px">' + dateStr + ' ' + timeStr + '</div>'
-                    + pickupBtn
+                    + actionBtns
                     + '</div><div style="text-align:right">'
                     + '<div style="font-weight:700;color:var(--gold);font-size:1.1rem">' + fmt(parseFloat(o.amount_paid || 0)) + '</div>'
                     + '<span style="background:' + statusBg + ';color:' + statusColor + ';padding:2px 8px;font-size:0.7rem;font-weight:600;text-transform:uppercase;display:inline-block;margin-top:4px">' + o.status + '</span>'
@@ -799,6 +809,19 @@
             }).join('');
         } catch (e) {
             list.innerHTML = '<div style="color:#F87171;padding:1rem;text-align:center">' + (e.message || 'Failed to load orders') + '</div>';
+        }
+    }
+
+    async function markAdminReady(reservationId) {
+        var btn = document.getElementById('admin-ready-btn-' + reservationId);
+        if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+        try {
+            var result = await apiPost('/api/v1/admin/reports/reservations/' + reservationId + '/ready', {});
+            showAlert('alert-container', result.message || 'Order marked as ready', 'success');
+            loadAdminOrders('pending');
+        } catch (e) {
+            showAlert('alert-container', e.message || 'Failed', 'error');
+            if (btn) { btn.disabled = false; btn.textContent = 'Notify Ready'; }
         }
     }
 
