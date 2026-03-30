@@ -1,12 +1,14 @@
 import logging
-import os
+import os, re, asyncio
 from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, text, func, or_
 from pydantic import BaseModel
+import httpx
 
 from app.database import get_db
 from app.models.vendor import Vendor, VendorBalance
@@ -387,3 +389,167 @@ async def clear_booth_showcases(
     count = result.rowcount
     await db.commit()
     return {"detail": f"Deleted {count} booth showcase(s). All vendors start fresh."}
+
+
+RICO_BASE = "https://bowenstreet.ricoconsign.com"
+RICO_HEADERS = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/124.0"}
+RICO_CATEGORIES = [
+    "Accesories", "Stickers", "Books", "Furniture", "Original Art",
+    "Outside", "BowenStreet Repeats", "Handmade items", "Candles",
+    "Cards", "Clothing", "Decorations", "Jewelry", "Vintage",
+    "Specialty Items", "Upcycled Items", "Studio Class",
+    "Vintage Furniture", "Second hand clothes", "Adult clothing",
+    "Kids clothing", "Used furniture", "Vintage Clothing",
+]
+
+_scrape_status = {"running": False, "matched": 0, "skipped": 0, "errors": 0, "total_products": 0, "done": False, "message": ""}
+
+
+async def _scrape_and_store_images():
+    from app.database import AsyncSessionLocal
+    from bs4 import BeautifulSoup
+    from urllib.parse import quote
+
+    _scrape_status.update(running=True, matched=0, skipped=0, errors=0, total_products=0, done=False, message="Collecting product URLs...")
+
+    async with httpx.AsyncClient(headers=RICO_HEADERS, timeout=30, follow_redirects=True) as client:
+        product_urls = set()
+        s3_pat = re.compile(r"ricoconsign-assets\.s3\.")
+        sku_pat = re.compile(r"rico\.sku\s*=\s*'([^']+)'")
+
+        for cat in RICO_CATEGORIES:
+            page = 1
+            while True:
+                url = f"{RICO_BASE}/store/category/{quote(cat)}" if page == 1 else f"{RICO_BASE}/nextpage?page={page}&category={quote(cat)}"
+                try:
+                    resp = await client.get(url)
+                    if resp.status_code != 200:
+                        break
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    links = soup.find_all("a", href=re.compile(r"/store/product/"))
+                    if not links:
+                        break
+                    new = 0
+                    for link in links:
+                        href = link.get("href", "")
+                        if href.startswith("/"):
+                            href = RICO_BASE + href
+                        if href not in product_urls:
+                            product_urls.add(href)
+                            new += 1
+                    if new == 0:
+                        break
+                    page += 1
+                    await asyncio.sleep(0.3)
+                except Exception:
+                    break
+
+        _scrape_status["total_products"] = len(product_urls)
+        _scrape_status["message"] = f"Found {len(product_urls)} products. Processing..."
+
+        LOGO_SIZE = 218508
+
+        for i, prod_url in enumerate(product_urls):
+            try:
+                resp = await client.get(prod_url)
+                if resp.status_code != 200:
+                    _scrape_status["errors"] += 1
+                    continue
+                soup = BeautifulSoup(resp.text, "html.parser")
+
+                sku = ""
+                for script in soup.find_all("script"):
+                    txt = script.string or ""
+                    m = sku_pat.search(txt)
+                    if m:
+                        sku = m.group(1)
+                        break
+                if not sku:
+                    _scrape_status["skipped"] += 1
+                    continue
+
+                image_urls = []
+                seen = set()
+                for img in soup.find_all("img", src=s3_pat):
+                    src = img.get("src", "")
+                    if src and src not in seen:
+                        seen.add(src)
+                        image_urls.append(src)
+                if not image_urls:
+                    _scrape_status["skipped"] += 1
+                    continue
+
+                img_resp = await client.get(image_urls[0])
+                if img_resp.status_code != 200:
+                    _scrape_status["errors"] += 1
+                    continue
+                image_data = img_resp.content
+                if len(image_data) == LOGO_SIZE:
+                    if len(image_urls) > 1:
+                        img_resp = await client.get(image_urls[1])
+                        if img_resp.status_code != 200 or len(img_resp.content) == LOGO_SIZE:
+                            _scrape_status["skipped"] += 1
+                            continue
+                        image_data = img_resp.content
+                    else:
+                        _scrape_status["skipped"] += 1
+                        continue
+
+                ext = image_urls[0].rsplit(".", 1)[-1].split("?")[0].lower()
+                content_type = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}.get(ext, "image/jpeg")
+
+                async with AsyncSessionLocal() as db:
+                    result = await db.execute(
+                        select(Item).where(or_(Item.sku == sku, Item.barcode == sku)).limit(1)
+                    )
+                    item = result.scalar_one_or_none()
+                    if not item:
+                        _scrape_status["skipped"] += 1
+                        continue
+
+                    existing = await db.execute(
+                        select(ItemImage).where(ItemImage.item_id == item.id)
+                    )
+                    old_img = existing.scalar_one_or_none()
+                    if old_img:
+                        old_img.image_data = image_data
+                        old_img.content_type = content_type
+                    else:
+                        db.add(ItemImage(item_id=item.id, image_data=image_data, content_type=content_type))
+
+                    item.image_path = f"/api/v1/items/{item.id}/image"
+                    await db.commit()
+                    _scrape_status["matched"] += 1
+
+                if i % 10 == 0:
+                    _scrape_status["message"] = f"Processing {i+1}/{len(product_urls)}... Matched: {_scrape_status['matched']}"
+                await asyncio.sleep(0.3)
+
+            except Exception as e:
+                _scrape_status["errors"] += 1
+                logger.error(f"Scrape error for {prod_url}: {e}")
+
+    _scrape_status["done"] = True
+    _scrape_status["running"] = False
+    _scrape_status["message"] = f"Done! Matched {_scrape_status['matched']} items, skipped {_scrape_status['skipped']}, errors {_scrape_status['errors']}"
+
+
+@router.post("/scrape-ricochet-images")
+async def scrape_ricochet_images(
+    password: str = Query(...),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+):
+    if password != SYNC_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid password")
+    if _scrape_status["running"]:
+        return {"detail": "Scrape already running", **_scrape_status}
+
+    background_tasks.add_task(_scrape_and_store_images)
+    return {"detail": "Scrape started in background. Check /data-sync/scrape-status for progress."}
+
+
+@router.get("/scrape-status")
+async def scrape_status(password: str = Query(...)):
+    if password != SYNC_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid password")
+    return _scrape_status
