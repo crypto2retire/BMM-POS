@@ -245,9 +245,23 @@ async def store_images_to_db(
     skipped = 0
     errors = []
 
+    LOGO_SIZE = 218508
+
     for sku in batch_skus:
         files = sku_files[sku]
-        first_file = files[0]
+
+        real_files = []
+        for fn in files:
+            fpath = os.path.join(SCRAPED_IMAGES_DIR, fn)
+            try:
+                if os.path.getsize(fpath) != LOGO_SIZE:
+                    real_files.append(fn)
+            except OSError:
+                pass
+        if not real_files:
+            real_files = files
+
+        best_file = real_files[0]
 
         result = await db.execute(
             select(Item).where(or_(Item.sku == sku, Item.barcode == sku)).limit(1)
@@ -260,35 +274,37 @@ async def store_images_to_db(
         existing = await db.execute(
             select(ItemImage).where(ItemImage.item_id == item.id)
         )
-        if existing.scalar_one_or_none():
-            skipped += 1
-            continue
+        old_img = existing.scalar_one_or_none()
 
-        filepath = os.path.join(SCRAPED_IMAGES_DIR, first_file)
+        filepath = os.path.join(SCRAPED_IMAGES_DIR, best_file)
         try:
             with open(filepath, "rb") as f:
                 image_data = f.read()
 
-            ext = first_file.rsplit(".", 1)[-1].lower()
+            ext = best_file.rsplit(".", 1)[-1].lower()
             content_type = {
                 "jpg": "image/jpeg", "jpeg": "image/jpeg",
                 "png": "image/png", "webp": "image/webp", "gif": "image/gif"
             }.get(ext, "image/jpeg")
 
-            db.add(ItemImage(
-                item_id=item.id,
-                image_data=image_data,
-                content_type=content_type,
-            ))
+            if old_img:
+                old_img.image_data = image_data
+                old_img.content_type = content_type
+            else:
+                db.add(ItemImage(
+                    item_id=item.id,
+                    image_data=image_data,
+                    content_type=content_type,
+                ))
 
             item.image_path = f"/api/v1/items/{item.id}/image"
 
-            photo_paths = [f"/static/uploads/items/{fn}" for fn in files]
+            photo_paths = [f"/static/uploads/items/{fn}" for fn in real_files]
             item.photo_urls = photo_paths
 
             stored += 1
         except Exception as e:
-            errors.append({"sku": sku, "file": first_file, "error": str(e)})
+            errors.append({"sku": sku, "file": best_file, "error": str(e)})
 
     await db.commit()
 
