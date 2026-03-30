@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
+from app.models.item_image import ItemImage
 from app.config import settings
 
 logger = logging.getLogger("bmm-data-sync")
@@ -26,6 +27,12 @@ def _ser(val):
     if isinstance(val, Decimal):
         return str(val)
     return val
+
+
+def _ext(filename: str) -> str:
+    if "." in filename:
+        return "." + filename.rsplit(".", 1)[-1]
+    return ".jpg"
 
 
 @router.get("/export/vendors")
@@ -195,6 +202,107 @@ async def apply_scraped_images(
     return {"matched": matched, "updated": updated, "skipped": skipped, "total_mappings": len(mappings)}
 
 
+SCRAPED_IMAGES_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "frontend", "static", "uploads", "items"
+)
+
+
+@router.post("/store-images-to-db")
+async def store_images_to_db(
+    secret: str = Query(...),
+    batch_size: int = Query(50),
+    offset: int = Query(0),
+    db: AsyncSession = Depends(get_db),
+):
+    if secret != SYNC_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid key")
+
+    rico_files = sorted([
+        f for f in os.listdir(SCRAPED_IMAGES_DIR)
+        if f.startswith("rico_") and not f.endswith(".gitkeep")
+    ])
+
+    if not rico_files:
+        return {"error": "No rico_ image files found on disk", "dir": SCRAPED_IMAGES_DIR}
+
+    sku_files = {}
+    for fname in rico_files:
+        parts = fname.split("_", 2)
+        if len(parts) >= 3:
+            sku = parts[1]
+            if sku not in sku_files:
+                sku_files[sku] = []
+            sku_files[sku].append(fname)
+
+    all_skus = sorted(sku_files.keys())
+    batch_skus = all_skus[offset:offset + batch_size]
+
+    if not batch_skus:
+        return {"message": "No more SKUs to process", "total_skus": len(all_skus), "offset": offset}
+
+    stored = 0
+    skipped = 0
+    errors = []
+
+    for sku in batch_skus:
+        files = sku_files[sku]
+        first_file = files[0]
+
+        result = await db.execute(
+            select(Item).where(or_(Item.sku == sku, Item.barcode == sku)).limit(1)
+        )
+        item = result.scalar_one_or_none()
+        if not item:
+            skipped += 1
+            continue
+
+        existing = await db.execute(
+            select(ItemImage).where(ItemImage.item_id == item.id)
+        )
+        if existing.scalar_one_or_none():
+            skipped += 1
+            continue
+
+        filepath = os.path.join(SCRAPED_IMAGES_DIR, first_file)
+        try:
+            with open(filepath, "rb") as f:
+                image_data = f.read()
+
+            ext = first_file.rsplit(".", 1)[-1].lower()
+            content_type = {
+                "jpg": "image/jpeg", "jpeg": "image/jpeg",
+                "png": "image/png", "webp": "image/webp", "gif": "image/gif"
+            }.get(ext, "image/jpeg")
+
+            db.add(ItemImage(
+                item_id=item.id,
+                image_data=image_data,
+                content_type=content_type,
+            ))
+
+            item.image_path = f"/api/v1/items/{item.id}/image"
+
+            photo_paths = [f"/static/uploads/items/{fn}" for fn in files]
+            item.photo_urls = photo_paths
+
+            stored += 1
+        except Exception as e:
+            errors.append({"sku": sku, "file": first_file, "error": str(e)})
+
+    await db.commit()
+
+    return {
+        "stored": stored,
+        "skipped": skipped,
+        "errors": errors,
+        "batch_offset": offset,
+        "batch_size": batch_size,
+        "total_skus": len(all_skus),
+        "next_offset": offset + batch_size if (offset + batch_size) < len(all_skus) else None,
+    }
+
+
 @router.post("/clear-item-photos")
 async def clear_item_photos(
     barcode: str = Query(...),
@@ -202,9 +310,10 @@ async def clear_item_photos(
     db: AsyncSession = Depends(get_db),
 ):
     if secret != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid secret")
+        raise HTTPException(status_code=403, detail="Invalid key")
+
     result = await db.execute(
-        select(Item).where(or_(Item.barcode == barcode, Item.sku == barcode))
+        select(Item).where(or_(Item.sku == barcode, Item.barcode == barcode))
     )
     items = result.scalars().all()
     cleared = 0
@@ -212,11 +321,13 @@ async def clear_item_photos(
         item.photo_urls = None
         item.image_path = None
         cleared += 1
+
+        img_result = await db.execute(
+            select(ItemImage).where(ItemImage.item_id == item.id)
+        )
+        old_img = img_result.scalar_one_or_none()
+        if old_img:
+            await db.delete(old_img)
+
     await db.commit()
     return {"cleared": cleared}
-
-
-def _ext(filename: str) -> str:
-    if "." in filename:
-        return "." + filename.rsplit(".", 1)[-1]
-    return ".jpg"
