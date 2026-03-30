@@ -424,11 +424,37 @@ async def create_payment(
     await db.commit()
     await db.refresh(reservation)
 
-    return {
-        "reservation_id": reservation.public_id,
-        "total": float(total),
-        "message": "Reservation created. In-store payment required.",
-    }
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+    scheme = request.headers.get("x-forwarded-proto") or "https"
+    base_url = f"{scheme}://{host}"
+    redirect_url = f"{base_url}/shop/index.html?payment=success&ref={reservation.public_id}"
+
+    try:
+        from app.services.square import create_payment_link
+        price_cents = int(total * 100)
+        item_name = (item.name or "Item")[:100]
+        link_result = await create_payment_link(
+            name=f"Reserve: {item_name}",
+            price_cents=price_cents,
+            redirect_url=redirect_url,
+        )
+        reservation.square_payment_id = link_result.get("payment_link_id", "")
+        await db.commit()
+
+        return {
+            "reservation_id": reservation.public_id,
+            "total": float(total),
+            "payment_url": link_result["url"],
+            "message": "Redirecting to secure checkout...",
+        }
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Square payment link error: {e}")
+        return {
+            "reservation_id": reservation.public_id,
+            "total": float(total),
+            "message": "Reservation created. In-store payment required.",
+        }
 
 
 class ConfirmPaymentRequest(BaseModel):
@@ -452,8 +478,7 @@ async def payment_confirmed(
     if reservation.status == "completed":
         return {"message": "Payment already confirmed."}
 
-    if reservation.status == "pending":
-        reservation.status = "pending"
+    reservation.status = "completed"
     await db.commit()
 
     return {"message": "Payment confirmed! Your item has been reserved."}
