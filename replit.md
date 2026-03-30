@@ -35,6 +35,7 @@ The frontend adheres to Bowenstreet Market branding, using a dark (`#38383B`) an
 - **Online Order Ready-for-Pickup Notifications**: Automated email notifications for customers when their online orders are ready for pickup.
 - **Storefront Security**: Public storefront endpoints use UUIDs for reservations, rate limiting on critical payment endpoints, and robust input validation. Login brute-force protection is implemented.
 - **AI Assistant**: Both public-facing (customer support, item search, class registration) and vendor-facing (customizable name) AI assistants using OpenRouter for tool-calling capabilities.
+- **AI Writing Assistant**: Unified `/api/v1/ai/write` endpoint with 6 tone options (warm, professional, casual, playful, rustic, elegant) and write/improve modes. Integrated into: item description forms, booth showcase descriptions, and landing page about sections. Vendors can write descriptions from scratch or improve their existing text with a chosen tone.
 - **Data Reset**: An admin-only feature to reset all transactional and vendor data while preserving core settings and admin/cashier accounts.
 - **Password Reset Flow**: Self-service forgot-password via email (JWT-based reset tokens, 60-min expiry), reset-password page, and change-password endpoint for logged-in users. Reset emails sent via Gmail API integration.
 
