@@ -404,6 +404,8 @@ RICO_CATEGORIES = [
 
 _scrape_status = {"running": False, "matched": 0, "skipped": 0, "errors": 0, "total_products": 0, "done": False, "message": ""}
 
+_product_cache: list = []
+
 
 async def _scrape_and_store_images():
     from app.database import AsyncSessionLocal
@@ -553,3 +555,155 @@ async def scrape_status(password: str = Query(...)):
     if password != SYNC_SECRET:
         raise HTTPException(status_code=403, detail="Invalid password")
     return _scrape_status
+
+
+@router.post("/scrape-rico-collect")
+async def scrape_rico_collect(password: str = Query(...)):
+    if password != SYNC_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid password")
+    from bs4 import BeautifulSoup
+    from urllib.parse import quote
+
+    _product_cache.clear()
+    s3_pat = re.compile(r"ricoconsign-assets\.s3\.")
+    sku_pat = re.compile(r"rico\.sku\s*=\s*'([^']+)'")
+
+    async with httpx.AsyncClient(headers=RICO_HEADERS, timeout=30, follow_redirects=True) as client:
+        product_urls = set()
+        for cat in RICO_CATEGORIES:
+            page = 1
+            while True:
+                url = f"{RICO_BASE}/store/category/{quote(cat)}" if page == 1 else f"{RICO_BASE}/nextpage?page={page}&category={quote(cat)}"
+                try:
+                    resp = await client.get(url)
+                    if resp.status_code != 200:
+                        break
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    links = soup.find_all("a", href=re.compile(r"/store/product/"))
+                    if not links:
+                        break
+                    new = 0
+                    for link in links:
+                        href = link.get("href", "")
+                        if href.startswith("/"):
+                            href = RICO_BASE + href
+                        if href not in product_urls:
+                            product_urls.add(href)
+                            new += 1
+                    if new == 0:
+                        break
+                    page += 1
+                    await asyncio.sleep(0.2)
+                except Exception:
+                    break
+
+        LOGO_SIZE = 218508
+        for prod_url in product_urls:
+            try:
+                resp = await client.get(prod_url)
+                if resp.status_code != 200:
+                    continue
+                soup = BeautifulSoup(resp.text, "html.parser")
+                sku = ""
+                for script in soup.find_all("script"):
+                    m = sku_pat.search(script.string or "")
+                    if m:
+                        sku = m.group(1)
+                        break
+                if not sku:
+                    continue
+                image_urls = []
+                for img in soup.find_all("img", src=s3_pat):
+                    src = img.get("src", "")
+                    if src and src not in image_urls:
+                        image_urls.append(src)
+                if not image_urls:
+                    continue
+                _product_cache.append({"sku": sku, "image_urls": image_urls})
+                await asyncio.sleep(0.2)
+            except Exception:
+                continue
+
+    return {"detail": f"Collected {len(_product_cache)} products with images", "count": len(_product_cache)}
+
+
+@router.post("/scrape-rico-store")
+async def scrape_rico_store(
+    password: str = Query(...),
+    batch_offset: int = Query(0, ge=0),
+    batch_size: int = Query(20, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+):
+    if password != SYNC_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid password")
+    if not _product_cache:
+        return {"detail": "No product cache. Call /scrape-rico-collect first.", "matched": 0}
+
+    batch = _product_cache[batch_offset:batch_offset + batch_size]
+    if not batch:
+        return {"detail": "All batches processed", "matched": 0, "total_cached": len(_product_cache), "offset": batch_offset}
+
+    LOGO_SIZE = 218508
+    matched = 0
+    skipped = 0
+    errors = 0
+
+    async with httpx.AsyncClient(headers=RICO_HEADERS, timeout=30, follow_redirects=True) as client:
+        for prod in batch:
+            sku = prod["sku"]
+            image_urls = prod["image_urls"]
+            try:
+                result = await db.execute(
+                    select(Item).where(or_(Item.sku == sku, Item.barcode == sku)).limit(1)
+                )
+                item = result.scalar_one_or_none()
+                if not item:
+                    skipped += 1
+                    continue
+
+                img_resp = await client.get(image_urls[0])
+                if img_resp.status_code != 200:
+                    errors += 1
+                    continue
+                image_data = img_resp.content
+                if len(image_data) == LOGO_SIZE and len(image_urls) > 1:
+                    img_resp = await client.get(image_urls[1])
+                    if img_resp.status_code != 200 or len(img_resp.content) == LOGO_SIZE:
+                        skipped += 1
+                        continue
+                    image_data = img_resp.content
+                elif len(image_data) == LOGO_SIZE:
+                    skipped += 1
+                    continue
+
+                ext = image_urls[0].rsplit(".", 1)[-1].split("?")[0].lower()
+                content_type = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}.get(ext, "image/jpeg")
+
+                existing = await db.execute(
+                    select(ItemImage).where(ItemImage.item_id == item.id)
+                )
+                old_img = existing.scalar_one_or_none()
+                if old_img:
+                    old_img.image_data = image_data
+                    old_img.content_type = content_type
+                else:
+                    db.add(ItemImage(item_id=item.id, image_data=image_data, content_type=content_type))
+
+                item.image_path = f"/api/v1/items/{item.id}/image"
+                matched += 1
+                await asyncio.sleep(0.1)
+            except Exception as e:
+                errors += 1
+                logger.error(f"Store error for sku {sku}: {e}")
+
+    await db.commit()
+    return {
+        "matched": matched,
+        "skipped": skipped,
+        "errors": errors,
+        "batch_offset": batch_offset,
+        "batch_size": batch_size,
+        "next_offset": batch_offset + batch_size,
+        "total_cached": len(_product_cache),
+        "remaining": max(0, len(_product_cache) - batch_offset - batch_size),
+    }
