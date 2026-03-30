@@ -24,17 +24,17 @@ def _get_config():
 
     if not all([app_id, private_key, business_id]):
         raise HTTPException(
-            status_code=503,
+            status_code=422,
             detail="GoDaddy Poynt is not configured. Set POYNT_APP_ID, POYNT_PRIVATE_KEY, and POYNT_BUSINESS_ID environment variables.",
         )
     if not terminal_id:
         raise HTTPException(
-            status_code=503,
+            status_code=422,
             detail="POYNT_TERMINAL_ID is not configured. Cannot send payment to terminal.",
         )
     if not store_id:
         raise HTTPException(
-            status_code=503,
+            status_code=422,
             detail="POYNT_STORE_ID is not configured.",
         )
     return app_id, private_key, business_id, store_id, terminal_id
@@ -97,7 +97,7 @@ async def get_access_token() -> str:
         )
         if resp.status_code != 200:
             logger.error(f"Poynt token error {resp.status_code}: {resp.text}")
-            raise HTTPException(status_code=502, detail=f"Poynt token error: {resp.text[:200]}")
+            raise HTTPException(status_code=422, detail=f"Poynt authentication failed: {resp.text[:200]}")
         data = resp.json()
         token = data.get("accessToken") or data.get("access_token")
         expires_in = data.get("expiresIn", 3600)
@@ -142,10 +142,12 @@ async def send_payment_to_terminal(amount_cents: int, currency: str = "USD", ord
 
         if resp.status_code not in (200, 201, 202):
             logger.error(f"Poynt terminal request error {resp.status_code}: {resp.text}")
-            raise HTTPException(
-                status_code=502,
-                detail=f"Failed to send payment to terminal: {resp.text[:200]}",
-            )
+            detail = "Failed to send payment to terminal."
+            if resp.status_code == 404:
+                detail = "Terminal not found or offline. Please check that the Poynt terminal is powered on and connected."
+            elif resp.status_code == 401 or resp.status_code == 403:
+                detail = "Poynt authentication error. Please contact admin."
+            raise HTTPException(status_code=422, detail=detail)
 
         return {"reference_id": reference_id}
 
