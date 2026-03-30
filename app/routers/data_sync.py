@@ -211,8 +211,8 @@ SCRAPED_IMAGES_DIR = os.path.join(
 @router.post("/store-images-to-db")
 async def store_images_to_db(
     secret: str = Query(...),
-    batch_size: int = Query(50),
-    offset: int = Query(0),
+    batch_size: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     if secret != SYNC_SECRET:

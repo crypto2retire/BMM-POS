@@ -26,7 +26,9 @@ The frontend adheres to Bowenstreet Market branding, using a dark (`#38383B`) an
 - **Role-Based Access Control**: Differentiated access for `vendor`, `cashier`, `admin` roles, including a "booth mode" for vendor-admins/cashiers.
 - **Soft Deletion**: Vendors and items are soft-deleted by updating their `status` field.
 - **Photo Uploads**: Item and studio class images are handled as multipart uploads, stored as static files, with paths referenced in the database. Ricochet storefront images scraped and imported for 196 items (522 images) via `scripts/scrape_ricochet_images.py` and `scripts/import_scraped_images.py`, matched by the `sku` field.
-- **Data Sync Images**: `POST /api/v1/data-sync/apply-scraped-images` endpoint for applying Ricochet image mappings to any environment's database (admin password protected).
+- **Image Persistence**: Product images are stored as binary data in the `item_images` PostgreSQL table (not just filesystem), served via `/api/v1/items/{id}/image`. This ensures images persist across Railway deploys. The `store-images-to-db` endpoint handles bulk import, skipping logo placeholders (218508 bytes) and using real product photos.
+- **Dynamic Category Images**: Homepage "What You'll Find" section loads a random in-stock item with a photo from each category group via `GET /api/v1/storefront/category-images`. Categories map display names (Handmade, Vintage & Antique, etc.) to actual DB categories.
+- **Data Sync Images**: `POST /api/v1/data-sync/apply-scraped-images` endpoint for applying Ricochet image mappings to any environment's database (admin password protected). `POST /api/v1/data-sync/store-images-to-db` persists scraped images into PostgreSQL `item_images` table.
 - **Void/Reverse Transactions**: Supports comprehensive voiding of sales, reversing quantities, vendor balances, and gift card debits, with audit trails.
 - **Admin Balance Adjustments**: Admins can credit/debit vendor balances with a full audit trail.
 - **Batch Label Printing**: Items track a `label_printed` flag, with UI elements to select unprinted items and support vendor-specific label preferences (standard/Dymo).
