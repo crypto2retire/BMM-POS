@@ -195,6 +195,27 @@ async def apply_scraped_images(
     return {"matched": matched, "updated": updated, "skipped": skipped, "total_mappings": len(mappings)}
 
 
+@router.post("/clear-item-photos")
+async def clear_item_photos(
+    barcode: str = Query(...),
+    secret: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    if secret != SYNC_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid secret")
+    result = await db.execute(
+        select(Item).where(or_(Item.barcode == barcode, Item.sku == barcode))
+    )
+    items = result.scalars().all()
+    cleared = 0
+    for item in items:
+        item.photo_urls = None
+        item.image_path = None
+        cleared += 1
+    await db.commit()
+    return {"cleared": cleared}
+
+
 def _ext(filename: str) -> str:
     if "." in filename:
         return "." + filename.rsplit(".", 1)[-1]
