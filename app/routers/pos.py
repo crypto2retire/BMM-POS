@@ -726,6 +726,19 @@ async def poynt_callback(
     return {"status": "ok"}
 
 
+@router.get("/poynt/poll-transactions")
+async def poynt_poll_transactions(
+    amount_cents: int = Query(..., description="Expected transaction amount in cents"),
+    current_user: Vendor = Depends(get_current_user),
+):
+    """Poll Poynt Transactions API for a recent transaction matching the expected amount."""
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+
+    result = await poynt.find_recent_transaction(amount_cents)
+    return result
+
+
 @router.get("/end-of-day")
 async def end_of_day_report(
     report_date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format, defaults to today"),

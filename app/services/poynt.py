@@ -240,3 +240,52 @@ async def verify_transaction(transaction_id: str) -> dict:
                 "transaction_id": str(txn.get("id", "")),
             }
         return {"valid": False, "status": txn_status}
+
+
+async def find_recent_transaction(amount_cents: int) -> dict:
+    """Search recent transactions for one matching the expected amount (within last 2 minutes)."""
+    app_id, private_key_pem, business_id, store_id, terminal_id = _get_config()
+    token = await get_access_token()
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            f"{POYNT_API_BASE}/businesses/{business_id}/transactions",
+            params={"limit": 5},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "api-version": "1.2",
+            },
+        )
+        if resp.status_code != 200:
+            logger.error(f"Poynt transaction poll error {resp.status_code}: {resp.text}")
+            return {"status": "PENDING", "transaction_id": None}
+
+        data = resp.json()
+        transactions = data.get("list") or data.get("transactions") or []
+
+        import time as _time
+        now_ms = int(_time.time() * 1000)
+        two_minutes_ago_ms = now_ms - 120000
+
+        for txn in transactions:
+            txn_status = txn.get("status", "")
+            txn_amount = txn.get("amounts", {}).get("transactionAmount", 0)
+            txn_created = txn.get("createdAt", 0)
+
+            # Match by amount and recency (within last 2 minutes)
+            if txn_amount == amount_cents and txn_created > two_minutes_ago_ms:
+                txn_id = str(txn.get("id", ""))
+
+                if txn_status in ("CAPTURED", "AUTHORIZED"):
+                    return {
+                        "status": "APPROVED",
+                        "transaction_id": txn_id,
+                        "amount_cents": txn_amount,
+                    }
+                elif txn_status in ("DECLINED", "VOIDED", "REFUNDED"):
+                    return {
+                        "status": "DECLINED",
+                        "transaction_id": txn_id,
+                    }
+
+        return {"status": "PENDING", "transaction_id": None}

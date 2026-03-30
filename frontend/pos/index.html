@@ -980,8 +980,8 @@
             Card Payment
         </div>
         <div class="amount" id="card-amount-display" style="font-size:2rem;font-weight:800;color:#C9A96E;margin-bottom:0.75rem">$0.00</div>
-        <div style="color:#A8A6A1;font-size:0.9rem;margin-bottom:1rem;line-height:1.4">
-            Process this amount on the Poynt terminal, then confirm below once payment is complete.
+        <div data-instructions style="color:#A8A6A1;font-size:0.9rem;margin-bottom:1rem;line-height:1.4">
+            Enter this amount on the Poynt terminal and process the card. The POS will detect the payment automatically.
         </div>
         <div style="display:flex;gap:0.75rem;justify-content:center">
             <button onclick="cancelCardPayment()" style="background:#374151;color:#D1D5DB;border:none;padding:0.75rem 1.5rem;border-radius:0;cursor:pointer;font-size:0.9rem;font-weight:600">
@@ -1001,7 +1001,7 @@
         <div id="card-choice-amount" style="font-size:1.8rem;font-weight:800;color:#C9A96E;text-align:center;margin:1rem 0"></div>
         <div style="display:flex;flex-direction:column;gap:0.75rem;margin:1.5rem 0">
             <button onclick="startTerminalPayment()" style="padding:1rem;background:#1a4b8c;border:1px solid #1a4b8c;color:#fff;font-weight:700;font-size:1rem;cursor:pointer;font-family:'Roboto',sans-serif">
-                📡 Charge Terminal
+                📡 Terminal Payment
             </button>
             <button onclick="startManualCard()" style="padding:1rem;background:#374151;border:1px solid #555;color:#D1D5DB;font-weight:600;font-size:0.95rem;cursor:pointer;font-family:'Roboto',sans-serif">
                 ⌨ Manual Card Entry
@@ -1492,6 +1492,7 @@
     let poyntReferenceId = null;
     let poyntPollCount = 0;
     let poyntPollStart = null;
+    let poyntExpectedAmount = null;
     const TAX_RATE = 0.05;
 
     // ─── Init ─────────────────────────────────────────────────────────────────
@@ -1979,6 +1980,7 @@
         poyntReferenceId = null;
         poyntPollCount = 0;
         poyntPollStart = null;
+        poyntExpectedAmount = null;
         if (poyntPollTimer) { clearTimeout(poyntPollTimer); poyntPollTimer = null; }
         // Reset the confirm button to default state
         document.getElementById('card-confirm-btn').disabled = false;
@@ -1998,25 +2000,21 @@
         document.getElementById('card-choice-modal').classList.add('hidden');
         const { total } = calcTotals();
 
-        // Show the waiting overlay with spinner
+        // Show the waiting overlay — cashier will enter amount on terminal manually
         document.getElementById('card-amount-display').textContent = '$' + total.toFixed(2);
         document.getElementById('card-confirm-btn').disabled = true;
-        document.getElementById('card-confirm-btn').textContent = 'Waiting for terminal...';
+        document.getElementById('card-confirm-btn').textContent = 'Waiting for terminal payment...';
         document.getElementById('card-overlay').classList.remove('hidden');
 
-        try {
-            const resp = await apiPost('/api/v1/pos/poynt/charge', {
-                amount: total,
-                sale_reference: 'POS-' + Date.now()
-            });
-            poyntReferenceId = resp.reference_id;
-            poyntPollStart = Date.now();
-            poyntPollCount = 0;
-            pollPoyntStatus();
-        } catch (err) {
-            document.getElementById('card-overlay').classList.add('hidden');
-            showToast('Failed to send to terminal: ' + err.message, 'error');
-        }
+        // Update instructions in the overlay
+        const instrEl = document.getElementById('card-overlay').querySelector('[data-instructions]');
+        if (instrEl) instrEl.textContent = 'Enter this amount on the Poynt terminal and process the card. The POS will detect the payment automatically.';
+
+        // Start polling the Transactions API for a matching payment
+        poyntExpectedAmount = Math.round(total * 100); // amount in cents
+        poyntPollStart = Date.now();
+        poyntPollCount = 0;
+        pollForTransaction();
     }
 
     async function pollPoyntStatus() {
@@ -2066,8 +2064,49 @@
         }
     }
 
+    async function pollForTransaction() {
+        // 120-second timeout (longer since cashier has to manually enter amount)
+        if (Date.now() - poyntPollStart > 120000) {
+            document.getElementById('card-confirm-btn').disabled = false;
+            document.getElementById('card-confirm-btn').textContent = '⏱ No payment detected — Tap to Retry';
+            document.getElementById('card-confirm-btn').onclick = function() { startTerminalPayment(); };
+            return;
+        }
+
+        try {
+            const resp = await apiGet('/api/v1/pos/poynt/poll-transactions?amount_cents=' + poyntExpectedAmount);
+
+            if (resp.status === 'APPROVED') {
+                // Found a matching transaction!
+                clearTimeout(poyntPollTimer);
+                document.getElementById('card-confirm-btn').textContent = 'Payment detected! Recording sale...';
+                try {
+                    const payload = buildSalePayload('card');
+                    payload.card_transaction_id = resp.transaction_id || ('POYNT-' + Date.now());
+                    const sale = await apiPost('/api/v1/pos/sale', payload);
+                    currentSale = sale;
+                    document.getElementById('card-overlay').classList.add('hidden');
+                    showReceiptModal(sale);
+                    poyntExpectedAmount = null;
+                } catch (saleErr) {
+                    showToast('Payment detected but sale recording failed: ' + saleErr.message, 'error');
+                    document.getElementById('card-confirm-btn').disabled = false;
+                    document.getElementById('card-confirm-btn').textContent = 'Retry Record Sale';
+                    document.getElementById('card-confirm-btn').onclick = confirmCardPayment;
+                }
+            } else {
+                // Not found yet — poll again in 3 seconds
+                poyntPollTimer = setTimeout(pollForTransaction, 3000);
+            }
+        } catch (err) {
+            // Network error — keep trying
+            poyntPollTimer = setTimeout(pollForTransaction, 3000);
+        }
+    }
+
     function retryTerminalPayment() {
         poyntReferenceId = null;
+        poyntExpectedAmount = null;
         document.getElementById('card-overlay').classList.add('hidden');
         startTerminalPayment();
     }
