@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text, func
+from sqlalchemy import select, text, func, or_
 from pydantic import BaseModel
 
 from app.database import get_db
@@ -167,7 +167,10 @@ async def apply_scraped_images(
 
     for m in mappings:
         result = await db.execute(
-            select(Item).where(Item.sku == m.sku, Item.status == "active")
+            select(Item).where(
+                or_(Item.sku == m.sku, Item.barcode == m.sku),
+                Item.status == "active",
+            )
         )
         items = result.scalars().all()
         if not items:
