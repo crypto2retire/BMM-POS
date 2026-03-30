@@ -12,7 +12,7 @@ from pathlib import Path
 from sqlalchemy import text
 
 from app.database import AsyncSessionLocal, engine, Base
-from app.routers import auth, vendors, items, sales, pos, assistant, storefront, rent, admin, reports, settings, studio, bulk_import, notifications, booth_showcase
+from app.routers import auth, vendors, items, sales, pos, assistant, storefront, storefront_assistant, rent, admin, reports, settings, studio, bulk_import, notifications, booth_showcase
 
 
 @asynccontextmanager
@@ -318,6 +318,7 @@ app.include_router(sales.router, prefix="/api/v1")
 app.include_router(pos.router, prefix="/api/v1")
 app.include_router(assistant.router, prefix="/api/v1")
 app.include_router(storefront.router, prefix="/api/v1")
+app.include_router(storefront_assistant.router, prefix="/api/v1")
 app.include_router(rent.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(reports.router, prefix="/api/v1")
