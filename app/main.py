@@ -306,6 +306,13 @@ app.add_middleware(
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    from fastapi.exceptions import HTTPException as FastAPIHTTPException
+    from starlette.exceptions import HTTPException as StarletteHTTPException
+    if isinstance(exc, (FastAPIHTTPException, StarletteHTTPException)):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"detail": exc.detail},
+        )
     print(f"BMM-POS EXCEPTION on {request.method} {request.url.path}: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
     traceback.print_exc(file=sys.stderr)
     return JSONResponse(
