@@ -242,10 +242,23 @@
             <textarea id="booth-desc" placeholder="Tell customers about your booth, what you sell, and what makes it special..." maxlength="2000"></textarea>
             <div class="char-count"><span id="desc-count">0</span> / 2000</div>
         </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px">
+            <label style="font-size:0.7rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap">Tone</label>
+            <select id="ai-tone-booth" style="background:var(--bg); border:1px solid var(--border); color:var(--text); padding:4px 8px; font-size:0.78rem; font-family:'Roboto',sans-serif">
+                <option value="warm">Warm</option>
+                <option value="professional">Professional</option>
+                <option value="casual">Casual</option>
+                <option value="playful">Playful</option>
+                <option value="rustic">Rustic</option>
+                <option value="elegant">Elegant</option>
+            </select>
+        </div>
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-            <button class="ai-btn" id="ai-btn" onclick="generateDescription()">&#10024; AI Assist — Write Description</button>
+            <button class="ai-btn" id="ai-btn" onclick="aiWriteBooth('write')">&#10024; Write for Me</button>
+            <button class="ai-btn" id="ai-improve-booth-btn" onclick="aiWriteBooth('improve')" style="display:none">&#10024; Improve My Text</button>
             <button class="btn btn-primary btn-sm" onclick="saveDetails()">Save Details</button>
         </div>
+        <span id="ai-booth-status" style="font-size:0.75rem; color:var(--text-light); margin-top:6px; display:block"></span>
     </div>
 
     <div class="showcase-card">
@@ -322,10 +335,23 @@
                     <textarea id="landing-about" placeholder="Share your story — how you got started, what inspires your work, why customers love your booth..." maxlength="5000" style="min-height:180px"></textarea>
                     <div class="char-count"><span id="about-count">0</span> / 5000</div>
                 </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px">
+                    <label style="font-size:0.7rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap">Tone</label>
+                    <select id="ai-tone-about" style="background:var(--bg); border:1px solid var(--border); color:var(--text); padding:4px 8px; font-size:0.78rem; font-family:'Roboto',sans-serif">
+                        <option value="warm">Warm</option>
+                        <option value="professional">Professional</option>
+                        <option value="casual">Casual</option>
+                        <option value="playful">Playful</option>
+                        <option value="rustic">Rustic</option>
+                        <option value="elegant">Elegant</option>
+                    </select>
+                </div>
                 <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
-                    <button class="ai-btn" id="ai-about-btn" onclick="generateAbout()">&#10024; AI Assist — Write About Section</button>
+                    <button class="ai-btn" id="ai-about-btn" onclick="aiWriteAbout('write')">&#10024; Write for Me</button>
+                    <button class="ai-btn" id="ai-improve-about-btn" onclick="aiWriteAbout('improve')" style="display:none">&#10024; Improve My Text</button>
                     <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save</button>
                 </div>
+                <span id="ai-about-status" style="font-size:0.75rem; color:var(--text-light); margin-top:6px; display:block"></span>
             </div>
 
             <div class="showcase-card">
@@ -461,6 +487,7 @@ async function loadShowcase() {
         renderPhotos();
         renderVideo();
         renderLandingSection();
+        updateBoothImproveBtn();
     } catch (err) {
         showStatus(err.message, 'error');
     }
@@ -499,7 +526,6 @@ function updateCharCount() {
     var count = (document.getElementById('booth-desc').value || '').length;
     document.getElementById('desc-count').textContent = count;
 }
-document.getElementById('booth-desc').addEventListener('input', updateCharCount);
 
 async function saveDetails() {
     var token = sessionStorage.getItem('bmm_token');
@@ -631,26 +657,60 @@ async function removeVideo() {
     }
 }
 
-async function generateDescription() {
+function updateBoothImproveBtn() {
+    var desc = (document.getElementById('booth-desc').value || '').trim();
+    var btn = document.getElementById('ai-improve-booth-btn');
+    if (btn) btn.style.display = desc.length > 10 ? 'inline-block' : 'none';
+}
+document.getElementById('booth-desc').addEventListener('input', function() {
+    updateCharCount();
+    updateBoothImproveBtn();
+});
+
+function updateAboutImproveBtn() {
+    var about = (document.getElementById('landing-about').value || '').trim();
+    var btn = document.getElementById('ai-improve-about-btn');
+    if (btn) btn.style.display = about.length > 10 ? 'inline-block' : 'none';
+}
+document.getElementById('landing-about').addEventListener('input', function() {
+    updateAboutCount();
+    updateAboutImproveBtn();
+});
+
+async function aiWriteBooth(action) {
     var btn = document.getElementById('ai-btn');
+    var improveBtn = document.getElementById('ai-improve-booth-btn');
+    var statusEl = document.getElementById('ai-booth-status');
+    var tone = document.getElementById('ai-tone-booth').value;
+    var existingContent = document.getElementById('booth-desc').value.trim();
     btn.disabled = true;
-    btn.textContent = 'Writing...';
+    if (improveBtn) improveBtn.disabled = true;
+    statusEl.textContent = action === 'improve' ? 'Improving your description...' : 'Writing description...';
     var token = sessionStorage.getItem('bmm_token');
     try {
-        var resp = await fetch('/api/v1/booth-showcase/mine/ai-description', {
+        var resp = await fetch('/api/v1/ai/write', {
             method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + token }
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({
+                content_type: 'booth_description',
+                tone: tone,
+                action: action,
+                existing_content: action === 'improve' ? existingContent : null
+            })
         });
         var data = await resp.json();
         if (!resp.ok) throw new Error(data.detail || 'AI failed');
-        document.getElementById('booth-desc').value = data.description;
+        document.getElementById('booth-desc').value = data.content;
         updateCharCount();
-        showStatus('AI description generated! Review and edit as you like, then click Save Details.', 'success');
+        updateBoothImproveBtn();
+        statusEl.textContent = action === 'improve' ? 'Description improved! Review and edit, then Save.' : 'Description written! Review and edit, then Save.';
+        setTimeout(function() { statusEl.textContent = ''; }, 6000);
     } catch (err) {
-        showStatus(err.message, 'error');
+        statusEl.textContent = err.message;
+        setTimeout(function() { statusEl.textContent = ''; }, 4000);
     } finally {
         btn.disabled = false;
-        btn.textContent = '\u2728 AI Assist \u2014 Write Description';
+        if (improveBtn) improveBtn.disabled = false;
     }
 }
 
@@ -682,6 +742,7 @@ function renderLandingSection() {
     updateAboutCount();
     updateMetaDescCount();
     updateLandingLink();
+    updateAboutImproveBtn();
 }
 
 function updateAboutCount() {
@@ -694,7 +755,6 @@ function updateMetaDescCount() {
     if (el) el.textContent = (document.getElementById('landing-meta-desc').value || '').length;
 }
 
-document.getElementById('landing-about').addEventListener('input', updateAboutCount);
 document.getElementById('landing-meta-desc').addEventListener('input', updateMetaDescCount);
 
 function updateLandingLink() {
@@ -777,26 +837,40 @@ async function saveLandingDetails() {
     }
 }
 
-async function generateAbout() {
+async function aiWriteAbout(action) {
     var btn = document.getElementById('ai-about-btn');
+    var improveBtn = document.getElementById('ai-improve-about-btn');
+    var statusEl = document.getElementById('ai-about-status');
+    var tone = document.getElementById('ai-tone-about').value;
+    var existingContent = document.getElementById('landing-about').value.trim();
     btn.disabled = true;
-    btn.textContent = 'Writing...';
+    if (improveBtn) improveBtn.disabled = true;
+    statusEl.textContent = action === 'improve' ? 'Improving your about section...' : 'Writing about section...';
     var token = sessionStorage.getItem('bmm_token');
     try {
-        var resp = await fetch('/api/v1/booth-showcase/mine/ai-landing-about', {
+        var resp = await fetch('/api/v1/ai/write', {
             method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + token }
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({
+                content_type: 'landing_about',
+                tone: tone,
+                action: action,
+                existing_content: action === 'improve' ? existingContent : null
+            })
         });
         var data = await resp.json();
         if (!resp.ok) throw new Error(data.detail || 'AI failed');
-        document.getElementById('landing-about').value = data.about;
+        document.getElementById('landing-about').value = data.content;
         updateAboutCount();
-        showStatus('AI about section generated! Review and edit, then click Save.', 'success');
+        updateAboutImproveBtn();
+        statusEl.textContent = action === 'improve' ? 'About section improved! Review and edit, then Save.' : 'About section written! Review and edit, then Save.';
+        setTimeout(function() { statusEl.textContent = ''; }, 6000);
     } catch (err) {
-        showStatus(err.message, 'error');
+        statusEl.textContent = err.message;
+        setTimeout(function() { statusEl.textContent = ''; }, 4000);
     } finally {
         btn.disabled = false;
-        btn.textContent = '\u2728 AI Assist \u2014 Write About Section';
+        if (improveBtn) improveBtn.disabled = false;
     }
 }
 

@@ -101,6 +101,20 @@
             border-color:var(--gold-dim); color:var(--text);
         }
 
+        .ai-btn {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 0.35rem 0.7rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            letter-spacing: 0.04em;
+            transition: all 0.2s;
+            font-family: 'Roboto', sans-serif;
+        }
+        .ai-btn:hover { background: var(--accent); color: var(--bg); }
+        .ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
         @media (max-width: 767px) {
             .desktop-only { display:none !important; }
             .items-toolbar { gap: 0.5rem; }
@@ -471,7 +485,25 @@
                 <div class="form-group">
                     <label class="form-label">Description</label>
                     <textarea class="form-control" id="f-description" rows="3"
-                        placeholder="Optional description…"></textarea>
+                        placeholder="Write a description or let AI help…"></textarea>
+                    <div id="ai-desc-tools" style="margin-top:8px; display:none">
+                        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px">
+                            <label style="font-size:0.7rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap">Tone</label>
+                            <select id="ai-tone-item" style="background:var(--bg); border:1px solid var(--border); color:var(--text); padding:4px 8px; font-size:0.78rem; font-family:'Roboto',sans-serif">
+                                <option value="warm">Warm</option>
+                                <option value="professional">Professional</option>
+                                <option value="casual">Casual</option>
+                                <option value="playful">Playful</option>
+                                <option value="rustic">Rustic</option>
+                                <option value="elegant">Elegant</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap">
+                            <button type="button" class="ai-btn" id="ai-write-desc-btn" onclick="aiWriteDescription('write')">&#10024; Write for Me</button>
+                            <button type="button" class="ai-btn" id="ai-improve-desc-btn" onclick="aiWriteDescription('improve')" style="display:none">&#10024; Improve My Text</button>
+                        </div>
+                        <span id="ai-desc-status" style="font-size:0.75rem; color:var(--text-light); margin-top:4px; display:block"></span>
+                    </div>
                 </div>
 
                 <!-- ── Mini AI Chat ──────────────────────────────── -->
@@ -1009,9 +1041,10 @@
         renderExistingPhotos(item?.photo_urls || []);
         updateOnlineCheckbox();
 
-        // AI button: always visible in edit mode, hidden in add mode until photo selected
         document.getElementById('ai-describe-wrap').style.display = item ? 'flex' : 'none';
         dismissSuggestions();
+        document.getElementById('ai-desc-tools').style.display = 'block';
+        updateImproveBtn();
 
         // Reset mini chat
         document.getElementById('mini-chat-messages').innerHTML = '';
@@ -1044,7 +1077,59 @@
         miniChatOpen = false;
     }
 
-    // ── In-form AI assistant ───────────────────────────────────────────
+    // ── AI Description Writer ─────────────────────────────────────────
+
+    function updateImproveBtn() {
+        const desc = document.getElementById('f-description').value.trim();
+        const btn = document.getElementById('ai-improve-desc-btn');
+        btn.style.display = desc.length > 10 ? 'inline-block' : 'none';
+    }
+    document.getElementById('f-description').addEventListener('input', updateImproveBtn);
+
+    async function aiWriteDescription(action) {
+        const token = sessionStorage.getItem('bmm_token');
+        const tone = document.getElementById('ai-tone-item').value;
+        const writeBtn = document.getElementById('ai-write-desc-btn');
+        const improveBtn = document.getElementById('ai-improve-desc-btn');
+        const statusEl = document.getElementById('ai-desc-status');
+        const existingContent = document.getElementById('f-description').value.trim();
+
+        writeBtn.disabled = true;
+        improveBtn.disabled = true;
+        statusEl.textContent = action === 'improve' ? 'Improving your description…' : 'Writing description…';
+
+        const itemName = document.getElementById('f-name').value.trim();
+        const itemCat = document.getElementById('f-category').value;
+        const itemPrice = document.getElementById('f-price').value;
+
+        try {
+            const res = await fetch('/api/v1/ai/write', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({
+                    content_type: 'product_description',
+                    tone: tone,
+                    action: action,
+                    existing_content: action === 'improve' ? existingContent : null,
+                    context: { item_name: itemName, item_category: itemCat, item_price: itemPrice ? '$' + itemPrice : '' }
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || 'AI unavailable');
+            document.getElementById('f-description').value = data.content;
+            statusEl.textContent = action === 'improve' ? 'Description improved! Review and edit as you like.' : 'Description written! Review and edit as you like.';
+            updateImproveBtn();
+            setTimeout(() => { statusEl.textContent = ''; }, 5000);
+        } catch (e) {
+            statusEl.textContent = e.message || 'AI unavailable. Try again.';
+            setTimeout(() => { statusEl.textContent = ''; }, 4000);
+        } finally {
+            writeBtn.disabled = false;
+            improveBtn.disabled = false;
+        }
+    }
+
+    // ── In-form AI photo assistant ──────────────────────────────────────
 
     async function analyzePhotoWithAI() {
         const token = sessionStorage.getItem('bmm_token');
