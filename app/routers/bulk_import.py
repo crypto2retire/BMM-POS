@@ -292,6 +292,7 @@ async def bulk_import_inventory(
                     is_consignment=consignment,
                     consignment_rate=consignment_rate,
                     status="active",
+                    label_printed=True,
                 )
                 db.add(item)
 
@@ -592,7 +593,7 @@ async def batch_import_items(
             "category": clean.get("category"), "barcode": barcode, "sku": sku,
             "is_tax_exempt": is_tax_exempt, "is_consignment": is_consignment,
             "consignment_rate": float(cr) if cr else None,
-            "status": "active",
+            "status": "active", "label_printed": True,
         })
 
     if batch_params:
