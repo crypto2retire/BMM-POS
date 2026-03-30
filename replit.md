@@ -59,7 +59,8 @@ The frontend adheres to Bowenstreet Market branding, using a dark (`#38383B`) an
 ## External Dependencies
 
 - **Database**: PostgreSQL
-- **Payment Gateway (Card)**: GoDaddy Poynt Cloud API
+- **Payment Gateway (In-Store Card)**: GoDaddy Poynt Cloud API (terminal push via Cloud Message API)
+- **Payment Gateway (Online Reservations)**: Square Checkout API (payment links for Pay & Reserve)
 - **Payment Gateway (Rent)**: Square Checkout API
 - **PDF Generation**: ReportLab
 - **Barcode Generation**: python-barcode
