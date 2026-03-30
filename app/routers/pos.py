@@ -1,6 +1,7 @@
 import asyncio
 import math
 import os
+import uuid
 import base64
 import io
 import logging
@@ -8,7 +9,7 @@ from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func, cast, Date
 from sqlalchemy.orm import selectinload
@@ -20,6 +21,7 @@ from app.models.item import Item
 from app.models.item_image import ItemImage
 from app.models.sale import Sale, SaleItem
 from app.models.gift_card import GiftCard, GiftCardTransaction
+from app.models.poynt_payment import PoyntPayment
 from app.schemas.sale import (
     SaleCreate, SaleResponse, SaleItemResponse, VoidSaleRequest,
     PoyntChargeRequest, PoyntChargeResponse, PoyntStatusResponse,
@@ -607,40 +609,121 @@ async def void_sale(
     )
 
 
-@router.post("/payment-callback", status_code=status.HTTP_200_OK)
-async def payment_callback(current_user: Vendor = Depends(get_current_user)):
-    return {"status": "ok"}
-
-
 @router.post("/poynt/charge", response_model=PoyntChargeResponse)
 async def poynt_charge(
+    request: Request,
     data: PoyntChargeRequest,
+    db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
     if current_user.role not in ("admin", "cashier"):
         raise HTTPException(status_code=403, detail="Admin or cashier access required")
     amount_cents = math.ceil(data.amount * 100)
-    result = await poynt.send_payment_to_terminal(
+    reference_id = f"BMM-{uuid.uuid4().hex[:12]}"
+
+    # Create pending payment record
+    payment = PoyntPayment(
+        reference_id=reference_id,
         amount_cents=amount_cents,
-        currency="USD",
-        order_ref=data.order_ref,
+        status="pending",
     )
-    return PoyntChargeResponse(reference_id=result["reference_id"])
+    db.add(payment)
+    await db.commit()
+
+    try:
+        await poynt.send_payment_to_terminal(
+            amount_cents=amount_cents,
+            currency="USD",
+            order_ref=reference_id,
+        )
+    except Exception as e:
+        payment.status = "error"
+        await db.commit()
+        raise
+
+    return PoyntChargeResponse(reference_id=reference_id)
 
 
 @router.get("/poynt/status/{reference_id}", response_model=PoyntStatusResponse)
 async def poynt_status(
     reference_id: str,
+    db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
     if current_user.role not in ("admin", "cashier"):
         raise HTTPException(status_code=403, detail="Admin or cashier access required")
-    result = await poynt.check_terminal_payment(reference_id)
-    return PoyntStatusResponse(
-        status=result["status"],
-        transaction_id=result.get("transaction_id"),
-        amount_cents=result.get("amount_cents"),
+
+    result = await db.execute(
+        select(PoyntPayment).where(PoyntPayment.reference_id == reference_id)
     )
+    payment = result.scalar_one_or_none()
+
+    if not payment:
+        # Fall back to polling Poynt API directly
+        api_result = await poynt.check_terminal_payment(reference_id)
+        return PoyntStatusResponse(
+            status=api_result["status"].lower(),
+            poynt_transaction_id=api_result.get("transaction_id"),
+            amount_cents=api_result.get("amount_cents"),
+        )
+
+    return PoyntStatusResponse(
+        status=payment.status,
+        poynt_transaction_id=payment.poynt_transaction_id,
+        amount_cents=payment.amount_cents,
+    )
+
+
+@router.post("/poynt/callback", status_code=status.HTTP_200_OK)
+async def poynt_callback(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Callback from Poynt terminal — updates payment status."""
+    try:
+        payload = await request.json()
+    except Exception:
+        return {"status": "ok"}
+
+    reference_id = None
+    txn_status = "pending"
+    txn_id = None
+
+    # Extract reference_id from various payload locations
+    if "referenceId" in payload:
+        reference_id = payload["referenceId"]
+    elif "notes" in payload:
+        reference_id = payload["notes"]
+    elif "transactions" in payload:
+        for txn in payload.get("transactions", []):
+            for ref in txn.get("references", []):
+                if ref.get("id", "").startswith("BMM-"):
+                    reference_id = ref["id"]
+                    break
+
+    # Extract status
+    raw_status = payload.get("status", "")
+    if isinstance(payload.get("transactions"), list) and payload["transactions"]:
+        raw_status = payload["transactions"][0].get("status", raw_status)
+        txn_id = str(payload["transactions"][0].get("id", ""))
+
+    if raw_status.upper() in ("APPROVED", "CAPTURED", "AUTHORIZED"):
+        txn_status = "approved"
+    elif raw_status.upper() in ("DECLINED", "VOIDED", "REFUNDED", "FAILED"):
+        txn_status = "declined"
+
+    if reference_id:
+        result = await db.execute(
+            select(PoyntPayment).where(PoyntPayment.reference_id == reference_id)
+        )
+        payment = result.scalar_one_or_none()
+        if payment and payment.status == "pending":
+            payment.status = txn_status
+            if txn_id:
+                payment.poynt_transaction_id = txn_id
+            await db.commit()
+
+    return {"status": "ok"}
 
 
 @router.get("/end-of-day")

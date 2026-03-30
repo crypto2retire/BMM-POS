@@ -68,14 +68,16 @@ class VoidSaleRequest(BaseModel):
 
 class PoyntChargeRequest(BaseModel):
     amount: float
-    order_ref: str
+    sale_reference: str = ""
 
 
 class PoyntChargeResponse(BaseModel):
+    success: bool = True
     reference_id: str
+    message: str = "Payment sent to terminal"
 
 
 class PoyntStatusResponse(BaseModel):
     status: str
-    transaction_id: Optional[str] = None
+    poynt_transaction_id: Optional[str] = None
     amount_cents: Optional[int] = None
