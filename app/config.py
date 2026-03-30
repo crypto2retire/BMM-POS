@@ -1,9 +1,19 @@
+import os
 from typing import Optional
 from pydantic_settings import BaseSettings
 
 
+def _resolve_database_url() -> str:
+    url = os.environ.get("DATABASE_URL", "")
+    if not url:
+        url = os.environ.get("DATABASE_PRIVATE_URL", "")
+    if not url:
+        url = os.environ.get("DATABASE_PUBLIC_URL", "")
+    return url
+
+
 class Settings(BaseSettings):
-    database_url: str
+    database_url: str = ""
     secret_key: str
     access_token_expire_hours: int = 8
     tax_rate: float = 0.05
@@ -16,5 +26,9 @@ class Settings(BaseSettings):
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
+
+_db_url = _resolve_database_url()
+if _db_url:
+    os.environ["DATABASE_URL"] = _db_url
 
 settings = Settings()

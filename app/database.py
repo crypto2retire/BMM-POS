@@ -48,7 +48,15 @@ def get_async_url(url: str):
     return final_url, connect_args
 
 
-_url, _connect_args = get_async_url(settings.database_url)
+import sys
+
+_raw_url = settings.database_url
+if not _raw_url:
+    print("BMM-POS FATAL: DATABASE_URL is empty or not set", file=sys.stderr, flush=True)
+    raise RuntimeError("DATABASE_URL is not configured")
+
+_url, _connect_args = get_async_url(_raw_url)
+print(f"BMM-POS: DB scheme={_url.split('://')[0] if '://' in _url else 'unknown'}", file=sys.stderr, flush=True)
 engine = create_async_engine(
     _url,
     echo=False,
