@@ -112,25 +112,30 @@ async def send_payment_to_terminal(amount_cents: int, currency: str = "USD", ord
 
     reference_id = str(uuid.uuid4())
 
-    action_payload = {
-        "action": "AUTHORIZE",
-        "purchaseAction": "SALE",
-        "amounts": {
-            "transactionAmount": amount_cents,
-            "orderAmount": amount_cents,
-            "currency": currency,
-        },
+    # Payment data must be serialized as a JSON string
+    payment_data = json.dumps({
+        "action": "sale",
+        "purchaseAmount": amount_cents,
+        "currency": currency,
         "referenceId": reference_id,
-        "callbackUrl": "-",
+        "callbackUrl": "https://bowenstreetmarket.com/api/v1/pos/poynt/callback",
         "skipReceiptScreen": True,
         "disableTip": True,
         "notes": order_ref,
+    })
+
+    cloud_message = {
+        "ttl": 90,
+        "businessId": business_id,
+        "storeId": store_id,
+        "deviceId": terminal_id,
+        "data": payment_data,
     }
 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
-            f"{POYNT_API_BASE}/businesses/{business_id}/stores/{store_id}/terminals/{terminal_id}/requests",
-            json=action_payload,
+            f"{POYNT_API_BASE}/cloudMessages",
+            json=cloud_message,
             headers={
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
@@ -138,14 +143,14 @@ async def send_payment_to_terminal(amount_cents: int, currency: str = "USD", ord
                 "Poynt-Request-Id": str(uuid.uuid4()),
             },
         )
-        logger.info(f"Poynt terminal request response {resp.status_code}: {resp.text[:500]}")
+        logger.info(f"Poynt cloud message response {resp.status_code}: {resp.text[:500]}")
 
         if resp.status_code not in (200, 201, 202):
-            logger.error(f"Poynt terminal request error {resp.status_code}: {resp.text}")
+            logger.error(f"Poynt cloud message error {resp.status_code}: {resp.text}")
             detail = "Failed to send payment to terminal."
             if resp.status_code == 404:
-                detail = "Terminal not found or offline. Please check that the Poynt terminal is powered on and connected."
-            elif resp.status_code == 401 or resp.status_code == 403:
+                detail = "Terminal not found or offline. Check that the terminal is powered on and connected."
+            elif resp.status_code in (401, 403):
                 detail = "Poynt authentication error. Please contact admin."
             raise HTTPException(status_code=422, detail=detail)
 
