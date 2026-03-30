@@ -196,16 +196,22 @@ async def _execute_tool(tool_name: str, args: dict, db: AsyncSession) -> str:
         category = args.get("category")
         max_results = min(args.get("max_results", 8), 15)
 
+        from app.models.booth_showcase import BoothShowcase
+
         q = (
             select(
                 Item.id, Item.name, Item.description, Item.price,
                 Item.sale_price, Item.category, Item.quantity,
+                Item.image_path,
                 Vendor.name.label("vendor_name"),
                 Vendor.booth_number.label("vendor_booth"),
+                BoothShowcase.title.label("booth_title"),
             )
             .join(Vendor, Item.vendor_id == Vendor.id)
+            .outerjoin(BoothShowcase, BoothShowcase.vendor_id == Vendor.id)
             .where(Item.status == "active", Item.quantity > 0,
                    Vendor.is_active == True, Item.is_online == True)
+            .where(or_(Item.image_path.isnot(None), Item.photo_urls != []))
         )
         if query_text:
             pattern = f"%{query_text}%"
@@ -229,8 +235,9 @@ async def _execute_tool(tool_name: str, args: dict, db: AsyncSession) -> str:
             price_str = f"${float(r.price):.2f}"
             if r.sale_price:
                 price_str = f"~~${float(r.price):.2f}~~ **SALE ${float(r.sale_price):.2f}**"
+            display_name = r.booth_title or r.vendor_name
             lines.append(
-                f"- {r.name} — {price_str} (by {r.vendor_name}, booth {r.vendor_booth or 'N/A'}, category: {r.category or 'uncategorized'})"
+                f"- [{r.name}](/shop?item={r.id}) — {price_str} (by {display_name}, booth {r.vendor_booth or 'N/A'}, category: {r.category or 'uncategorized'})"
             )
         return f"Found {len(rows)} item(s):\n" + "\n".join(lines)
 
@@ -255,6 +262,7 @@ async def _execute_tool(tool_name: str, args: dict, db: AsyncSession) -> str:
         q = (
             select(
                 Vendor.id, Vendor.name, Vendor.booth_number,
+                BoothShowcase.title.label("booth_title"),
                 BoothShowcase.is_published.label("has_showcase"),
                 BoothShowcase.landing_page_enabled.label("has_landing_page"),
                 BoothShowcase.landing_slug.label("landing_slug"),
@@ -265,7 +273,10 @@ async def _execute_tool(tool_name: str, args: dict, db: AsyncSession) -> str:
         )
         if query_text:
             pattern = f"%{query_text}%"
-            q = q.where(Vendor.name.ilike(pattern))
+            q = q.where(or_(
+                Vendor.name.ilike(pattern),
+                BoothShowcase.title.ilike(pattern),
+            ))
 
         q = q.order_by(Vendor.name).limit(20)
         result = await db.execute(q)
@@ -276,11 +287,12 @@ async def _execute_tool(tool_name: str, args: dict, db: AsyncSession) -> str:
 
         lines = []
         for r in rows:
-            parts = [f"- {r.name} (booth {r.booth_number or 'N/A'})"]
+            display_name = r.booth_title or r.name
+            parts = [f"- {display_name} (booth {r.booth_number or 'N/A'})"]
             if r.has_showcase:
-                parts.append(" — has booth showcase")
+                parts.append(" — [view booth showcase](/shop/booths.html)")
             if r.has_landing_page and r.landing_slug:
-                parts.append(f" — vendor page: /v/{r.landing_slug}")
+                parts.append(f" — [visit vendor page](/v/{r.landing_slug})")
             lines.append("".join(parts))
         return f"Found {len(rows)} vendor(s):\n" + "\n".join(lines)
 

@@ -72,6 +72,14 @@
             '    align-self:flex-start; background:#3a3a3e; color:#F0EDE8;',
             '    border-radius:12px 12px 12px 2px; border:1px solid #4a4a4d;',
             '}',
+            '.bmm-pub-item-link, .bmm-pub-link {',
+            '    color:#C9A96E; text-decoration:underline;',
+            '    text-decoration-color:rgba(201,169,110,0.4);',
+            '    cursor:pointer; transition:color 0.15s;',
+            '}',
+            '.bmm-pub-item-link:hover, .bmm-pub-link:hover {',
+            '    color:#e0c080; text-decoration-color:rgba(224,192,128,0.6);',
+            '}',
             '#bmm-pub-chips {',
             '    padding:0.5rem 1rem; display:flex; gap:0.4rem; flex-wrap:wrap;',
             '    border-top:1px solid #4a4a4d; flex-shrink:0;',
@@ -183,6 +191,10 @@
             var escaped = d.innerHTML;
             escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
             escaped = escaped.replace(/~~(.*?)~~/g, '<s>$1</s>');
+            escaped = escaped.replace(/\[([^\]]+)\]\(\/shop\?item=(\d+)\)/g,
+                '<a href="/shop/index.html?item=$2" class="bmm-pub-item-link" data-item-id="$2">$1</a>');
+            escaped = escaped.replace(/\[([^\]]+)\]\((\/[^\)]+)\)/g,
+                '<a href="$2" class="bmm-pub-link">$1</a>');
             escaped = escaped.replace(/\n- /g, '\n\u2022 ');
             escaped = escaped.replace(/\n/g, '<br>');
             return escaped;
