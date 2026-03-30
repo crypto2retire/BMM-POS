@@ -557,74 +557,101 @@ async def scrape_status(password: str = Query(...)):
     return _scrape_status
 
 
-@router.post("/scrape-rico-collect")
-async def scrape_rico_collect(password: str = Query(...)):
-    if password != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid password")
+_collect_status = {"running": False, "done": False, "message": "", "count": 0}
+
+
+async def _collect_ricochet_products():
     from bs4 import BeautifulSoup
     from urllib.parse import quote
 
     _product_cache.clear()
+    _collect_status.update(running=True, done=False, message="Collecting product URLs...", count=0)
     s3_pat = re.compile(r"ricoconsign-assets\.s3\.")
     sku_pat = re.compile(r"rico\.sku\s*=\s*'([^']+)'")
 
-    async with httpx.AsyncClient(headers=RICO_HEADERS, timeout=30, follow_redirects=True) as client:
-        product_urls = set()
-        for cat in RICO_CATEGORIES:
-            page = 1
-            while True:
-                url = f"{RICO_BASE}/store/category/{quote(cat)}" if page == 1 else f"{RICO_BASE}/nextpage?page={page}&category={quote(cat)}"
+    try:
+        async with httpx.AsyncClient(headers=RICO_HEADERS, timeout=30, follow_redirects=True) as client:
+            product_urls = set()
+            for cat in RICO_CATEGORIES:
+                page = 1
+                while True:
+                    url = f"{RICO_BASE}/store/category/{quote(cat)}" if page == 1 else f"{RICO_BASE}/nextpage?page={page}&category={quote(cat)}"
+                    try:
+                        resp = await client.get(url)
+                        if resp.status_code != 200:
+                            break
+                        soup = BeautifulSoup(resp.text, "html.parser")
+                        links = soup.find_all("a", href=re.compile(r"/store/product/"))
+                        if not links:
+                            break
+                        new = 0
+                        for link in links:
+                            href = link.get("href", "")
+                            if href.startswith("/"):
+                                href = RICO_BASE + href
+                            if href not in product_urls:
+                                product_urls.add(href)
+                                new += 1
+                        if new == 0:
+                            break
+                        page += 1
+                        await asyncio.sleep(0.2)
+                    except Exception:
+                        break
+
+            _collect_status["message"] = f"Found {len(product_urls)} products. Scraping details..."
+
+            for i, prod_url in enumerate(product_urls):
                 try:
-                    resp = await client.get(url)
+                    resp = await client.get(prod_url)
                     if resp.status_code != 200:
-                        break
+                        continue
                     soup = BeautifulSoup(resp.text, "html.parser")
-                    links = soup.find_all("a", href=re.compile(r"/store/product/"))
-                    if not links:
-                        break
-                    new = 0
-                    for link in links:
-                        href = link.get("href", "")
-                        if href.startswith("/"):
-                            href = RICO_BASE + href
-                        if href not in product_urls:
-                            product_urls.add(href)
-                            new += 1
-                    if new == 0:
-                        break
-                    page += 1
+                    sku = ""
+                    for script in soup.find_all("script"):
+                        m = sku_pat.search(script.string or "")
+                        if m:
+                            sku = m.group(1)
+                            break
+                    if not sku:
+                        continue
+                    image_urls = []
+                    for img in soup.find_all("img", src=s3_pat):
+                        src = img.get("src", "")
+                        if src and src not in image_urls:
+                            image_urls.append(src)
+                    if not image_urls:
+                        continue
+                    _product_cache.append({"sku": sku, "image_urls": image_urls})
+                    if i % 20 == 0:
+                        _collect_status["message"] = f"Scraped {i+1}/{len(product_urls)}... cached {len(_product_cache)}"
                     await asyncio.sleep(0.2)
                 except Exception:
-                    break
+                    continue
+    except Exception as e:
+        _collect_status["message"] = f"Error: {e}"
 
-        LOGO_SIZE = 218508
-        for prod_url in product_urls:
-            try:
-                resp = await client.get(prod_url)
-                if resp.status_code != 200:
-                    continue
-                soup = BeautifulSoup(resp.text, "html.parser")
-                sku = ""
-                for script in soup.find_all("script"):
-                    m = sku_pat.search(script.string or "")
-                    if m:
-                        sku = m.group(1)
-                        break
-                if not sku:
-                    continue
-                image_urls = []
-                for img in soup.find_all("img", src=s3_pat):
-                    src = img.get("src", "")
-                    if src and src not in image_urls:
-                        image_urls.append(src)
-                if not image_urls:
-                    continue
-                _product_cache.append({"sku": sku, "image_urls": image_urls})
-                await asyncio.sleep(0.2)
-            except Exception:
-                continue
+    _collect_status.update(running=False, done=True, count=len(_product_cache), message=f"Done! Cached {len(_product_cache)} products with images")
 
-    return {"detail": f"Collected {len(_product_cache)} products with images", "count": len(_product_cache)}
+
+@router.post("/scrape-rico-collect")
+async def scrape_rico_collect(
+    password: str = Query(...),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
+):
+    if password != SYNC_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid password")
+    if _collect_status["running"]:
+        return {"detail": "Collection already running", **_collect_status}
+    background_tasks.add_task(_collect_ricochet_products)
+    return {"detail": "Collection started in background. Check /data-sync/scrape-rico-status for progress."}
+
+
+@router.get("/scrape-rico-status")
+async def scrape_rico_status_endpoint(password: str = Query(...)):
+    if password != SYNC_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid password")
+    return {**_collect_status, "cached_products": len(_product_cache)}
 
 
 @router.post("/scrape-rico-store")
