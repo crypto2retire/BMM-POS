@@ -5,6 +5,7 @@ import logging
 import time
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pydantic import BaseModel, EmailStr
 import jwt
 from jwt.exceptions import PyJWTError as JWTError
 import bcrypt
@@ -26,6 +27,7 @@ from app.config import settings as _cfg
 SECRET_KEY = _cfg.secret_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480
+RESET_TOKEN_EXPIRE_MINUTES = 60
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -157,3 +159,137 @@ async def refresh_token(current_user: Vendor = Depends(get_current_user)):
         }
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+def _create_reset_token(email: str) -> str:
+    expire = datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
+    return jwt.encode(
+        {"sub": email, "purpose": "password_reset", "exp": expire},
+        SECRET_KEY,
+        algorithm=ALGORITHM,
+    )
+
+def _verify_reset_token(token: str) -> Optional[str]:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("purpose") != "password_reset":
+            return None
+        return payload.get("sub")
+    except JWTError:
+        return None
+
+@router.post("/forgot-password")
+async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Vendor).where(func.lower(Vendor.email) == body.email.strip().lower())
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        return {"detail": "If that email exists in our system, a reset link has been sent."}
+
+    token = _create_reset_token(user.email)
+
+    import os
+    base_url = os.environ.get("BASE_URL", "")
+    if not base_url:
+        dev_domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
+        if dev_domain:
+            base_url = f"https://{dev_domain}"
+        else:
+            base_url = "https://bowenstreetmarket.com"
+
+    reset_url = f"{base_url}/vendor/reset-password.html?token={token}"
+
+    html_body = f"""
+    <div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; color: #2A2825;">
+        <div style="text-align: center; padding: 24px 0; border-bottom: 2px solid #C9A84C;">
+            <h1 style="font-size: 1.6rem; margin: 0; color: #2A2825; font-style: italic;">Bowenstreet Market</h1>
+            <p style="font-size: 0.85rem; color: #5a554d; margin: 4px 0 0;">Handcrafted &middot; Vintage &middot; Antique</p>
+        </div>
+        <div style="padding: 32px 16px;">
+            <p>Hi {user.name},</p>
+            <p>We received a request to reset your password for your Bowenstreet Market account.</p>
+            <p style="text-align: center; margin: 28px 0;">
+                <a href="{reset_url}" style="display: inline-block; background: #C9A84C; color: #2A2825; padding: 12px 32px; text-decoration: none; font-weight: 600; font-size: 1rem;">
+                    Reset My Password
+                </a>
+            </p>
+            <p style="font-size: 0.85rem; color: #5a554d;">This link will expire in 60 minutes. If you didn't request a password reset, you can safely ignore this email.</p>
+            <p style="font-size: 0.85rem; color: #5a554d;">If the button doesn't work, copy and paste this link into your browser:</p>
+            <p style="font-size: 0.75rem; color: #888; word-break: break-all;">{reset_url}</p>
+        </div>
+        <div style="text-align: center; padding: 16px; border-top: 1px solid #eee; font-size: 0.75rem; color: #999;">
+            Bowenstreet Market &middot; 2837 Bowen St, Oshkosh WI 54901
+        </div>
+    </div>
+    """
+
+    plain_body = f"Hi {user.name},\n\nReset your Bowenstreet Market password here:\n{reset_url}\n\nThis link expires in 60 minutes.\n\nBowenstreet Market\n2837 Bowen St, Oshkosh WI 54901"
+
+    from app.services.email import send_email_safe
+    email_result = await send_email_safe(
+        to_email=user.email,
+        subject="Reset Your Bowenstreet Market Password",
+        html_body=html_body,
+        plain_body=plain_body,
+    )
+
+    if not email_result.get("success"):
+        logger.error(f"Failed to send reset email to {user.email}: {email_result.get('error')}")
+
+    return {"detail": "If that email exists in our system, a reset link has been sent."}
+
+
+@router.post("/reset-password")
+async def reset_password_with_token(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+    email = _verify_reset_token(body.token)
+    if not email:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link. Please request a new one.")
+
+    result = await db.execute(
+        select(Vendor).where(func.lower(Vendor.email) == email.lower())
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="Account not found")
+
+    user.password_hash = get_password_hash(body.new_password)
+    user.password_changed = True
+    await db.commit()
+
+    logger.info(f"Password reset completed for {user.email}")
+    return {"detail": "Password has been reset successfully. You can now sign in with your new password."}
+
+
+@router.post("/change-password")
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: Vendor = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+
+    if not verify_password(body.current_password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+
+    current_user.password_hash = get_password_hash(body.new_password)
+    current_user.password_changed = True
+    await db.commit()
+
+    return {"detail": "Password changed successfully"}
