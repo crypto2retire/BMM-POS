@@ -185,6 +185,56 @@ async def delete_vendor(
     await db.commit()
     return {"detail": "Vendor deactivated"}
 
+
+@router.post("/{vendor_id}/archive")
+async def archive_vendor(
+    vendor_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_role("admin"))
+):
+    from app.models.item import Item
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    vendor.status = "archived"
+    vendor.is_active = False
+
+    items_result = await db.execute(
+        select(Item).where(Item.vendor_id == vendor_id, Item.status == "active")
+    )
+    items = items_result.scalars().all()
+    items_deactivated = 0
+    for item in items:
+        item.status = "inactive"
+        item.is_online = False
+        items_deactivated += 1
+
+    await db.commit()
+    return {
+        "detail": f"Vendor archived. {items_deactivated} item(s) deactivated.",
+        "items_deactivated": items_deactivated,
+    }
+
+
+@router.post("/{vendor_id}/unarchive")
+async def unarchive_vendor(
+    vendor_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_role("admin"))
+):
+    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    vendor.status = "active"
+    vendor.is_active = True
+    await db.commit()
+    return {"detail": "Vendor restored to active. Items remain inactive — re-enable them as needed."}
+
+
 @router.get("/{vendor_id}/balance", response_model=VendorBalanceResponse)
 async def get_vendor_balance(
     vendor_id: int,

@@ -287,10 +287,15 @@
         <button class="btn btn-primary" style="font-size:0.72rem; padding:0.3rem 0.8rem; margin-left:auto">Select &amp; Print</button>
     </div>
 
+    <div id="bulk-status-bar" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap">
+        <button class="btn btn-outline" onclick="bulkSetStatus('active')" style="font-size:0.72rem; padding:0.35rem 0.8rem">Mark All For Sale</button>
+        <button class="btn btn-outline" onclick="bulkSetStatus('inactive')" style="font-size:0.72rem; padding:0.35rem 0.8rem">Mark All Not For Sale</button>
+    </div>
+
     <div class="filter-label-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem">
         <div class="status-filter-bar" id="status-filter-bar" style="margin-bottom:0">
-            <button class="active" data-status="active" onclick="setStatusFilter('active')">Active</button>
-            <button data-status="inactive" onclick="setStatusFilter('inactive')">Inactive</button>
+            <button class="active" data-status="active" onclick="setStatusFilter('active')">For Sale</button>
+            <button data-status="inactive" onclick="setStatusFilter('inactive')">Not For Sale</button>
             <button data-status="all" onclick="setStatusFilter('all')">All</button>
         </div>
         <div style="display:flex;align-items:center;gap:6px">
@@ -1421,7 +1426,35 @@
         try {
             var resp = await apiFetch('PATCH', '/api/v1/items/' + id + '/toggle-status');
             var newStatus = resp.status;
-            showAlert('alert-container', newStatus === 'active' ? 'Item activated.' : 'Item deactivated.', 'success');
+            showAlert('alert-container', newStatus === 'active' ? 'Item marked for sale.' : 'Item marked not for sale.', 'success');
+            await loadItems();
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+        }
+    }
+
+    async function deleteItem(id, name) {
+        if (!confirm('Delete "' + name + '"? This item will be removed from your inventory.')) return;
+        try {
+            await apiFetch('DELETE', '/api/v1/items/' + id);
+            showAlert('alert-container', '"' + name + '" has been deleted.', 'success');
+            await loadItems();
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+        }
+    }
+
+    async function bulkSetStatus(targetStatus) {
+        var label = targetStatus === 'active' ? 'for sale' : 'not for sale';
+        if (!confirm('Mark ALL of your items as ' + label + '?')) return;
+        try {
+            var payload = { status: targetStatus };
+            var p = parseToken();
+            if (currentRole !== 'vendor' && !isVendorMode && selectedVendorId) {
+                payload.vendor_id = selectedVendorId;
+            }
+            var resp = await apiFetch('POST', '/api/v1/items/bulk-status', payload);
+            showAlert('alert-container', resp.detail, 'success');
             await loadItems();
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
@@ -1613,10 +1646,14 @@
                             <button onclick="printDymoLabel(${item.id})">Dymo Label</button>
                         </div>
                     </div>
-                    <label class="status-toggle" title="${isActive ? 'Deactivate' : 'Activate'}" onclick="event.stopPropagation()">
-                        <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
-                        <span class="slider"></span>
-                    </label>
+                    <div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+                        <label class="status-toggle" title="${isActive ? 'Mark not for sale' : 'Mark for sale'}">
+                            <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
+                            <span class="slider"></span>
+                        </label>
+                        <span style="font-size:0.65rem;color:${isActive ? '#6EE7B7' : 'var(--text-light)'};white-space:nowrap">${isActive ? 'For Sale' : 'Not For Sale'}</span>
+                    </div>
+                    <button class="btn btn-outline" onclick="event.stopPropagation();deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.68rem;padding:0.25rem 0.5rem;color:#FCA5A5;border-color:rgba(252,165,165,0.3)" title="Delete item">Delete</button>
                 </div>
                 <div class="item-card-photos">
                     ${(item.photo_urls || []).slice(1).map(url =>
@@ -1692,10 +1729,12 @@
                 <td><div class="actions-cell">
                     <button class="btn btn-outline" onclick="openModal(${itemJson})">Edit</button>
                     <button class="btn btn-secondary" onclick="printLabelAuto(${item.id}, '${style}')">Label</button>
-                    <label class="status-toggle" title="${isActive ? 'Deactivate' : 'Activate'}">
+                    <label class="status-toggle" title="${isActive ? 'Mark not for sale' : 'Mark for sale'}">
                         <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
                         <span class="slider"></span>
                     </label>
+                    <span style="font-size:0.6rem;color:${isActive ? '#6EE7B7' : 'var(--text-light)'};min-width:50px">${isActive ? 'For Sale' : 'Not For Sale'}</span>
+                    <button class="btn btn-outline" onclick="deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:0.2rem 0.45rem;color:#FCA5A5;border-color:rgba(252,165,165,0.3)" title="Delete">&#x2716;</button>
                 </div></td>
             </tr>`;
         });

@@ -2,7 +2,7 @@ import uuid
 import os
 import shutil
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Body
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
@@ -543,6 +543,43 @@ async def get_item_image(
                             headers={"Cache-Control": "public, max-age=86400"})
 
     raise HTTPException(status_code=404, detail="Image not found")
+
+
+@router.post("/bulk-status")
+async def bulk_set_item_status(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    vendor_id = body.get("vendor_id")
+    target_status = body.get("status", "active")
+
+    if target_status not in ("active", "inactive"):
+        raise HTTPException(status_code=400, detail="Status must be 'active' or 'inactive'")
+
+    if current_user.role == "vendor":
+        vendor_id = current_user.id
+    elif not vendor_id:
+        raise HTTPException(status_code=400, detail="vendor_id is required for admin/cashier")
+
+    if current_user.role not in ("admin", "cashier") and vendor_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    opposite = "inactive" if target_status == "active" else "active"
+    result = await db.execute(
+        select(Item).where(Item.vendor_id == vendor_id, Item.status == opposite)
+    )
+    items = result.scalars().all()
+    updated = 0
+    for item in items:
+        item.status = target_status
+        if target_status == "inactive":
+            item.is_online = False
+        updated += 1
+
+    await db.commit()
+    label = "for sale" if target_status == "active" else "not for sale"
+    return {"detail": f"{updated} item(s) marked {label}.", "updated": updated}
 
 
 @router.patch("/{item_id}/toggle-status", response_model=ItemResponse)

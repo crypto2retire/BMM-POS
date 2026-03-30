@@ -72,6 +72,7 @@
 
         /* ── Mobile vendor cards ──────────────────────────── */
         .vendor-cards { display: none; flex-direction: column; gap: 0.75rem; }
+        .vendor-card.archived { opacity: 0.55; }
         .vendor-card {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -561,7 +562,8 @@
     }
 
     function statusBadge(s) {
-        return `<span class="badge ${s === 'active' ? 'badge-green' : 'badge-red'}">${s}</span>`;
+        const cls = s === 'active' ? 'badge-green' : s === 'archived' ? 'badge-gray' : 'badge-red';
+        return `<span class="badge ${cls}">${s}</span>`;
     }
 
     function roleBadge(r) {
@@ -624,14 +626,16 @@
                         ${isAdmin ? `<button class="btn btn-outline btn-sm" onclick="editVendor(${v.id})">Edit</button>` : ''}
                         <button class="btn btn-outline btn-sm" onclick="window.open('/vendor/items.html?vendor_id=${v.id}','_blank')">Items</button>
                         ${isAdmin && v.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="quickSuspend(${v.id}, '${esc(v.name)}')">Suspend</button>` : ''}
+                        ${isAdmin && v.status === 'active' ? `<button class="btn btn-outline btn-sm" onclick="archiveVendor(${v.id}, '${esc(v.name)}')" style="color:#FCA5A5;border-color:rgba(252,165,165,0.3)">Archive</button>` : ''}
                         ${isAdmin && v.status === 'suspended' ? `<button class="btn btn-outline btn-sm" onclick="quickActivate(${v.id}, '${esc(v.name)}')">Activate</button>` : ''}
+                        ${isAdmin && v.status === 'archived' ? `<button class="btn btn-outline btn-sm" onclick="unarchiveVendor(${v.id}, '${esc(v.name)}')">Unarchive</button>` : ''}
                     </div>
                 </td>
             </tr>
         `).join('');
 
         cards.innerHTML = vendors.map(v => `
-            <div class="vendor-card">
+            <div class="vendor-card${v.status === 'archived' ? ' archived' : ''}">
                 <div class="vendor-card-header" onclick="toggleCardDetail(${v.id})">
                     <div>
                         <div class="vendor-card-name">
@@ -656,7 +660,9 @@
                         ${isAdmin ? `<button class="btn btn-outline btn-sm" onclick="editVendor(${v.id})">Edit</button>` : ''}
                         <button class="btn btn-outline btn-sm" onclick="window.open('/vendor/items.html?vendor_id=${v.id}','_blank')">Items</button>
                         ${isAdmin && v.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="quickSuspend(${v.id}, '${esc(v.name)}')">Suspend</button>` : ''}
+                        ${isAdmin && v.status === 'active' ? `<button class="btn btn-outline btn-sm" onclick="archiveVendor(${v.id}, '${esc(v.name)}')" style="color:#FCA5A5;border-color:rgba(252,165,165,0.3)">Archive</button>` : ''}
                         ${isAdmin && v.status === 'suspended' ? `<button class="btn btn-outline btn-sm" onclick="quickActivate(${v.id}, '${esc(v.name)}')">Activate</button>` : ''}
+                        ${isAdmin && v.status === 'archived' ? `<button class="btn btn-outline btn-sm" onclick="unarchiveVendor(${v.id}, '${esc(v.name)}')">Unarchive</button>` : ''}
                     </div>
                 </div>
             </div>
@@ -718,14 +724,25 @@
         document.getElementById('e-zelle').value = v.zelle_handle || '';
         document.getElementById('e-notes').value = v.notes || '';
 
-        // Update suspend/activate button
         const statusBtn = document.getElementById('toggle-status-btn');
-        if (v.status === 'active') {
-            statusBtn.textContent = 'Suspend';
-            statusBtn.className = 'btn btn-danger btn-sm';
-        } else {
-            statusBtn.textContent = 'Activate';
+        const statusSel = document.getElementById('e-status');
+        if (v.status === 'archived') {
+            statusBtn.textContent = 'Unarchive';
             statusBtn.className = 'btn btn-outline btn-sm';
+            statusSel.disabled = true;
+            statusSel.innerHTML = '<option value="archived">Archived</option>';
+            statusSel.value = 'archived';
+        } else {
+            statusSel.disabled = false;
+            statusSel.innerHTML = '<option value="active">Active</option><option value="suspended">Suspended</option>';
+            statusSel.value = v.status || 'active';
+            if (v.status === 'active') {
+                statusBtn.textContent = 'Suspend';
+                statusBtn.className = 'btn btn-danger btn-sm';
+            } else {
+                statusBtn.textContent = 'Activate';
+                statusBtn.className = 'btn btn-outline btn-sm';
+            }
         }
 
         toggleBoothFields();
@@ -788,6 +805,12 @@
 
     async function toggleVendorStatus() {
         if (!editingVendor) return;
+        if (editingVendor.status === 'archived') {
+            await unarchiveVendor(editingVendor.id, editingVendor.name);
+            const updated = allVendors.find(x => x.id === editingVendor.id);
+            if (updated) editVendor(updated.id);
+            return;
+        }
         const newStatus = editingVendor.status === 'active' ? 'suspended' : 'active';
         const action = newStatus === 'suspended' ? 'suspend' : 'activate';
         if (!confirm(`Are you sure you want to ${action} "${editingVendor.name}"?`)) return;
@@ -822,6 +845,30 @@
         try {
             await apiPut(`/api/v1/vendors/${id}`, { status: 'active' });
             showAlert('alert-container', `${name} has been activated.`, 'success');
+            await loadVendors();
+            renderGrid(allVendors);
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+        }
+    }
+
+    async function archiveVendor(id, name) {
+        if (!confirm(`Archive "${name}"?\n\nThis will:\n• Set the vendor to archived status\n• Mark ALL their items as not for sale\n• Remove their items from the online store\n\nYou can unarchive them later.`)) return;
+        try {
+            const resp = await apiPost(`/api/v1/vendors/${id}/archive`);
+            showAlert('alert-container', resp.detail || `${name} has been archived.`, 'success');
+            await loadVendors();
+            renderGrid(allVendors);
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+        }
+    }
+
+    async function unarchiveVendor(id, name) {
+        if (!confirm(`Unarchive "${name}"?\n\nThe vendor will be reactivated. Their items will remain not-for-sale — you can re-enable them manually.`)) return;
+        try {
+            const resp = await apiPost(`/api/v1/vendors/${id}/unarchive`);
+            showAlert('alert-container', resp.detail || `${name} has been unarchived.`, 'success');
             await loadVendors();
             renderGrid(allVendors);
         } catch (err) {

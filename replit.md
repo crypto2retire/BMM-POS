@@ -42,8 +42,8 @@ The frontend adheres to Bowenstreet Market branding, using a dark (`#38383B`) an
 ### Feature Specifications
 
 - **POS Terminal**: Supports barcode scanning, cart management, multiple payment types (cash, card via Poynt, gift card), split payments, receipt generation, and order suspension/lookup.
-- **Vendor Management**: CRUD operations for vendors, vendor-specific dashboards, and balance adjustment capabilities for admins.
-- **Item Management**: CRUD for items, including automatic SKU/barcode generation, PDF label printing, and batch label printing tools.
+- **Vendor Management**: CRUD operations for vendors, vendor-specific dashboards, balance adjustment capabilities for admins, and vendor archiving (sets status to "archived", deactivates all items and removes from online store; unarchive restores vendor but items remain inactive).
+- **Item Management**: CRUD for items, including automatic SKU/barcode generation, PDF label printing, batch label printing tools, bulk status toggle (Mark All For Sale / Not For Sale), and item deletion with confirmation. Items display "For Sale" / "Not For Sale" labels.
 - **Sales Management**: Records sales, manages inventory, and credits vendor balances, supporting consignment.
 - **Studio Class Management**: CRUD for classes, public calendar, online registration, and image uploads.
 - **Gift Card System**: In-house gift cards with barcode, balance tracking, and transaction history.
