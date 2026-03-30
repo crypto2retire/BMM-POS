@@ -53,13 +53,17 @@ async def bulk_import_vendors(
         raise HTTPException(status_code=400, detail="CSV has no headers")
 
     headers_lower = {h.strip().lower(): h.strip() for h in reader.fieldnames}
-    required = ["name"]
-    for r in required:
-        if r not in headers_lower:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Missing required column: {r}. Found: {', '.join(headers_lower.keys())}",
-            )
+
+    is_ricochet = "first name" in headers_lower or "consignor id" in headers_lower
+
+    if not is_ricochet:
+        required = ["name"]
+        for r in required:
+            if r not in headers_lower:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Missing required column: {r}. Found: {', '.join(headers_lower.keys())}",
+                )
 
     created = []
     skipped = []
@@ -67,15 +71,44 @@ async def bulk_import_vendors(
 
     for row_num, row in enumerate(reader, start=2):
         clean_row = {k.strip().lower(): _clean(v) for k, v in row.items()}
-        name = clean_row.get("name")
-        if not name:
-            skipped.append({"row": row_num, "reason": "Empty name"})
-            continue
 
-        email = clean_row.get("email")
+        if is_ricochet:
+            first = clean_row.get("first name", "") or ""
+            last = clean_row.get("last name", "") or ""
+            name = f"{first} {last}".strip()
+            if not name:
+                skipped.append({"row": row_num, "reason": "Empty name"})
+                continue
+            email = clean_row.get("email")
+            phone = clean_row.get("phone")
+            booth = clean_row.get("custom name/number")
+            rent_val = Decimal("200.00")
+            comm_val = Decimal("0.10")
+        else:
+            name = clean_row.get("name")
+            if not name:
+                skipped.append({"row": row_num, "reason": "Empty name"})
+                continue
+            email = clean_row.get("email")
+            phone = clean_row.get("phone")
+            booth = clean_row.get("booth_number") or clean_row.get("booth")
+            try:
+                rent_val = Decimal(clean_row["monthly_rent"]) if clean_row.get("monthly_rent") else Decimal("200.00")
+            except (InvalidOperation, ValueError):
+                rent_val = Decimal("200.00")
+            try:
+                comm_val = Decimal(clean_row["commission_rate"]) if clean_row.get("commission_rate") else Decimal("0.10")
+                if comm_val > 1:
+                    comm_val = comm_val / 100
+            except (InvalidOperation, ValueError):
+                comm_val = Decimal("0.10")
+
         if not email:
             slug = name.lower().replace(" ", ".").replace("'", "")[:40]
             email = f"{slug}@bowenstreetmarket.com"
+
+        if phone:
+            phone = phone.strip().replace("-", "").replace("(", "").replace(")", "").replace(" ", "")
 
         existing = await db.execute(
             select(Vendor).where(Vendor.email == email.lower())
@@ -84,18 +117,6 @@ async def bulk_import_vendors(
             skipped.append({"row": row_num, "name": name, "reason": f"Email {email} already exists"})
             continue
 
-        try:
-            rent_val = Decimal(clean_row["monthly_rent"]) if clean_row.get("monthly_rent") else Decimal("200.00")
-        except (InvalidOperation, ValueError):
-            rent_val = Decimal("200.00")
-
-        try:
-            comm_val = Decimal(clean_row["commission_rate"]) if clean_row.get("commission_rate") else Decimal("0.10")
-            if comm_val > 1:
-                comm_val = comm_val / 100
-        except (InvalidOperation, ValueError):
-            comm_val = Decimal("0.10")
-
         password = clean_row.get("password") or secrets.token_urlsafe(12)
 
         try:
@@ -103,8 +124,8 @@ async def bulk_import_vendors(
                 vendor = Vendor(
                     name=name,
                     email=email.lower(),
-                    phone=clean_row.get("phone"),
-                    booth_number=clean_row.get("booth_number") or clean_row.get("booth"),
+                    phone=phone,
+                    booth_number=booth,
                     monthly_rent=rent_val,
                     commission_rate=comm_val,
                     password_hash=get_password_hash(password),
@@ -164,13 +185,17 @@ async def bulk_import_inventory(
         raise HTTPException(status_code=400, detail="CSV has no headers")
 
     headers_lower = {h.strip().lower(): h.strip() for h in reader.fieldnames}
-    required = ["name", "price"]
-    for r in required:
-        if r not in headers_lower:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Missing required column: {r}. Found: {', '.join(headers_lower.keys())}",
-            )
+
+    is_ricochet = "consignor" in headers_lower and "agreed price" in headers_lower
+
+    if not is_ricochet:
+        required = ["name", "price"]
+        for r in required:
+            if r not in headers_lower:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Missing required column: {r}. Found: {', '.join(headers_lower.keys())}",
+                )
 
     vendors_cache = {}
     result = await db.execute(select(Vendor).where(Vendor.role == "vendor"))
@@ -215,38 +240,120 @@ async def bulk_import_inventory(
 
     for row_num, row in enumerate(reader, start=2):
         clean_row = {k.strip().lower(): _clean(v) for k, v in row.items()}
-        name = clean_row.get("name")
-        if not name:
-            skipped.append({"row": row_num, "reason": "Empty name"})
-            continue
 
-        try:
-            price = Decimal(clean_row.get("price", "0").replace("$", "").replace(",", ""))
-            if price <= 0:
-                raise ValueError("Price must be positive")
-        except (InvalidOperation, ValueError) as e:
-            errors.append({"row": row_num, "name": name, "error": f"Invalid price: {clean_row.get('price')}"})
-            continue
+        if is_ricochet:
+            name = clean_row.get("name")
+            if not name:
+                skipped.append({"row": row_num, "reason": "Empty name"})
+                continue
 
-        vendor_ref = clean_row.get("vendor") or clean_row.get("vendor_name") or clean_row.get("booth") or clean_row.get("booth_number") or clean_row.get("vendor_id")
-        vendor = None
-        if vendor_ref:
-            vendor = vendors_cache.get(vendor_ref.lower()) or vendors_cache.get(vendor_ref)
+            price_str = (clean_row.get("agreed price") or "0").replace("$", "").replace(",", "")
+            try:
+                price = Decimal(price_str)
+                if price <= 0:
+                    raise ValueError()
+            except (InvalidOperation, ValueError):
+                skipped.append({"row": row_num, "name": name, "reason": f"Invalid price: {price_str}"})
+                continue
 
-        if not vendor:
-            errors.append({"row": row_num, "name": name, "error": f"Vendor not found: '{vendor_ref}'. Import vendors first."})
-            continue
+            inventory_status = (clean_row.get("inventory") or "").lower()
+            if inventory_status == "out of stock":
+                skipped.append({"row": row_num, "name": name, "reason": "Out of stock"})
+                continue
 
-        try:
-            qty = int(clean_row.get("quantity") or clean_row.get("qty") or "1")
-        except ValueError:
-            qty = 1
+            vendor_ref = clean_row.get("consignor", "")
+            vendor = vendors_cache.get(vendor_ref.lower()) if vendor_ref else None
+            if not vendor:
+                errors.append({"row": row_num, "name": name, "error": f"Consignor not found: '{vendor_ref}'. Import consignors first."})
+                continue
 
-        category = clean_row.get("category")
-        description = clean_row.get("description")
-        barcode = clean_row.get("barcode")
+            try:
+                qty = int(clean_row.get("quantity") or "1")
+                if qty <= 0:
+                    qty = 1
+            except ValueError:
+                qty = 1
 
-        is_tax_exempt = clean_row.get("tax_exempt", "").lower() in ("true", "yes", "1", "y")
+            category = clean_row.get("category")
+            description = clean_row.get("short description")
+            barcode_raw = (clean_row.get("sku") or "").strip().strip("'").strip()
+
+            tax_rate_str = (clean_row.get("tax rate") or "").replace("%", "").strip()
+            is_tax_exempt = False
+            if tax_rate_str:
+                try:
+                    is_tax_exempt = Decimal(tax_rate_str) == 0
+                except (InvalidOperation, ValueError):
+                    pass
+
+            consignment_pct_str = (clean_row.get("consignor %") or "").strip()
+            consignment = bool(consignment_pct_str and consignment_pct_str != "0")
+            consignment_rate = None
+            if consignment and consignment_pct_str:
+                try:
+                    cr = Decimal(consignment_pct_str.replace("%", ""))
+                    consignment_rate = cr / 100 if cr > 1 else cr
+                except (InvalidOperation, ValueError):
+                    consignment_rate = None
+
+            barcode = barcode_raw or None
+            sale_price = None
+            aged_str = (clean_row.get("aged price") or "").replace("$", "").replace(",", "")
+            if aged_str:
+                try:
+                    ap = Decimal(aged_str)
+                    if 0 < ap < price:
+                        sale_price = ap
+                except (InvalidOperation, ValueError):
+                    pass
+        else:
+            name = clean_row.get("name")
+            if not name:
+                skipped.append({"row": row_num, "reason": "Empty name"})
+                continue
+
+            try:
+                price = Decimal(clean_row.get("price", "0").replace("$", "").replace(",", ""))
+                if price <= 0:
+                    raise ValueError("Price must be positive")
+            except (InvalidOperation, ValueError):
+                errors.append({"row": row_num, "name": name, "error": f"Invalid price: {clean_row.get('price')}"})
+                continue
+
+            vendor_ref = clean_row.get("vendor") or clean_row.get("vendor_name") or clean_row.get("booth") or clean_row.get("booth_number") or clean_row.get("vendor_id")
+            vendor = None
+            if vendor_ref:
+                vendor = vendors_cache.get(vendor_ref.lower()) or vendors_cache.get(vendor_ref)
+
+            if not vendor:
+                errors.append({"row": row_num, "name": name, "error": f"Vendor not found: '{vendor_ref}'. Import vendors first."})
+                continue
+
+            try:
+                qty = int(clean_row.get("quantity") or clean_row.get("qty") or "1")
+            except ValueError:
+                qty = 1
+
+            category = clean_row.get("category")
+            description = clean_row.get("description")
+            barcode = clean_row.get("barcode")
+            is_tax_exempt = clean_row.get("tax_exempt", "").lower() in ("true", "yes", "1", "y")
+            consignment = clean_row.get("consignment", "").lower() in ("true", "yes", "1", "y")
+            consignment_rate = None
+            if consignment and clean_row.get("consignment_rate"):
+                try:
+                    cr = Decimal(clean_row["consignment_rate"].replace("%", ""))
+                    consignment_rate = cr / 100 if cr > 1 else cr
+                except (InvalidOperation, ValueError):
+                    consignment_rate = None
+            sale_price = None
+            if clean_row.get("sale_price"):
+                try:
+                    sp = Decimal(clean_row["sale_price"].replace("$", "").replace(",", ""))
+                    if sp < price:
+                        sale_price = sp
+                except (InvalidOperation, ValueError):
+                    pass
 
         if not barcode:
             import random, string
@@ -258,25 +365,9 @@ async def bulk_import_inventory(
 
         try:
             async with db.begin_nested():
-                sku = clean_row.get("sku") or next_sku(vendor.id)
-
-                sale_price = None
-                if clean_row.get("sale_price"):
-                    try:
-                        sp = Decimal(clean_row["sale_price"].replace("$", "").replace(",", ""))
-                        if sp < price:
-                            sale_price = sp
-                    except (InvalidOperation, ValueError):
-                        pass
-
-                consignment = clean_row.get("consignment", "").lower() in ("true", "yes", "1", "y")
-                consignment_rate = None
-                if consignment and clean_row.get("consignment_rate"):
-                    try:
-                        cr = Decimal(clean_row["consignment_rate"].replace("%", ""))
-                        consignment_rate = cr / 100 if cr > 1 else cr
-                    except (InvalidOperation, ValueError):
-                        consignment_rate = None
+                sku = clean_row.get("sku") if not is_ricochet else None
+                if not sku:
+                    sku = next_sku(vendor.id)
 
                 item = Item(
                     vendor_id=vendor.id,
