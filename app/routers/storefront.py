@@ -282,6 +282,61 @@ async def get_categories(
         return [row[0] for row in rows]
     return [{"name": row[0], "count": row[1]} for row in rows]
 
+CATEGORY_GROUPS = {
+    "Handmade": ["Handmade items", "Candles", "Jewelry", "Cards", "Stickers", "Specialty Items", "Accesories"],
+    "Vintage & Antique": ["Vintage", "Vintage Clothing", "Vintage Furniture"],
+    "Upcycled & Resale": ["Upcycled Items", "BowenStreet Repeats", "Second hand clothes"],
+    "Furniture & Home": ["Furniture", "Used furniture", "Decorations", "Outside"],
+    "Art & Studio": ["Original Art", "Studio Class"],
+}
+
+
+@router.get("/category-images")
+async def get_category_images(
+    db: AsyncSession = Depends(get_db),
+):
+    results = {}
+    for display_name, db_categories in CATEGORY_GROUPS.items():
+        query = (
+            select(Item.id, Item.name, Item.image_path, Item.photo_urls, Item.category)
+            .where(Item.status == "active")
+            .where(Item.quantity > 0)
+            .where(Item.category.in_(db_categories))
+            .where(
+                or_(
+                    Item.image_path.isnot(None),
+                    Item.photo_urls.isnot(None),
+                )
+            )
+            .order_by(func.random())
+            .limit(1)
+        )
+        result = await db.execute(query)
+        row = result.first()
+        if row:
+            image_url = None
+            if row.image_path and "/api/v1/items/" in row.image_path:
+                image_url = row.image_path
+            elif row.photo_urls and len(row.photo_urls) > 0:
+                image_url = row.photo_urls[0]
+            elif row.image_path:
+                image_url = row.image_path
+
+            if image_url:
+                results[display_name] = {
+                    "item_id": row.id,
+                    "item_name": row.name,
+                    "category": row.category,
+                    "image_url": image_url,
+                }
+            else:
+                results[display_name] = None
+        else:
+            results[display_name] = None
+
+    return results
+
+
 @router.get("/vendors")
 async def get_shop_vendors(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
