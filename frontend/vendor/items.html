@@ -316,6 +316,11 @@
     <div class="items-toolbar" id="items-toolbar">
         <input type="text" class="form-control search-input" id="items-search"
             placeholder="Search by name or SKU…" oninput="onSearchInput()" autocomplete="off">
+        <select id="sort-order" onchange="setSortOrder(this.value)"
+            style="padding:0.4rem 0.6rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text-light); font-size:0.72rem; font-family:'Roboto',sans-serif; cursor:pointer">
+            <option value="desc" selected>Newest First</option>
+            <option value="asc">Oldest First</option>
+        </select>
         <div class="view-toggle">
             <button id="view-grid-btn" onclick="setView('grid')">Grid</button>
             <button id="view-list-btn" onclick="setView('list')">List</button>
@@ -1521,6 +1526,14 @@
             sortColumn = col;
             sortDirection = 'asc';
         }
+        displayItems();
+        const dd = document.getElementById('sort-order');
+        if (dd) dd.value = (sortColumn === 'created_at') ? sortDirection : 'desc';
+    }
+
+    function setSortOrder(dir) {
+        sortColumn = 'created_at';
+        sortDirection = dir;
         displayItems();
     }
 
