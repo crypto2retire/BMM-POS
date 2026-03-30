@@ -5,6 +5,14 @@
         opts = opts || {};
         var buttonBottom = opts.buttonBottom || '80px';
         var isFirstLogin = opts.firstLogin || false;
+        var assistantName = opts.assistantName || null;
+
+        function escName(s) {
+            if (!s) return 'Bowenstreet Assistant';
+            var d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
 
         if (document.getElementById('bmm-assistant-btn')) return;
 
@@ -169,7 +177,7 @@
         panel.className = 'hidden';
         panel.innerHTML =
             '<div id="bmm-assistant-header">' +
-                '<div><h3>Bowenstreet Assistant <span>AI</span></h3></div>' +
+                '<div><h3>' + escName(assistantName) + ' <span>AI</span></h3></div>' +
                 '<button id="bmm-assistant-close" title="Close">\u2715</button>' +
             '</div>' +
             '<div id="bmm-action-banner">\u2713 <span id="bmm-action-banner-text">Item saved</span></div>' +

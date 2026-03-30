@@ -90,6 +90,25 @@ async def update_vendor(
     await db.refresh(vendor)
     return vendor
 
+@router.patch("/me/assistant-name")
+async def update_assistant_name(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    import re
+    name = (body.get("assistant_name") or "").strip()
+    if not name:
+        current_user.assistant_name = None
+    else:
+        if len(name) > 50:
+            raise HTTPException(status_code=400, detail="Name must be 50 characters or less")
+        if not re.match(r"^[a-zA-Z0-9 '\-\.!]+$", name):
+            raise HTTPException(status_code=400, detail="Name can only contain letters, numbers, spaces, and basic punctuation")
+        current_user.assistant_name = name
+    await db.commit()
+    return {"assistant_name": current_user.assistant_name}
+
 @router.patch("/me/label-preference")
 async def update_label_preference(
     body: dict = Body(...),

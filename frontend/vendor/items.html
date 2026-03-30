@@ -236,6 +236,7 @@
             <a href="#" id="nav-home">Dashboard</a>
             <a href="/vendor/booth-showcase.html">My Booth</a>
             <a href="#" onclick="openPasswordModal();return false;">Change Password</a>
+            <a href="#" onclick="window.location.href='/vendor/dashboard.html';return false;">Name Your Assistant</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
     </div>
@@ -550,7 +551,7 @@
 
 <script src="/static/js/api.js"></script>
 <script src="/static/js/assistant-panel.js"></script>
-<script>initAssistantPanel('The vendor is managing their inventory items at Bowenstreet Market.');</script>
+<script>(function(){ var d = parseToken(); initAssistantPanel('The vendor is managing their inventory items at Bowenstreet Market.', { assistantName: d ? d.assistant_name : null }); })();</script>
 <script>
     let editingId = null;
     let pendingPhotoFile = null;

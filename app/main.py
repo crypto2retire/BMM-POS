@@ -56,6 +56,10 @@ async def lifespan(app: FastAPI):
                 "pdf_label_size VARCHAR(30) NOT NULL DEFAULT '2.25x1.25'"
             ))
             await session.execute(text(
+                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
+                "assistant_name VARCHAR(50)"
+            ))
+            await session.execute(text(
                 "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
                 "image_path VARCHAR(500)"
             ))

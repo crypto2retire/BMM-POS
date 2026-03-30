@@ -644,6 +644,9 @@ async def chat(
 
     extra = ""
     booth = getattr(current_user, 'booth_number', None) or ''
+    custom_name = getattr(current_user, 'assistant_name', None)
+    if custom_name:
+        extra += f"\n\nIMPORTANT: The vendor has named you \"{custom_name}\". Always refer to yourself as {custom_name} and introduce yourself by that name."
     extra += f"\n\nLOGGED-IN USER: {current_user.name} (vendor ID {current_user.id}, role: {current_user.role}"
     if booth:
         extra += f", booth: {booth}"

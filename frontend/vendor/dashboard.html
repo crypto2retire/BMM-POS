@@ -28,6 +28,7 @@
             <a href="/vendor/items.html">My Items</a>
             <a href="/vendor/booth-showcase.html">My Booth</a>
             <a href="#" onclick="openPasswordModal();return false;">Change Password</a>
+            <a href="#" onclick="openAssistantNameModal();return false;">Name Your Assistant</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
     </div>
@@ -161,9 +162,11 @@
 (function() {
     var isFirst = sessionStorage.getItem('bmm_first_login') === '1';
     if (isFirst) sessionStorage.removeItem('bmm_first_login');
+    var decoded = parseToken();
+    var aName = decoded ? decoded.assistant_name : null;
     var ctx = 'The vendor is viewing their dashboard at Bowenstreet Market.';
     if (isFirst) ctx += ' FIRST_LOGIN_WALKTHROUGH';
-    initAssistantPanel(ctx, { firstLogin: isFirst });
+    initAssistantPanel(ctx, { firstLogin: isFirst, assistantName: aName });
 })();
 </script>
 <script>
@@ -402,5 +405,92 @@
     loadDashboard();
 </script>
 <script src="/static/js/change-password.js"></script>
+<script>
+(function() {
+    var modal = document.createElement('div');
+    modal.id = 'assistant-name-modal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;';
+    modal.innerHTML =
+        '<div style="background:#44444A;border:1px solid rgba(201,169,110,0.22);max-width:400px;width:90%;padding:2rem;position:relative;">' +
+            '<button onclick="closeAssistantNameModal()" style="position:absolute;top:0.5rem;right:0.75rem;background:none;border:none;color:#aaa;font-size:1.2rem;cursor:pointer;">\u2715</button>' +
+            '<h3 style="margin:0 0 0.25rem;color:#C9A96E;font-size:1rem;">Name Your AI Assistant</h3>' +
+            '<p style="color:#bbb;font-size:0.8rem;margin:0 0 1rem;">Give your assistant a custom name. It will greet you by this name and appear in the chat header.</p>' +
+            '<input id="an-input" type="text" maxlength="50" placeholder="e.g. Rosie, Archie, Helper Bot" style="width:100%;padding:0.6rem 0.75rem;background:#38383B;border:1px solid #555;color:#fff;font-size:0.9rem;box-sizing:border-box;" />' +
+            '<div id="an-error" style="color:#e57373;font-size:0.8rem;margin-top:0.4rem;display:none;"></div>' +
+            '<div id="an-success" style="color:#81c784;font-size:0.8rem;margin-top:0.4rem;display:none;"></div>' +
+            '<div style="display:flex;gap:0.5rem;margin-top:1rem;">' +
+                '<button onclick="saveAssistantName()" class="btn btn-primary" style="flex:1;">Save</button>' +
+                '<button onclick="clearAssistantName()" class="btn btn-outline" style="flex:1;font-size:0.8rem;">Reset to Default</button>' +
+            '</div>' +
+        '</div>';
+    document.body.appendChild(modal);
+
+    window.openAssistantNameModal = function() {
+        var decoded = parseToken();
+        var current = decoded ? decoded.assistant_name || '' : '';
+        document.getElementById('an-input').value = current;
+        document.getElementById('an-error').style.display = 'none';
+        document.getElementById('an-success').style.display = 'none';
+        modal.style.display = 'flex';
+    };
+
+    window.closeAssistantNameModal = function() {
+        modal.style.display = 'none';
+    };
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) closeAssistantNameModal();
+    });
+
+    async function doSave(name) {
+        var errEl = document.getElementById('an-error');
+        var sucEl = document.getElementById('an-success');
+        errEl.style.display = 'none';
+        sucEl.style.display = 'none';
+        try {
+            var token = sessionStorage.getItem('bmm_token');
+            var resp = await fetch('/api/v1/vendors/me/assistant-name', {
+                method: 'PATCH',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ assistant_name: name })
+            });
+            var data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || 'Failed to save');
+
+            var refreshResp = await fetch('/api/v1/auth/refresh', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            var refreshData = await refreshResp.json();
+            if (refreshResp.ok && refreshData.access_token) {
+                sessionStorage.setItem('bmm_token', refreshData.access_token);
+            }
+
+            var displayName = data.assistant_name || 'Bowenstreet Assistant';
+            sucEl.textContent = 'Saved! Your assistant is now "' + displayName + '." Refreshing\u2026';
+            sucEl.style.display = 'block';
+            setTimeout(function() { location.reload(); }, 1200);
+        } catch (e) {
+            errEl.textContent = e.message || 'Something went wrong.';
+            errEl.style.display = 'block';
+        }
+    }
+
+    window.saveAssistantName = function() {
+        var name = document.getElementById('an-input').value.trim();
+        if (!name) {
+            document.getElementById('an-error').textContent = 'Please enter a name or click "Reset to Default."';
+            document.getElementById('an-error').style.display = 'block';
+            return;
+        }
+        doSave(name);
+    };
+
+    window.clearAssistantName = function() {
+        doSave('');
+    };
+})();
+</script>
 </body>
 </html>
+

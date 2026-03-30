@@ -257,13 +257,20 @@
     btn.textContent = '💬';
     document.body.appendChild(btn);
 
+    function _escAssistantName(s) {
+        if (!s) return 'Bowenstreet Assistant';
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
     const panel = document.createElement('div');
     panel.id = 'bmm-assistant-panel';
     panel.className = 'hidden';
     panel.innerHTML = `
         <div id="bmm-assistant-header">
             <div>
-                <h3>Bowenstreet Assistant <span>AI</span></h3>
+                <h3>${_escAssistantName(window._bmmAssistantName)} <span>AI</span></h3>
             </div>
             <button id="bmm-assistant-close" title="Close">✕</button>
         </div>

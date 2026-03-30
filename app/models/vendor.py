@@ -28,6 +28,7 @@ class Vendor(Base):
     commission_rate: Mapped[Decimal] = mapped_column(Numeric(5, 4), default=Decimal("0.10"))
     label_preference: Mapped[str] = mapped_column(String(20), default="standard", nullable=False)
     pdf_label_size: Mapped[str] = mapped_column(String(30), default="2.25x1.25", nullable=False)
+    assistant_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     items = relationship("Item", back_populates="vendor")
     sales = relationship("Sale", back_populates="cashier", foreign_keys="[Sale.cashier_id]")
