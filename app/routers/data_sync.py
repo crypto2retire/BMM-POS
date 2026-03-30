@@ -500,28 +500,34 @@ async def _scrape_and_store_images():
                 ext = image_urls[0].rsplit(".", 1)[-1].split("?")[0].lower()
                 content_type = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "webp": "image/webp"}.get(ext, "image/jpeg")
 
-                async with AsyncSessionLocal() as db:
-                    result = await db.execute(
-                        select(Item).where(or_(Item.sku == sku, Item.barcode == sku)).limit(1)
-                    )
-                    item = result.scalar_one_or_none()
-                    if not item:
-                        _scrape_status["skipped"] += 1
-                        continue
+                try:
+                    async with AsyncSessionLocal() as db:
+                        result = await db.execute(
+                            select(Item).where(or_(Item.sku == sku, Item.barcode == sku)).limit(1)
+                        )
+                        item = result.scalar_one_or_none()
+                        if not item:
+                            _scrape_status["skipped"] += 1
+                            continue
 
-                    existing = await db.execute(
-                        select(ItemImage).where(ItemImage.item_id == item.id)
-                    )
-                    old_img = existing.scalar_one_or_none()
-                    if old_img:
-                        old_img.image_data = image_data
-                        old_img.content_type = content_type
-                    else:
-                        db.add(ItemImage(item_id=item.id, image_data=image_data, content_type=content_type))
+                        existing = await db.execute(
+                            select(ItemImage).where(ItemImage.item_id == item.id)
+                        )
+                        old_img = existing.scalar_one_or_none()
+                        if old_img:
+                            old_img.image_data = image_data
+                            old_img.content_type = content_type
+                        else:
+                            db.add(ItemImage(item_id=item.id, image_data=image_data, content_type=content_type))
 
-                    item.image_path = f"/api/v1/items/{item.id}/image"
-                    await db.commit()
-                    _scrape_status["matched"] += 1
+                        item.image_path = f"/api/v1/items/{item.id}/image"
+                        await db.flush()
+                        await db.commit()
+                        _scrape_status["matched"] += 1
+                        logger.info(f"Stored image for item {item.id} (sku={sku})")
+                except Exception as db_err:
+                    _scrape_status["errors"] += 1
+                    logger.error(f"DB error for sku {sku}: {db_err}")
 
                 if i % 10 == 0:
                     _scrape_status["message"] = f"Processing {i+1}/{len(product_urls)}... Matched: {_scrape_status['matched']}"
