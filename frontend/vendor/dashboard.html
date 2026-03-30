@@ -28,7 +28,6 @@
             <a href="/vendor/items.html">My Items</a>
             <a href="/vendor/booth-showcase.html">My Booth</a>
             <a href="#" onclick="openPasswordModal();return false;">Change Password</a>
-            <a href="#" onclick="openAssistantNameModal();return false;">Name Your Assistant</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
     </div>
@@ -99,6 +98,24 @@
                 <div class="card-title" style="font-size:0.75rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Payment History</div>
                 <div id="rent-history-list" style="font-size:0.85rem;"></div>
             </div>
+        </div>
+    </div>
+
+    <div class="ornament">&loz;</div>
+
+    <div class="section">
+        <div class="section-header">
+            <h2 class="section-title">AI Assistant</h2>
+        </div>
+        <div class="card" style="padding:1.25rem 1.5rem;">
+            <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:0.75rem;">Give your AI assistant a custom name. It will introduce itself by this name when helping you manage items.</p>
+            <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+                <input type="text" id="assistant-name-input" placeholder="e.g. Rosie, Max, Sage" maxlength="50"
+                    style="flex:1;min-width:180px;max-width:280px;padding:0.5rem 0.75rem;font-size:0.85rem;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Roboto',sans-serif;">
+                <button class="btn btn-primary btn-sm" onclick="saveAssistantName()">Save</button>
+                <button class="btn btn-outline btn-sm" onclick="resetAssistantName()">Reset to Default</button>
+            </div>
+            <div id="assistant-name-status" style="font-size:0.78rem;color:var(--accent);margin-top:0.4rem;display:none;"></div>
         </div>
     </div>
 
@@ -407,46 +424,14 @@
 <script src="/static/js/change-password.js"></script>
 <script>
 (function() {
-    var modal = document.createElement('div');
-    modal.id = 'assistant-name-modal';
-    modal.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);align-items:center;justify-content:center;';
-    modal.innerHTML =
-        '<div style="background:#44444A;border:1px solid rgba(201,169,110,0.22);max-width:400px;width:90%;padding:2rem;position:relative;">' +
-            '<button onclick="closeAssistantNameModal()" style="position:absolute;top:0.5rem;right:0.75rem;background:none;border:none;color:#aaa;font-size:1.2rem;cursor:pointer;">\u2715</button>' +
-            '<h3 style="margin:0 0 0.25rem;color:#C9A96E;font-size:1rem;">Name Your AI Assistant</h3>' +
-            '<p style="color:#bbb;font-size:0.8rem;margin:0 0 1rem;">Give your assistant a custom name. It will greet you by this name and appear in the chat header.</p>' +
-            '<input id="an-input" type="text" maxlength="50" placeholder="e.g. Rosie, Archie, Helper Bot" style="width:100%;padding:0.6rem 0.75rem;background:#38383B;border:1px solid #555;color:#fff;font-size:0.9rem;box-sizing:border-box;" />' +
-            '<div id="an-error" style="color:#e57373;font-size:0.8rem;margin-top:0.4rem;display:none;"></div>' +
-            '<div id="an-success" style="color:#81c784;font-size:0.8rem;margin-top:0.4rem;display:none;"></div>' +
-            '<div style="display:flex;gap:0.5rem;margin-top:1rem;">' +
-                '<button onclick="saveAssistantName()" class="btn btn-primary" style="flex:1;">Save</button>' +
-                '<button onclick="clearAssistantName()" class="btn btn-outline" style="flex:1;font-size:0.8rem;">Reset to Default</button>' +
-            '</div>' +
-        '</div>';
-    document.body.appendChild(modal);
-
-    window.openAssistantNameModal = function() {
-        var decoded = parseToken();
-        var current = decoded ? decoded.assistant_name || '' : '';
-        document.getElementById('an-input').value = current;
-        document.getElementById('an-error').style.display = 'none';
-        document.getElementById('an-success').style.display = 'none';
-        modal.style.display = 'flex';
-    };
-
-    window.closeAssistantNameModal = function() {
-        modal.style.display = 'none';
-    };
-
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) closeAssistantNameModal();
-    });
+    var decoded = parseToken();
+    var current = decoded ? decoded.assistant_name || '' : '';
+    var input = document.getElementById('assistant-name-input');
+    if (input) input.value = current;
 
     async function doSave(name) {
-        var errEl = document.getElementById('an-error');
-        var sucEl = document.getElementById('an-success');
-        errEl.style.display = 'none';
-        sucEl.style.display = 'none';
+        var statusEl = document.getElementById('assistant-name-status');
+        statusEl.style.display = 'none';
         try {
             var token = sessionStorage.getItem('bmm_token');
             var resp = await fetch('/api/v1/vendors/me/assistant-name', {
@@ -467,26 +452,30 @@
             }
 
             var displayName = data.assistant_name || 'Bowenstreet Assistant';
-            sucEl.textContent = 'Saved! Your assistant is now "' + displayName + '." Refreshing\u2026';
-            sucEl.style.display = 'block';
-            setTimeout(function() { location.reload(); }, 1200);
+            statusEl.textContent = 'Saved! Your assistant is now "' + displayName + '."';
+            statusEl.style.color = '#81c784';
+            statusEl.style.display = 'block';
         } catch (e) {
-            errEl.textContent = e.message || 'Something went wrong.';
-            errEl.style.display = 'block';
+            statusEl.textContent = e.message || 'Something went wrong.';
+            statusEl.style.color = '#e57373';
+            statusEl.style.display = 'block';
         }
     }
 
     window.saveAssistantName = function() {
-        var name = document.getElementById('an-input').value.trim();
+        var name = document.getElementById('assistant-name-input').value.trim();
         if (!name) {
-            document.getElementById('an-error').textContent = 'Please enter a name or click "Reset to Default."';
-            document.getElementById('an-error').style.display = 'block';
+            var statusEl = document.getElementById('assistant-name-status');
+            statusEl.textContent = 'Please enter a name or click "Reset to Default."';
+            statusEl.style.color = '#e57373';
+            statusEl.style.display = 'block';
             return;
         }
         doSave(name);
     };
 
-    window.clearAssistantName = function() {
+    window.resetAssistantName = function() {
+        document.getElementById('assistant-name-input').value = '';
         doSave('');
     };
 })();
