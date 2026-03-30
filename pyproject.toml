@@ -10,6 +10,7 @@ dependencies = [
     "fastapi>=0.135.1",
     "gunicorn>=25.1.0",
     "httpx>=0.28.1",
+    "beautifulsoup4>=4.12",
     "openpyxl>=3.1.5",
     "passlib[bcrypt]>=1.7.4",
     "pillow>=12.1.1",
