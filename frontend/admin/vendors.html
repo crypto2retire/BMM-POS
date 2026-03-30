@@ -626,8 +626,10 @@
                         ${isAdmin ? `<button class="btn btn-outline btn-sm" onclick="editVendor(${v.id})">Edit</button>` : ''}
                         <button class="btn btn-outline btn-sm" onclick="window.open('/vendor/items.html?vendor_id=${v.id}','_blank')">Items</button>
                         ${isAdmin && v.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="quickSuspend(${v.id}, '${esc(v.name)}')">Suspend</button>` : ''}
-                        ${isAdmin && v.status === 'active' ? `<button class="btn btn-outline btn-sm" onclick="archiveVendor(${v.id}, '${esc(v.name)}')" style="color:#FCA5A5;border-color:rgba(252,165,165,0.3)">Archive</button>` : ''}
+                        ${isAdmin && v.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="archiveVendor(${v.id}, '${esc(v.name)}')">Archive</button>` : ''}
+                        ${isAdmin && v.status === 'active' ? `<button class="btn btn-outline btn-sm" onclick="deactivateAllItems(${v.id}, '${esc(v.name)}')">Deactivate Items</button>` : ''}
                         ${isAdmin && v.status === 'suspended' ? `<button class="btn btn-outline btn-sm" onclick="quickActivate(${v.id}, '${esc(v.name)}')">Activate</button>` : ''}
+                        ${isAdmin && v.status === 'suspended' ? `<button class="btn btn-danger btn-sm" onclick="archiveVendor(${v.id}, '${esc(v.name)}')">Archive</button>` : ''}
                         ${isAdmin && v.status === 'archived' ? `<button class="btn btn-outline btn-sm" onclick="unarchiveVendor(${v.id}, '${esc(v.name)}')">Unarchive</button>` : ''}
                     </div>
                 </td>
@@ -660,8 +662,10 @@
                         ${isAdmin ? `<button class="btn btn-outline btn-sm" onclick="editVendor(${v.id})">Edit</button>` : ''}
                         <button class="btn btn-outline btn-sm" onclick="window.open('/vendor/items.html?vendor_id=${v.id}','_blank')">Items</button>
                         ${isAdmin && v.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="quickSuspend(${v.id}, '${esc(v.name)}')">Suspend</button>` : ''}
-                        ${isAdmin && v.status === 'active' ? `<button class="btn btn-outline btn-sm" onclick="archiveVendor(${v.id}, '${esc(v.name)}')" style="color:#FCA5A5;border-color:rgba(252,165,165,0.3)">Archive</button>` : ''}
+                        ${isAdmin && v.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="archiveVendor(${v.id}, '${esc(v.name)}')">Archive</button>` : ''}
+                        ${isAdmin && v.status === 'active' ? `<button class="btn btn-outline btn-sm" onclick="deactivateAllItems(${v.id}, '${esc(v.name)}')">Deactivate Items</button>` : ''}
                         ${isAdmin && v.status === 'suspended' ? `<button class="btn btn-outline btn-sm" onclick="quickActivate(${v.id}, '${esc(v.name)}')">Activate</button>` : ''}
+                        ${isAdmin && v.status === 'suspended' ? `<button class="btn btn-danger btn-sm" onclick="archiveVendor(${v.id}, '${esc(v.name)}')">Archive</button>` : ''}
                         ${isAdmin && v.status === 'archived' ? `<button class="btn btn-outline btn-sm" onclick="unarchiveVendor(${v.id}, '${esc(v.name)}')">Unarchive</button>` : ''}
                     </div>
                 </div>
@@ -871,6 +875,16 @@
             showAlert('alert-container', resp.detail || `${name} has been unarchived.`, 'success');
             await loadVendors();
             renderGrid(allVendors);
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+        }
+    }
+
+    async function deactivateAllItems(vendorId, name) {
+        if (!confirm(`Deactivate ALL items for "${name}"?\n\nThis will mark all their items as not-for-sale and remove them from the online store.`)) return;
+        try {
+            const resp = await apiPost('/api/v1/items/bulk-status', { vendor_id: vendorId, status: 'inactive' });
+            showAlert('alert-container', resp.detail || `All items for ${name} have been deactivated.`, 'success');
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
         }
