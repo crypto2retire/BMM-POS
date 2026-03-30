@@ -83,9 +83,15 @@ async def send_test_email(
     result = await send_email(to, subject, html_body, plain_body)
 
     if not result.get("success"):
+        error_msg = result.get("error", "Unknown error")
+        if "BadCredentials" in str(error_msg) or "Username and Password not accepted" in str(error_msg):
+            raise HTTPException(
+                status_code=400,
+                detail="Gmail credentials are invalid. Please update the Gmail App Password in your environment variables.",
+            )
         raise HTTPException(
             status_code=502,
-            detail=f"Failed to send email: {result.get('error', 'Unknown error')}",
+            detail=f"Failed to send email: {error_msg}",
         )
     return {"message": f"Test email sent to {to}", "message_id": result.get("message_id")}
 
