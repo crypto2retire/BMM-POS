@@ -48,8 +48,14 @@ async def get_connected_email(
             return {"connected": True, "email": email_address}
         return {"connected": True, "email": None}
     except Exception as e:
-        logger.warning(f"Could not get connected email: {e}")
-        return {"connected": False, "email": None, "error": str(e)}
+        error_msg = str(e)
+        logger.warning(f"Could not get connected email: {error_msg}")
+        if "SMTP" not in error_msg:
+            from app.services.email import _has_smtp_credentials
+            if _has_smtp_credentials():
+                import os
+                return {"connected": True, "email": os.environ.get("GMAIL_ADDRESS")}
+        return {"connected": False, "email": None, "error": error_msg}
 
 
 @router.get("/email-templates")
