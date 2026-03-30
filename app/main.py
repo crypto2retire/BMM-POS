@@ -380,4 +380,12 @@ async def vendor_landing_page(slug: str):
     return HTMLResponse("<h1>Page not found</h1>", status_code=404)
 
 
+@app.get("/shop/vendor/{vendor_id:int}")
+async def vendor_inventory_page(vendor_id: int):
+    page = Path("frontend/shop/vendor-inventory.html")
+    if page.exists():
+        return FileResponse(page, media_type="text/html")
+    return HTMLResponse("<h1>Page not found</h1>", status_code=404)
+
+
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

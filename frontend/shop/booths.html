@@ -180,6 +180,21 @@
     display: flex;
     gap: 1rem;
   }
+  .booth-inventory-link {
+    display: inline-block;
+    margin-top: 0.6rem;
+    font-size: 0.72rem;
+    color: var(--gold);
+    text-decoration: none;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid rgba(201,169,110,0.3);
+    padding-bottom: 1px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .booth-inventory-link:hover {
+    color: var(--text);
+    border-bottom-color: var(--text);
+  }
 
   .booth-modal-overlay {
     display: none;
@@ -374,6 +389,11 @@ var booths = [];
 var currentGalleryIndex = 0;
 var currentPhotos = [];
 
+function getInventoryUrl(b) {
+    if (b.landing_slug) return '/v/' + encodeURIComponent(b.landing_slug);
+    return '/shop/vendor/' + b.vendor_id;
+}
+
 async function loadBooths() {
     try {
         var resp = await fetch('/api/v1/booth-showcase/public');
@@ -405,6 +425,7 @@ async function loadBooths() {
                         (b.video_url ? '<span>Video</span>' : '') +
                         (b.item_count > 0 ? '<span>' + b.item_count + ' items</span>' : '') +
                     '</div>' +
+                    (b.item_count > 0 ? '<a href="' + getInventoryUrl(b) + '" class="booth-inventory-link" onclick="event.stopPropagation()">View Inventory &rarr;</a>' : '') +
                 '</div>' +
             '</div>';
         }).join('');
@@ -457,8 +478,11 @@ function openModal(index) {
     if (b.vendor_name && b.title) meta.push('Vendor: ' + b.vendor_name);
     if (b.item_count > 0) meta.push(b.item_count + ' items in booth');
     var metaHtml = meta.map(function(m) { return '<span>' + escHtml(m) + '</span>'; }).join('');
+    if (b.item_count > 0) {
+        metaHtml += '<a href="' + escHtml(getInventoryUrl(b)) + '" style="color:#C9A96E;text-decoration:none;font-size:0.78rem;border-bottom:1px solid rgba(201,169,110,0.3);padding-bottom:1px" onclick="event.stopPropagation()">View Inventory &rarr;</a>';
+    }
     if (b.landing_slug) {
-        metaHtml += '<a href="/v/' + escHtml(b.landing_slug) + '" style="color:#C9A96E;text-decoration:none;font-size:0.78rem;border-bottom:1px solid rgba(201,169,110,0.3);padding-bottom:1px" onclick="event.stopPropagation()">Visit Vendor Page &rarr;</a>';
+        metaHtml += '<a href="/v/' + escHtml(b.landing_slug) + '" style="color:#C9A96E;text-decoration:none;font-size:0.78rem;border-bottom:1px solid rgba(201,169,110,0.3);padding-bottom:1px" onclick="event.stopPropagation()">Vendor Page &rarr;</a>';
     }
     document.getElementById('modal-meta').innerHTML = metaHtml;
 

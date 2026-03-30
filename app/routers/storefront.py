@@ -161,6 +161,100 @@ async def get_shop_items(
         "total_pages": (total + per_page - 1) // per_page,
     }
 
+@router.get("/vendor-inventory/{vendor_id}")
+async def get_vendor_inventory(
+    vendor_id: int,
+    db: AsyncSession = Depends(get_db),
+    search: Optional[str] = Query(None),
+    category: Optional[str] = Query(None),
+    sort: Optional[str] = Query("newest"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(24, ge=1, le=100),
+):
+    vendor_result = await db.execute(
+        select(Vendor).where(Vendor.id == vendor_id, Vendor.is_active == True)
+    )
+    vendor = vendor_result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    query = (
+        select(
+            Item.id,
+            Item.name,
+            Item.description,
+            Item.price,
+            Item.sale_price,
+            Item.category,
+            Item.quantity,
+            Item.created_at,
+            Item.image_path,
+            Item.photo_urls,
+        )
+        .where(Item.vendor_id == vendor_id)
+        .where(Item.status == "active")
+        .where(Item.quantity > 0)
+    )
+
+    if search:
+        pattern = f"%{search}%"
+        query = query.where(
+            or_(
+                Item.name.ilike(pattern),
+                Item.description.ilike(pattern),
+                Item.category.ilike(pattern),
+            )
+        )
+    if category:
+        query = query.where(Item.category == category)
+
+    if sort == "price_asc":
+        query = query.order_by(Item.price.asc())
+    elif sort == "price_desc":
+        query = query.order_by(Item.price.desc())
+    elif sort == "name":
+        query = query.order_by(Item.name.asc())
+    else:
+        query = query.order_by(Item.created_at.desc())
+
+    count_query = select(func.count()).select_from(query.subquery())
+    total_result = await db.execute(count_query)
+    total = total_result.scalar()
+
+    offset = (page - 1) * per_page
+    query = query.offset(offset).limit(per_page)
+
+    result = await db.execute(query)
+    rows = result.all()
+
+    items = []
+    for row in rows:
+        photo_url = row.image_path
+        if not photo_url and row.photo_urls:
+            photo_url = row.photo_urls[0] if row.photo_urls else None
+        items.append({
+            "id": row.id,
+            "name": row.name,
+            "description": row.description,
+            "price": float(row.price),
+            "sale_price": float(row.sale_price) if row.sale_price else None,
+            "category": row.category,
+            "quantity": row.quantity,
+            "image_path": row.image_path,
+            "photo_url": photo_url,
+        })
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": (total + per_page - 1) // per_page,
+        "vendor_name": vendor.name,
+        "booth_number": vendor.booth_number,
+    }
+
+
 @router.get("/tax-rate")
 async def get_storefront_tax_rate(db: AsyncSession = Depends(get_db)):
     rate = await get_tax_rate(db)
@@ -168,16 +262,25 @@ async def get_storefront_tax_rate(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/categories")
-async def get_categories(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
+async def get_categories(
+    db: AsyncSession = Depends(get_db),
+    vendor_id: Optional[int] = Query(None),
+    format: Optional[str] = Query(None),
+):
+    query = (
         select(Item.category, func.count(Item.id))
         .where(Item.status == "active")
         .where(Item.quantity > 0)
         .where(Item.category.isnot(None))
-        .group_by(Item.category)
-        .order_by(Item.category)
     )
-    return [{"name": row[0], "count": row[1]} for row in result.all()]
+    if vendor_id:
+        query = query.where(Item.vendor_id == vendor_id)
+    query = query.group_by(Item.category).order_by(Item.category)
+    result = await db.execute(query)
+    rows = result.all()
+    if format == "simple":
+        return [row[0] for row in rows]
+    return [{"name": row[0], "count": row[1]} for row in rows]
 
 @router.get("/vendors")
 async def get_shop_vendors(db: AsyncSession = Depends(get_db)):

@@ -523,6 +523,7 @@ async def list_public_showcases(
         item_count = count_result.scalar() or 0
         response.append({
             "id": sc.id,
+            "vendor_id": sc.vendor_id,
             "vendor_name": sc.vendor.name if sc.vendor else "",
             "booth_number": sc.vendor.booth_number if sc.vendor else None,
             "title": sc.title,
@@ -734,6 +735,7 @@ async def get_landing_page(
 
     return {
         "id": sc.id,
+        "vendor_id": sc.vendor_id,
         "vendor_name": sc.vendor.name if sc.vendor else "",
         "booth_number": sc.vendor.booth_number if sc.vendor else None,
         "title": sc.title,

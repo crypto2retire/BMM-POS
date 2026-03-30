@@ -239,6 +239,75 @@
     margin-bottom: 0.5rem;
   }
 
+  .inventory-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .inventory-header h2 {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+  .inventory-count {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+  .inventory-controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .inventory-search {
+    flex: 1;
+    min-width: 180px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.82rem;
+    font-family: 'Roboto', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .inventory-search:focus { border-color: var(--gold); }
+  .inventory-search::placeholder { color: var(--text-dim); }
+  .inventory-select {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.82rem;
+    font-family: 'Roboto', sans-serif;
+    outline: none;
+    cursor: pointer;
+  }
+  .inventory-select:focus { border-color: var(--gold); }
+  .inventory-category-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
+  .cat-pill {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 0.7rem;
+    padding: 0.3rem 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: capitalize;
+  }
+  .cat-pill:hover, .cat-pill.active {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: var(--gold-dim);
+  }
   .items-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
@@ -275,6 +344,39 @@
     font-size: 0.85rem;
     color: var(--gold);
     font-weight: 400;
+  }
+  .item-card-category {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    margin-top: 0.15rem;
+    text-transform: capitalize;
+  }
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+  }
+  .page-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Roboto', sans-serif;
+  }
+  .page-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .page-btn:disabled { opacity: 0.4; cursor: default; }
+  .page-btn:disabled:hover { border-color: var(--border); color: var(--text); }
+  .page-info { font-size: 0.75rem; color: var(--text-dim); }
+  .inventory-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--text-dim);
+    font-size: 0.85rem;
   }
 
   .market-info {
@@ -422,10 +524,26 @@
     </div>
 
     <div id="items-section" class="vendor-section" style="display:none">
-      <h2>Featured Items</h2>
+      <div class="inventory-header">
+        <h2>Inventory</h2>
+        <span class="inventory-count" id="inventory-count"></span>
+      </div>
+      <div class="inventory-controls">
+        <input type="text" class="inventory-search" id="inv-search" placeholder="Search items..." oninput="debounceSearch()">
+        <select class="inventory-select" id="inv-sort" onchange="loadInventory(1)">
+          <option value="newest">Newest</option>
+          <option value="price_asc">Price: Low to High</option>
+          <option value="price_desc">Price: High to Low</option>
+          <option value="name">Name A-Z</option>
+        </select>
+      </div>
+      <div class="inventory-category-pills" id="category-pills"></div>
       <div id="items-grid" class="items-grid"></div>
-      <div style="text-align:center;margin-top:1rem">
-        <a href="/shop/index.html" style="color:var(--gold);font-size:0.82rem;text-decoration:none">Browse all items in our shop &rarr;</a>
+      <div id="inv-empty" class="inventory-empty" style="display:none">No items found.</div>
+      <div id="inv-pagination" class="pagination" style="display:none">
+        <button class="page-btn" id="prev-btn" onclick="loadInventory(currentPage-1)">&laquo; Prev</button>
+        <span class="page-info" id="page-info"></span>
+        <button class="page-btn" id="next-btn" onclick="loadInventory(currentPage+1)">Next &raquo;</button>
       </div>
     </div>
 
@@ -548,19 +666,10 @@ function renderPage() {
     document.getElementById('vendor-video').src = v.video_url;
   }
 
-  if (v.items && v.items.length > 0) {
+  if (v.item_count > 0) {
     document.getElementById('items-section').style.display = 'block';
-    var grid = document.getElementById('items-grid');
-    grid.innerHTML = v.items.map(function(item) {
-      var imgHtml = item.image_url
-        ? '<img src="' + escHtml(item.image_url) + '" alt="' + escHtml(item.name) + '" loading="lazy">'
-        : '<div style="width:100%;aspect-ratio:1;background:var(--bg-dark);display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:0.7rem">No photo</div>';
-      return '<div class="item-card">' + imgHtml +
-        '<div class="item-card-body">' +
-        '<div class="item-card-name">' + escHtml(item.name) + '</div>' +
-        '<div class="item-card-price">$' + Number(item.price).toFixed(2) + '</div>' +
-        '</div></div>';
-    }).join('');
+    loadInventory(1);
+    loadCategories();
   }
 
   var hasContact = v.landing_contact_email || v.landing_contact_phone || v.landing_website;
@@ -616,6 +725,114 @@ function renderPage() {
       document.getElementById('market-socials').innerHTML = marketSocialHtml;
     }
   }
+}
+
+var currentPage = 1;
+var totalPages = 1;
+var searchTimeout = null;
+var activeCategory = '';
+var PER_PAGE = 24;
+
+function debounceSearch() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(function() { loadInventory(1); }, 300);
+}
+
+async function loadInventory(page) {
+  if (!vendorData || !vendorData.vendor_id) return;
+  currentPage = page;
+  var search = document.getElementById('inv-search').value.trim();
+  var sort = document.getElementById('inv-sort').value;
+  var params = new URLSearchParams({
+    sort: sort,
+    page: page,
+    per_page: PER_PAGE,
+  });
+  if (search) params.set('search', search);
+  if (activeCategory) params.set('category', activeCategory);
+
+  try {
+    var resp = await fetch('/api/v1/storefront/vendor-inventory/' + vendorData.vendor_id + '?' + params.toString());
+    if (!resp.ok) throw new Error('Failed');
+    var data = await resp.json();
+    var items = data.items || [];
+    var total = data.total || 0;
+    totalPages = Math.ceil(total / PER_PAGE) || 1;
+
+    document.getElementById('inventory-count').textContent = total + ' item' + (total !== 1 ? 's' : '');
+
+    var grid = document.getElementById('items-grid');
+    var emptyEl = document.getElementById('inv-empty');
+
+    if (items.length === 0) {
+      grid.innerHTML = '';
+      emptyEl.style.display = 'block';
+    } else {
+      emptyEl.style.display = 'none';
+      grid.innerHTML = items.map(function(item) {
+        var imgUrl = item.photo_url || item.image_path;
+        var imgHtml = imgUrl
+          ? '<img src="' + escHtml(imgUrl) + '" alt="' + escHtml(item.name) + '" loading="lazy">'
+          : '<div style="width:100%;aspect-ratio:1;background:var(--bg-dark);display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:0.7rem">No photo</div>';
+        var priceHtml = '$' + Number(item.price).toFixed(2);
+        if (item.sale_price) {
+          priceHtml = '<span style="text-decoration:line-through;color:var(--text-dim);font-size:0.75rem">$' + Number(item.price).toFixed(2) + '</span> <span style="color:#e07070">$' + Number(item.sale_price).toFixed(2) + '</span>';
+        }
+        return '<div class="item-card">' + imgHtml +
+          '<div class="item-card-body">' +
+          '<div class="item-card-name">' + escHtml(item.name) + '</div>' +
+          '<div class="item-card-price">' + priceHtml + '</div>' +
+          (item.category ? '<div class="item-card-category">' + escHtml(item.category) + '</div>' : '') +
+          '</div></div>';
+      }).join('');
+    }
+
+    var pagEl = document.getElementById('inv-pagination');
+    if (totalPages > 1) {
+      pagEl.style.display = 'flex';
+      document.getElementById('prev-btn').disabled = (currentPage <= 1);
+      document.getElementById('next-btn').disabled = (currentPage >= totalPages);
+      document.getElementById('page-info').textContent = 'Page ' + currentPage + ' of ' + totalPages;
+    } else {
+      pagEl.style.display = 'none';
+    }
+  } catch (err) {
+    document.getElementById('items-grid').innerHTML = '<div class="inventory-empty">Unable to load inventory.</div>';
+  }
+}
+
+async function loadCategories() {
+  if (!vendorData || !vendorData.vendor_id) return;
+  try {
+    var resp = await fetch('/api/v1/storefront/categories?vendor_id=' + vendorData.vendor_id + '&format=simple');
+    if (!resp.ok) return;
+    var cats = await resp.json();
+    if (!cats || cats.length === 0) return;
+    var pillsEl = document.getElementById('category-pills');
+    pillsEl.innerHTML = '';
+    var allPill = document.createElement('span');
+    allPill.className = 'cat-pill active';
+    allPill.textContent = 'All';
+    allPill.dataset.cat = '';
+    allPill.addEventListener('click', function() { filterCategory(this, ''); });
+    pillsEl.appendChild(allPill);
+    cats.forEach(function(c) {
+      var pill = document.createElement('span');
+      pill.className = 'cat-pill';
+      pill.textContent = c;
+      pill.dataset.cat = c;
+      pill.addEventListener('click', function() { filterCategory(this, c); });
+      pillsEl.appendChild(pill);
+    });
+  } catch (e) {}
+}
+
+function filterCategory(el, cat) {
+  activeCategory = cat;
+  var pills = document.querySelectorAll('.cat-pill');
+  pills.forEach(function(p) { p.classList.remove('active'); });
+  el.classList.add('active');
+  loadInventory(1);
 }
 
 function openLightbox(index) {

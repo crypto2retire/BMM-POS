@@ -49,7 +49,8 @@ The frontend adheres to Bowenstreet Market branding, using a dark (`#38383B`) an
 - **Admin Settings Panel**: Comprehensive, tabbed settings page for store details, taxes, POS, features (toggleable modules), user roles, labels, and customizable email notifications.
 - **Email Notifications**: Gmail API integration for branded HTML email templates for various events (payouts, orders, rent reminders), with customizable content via admin settings.
 - **Vendor Booth Showcase**: Vendors can create public booth profiles with photos, video, description, and AI-assisted content, displayed on a public "Booths" page.
-- **Vendor Landing Pages**: An add-on premium feature providing dedicated vendor pages (`/v/{slug}`) with extended content, contact info, social links, SEO, and featured items.
+- **Vendor Landing Pages**: An add-on premium feature providing dedicated vendor pages (`/v/{slug}`) with extended content, contact info, social links, SEO, and full searchable inventory display with category filtering, sorting, and pagination.
+- **Vendor Inventory Pages**: Standalone vendor inventory pages (`/shop/vendor/{id}`) for vendors without landing pages, showing full inventory with search, category filters, sorting, and pagination. Linked from booth cards and booth modal on the Booths page.
 
 ## External Dependencies
 
