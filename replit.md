@@ -25,7 +25,8 @@ The frontend adheres to Bowenstreet Market branding, using a dark (`#38383B`) an
 - **Barcode & Label Generation**: `python-barcode` for Code 128 barcodes; `ReportLab` for PDF labels in various configurable sizes (10 formats). SKU format: `BSM-{vendor_id:04d}-{sequence:06d}`.
 - **Role-Based Access Control**: Differentiated access for `vendor`, `cashier`, `admin` roles, including a "booth mode" for vendor-admins/cashiers.
 - **Soft Deletion**: Vendors and items are soft-deleted by updating their `status` field.
-- **Photo Uploads**: Item and studio class images are handled as multipart uploads, stored as static files, with paths referenced in the database.
+- **Photo Uploads**: Item and studio class images are handled as multipart uploads, stored as static files, with paths referenced in the database. Ricochet storefront images scraped and imported for 196 items (522 images) via `scripts/scrape_ricochet_images.py` and `scripts/import_scraped_images.py`, matched by the `sku` field.
+- **Data Sync Images**: `POST /api/v1/data-sync/apply-scraped-images` endpoint for applying Ricochet image mappings to any environment's database (admin password protected).
 - **Void/Reverse Transactions**: Supports comprehensive voiding of sales, reversing quantities, vendor balances, and gift card debits, with audit trails.
 - **Admin Balance Adjustments**: Admins can credit/debit vendor balances with a full audit trail.
 - **Batch Label Printing**: Items track a `label_printed` flag, with UI elements to select unprinted items and support vendor-specific label preferences (standard/Dymo).
