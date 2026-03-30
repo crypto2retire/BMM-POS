@@ -119,7 +119,7 @@ async def create_terminal_order(amount_cents: int, currency: str = "USD", order_
                 "name": "BMM-POS Sale",
                 "sku": order_ref or "POS",
                 "unitOfMeasure": "EACH",
-                "quantity": {"value": 1, "unitOfMeasure": "EACH"},
+                "quantity": 1.0,
                 "unitPrice": amount_cents,
                 "tax": 0,
                 "discount": 0,
