@@ -972,18 +972,25 @@
     </div>
 </div>
 
-<!-- Card Waiting Overlay -->
+<!-- Card Payment Confirmation Overlay -->
 <div class="card-waiting-overlay hidden" id="card-overlay">
-    <div class="card-waiting-box">
-        <div class="spinner"></div>
-        <div class="pulse" style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem">
-            Waiting for customer payment
+    <div class="card-waiting-box" style="max-width:380px">
+        <div style="font-size:1.8rem;margin-bottom:0.25rem">💳</div>
+        <div style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem">
+            Card Payment
         </div>
-        <div class="amount" id="card-amount-display">$0.00</div>
-        <div class="status-msg" id="card-status-msg">Present card, tap, or swipe on the Poynt terminal</div>
-        <button onclick="cancelCardPayment()" style="background:#374151;color:#D1D5DB;border:none;padding:0.6rem 1.5rem;border-radius:8px;cursor:pointer;font-size:0.875rem;margin-top:0.5rem">
-            Cancel
-        </button>
+        <div class="amount" id="card-amount-display" style="font-size:2rem;font-weight:800;color:#C9A96E;margin-bottom:0.75rem">$0.00</div>
+        <div style="color:#A8A6A1;font-size:0.9rem;margin-bottom:1rem;line-height:1.4">
+            Process this amount on the Poynt terminal, then confirm below once payment is complete.
+        </div>
+        <div style="display:flex;gap:0.75rem;justify-content:center">
+            <button onclick="cancelCardPayment()" style="background:#374151;color:#D1D5DB;border:none;padding:0.75rem 1.5rem;border-radius:0;cursor:pointer;font-size:0.9rem;font-weight:600">
+                Cancel
+            </button>
+            <button onclick="confirmCardPayment()" id="card-confirm-btn" style="background:#2a6e3f;color:#fff;border:none;padding:0.75rem 1.5rem;border-radius:0;cursor:pointer;font-size:0.9rem;font-weight:600">
+                Payment Received ✓
+            </button>
+        </div>
     </div>
 </div>
 
@@ -1917,90 +1924,37 @@
         }
     }
 
-    // ─── Card (Poynt) Payment ─────────────────────────────────────────────────
-    let poyntReferenceId = null;
-    let poyntPollCount = 0;
-    const POYNT_POLL_MAX = 90;
-
+    // ─── Card Payment (manual confirmation) ────────────────────────────────────
     async function startCardPayment() {
         if (cart.length === 0) return;
         const { total } = calcTotals();
-        const orderRef = `BMM-${Date.now()}`;
 
         document.getElementById('card-amount-display').textContent = `$${total.toFixed(2)}`;
-        document.getElementById('card-status-msg').textContent = 'Sending to Poynt terminal...';
+        document.getElementById('card-confirm-btn').disabled = false;
+        document.getElementById('card-confirm-btn').textContent = 'Payment Received ✓';
         document.getElementById('card-overlay').classList.remove('hidden');
-
-        try {
-            const resp = await apiPost('/api/v1/pos/poynt/charge', {
-                amount: total,
-                order_ref: orderRef,
-            });
-            poyntReferenceId = resp.reference_id;
-            poyntPollCount = 0;
-            document.getElementById('card-status-msg').textContent = 'Waiting for card payment on terminal...';
-            pollPoyntStatus(poyntReferenceId);
-        } catch (err) {
-            document.getElementById('card-overlay').classList.add('hidden');
-            showToast(err.message || 'Failed to send payment to terminal', 'error');
-        }
     }
 
-    function pollPoyntStatus(referenceId) {
-        poyntPollTimer = setInterval(async () => {
-            poyntPollCount++;
-            if (poyntPollCount > POYNT_POLL_MAX) {
-                clearInterval(poyntPollTimer);
-                poyntPollTimer = null;
-                document.getElementById('card-overlay').classList.add('hidden');
-                showToast('Payment timed out. No card was presented on the terminal.', 'error');
-                return;
-            }
-            try {
-                const resp = await apiGet(`/api/v1/pos/poynt/status/${referenceId}`);
-                if (resp.status === 'APPROVED' && resp.transaction_id) {
-                    clearInterval(poyntPollTimer);
-                    poyntPollTimer = null;
-                    document.getElementById('card-status-msg').textContent = 'Payment approved! Recording sale...';
-                    await finalizeCardSale(resp.transaction_id);
-                } else if (resp.status === 'DECLINED') {
-                    clearInterval(poyntPollTimer);
-                    poyntPollTimer = null;
-                    document.getElementById('card-overlay').classList.add('hidden');
-                    showToast('Card declined. Please try again.', 'error');
-                } else if (resp.status === 'ERROR') {
-                    clearInterval(poyntPollTimer);
-                    poyntPollTimer = null;
-                    document.getElementById('card-overlay').classList.add('hidden');
-                    showToast('Terminal error. Please try again.', 'error');
-                }
-            } catch (err) {
-                // Keep polling on transient network errors
-            }
-        }, 2000);
-    }
+    async function confirmCardPayment() {
+        const btn = document.getElementById('card-confirm-btn');
+        btn.disabled = true;
+        btn.textContent = 'Recording sale...';
 
-    async function finalizeCardSale(transactionId) {
         try {
             const payload = buildSalePayload('card');
-            payload.card_transaction_id = transactionId;
+            payload.card_transaction_id = 'MANUAL-' + Date.now();
             const sale = await apiPost('/api/v1/pos/sale', payload);
             currentSale = sale;
             document.getElementById('card-overlay').classList.add('hidden');
             showReceiptModal(sale);
         } catch (err) {
-            document.getElementById('card-overlay').classList.add('hidden');
-            showToast(`Payment was taken but sale recording failed: ${err.message}. Please contact admin.`, 'error');
+            btn.disabled = false;
+            btn.textContent = 'Payment Received ✓';
+            showToast(`Sale recording failed: ${err.message}`, 'error');
         }
     }
 
     function cancelCardPayment() {
-        if (poyntPollTimer) {
-            clearInterval(poyntPollTimer);
-            poyntPollTimer = null;
-        }
-        poyntReferenceId = null;
-        poyntPollCount = 0;
         document.getElementById('card-overlay').classList.add('hidden');
         document.getElementById('barcode-input').focus();
     }
@@ -2862,59 +2816,11 @@ table { width: 100%; border-collapse: collapse; }
         setTimeout(function() { document.getElementById('split-cash-amount').focus(); }, 50);
     }
 
-    async function splitAddCard() {
+    function splitAddCard() {
         var remaining = splitGetRemaining();
         if (remaining <= 0) return;
-        splitPayments.push({ type: 'card', amount: remaining, transactionId: null, pending: true });
+        splitPayments.push({ type: 'card', amount: remaining, transactionId: 'SPLIT-MANUAL-' + Date.now() });
         splitRefreshUI();
-
-        var amountCents = Math.ceil(remaining * 100);
-        try {
-            document.getElementById('split-error').textContent = 'Sending card payment to terminal...';
-            var resp = await apiPost('/api/v1/pos/poynt/charge', {
-                amount: remaining,
-                order_ref: 'SPLIT-' + Date.now(),
-            });
-            var refId = resp.reference_id;
-            document.getElementById('split-error').textContent = 'Waiting for card on terminal...';
-
-            var pollCount = 0;
-            var maxPoll = 90;
-            await new Promise(function(resolve, reject) {
-                var timer = setInterval(async function() {
-                    pollCount++;
-                    if (pollCount > maxPoll) {
-                        clearInterval(timer);
-                        reject(new Error('Card payment timed out'));
-                        return;
-                    }
-                    try {
-                        var statusResp = await apiGet('/api/v1/pos/poynt/status/' + refId);
-                        if (statusResp.status === 'APPROVED' && statusResp.transaction_id) {
-                            clearInterval(timer);
-                            var cp = splitPayments.find(function(p) { return p.type === 'card' && p.pending; });
-                            if (cp) {
-                                cp.transactionId = statusResp.transaction_id;
-                                cp.pending = false;
-                            }
-                            resolve();
-                        } else if (statusResp.status === 'DECLINED') {
-                            clearInterval(timer);
-                            reject(new Error('Card declined'));
-                        } else if (statusResp.status === 'ERROR') {
-                            clearInterval(timer);
-                            reject(new Error('Terminal error'));
-                        }
-                    } catch (e) {}
-                }, 2000);
-            });
-            document.getElementById('split-error').textContent = '';
-            splitRefreshUI();
-        } catch (err) {
-            splitPayments = splitPayments.filter(function(p) { return !(p.type === 'card' && p.pending); });
-            splitRefreshUI();
-            document.getElementById('split-error').textContent = err.message || 'Card payment failed';
-        }
     }
 
     async function splitApplyGiftCard() {

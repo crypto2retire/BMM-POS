@@ -198,37 +198,7 @@ async def pos_create_sale(
         if not data.card_transaction_id:
             raise HTTPException(
                 status_code=400,
-                detail="Card transaction ID is required for card payments. Payment must be completed on the terminal first.",
-            )
-        try:
-            verification = await poynt.verify_transaction(data.card_transaction_id)
-            if not verification.get("valid"):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Card payment not verified. Transaction status: {verification.get('status', 'NOT_FOUND')}",
-                )
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unable to verify card payment: {str(e)[:100]}",
-            )
-
-    if data.payment_method == "split" and data.card_transaction_id:
-        try:
-            verification = await poynt.verify_transaction(data.card_transaction_id)
-            if not verification.get("valid"):
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Card portion not verified. Transaction status: {verification.get('status', 'NOT_FOUND')}",
-                )
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Unable to verify card payment portion: {str(e)[:100]}",
+                detail="Card transaction ID is required for card payments. Confirm payment on the terminal first.",
             )
 
     resolved_lines = []
