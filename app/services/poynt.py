@@ -1,62 +1,65 @@
-import os
+"""GoDaddy Poynt Payment Bridge — Cloud Message API integration.
+
+Flow:
+  1. generate_jwt_token() — RS256-signed JWT for Poynt API auth
+  2. send_payment_request() — sends Cloud Message to terminal via WiFi
+  3. verify_callback() — validates callback payload from Poynt servers
+"""
+
+import json
 import time
 import uuid
-import json
 import httpx
-from typing import Optional
+import jwt
 from fastapi import HTTPException
+from app.config import settings
 
 POYNT_API_BASE = "https://services.poynt.net"
 
 
-def _get_config():
-    app_id = os.environ.get("POYNT_APP_ID")
-    private_key = os.environ.get("POYNT_PRIVATE_KEY")
-    business_id = os.environ.get("POYNT_BUSINESS_ID")
-    store_id = os.environ.get("POYNT_STORE_ID")
-
-    if not all([app_id, private_key, business_id]):
+def _require_config():
+    """Raise 503 if any required Poynt env var is missing."""
+    missing = []
+    if not settings.poynt_app_id:
+        missing.append("POYNT_APP_ID")
+    if not settings.poynt_private_key:
+        missing.append("POYNT_PRIVATE_KEY")
+    if not settings.poynt_business_id:
+        missing.append("POYNT_BUSINESS_ID")
+    if not settings.poynt_store_id:
+        missing.append("POYNT_STORE_ID")
+    if not settings.poynt_terminal_id:
+        missing.append("POYNT_TERMINAL_ID")
+    if missing:
         raise HTTPException(
             status_code=503,
-            detail="GoDaddy Poynt is not configured. Set POYNT_APP_ID, POYNT_PRIVATE_KEY, and POYNT_BUSINESS_ID environment variables.",
+            detail=f"Poynt not configured. Missing: {', '.join(missing)}",
         )
-    return app_id, private_key, business_id, store_id
 
 
-def _build_app_jwt(app_id: str, private_key_pem: str) -> str:
-    from cryptography.hazmat.primitives import serialization, hashes
-    from cryptography.hazmat.primitives.asymmetric import padding
-    import base64
+def generate_jwt_token() -> str:
+    """Create a signed JWT using App ID + Private Key (RS256).
 
+    Claims: iss=App ID, sub=App ID, aud=Poynt API, iat=now, exp=now+1h.
+    """
+    _require_config()
     now = int(time.time())
-    header = {"alg": "RS256", "typ": "JWT"}
     payload = {
-        "sub": app_id,
-        "iss": app_id,
+        "iss": settings.poynt_app_id,
+        "sub": settings.poynt_app_id,
         "aud": "https://services.poynt.net",
         "iat": now,
         "exp": now + 3600,
         "jti": str(uuid.uuid4()),
     }
-
-    def b64url(data: bytes) -> str:
-        return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
-
-    header_enc = b64url(json.dumps(header, separators=(",", ":")).encode())
-    payload_enc = b64url(json.dumps(payload, separators=(",", ":")).encode())
-    signing_input = f"{header_enc}.{payload_enc}".encode()
-
-    private_key = serialization.load_pem_private_key(private_key_pem.encode(), password=None)
-    signature = private_key.sign(signing_input, padding.PKCS1v15(), hashes.SHA256())
-    sig_enc = b64url(signature)
-
-    return f"{header_enc}.{payload_enc}.{sig_enc}"
+    # The private key may have literal \n instead of real newlines from env vars
+    private_key = settings.poynt_private_key.replace("\\n", "\n")
+    return jwt.encode(payload, private_key, algorithm="RS256")
 
 
-async def get_access_token() -> str:
-    app_id, private_key_pem, business_id, store_id = _get_config()
-    app_jwt = _build_app_jwt(app_id, private_key_pem)
-
+async def _get_access_token() -> str:
+    """Exchange app JWT for a Poynt access token."""
+    app_jwt = generate_jwt_token()
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(
             f"{POYNT_API_BASE}/token",
@@ -64,89 +67,77 @@ async def get_access_token() -> str:
                 "grantType": "urn:ietf:params:oauth:grant-type:jwt-bearer",
                 "assertion": app_jwt,
             },
-            headers={"Content-Type": "application/x-www-form-urlencoded", "api-version": "1.2"},
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+                "api-version": "1.2",
+            },
         )
         if resp.status_code != 200:
             raise HTTPException(status_code=502, detail=f"Poynt token error: {resp.text}")
-        return resp.json().get("accessToken") or resp.json().get("access_token")
+        data = resp.json()
+        return data.get("accessToken") or data.get("access_token")
 
 
-async def create_terminal_order(amount_cents: int, currency: str = "USD", order_ref: str = "") -> str:
-    app_id, private_key_pem, business_id, store_id = _get_config()
-    token = await get_access_token()
+async def send_payment_request(amount_cents: int, reference_id: str, callback_url: str) -> None:
+    """Send a Cloud Message to the Poynt terminal to initiate a card payment.
 
-    order_payload = {
-        "context": {
-            "businessId": business_id,
-            "storeId": store_id,
-            "source": "WEB",
-        },
-        "amounts": {
-            "currency": currency,
-            "transactionAmount": amount_cents,
-            "orderAmount": amount_cents,
-        },
-        "items": [
-            {
-                "name": "BMM-POS Sale",
-                "sku": order_ref,
-                "unitOfMeasure": "EACH",
-                "quantity": {"value": 1, "unitOfMeasure": "EACH"},
-                "unitPrice": amount_cents,
-                "tax": 0,
-                "discount": 0,
-                "fee": 0,
-            }
-        ],
-        "statuses": {"status": "OPENED"},
-        "notes": f"Order ref: {order_ref}",
+    The terminal will display the payment screen. After the customer taps/swipes,
+    Poynt calls our callback_url with the result.
+    """
+    _require_config()
+    token = await _get_access_token()
+
+    # The "data" field must be a JSON string inside the Cloud Message
+    payment_data = json.dumps({
+        "action": "SALE",
+        "purchaseAmount": amount_cents,
+        "tipAmount": 0,
+        "currency": "USD",
+        "referenceId": reference_id,
+        "callbackUrl": callback_url,
+    })
+
+    cloud_message = {
+        "businessId": settings.poynt_business_id,
+        "storeId": settings.poynt_store_id,
+        "deviceId": settings.poynt_terminal_id,
+        "ttl": 500,
+        "data": payment_data,
     }
 
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(
-            f"{POYNT_API_BASE}/businesses/{business_id}/orders",
-            json=order_payload,
+            f"{POYNT_API_BASE}/cloudMessages",
+            json=cloud_message,
             headers={
                 "Authorization": f"Bearer {token}",
                 "Content-Type": "application/json",
                 "api-version": "1.2",
             },
         )
-        if resp.status_code not in (200, 201):
-            raise HTTPException(status_code=502, detail=f"Poynt create order error: {resp.text}")
-        data = resp.json()
-        return data.get("id") or data.get("orderId")
+        if resp.status_code not in (200, 201, 202):
+            raise HTTPException(
+                status_code=502,
+                detail=f"Poynt Cloud Message error ({resp.status_code}): {resp.text}",
+            )
 
 
-async def get_transaction_for_order(order_id: str) -> dict:
-    app_id, private_key_pem, business_id, store_id = _get_config()
-    token = await get_access_token()
+def verify_callback(payload: dict) -> dict:
+    """Verify a callback payload from Poynt and extract result.
 
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.get(
-            f"{POYNT_API_BASE}/businesses/{business_id}/transactions",
-            params={"orderID": order_id},
-            headers={
-                "Authorization": f"Bearer {token}",
-                "api-version": "1.2",
-            },
-        )
-        if resp.status_code != 200:
-            raise HTTPException(status_code=502, detail=f"Poynt status error: {resp.text}")
+    Returns dict with keys: approved (bool), transaction_id (str or None).
+    """
+    status = (payload.get("status") or "").upper()
+    transaction_id = payload.get("transactionId") or payload.get("transaction_id")
+    reference_id = payload.get("referenceId") or payload.get("reference_id")
 
-        data = resp.json()
-        transactions = data.get("list") or data.get("transactions") or []
+    approved = status in ("APPROVED", "CAPTURED", "AUTHORIZED")
+    declined = status in ("DECLINED", "VOIDED", "REFUNDED", "FAILED")
 
-        if not transactions:
-            return {"status": "PENDING", "transaction_id": None}
-
-        txn = transactions[-1]
-        txn_status = txn.get("status", "PENDING")
-        txn_id = str(txn.get("id", ""))
-
-        if txn_status in ("CAPTURED", "APPROVED", "AUTHORIZED"):
-            return {"status": "APPROVED", "transaction_id": txn_id}
-        elif txn_status in ("DECLINED", "VOIDED", "REFUNDED"):
-            return {"status": "DECLINED", "transaction_id": txn_id}
-        else:
-            return {"status": "PENDING", "transaction_id": None}
+    return {
+        "approved": approved,
+        "declined": declined,
+        "transaction_id": str(transaction_id) if transaction_id else None,
+        "reference_id": str(reference_id) if reference_id else None,
+        "raw_status": status,
+    }

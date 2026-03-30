@@ -5,5 +5,6 @@ from app.models.rent import RentPayment
 from app.models.payout import Payout
 from app.models.reservation import Reservation
 from app.models.store_setting import StoreSetting
+from app.models.poynt_payment import PoyntPayment
 
-__all__ = ["Vendor", "VendorBalance", "Item", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting"]
+__all__ = ["Vendor", "VendorBalance", "Item", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting", "PoyntPayment"]

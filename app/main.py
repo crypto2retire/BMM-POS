@@ -37,6 +37,19 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
                 "image_path VARCHAR(500)"
             ))
+            # Poynt payments table (Phase 4)
+            await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS poynt_payments (
+                    id SERIAL PRIMARY KEY,
+                    reference_id VARCHAR(100) UNIQUE,
+                    amount_cents INTEGER,
+                    status VARCHAR(20) DEFAULT 'pending',
+                    poynt_transaction_id VARCHAR(200),
+                    sale_id INTEGER REFERENCES sales(id),
+                    created_at TIMESTAMPTZ DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ DEFAULT NOW()
+                )
+            """))
             await session.commit()
     except Exception as e:
         print(f"BMM-POS: column migration FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)

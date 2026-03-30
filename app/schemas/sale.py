@@ -52,13 +52,15 @@ class SaleResponse(BaseModel):
 
 class PoyntChargeRequest(BaseModel):
     amount: float
-    order_ref: str
+    sale_reference: str
 
 
 class PoyntChargeResponse(BaseModel):
-    poynt_order_id: str
+    success: bool
+    reference_id: str
+    message: str
 
 
 class PoyntStatusResponse(BaseModel):
     status: str
-    transaction_id: Optional[str] = None
+    poynt_transaction_id: Optional[str] = None

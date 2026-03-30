@@ -807,8 +807,8 @@
             <button class="pay-btn cash" id="cash-btn" onclick="openCashModal()" disabled>
                 💵 CASH
             </button>
-            <button class="pay-btn card" id="card-btn" onclick="startCardPayment()" disabled>
-                💳 CARD (Poynt)
+            <button class="pay-btn card" id="card-btn" onclick="openCardChoice()" disabled>
+                💳 CARD
             </button>
         </div>
     </div>
@@ -855,15 +855,42 @@
     </div>
 </div>
 
+<!-- Card Choice Modal -->
+<div class="pos-modal-overlay hidden" id="card-choice-modal">
+    <div class="pos-modal" style="max-width:400px">
+        <h2>💳 Card Payment</h2>
+        <div class="total-display">
+            <small>Amount Due</small>
+            <span id="card-choice-total">$0.00</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:1.25rem">
+            <button onclick="startTerminalPayment()" style="width:100%;padding:1rem;background:#1a52a8;color:#fff;border:none;font-size:0.9rem;font-weight:500;cursor:pointer;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:0.5rem;box-shadow:0 2px 0 rgba(0,0,0,0.35)">
+                📡 Charge Terminal
+            </button>
+            <button onclick="startManualCard()" style="width:100%;padding:0.85rem;background:transparent;color:#A8A6A1;border:1px solid rgba(201,169,110,0.2);font-size:0.8rem;cursor:pointer;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">
+                ⌨ Manual Card Entry
+            </button>
+        </div>
+        <div class="modal-actions" style="margin-top:1rem">
+            <button class="cancel-btn" onclick="closeCardChoice()">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <!-- Card Waiting Overlay -->
 <div class="card-waiting-overlay hidden" id="card-overlay">
     <div class="card-waiting-box">
         <div class="spinner"></div>
         <div class="pulse" style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem">
-            Waiting for customer payment
+            Waiting for card payment on terminal...
         </div>
         <div class="amount" id="card-amount-display">$0.00</div>
         <div class="status-msg" id="card-status-msg">Present card, tap, or swipe on the Poynt terminal</div>
+        <div id="card-retry-area" style="display:none;margin-top:0.75rem">
+            <button onclick="retryTerminalPayment()" style="background:#1a52a8;color:#fff;border:none;padding:0.6rem 1.5rem;cursor:pointer;font-size:0.875rem;margin-right:0.5rem">
+                Retry
+            </button>
+        </div>
         <button onclick="cancelCardPayment()" style="background:#374151;color:#D1D5DB;border:none;padding:0.6rem 1.5rem;border-radius:8px;cursor:pointer;font-size:0.875rem;margin-top:0.5rem">
             Cancel
         </button>
@@ -907,7 +934,7 @@
     <button class="pay-btn cash" id="mobile-cash-btn" onclick="openCashModal()" disabled style="flex:1;max-width:140px;padding:0.75rem">
         💵 Cash
     </button>
-    <button class="pay-btn card" id="mobile-card-btn" onclick="startCardPayment()" disabled style="flex:1;max-width:140px;padding:0.75rem">
+    <button class="pay-btn card" id="mobile-card-btn" onclick="openCardChoice()" disabled style="flex:1;max-width:140px;padding:0.75rem">
         💳 Card
     </button>
 </div>
@@ -920,8 +947,9 @@
     // ─── State ───────────────────────────────────────────────────────────────
     let cart = [];          // { item, quantity }
     let currentSale = null;
-    let poyntOrderId = null;
+    let poyntReferenceId = null;
     let poyntPollTimer = null;
+    let poyntPollStart = null;
     const TAX_RATE = 0.05;
 
     // ─── Init ─────────────────────────────────────────────────────────────────
@@ -1252,55 +1280,84 @@
         }
     }
 
-    // ─── Card (Poynt) Payment ─────────────────────────────────────────────────
-    async function startCardPayment() {
+    // ─── Card Payment — Choice Modal ────────────────────────────────────────────
+    function openCardChoice() {
         if (cart.length === 0) return;
         const { total } = calcTotals();
-        const orderRef = `BMM-${Date.now()}`;
+        document.getElementById('card-choice-total').textContent = `$${total.toFixed(2)}`;
+        document.getElementById('card-choice-modal').classList.remove('hidden');
+    }
+
+    function closeCardChoice() {
+        document.getElementById('card-choice-modal').classList.add('hidden');
+        document.getElementById('barcode-input').focus();
+    }
+
+    // ─── Option 1: Send to Terminal (integrated Poynt) ───────────────────────
+    async function startTerminalPayment() {
+        closeCardChoice();
+        if (cart.length === 0) return;
+        const { total } = calcTotals();
+        const saleRef = `BMM-${Date.now()}`;
 
         document.getElementById('card-amount-display').textContent = `$${total.toFixed(2)}`;
         document.getElementById('card-status-msg').textContent = 'Sending to Poynt terminal...';
+        document.getElementById('card-retry-area').style.display = 'none';
         document.getElementById('card-overlay').classList.remove('hidden');
 
         try {
-            const resp = await apiPost('/api/v1/pos/poynt/charge', {
+            const resp = await apiPost('/api/v1/pos/poynt-charge', {
                 amount: total,
-                order_ref: orderRef,
+                sale_reference: saleRef,
             });
-            poyntOrderId = resp.poynt_order_id;
+            poyntReferenceId = resp.reference_id;
             document.getElementById('card-status-msg').textContent = 'Present card, tap, or swipe on the Poynt terminal';
-            pollPoyntStatus(poyntOrderId);
+            pollPoyntStatus(poyntReferenceId);
         } catch (err) {
             document.getElementById('card-overlay').classList.add('hidden');
-            showToast(err.message, 'error');
+            showToast(err.message || 'Failed to send payment to terminal', 'error');
         }
     }
 
-    function pollPoyntStatus(orderId) {
+    function retryTerminalPayment() {
+        document.getElementById('card-overlay').classList.add('hidden');
+        startTerminalPayment();
+    }
+
+    function pollPoyntStatus(referenceId) {
+        poyntPollStart = Date.now();
         poyntPollTimer = setInterval(async () => {
+            // Timeout after 90 seconds
+            if (Date.now() - poyntPollStart > 90000) {
+                clearInterval(poyntPollTimer);
+                poyntPollTimer = null;
+                document.getElementById('card-status-msg').textContent = 'Payment timed out. The terminal did not respond.';
+                document.getElementById('card-retry-area').style.display = 'block';
+                return;
+            }
             try {
-                const resp = await apiGet(`/api/v1/pos/poynt/status/${orderId}`);
-                if (resp.status === 'APPROVED') {
+                const resp = await apiGet(`/api/v1/pos/poynt-status/${referenceId}`);
+                if (resp.status === 'approved') {
                     clearInterval(poyntPollTimer);
                     poyntPollTimer = null;
                     document.getElementById('card-overlay').classList.add('hidden');
-                    await finalizeCardSale(resp.transaction_id);
-                } else if (resp.status === 'DECLINED') {
+                    await finalizeCardSale(resp.poynt_transaction_id);
+                } else if (resp.status === 'declined') {
                     clearInterval(poyntPollTimer);
                     poyntPollTimer = null;
-                    document.getElementById('card-overlay').classList.add('hidden');
-                    showToast('Card declined. Please try again.', 'error');
+                    document.getElementById('card-status-msg').textContent = 'Card Declined — please try again';
+                    document.getElementById('card-retry-area').style.display = 'block';
                 }
             } catch (err) {
                 // Keep polling on transient errors
             }
-        }, 2000);
+        }, 3000);
     }
 
     async function finalizeCardSale(transactionId) {
         try {
             const payload = buildSalePayload('card');
-            payload.card_transaction_id = transactionId;
+            payload.card_transaction_id = transactionId || poyntReferenceId;
             const sale = await apiPost('/api/v1/sales/', payload);
             currentSale = sale;
             showReceiptModal(sale);
@@ -1309,12 +1366,27 @@
         }
     }
 
+    // ─── Option 2: Manual Card (fallback) ────────────────────────────────────
+    async function startManualCard() {
+        closeCardChoice();
+        if (cart.length === 0) return;
+        try {
+            const payload = buildSalePayload('card');
+            const sale = await apiPost('/api/v1/sales/', payload);
+            currentSale = sale;
+            showReceiptModal(sale);
+        } catch (err) {
+            showToast(`Sale failed: ${err.message}`, 'error');
+        }
+    }
+
     function cancelCardPayment() {
         if (poyntPollTimer) {
             clearInterval(poyntPollTimer);
             poyntPollTimer = null;
         }
-        poyntOrderId = null;
+        poyntReferenceId = null;
+        poyntPollStart = null;
         document.getElementById('card-overlay').classList.add('hidden');
         document.getElementById('barcode-input').focus();
     }
@@ -1477,7 +1549,8 @@ ${cashLines}
     function startNewSale() {
         cart = [];
         currentSale = null;
-        poyntOrderId = null;
+        poyntReferenceId = null;
+        poyntPollStart = null;
         document.getElementById('receipt-modal').classList.add('hidden');
         renderCart();
         document.getElementById('barcode-input').value = '';

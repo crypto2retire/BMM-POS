@@ -1,8 +1,9 @@
 import math
-from datetime import date
+import uuid
+from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
 from sqlalchemy.orm import selectinload
@@ -11,6 +12,7 @@ from app.routers.auth import get_current_user
 from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
 from app.models.sale import Sale, SaleItem
+from app.models.poynt_payment import PoyntPayment
 from app.schemas.sale import (
     SaleCreate, SaleResponse, SaleItemResponse,
     PoyntChargeRequest, PoyntChargeResponse, PoyntStatusResponse,
@@ -259,32 +261,106 @@ async def pos_create_sale(
     )
 
 
-@router.post("/payment-callback", status_code=status.HTTP_200_OK)
-async def payment_callback(current_user: Vendor = Depends(get_current_user)):
-    return {"status": "ok"}
-
-
-@router.post("/poynt/charge", response_model=PoyntChargeResponse)
+@router.post("/poynt-charge", response_model=PoyntChargeResponse)
 async def poynt_charge(
     data: PoyntChargeRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    amount_cents = math.ceil(data.amount * 100)
-    order_id = await poynt.create_terminal_order(
+    """Initiate a card payment on the Poynt terminal via Cloud Message."""
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Cashier or admin access required")
+
+    amount_cents = round(data.amount * 100)
+    reference_id = f"BMM-{uuid.uuid4().hex[:12].upper()}"
+
+    # Build callback URL based on the incoming request
+    base_url = str(request.base_url).rstrip("/")
+    callback_url = f"{base_url}/api/v1/pos/poynt-callback"
+
+    # Insert pending payment record
+    payment = PoyntPayment(
+        reference_id=reference_id,
         amount_cents=amount_cents,
-        currency="USD",
-        order_ref=data.order_ref,
+        status="pending",
     )
-    return PoyntChargeResponse(poynt_order_id=order_id)
+    db.add(payment)
+    await db.commit()
+
+    # Send Cloud Message to terminal
+    await poynt.send_payment_request(
+        amount_cents=amount_cents,
+        reference_id=reference_id,
+        callback_url=callback_url,
+    )
+
+    return PoyntChargeResponse(
+        success=True,
+        reference_id=reference_id,
+        message="Payment request sent to terminal",
+    )
 
 
-@router.get("/poynt/status/{poynt_order_id}", response_model=PoyntStatusResponse)
+@router.get("/poynt-status/{reference_id}", response_model=PoyntStatusResponse)
 async def poynt_status(
-    poynt_order_id: str,
+    reference_id: str,
+    db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    result = await poynt.get_transaction_for_order(poynt_order_id)
-    return PoyntStatusResponse(
-        status=result["status"],
-        transaction_id=result.get("transaction_id"),
+    """Poll the status of a Poynt payment by reference_id."""
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Cashier or admin access required")
+
+    result = await db.execute(
+        select(PoyntPayment).where(PoyntPayment.reference_id == reference_id)
     )
+    payment = result.scalar_one_or_none()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    return PoyntStatusResponse(
+        status=payment.status,
+        poynt_transaction_id=payment.poynt_transaction_id,
+    )
+
+
+@router.post("/poynt-callback", status_code=status.HTTP_200_OK)
+async def poynt_callback(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Public callback endpoint — called by Poynt servers with payment result.
+
+    No auth required. Always returns 200 so Poynt does not retry.
+    """
+    try:
+        payload = await request.json()
+    except Exception:
+        return {"status": "ok"}
+
+    result = poynt.verify_callback(payload)
+    ref_id = result.get("reference_id")
+    if not ref_id:
+        return {"status": "ok"}
+
+    # Find the pending payment
+    db_result = await db.execute(
+        select(PoyntPayment).where(PoyntPayment.reference_id == ref_id)
+    )
+    payment = db_result.scalar_one_or_none()
+    if not payment:
+        return {"status": "ok"}
+
+    # Update based on result
+    if result["approved"]:
+        payment.status = "approved"
+        payment.poynt_transaction_id = result.get("transaction_id")
+    elif result["declined"]:
+        payment.status = "declined"
+        payment.poynt_transaction_id = result.get("transaction_id")
+
+    payment.updated_at = datetime.utcnow()
+    await db.commit()
+
+    return {"status": "ok"}

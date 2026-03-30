@@ -31,6 +31,7 @@ pydantic_core==2.41.5
 python-barcode==0.16.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
+PyJWT==2.9.0
 python-jose==3.5.0
 python-multipart==0.0.22
 PyYAML==6.0.3
