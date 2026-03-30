@@ -373,3 +373,17 @@ async def clear_item_photos(
 
     await db.commit()
     return {"cleared": cleared}
+
+
+@router.post("/clear-booth-showcases")
+async def clear_booth_showcases(
+    password: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    if password != SYNC_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid password")
+
+    result = await db.execute(text("DELETE FROM booth_showcases"))
+    count = result.rowcount
+    await db.commit()
+    return {"detail": f"Deleted {count} booth showcase(s). All vendors start fresh."}
