@@ -6,7 +6,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 from app.database import get_db
 from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
@@ -618,6 +618,9 @@ async def batch_import_items(
     if not reader.fieldnames:
         raise HTTPException(status_code=400, detail="CSV has no headers")
 
+    headers_lower = {h.strip().lower(): h.strip() for h in reader.fieldnames}
+    is_ricochet = "consignor" in headers_lower and "agreed price" in headers_lower
+
     vendor_map = {}
     vresult = await db.execute(text("SELECT id, lower(name) as lname FROM vendors WHERE role='vendor'"))
     for row in vresult.all():
@@ -627,6 +630,8 @@ async def batch_import_items(
     skipped = 0
     errors = []
     batch_params = []
+    import random as _rnd, string as _stg
+    existing_barcodes = set()
 
     for row_num, row in enumerate(reader, start=2):
         clean = {k.strip().lower(): _clean(v) for k, v in row.items()}
@@ -634,7 +639,16 @@ async def batch_import_items(
         if not name:
             continue
 
-        price_str = clean.get("price", "0")
+        if is_ricochet:
+            price_str = (clean.get("agreed price") or "0").replace("$", "").replace(",", "")
+            inventory_status = (clean.get("inventory") or "").lower()
+            if inventory_status == "out of stock":
+                continue
+            vref = clean.get("consignor") or ""
+        else:
+            price_str = clean.get("price", "0")
+            vref = clean.get("vendor_name") or clean.get("vendor") or ""
+
         try:
             price = Decimal(price_str.replace("$", "").replace(",", ""))
             if price <= 0:
@@ -642,48 +656,82 @@ async def batch_import_items(
         except (InvalidOperation, ValueError):
             continue
 
-        vref = clean.get("vendor_name") or clean.get("vendor") or ""
         vendor_id = vendor_map.get(vref.lower())
         if not vendor_id:
             errors.append({"row": row_num, "name": name, "error": f"Vendor not found: {vref}"})
             continue
 
-        import random as _rnd, string as _stg
-        barcode = clean.get("barcode") or "".join(_rnd.choices(_stg.digits + _stg.ascii_uppercase, k=6))
-        sku = clean.get("sku") or f"BSM-{vendor_id:04d}-{row_num:06d}"
+        barcode_raw = (clean.get("sku") or "").strip().strip("'").strip() if is_ricochet else clean.get("barcode")
+        barcode = barcode_raw or "".join(_rnd.choices(_stg.digits + _stg.ascii_uppercase, k=6))
+        while barcode in existing_barcodes:
+            barcode = "".join(_rnd.choices(_stg.digits + _stg.ascii_uppercase, k=6))
+        existing_barcodes.add(barcode)
+
+        sku = f"BSM-{vendor_id:04d}-{row_num:06d}"
 
         try:
             qty = int(clean.get("quantity") or "1")
+            if qty <= 0:
+                qty = 1
         except ValueError:
             qty = 1
 
-        is_consignment = clean.get("consignment", "").lower() in ("true", "yes", "1", "y")
-        is_tax_exempt = clean.get("tax_exempt", "").lower() in ("true", "yes", "1", "y")
-
-        cr = None
-        if is_consignment and clean.get("consignment_rate"):
-            try:
-                crv = Decimal(clean["consignment_rate"].replace("%", ""))
-                cr = crv / 100 if crv > 1 else crv
-            except (InvalidOperation, ValueError):
-                pass
-
-        sp = None
-        if clean.get("sale_price"):
-            try:
-                spv = Decimal(clean["sale_price"].replace("$", "").replace(",", ""))
-                if spv < price:
-                    sp = spv
-            except (InvalidOperation, ValueError):
-                pass
+        if is_ricochet:
+            tax_rate_str = (clean.get("tax rate") or "").replace("%", "").strip()
+            is_tax_exempt = False
+            if tax_rate_str:
+                try:
+                    is_tax_exempt = Decimal(tax_rate_str) == 0
+                except (InvalidOperation, ValueError):
+                    pass
+            consignment_pct_str = (clean.get("consignor %") or "").strip()
+            is_consignment = bool(consignment_pct_str and consignment_pct_str != "0")
+            cr = None
+            if is_consignment and consignment_pct_str:
+                try:
+                    crv = Decimal(consignment_pct_str.replace("%", ""))
+                    cr = float(crv / 100 if crv > 1 else crv)
+                except (InvalidOperation, ValueError):
+                    pass
+            sp = None
+            aged_str = (clean.get("aged price") or "").replace("$", "").replace(",", "")
+            if aged_str:
+                try:
+                    ap = Decimal(aged_str)
+                    if 0 < ap < price:
+                        sp = float(ap)
+                except (InvalidOperation, ValueError):
+                    pass
+            description = clean.get("short description")
+            category = clean.get("category")
+        else:
+            is_consignment = clean.get("consignment", "").lower() in ("true", "yes", "1", "y")
+            is_tax_exempt = clean.get("tax_exempt", "").lower() in ("true", "yes", "1", "y")
+            cr = None
+            if is_consignment and clean.get("consignment_rate"):
+                try:
+                    crv = Decimal(clean["consignment_rate"].replace("%", ""))
+                    cr = float(crv / 100 if crv > 1 else crv)
+                except (InvalidOperation, ValueError):
+                    pass
+            sp = None
+            if clean.get("sale_price"):
+                try:
+                    spv = Decimal(clean["sale_price"].replace("$", "").replace(",", ""))
+                    if spv < price:
+                        sp = float(spv)
+                except (InvalidOperation, ValueError):
+                    pass
+            description = clean.get("description")
+            category = clean.get("category")
 
         batch_params.append({
             "vendor_id": vendor_id, "name": name[:200],
-            "description": clean.get("description"), "price": float(price),
-            "sale_price": float(sp) if sp else None, "quantity": qty,
-            "category": clean.get("category"), "barcode": barcode, "sku": sku,
+            "description": description, "price": float(price),
+            "sale_price": sp, "quantity": qty,
+            "category": category, "barcode": barcode, "sku": sku,
             "is_tax_exempt": is_tax_exempt, "is_consignment": is_consignment,
-            "consignment_rate": float(cr) if cr else None,
+            "consignment_rate": cr,
             "status": "active", "label_printed": True,
         })
 
