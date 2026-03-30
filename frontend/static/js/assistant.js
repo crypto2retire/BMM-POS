@@ -332,7 +332,10 @@
         const msgs = document.getElementById('bmm-assistant-messages');
         const el = document.createElement('div');
         el.className = 'bmm-msg bmm-msg-image';
-        el.innerHTML = `<img src="${dataUrl}" alt="Photo">`;
+        const img = document.createElement('img');
+        img.src = dataUrl;
+        img.alt = 'Photo';
+        el.appendChild(img);
         msgs.appendChild(el);
         scrollToBottom();
     }
