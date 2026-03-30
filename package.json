@@ -10,6 +10,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@octokit/rest": "^22.0.1",
     "@replit/connectors-sdk": "^0.2.0"
   }
 }
