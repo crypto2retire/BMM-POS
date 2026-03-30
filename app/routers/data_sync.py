@@ -145,3 +145,54 @@ async def import_all(key: str = Query(...), source_url: str = Query(...), db: As
         "items": items_result["imported_items"],
         "vendor_balances_auto_created": vb_count.scalar(),
     }
+
+
+class ImageMapping(BaseModel):
+    sku: str
+    image_filenames: str
+
+
+@router.post("/apply-scraped-images")
+async def apply_scraped_images(
+    mappings: List[ImageMapping],
+    secret: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    if secret != SYNC_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid secret")
+
+    matched = 0
+    updated = 0
+    skipped = 0
+
+    for m in mappings:
+        result = await db.execute(
+            select(Item).where(Item.sku == m.sku, Item.status == "active")
+        )
+        items = result.scalars().all()
+        if not items:
+            continue
+        matched += len(items)
+
+        filenames = m.image_filenames.split("|")
+        web_paths = [
+            f"/static/uploads/items/rico_{m.sku}_{i}{_ext(fn)}"
+            for i, fn in enumerate(filenames)
+        ]
+
+        for item in items:
+            if item.photo_urls and len(item.photo_urls) > 0:
+                skipped += 1
+                continue
+            item.photo_urls = web_paths
+            item.image_path = web_paths[0] if web_paths else None
+            updated += 1
+
+    await db.commit()
+    return {"matched": matched, "updated": updated, "skipped": skipped, "total_mappings": len(mappings)}
+
+
+def _ext(filename: str) -> str:
+    if "." in filename:
+        return "." + filename.rsplit(".", 1)[-1]
+    return ".jpg"
