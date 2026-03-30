@@ -1771,7 +1771,7 @@
     }
 
     function removeFromCart(itemId) {
-        cart = cart.filter(c => c.item.id !== itemId);
+        cart = cart.filter(c => String(c.item.id) !== String(itemId));
         renderCart();
     }
 
@@ -2011,7 +2011,7 @@
         try {
             const payload = buildSalePayload('cash');
             payload.cash_tendered = tendered;
-            const sale = await apiPost('/api/v1/sales/', payload);
+            const sale = await apiPost('/api/v1/pos/sale', payload);
             currentSale = sale;
             closeCashModal();
             showReceiptModal(sale);
@@ -2784,10 +2784,25 @@ table { width: 100%; border-collapse: collapse; }
         btn.disabled = true; btn.textContent = 'Loading...';
         try {
             var card = await apiPost('/api/v1/pos/gift-cards/' + encodeURIComponent(bc) + '/load', { amount: amount, notes: notes || null });
-            errEl.style.color = '#6EE7B7';
-            errEl.textContent = 'Loaded $' + amount.toFixed(2) + ' — New balance: $' + parseFloat(card.balance).toFixed(2);
+            var lastFour = bc.length > 4 ? bc.slice(-4) : bc;
+            cart.push({
+                item: {
+                    id: 'gc-load-' + bc + '-' + Date.now(),
+                    barcode: bc,
+                    name: 'Gift Card Reload #' + lastFour,
+                    is_gift_card_purchase: true,
+                    gift_card_amount: amount,
+                    is_tax_exempt: true,
+                },
+                quantity: 1
+            });
+            closeGcModal();
+            renderCart();
+            showToast('Gift card loaded — $' + amount.toFixed(2) + ' added to cart. Collect payment to complete.', 'success');
+            document.getElementById('gc-load-barcode').value = '';
             document.getElementById('gc-load-amount').value = '';
             document.getElementById('gc-load-notes').value = '';
+            errEl.textContent = '';
         } catch (err) {
             errEl.style.color = '#F87171';
             errEl.textContent = err.message || 'Failed to load card';
@@ -2807,8 +2822,26 @@ table { width: 100%; border-collapse: collapse; }
         btn.disabled = true; btn.textContent = 'Activating...';
         try {
             var card = await apiPost('/api/v1/pos/gift-cards/activate', { barcode: bc, initial_balance: amount, notes: notes || null });
-            errEl.style.color = '#6EE7B7';
-            errEl.textContent = 'Card activated with $' + parseFloat(card.balance).toFixed(2) + ' balance';
+            if (amount > 0) {
+                var lastFour = bc.length > 4 ? bc.slice(-4) : bc;
+                cart.push({
+                    item: {
+                        id: 'gc-activate-' + bc + '-' + Date.now(),
+                        barcode: bc,
+                        name: 'Gift Card #' + lastFour,
+                        is_gift_card_purchase: true,
+                        gift_card_amount: amount,
+                        is_tax_exempt: true,
+                    },
+                    quantity: 1
+                });
+                closeGcModal();
+                renderCart();
+                showToast('Gift card activated — $' + amount.toFixed(2) + ' added to cart. Collect payment to complete.', 'success');
+            } else {
+                errEl.style.color = '#6EE7B7';
+                errEl.textContent = 'Card activated with $0.00 balance';
+            }
             document.getElementById('gc-activate-barcode').value = '';
             document.getElementById('gc-activate-amount').value = '';
             document.getElementById('gc-activate-notes').value = '';
@@ -2884,13 +2917,11 @@ table { width: 100%; border-collapse: collapse; }
         var btn = document.getElementById('gc-pay-submit');
         btn.disabled = true; btn.textContent = 'Processing...';
         try {
-            var items = cart.map(function(c) { return { barcode: c.item.barcode, quantity: c.quantity }; });
-            var sale = await apiPost('/api/v1/pos/sale', {
-                items: items,
-                payment_method: 'gift_card',
-                gift_card_barcode: bc
-            });
+            var payload = buildSalePayload('gift_card');
+            payload.gift_card_barcode = bc;
+            var sale = await apiPost('/api/v1/pos/sale', payload);
             closeGcPayModal();
+            currentSale = sale;
             cart = [];
             renderCart();
             showReceiptModal(sale);

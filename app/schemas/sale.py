@@ -25,8 +25,8 @@ class SaleCreate(BaseModel):
 
 class SaleItemResponse(BaseModel):
     id: int
-    item_id: int
-    vendor_id: int
+    item_id: Optional[int] = None
+    vendor_id: Optional[int] = None
     item_name: str
     booth_number: Optional[str] = None
     sku: str

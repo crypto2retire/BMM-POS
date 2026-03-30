@@ -46,7 +46,7 @@ The frontend adheres to Bowenstreet Market branding, using a dark (`#38383B`) an
 - **Item Management**: CRUD for items, including automatic SKU/barcode generation, PDF label printing, batch label printing tools, bulk status toggle (Mark All For Sale / Not For Sale), and item deletion with confirmation. Items display "For Sale" / "Not For Sale" labels.
 - **Sales Management**: Records sales, manages inventory, and credits vendor balances, supporting consignment.
 - **Studio Class Management**: CRUD for classes, public calendar, online registration, and image uploads.
-- **Gift Card System**: In-house gift cards with barcode, balance tracking, and transaction history.
+- **Gift Card System**: In-house gift cards with barcode, balance tracking, and transaction history. Gift card activation and reload amounts are automatically added to the POS cart as tax-exempt line items so the customer is charged. Sale line items for gift card purchases have nullable `item_id`/`vendor_id` and a stored `item_name` column.
 - **Bulk CSV Import**: Admin-only CSV upload for vendors and inventory, with deduplication and secure password generation.
 - **Rent Tracking**: Monthly rent tracking, payment recording, and overdue flagging for vendors. Integrates rent deduction into payout processing.
 - **Payout Processing**: Admin interface for previewing and processing vendor payouts, automatically deducting rent and sending email notifications.

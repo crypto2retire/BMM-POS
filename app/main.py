@@ -100,6 +100,17 @@ async def lifespan(app: FastAPI):
                 "consignment_amount NUMERIC(10,2)"
             ))
             await session.execute(text(
+                "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS "
+                "item_name VARCHAR(255) NOT NULL DEFAULT ''"
+            ))
+            for col in ("item_id", "vendor_id"):
+                await session.execute(text(f"""
+                    DO $$ BEGIN
+                        ALTER TABLE sale_items ALTER COLUMN {col} DROP NOT NULL;
+                    EXCEPTION WHEN others THEN NULL;
+                    END $$
+                """))
+            await session.execute(text(
                 "ALTER TABLE sales ADD COLUMN IF NOT EXISTS "
                 "is_voided BOOLEAN NOT NULL DEFAULT false"
             ))

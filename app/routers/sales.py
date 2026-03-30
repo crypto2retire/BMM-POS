@@ -42,7 +42,7 @@ def sale_to_response(sale: Sale) -> SaleResponse:
     for si in sale.items:
         booth = si.vendor.booth_number if si.vendor else None
         sku = si.item.sku if si.item else ""
-        item_name = si.item.name if si.item else "Unknown"
+        item_name = si.item_name or (si.item.name if si.item else "Gift Card")
         line_items.append(
             SaleItemResponse(
                 id=si.id,

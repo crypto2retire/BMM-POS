@@ -41,8 +41,9 @@ class SaleItem(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     sale_id: Mapped[int] = mapped_column(Integer, ForeignKey("sales.id", ondelete="CASCADE"), nullable=False)
-    item_id: Mapped[int] = mapped_column(Integer, ForeignKey("items.id"), nullable=False)
-    vendor_id: Mapped[int] = mapped_column(Integer, ForeignKey("vendors.id"), nullable=False)
+    item_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("items.id"), nullable=True)
+    vendor_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("vendors.id"), nullable=True)
+    item_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     line_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
@@ -54,5 +55,5 @@ class SaleItem(Base):
     discount_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
 
     sale: Mapped["Sale"] = relationship("Sale", back_populates="items")
-    item: Mapped["Item"] = relationship("Item")
-    vendor: Mapped["Vendor"] = relationship("Vendor", foreign_keys=[vendor_id])
+    item: Mapped[Optional["Item"]] = relationship("Item")
+    vendor: Mapped[Optional["Vendor"]] = relationship("Vendor", foreign_keys=[vendor_id])
