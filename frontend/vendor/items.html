@@ -607,10 +607,10 @@
     let labelSizesLoaded = false;
 
     let allItems = [];
-    let currentView = localStorage.getItem('bmm_items_view') || 'grid';
+    let currentView = localStorage.getItem('bmm_items_view') || 'list';
     let searchTerm = '';
-    let sortColumn = 'name';
-    let sortDirection = 'asc';
+    let sortColumn = 'created_at';
+    let sortDirection = 'desc';
     let currentPage = 1;
     const PAGE_SIZE = 50;
     let statusFilter = 'active';
@@ -1538,6 +1538,7 @@
             let va, vb;
             if (sortColumn === 'name') { va = (a.name || '').toLowerCase(); vb = (b.name || '').toLowerCase(); }
             else if (sortColumn === 'price') { va = parseFloat(a.price) || 0; vb = parseFloat(b.price) || 0; }
+            else if (sortColumn === 'quantity') { va = parseInt(a.quantity) || 0; vb = parseInt(b.quantity) || 0; }
             else if (sortColumn === 'status') { va = a.status || ''; vb = b.status || ''; }
             else if (sortColumn === 'created_at') { va = a.created_at || ''; vb = b.created_at || ''; }
             else { va = ''; vb = ''; }
@@ -1561,8 +1562,8 @@
         var btns = document.querySelectorAll('.status-filter-bar button');
         btns.forEach(function(b) {
             var s = b.getAttribute('data-status');
-            if (s === 'active') b.textContent = 'Active (' + activeCount + ')';
-            else if (s === 'inactive') b.textContent = 'Inactive (' + inactiveCount + ')';
+            if (s === 'active') b.textContent = 'For Sale (' + activeCount + ')';
+            else if (s === 'inactive') b.textContent = 'Not For Sale (' + inactiveCount + ')';
             else b.textContent = 'All (' + allItems.length + ')';
         });
         updateUnprintedBanner();
@@ -1698,6 +1699,7 @@
                 <th style="cursor:default">SKU</th>
                 <th ${sortArrow('price')}>Price <span class="sort-arrow">${sortColumn === 'price' ? (sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '&#9650;'}</span></th>
                 <th style="cursor:default">Sale Price</th>
+                <th ${sortArrow('quantity')}>Qty <span class="sort-arrow">${sortColumn === 'quantity' ? (sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '&#9650;'}</span></th>
                 <th ${sortArrow('status')}>Status <span class="sort-arrow">${sortColumn === 'status' ? (sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '&#9650;'}</span></th>
                 <th style="cursor:default">Actions</th>
             </tr></thead><tbody>`;
@@ -1725,6 +1727,7 @@
                 <td class="sku-cell">${item.sku || '&mdash;'}</td>
                 <td>${priceHtml}</td>
                 <td>${salePriceHtml}</td>
+                <td style="text-align:center">${item.quantity ?? 1}</td>
                 <td>${statusBadge(item.status)}${!item.label_printed ? ' <span style="font-size:0.6rem;padding:1px 4px;background:#5C3D00;color:#FFD580;border-radius:3px;font-weight:600">NEW</span>' : ''}</td>
                 <td><div class="actions-cell">
                     <button class="btn btn-outline" onclick="openModal(${itemJson})">Edit</button>
