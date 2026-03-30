@@ -27,6 +27,16 @@ def _get_config():
             status_code=503,
             detail="GoDaddy Poynt is not configured. Set POYNT_APP_ID, POYNT_PRIVATE_KEY, and POYNT_BUSINESS_ID environment variables.",
         )
+    if not terminal_id:
+        raise HTTPException(
+            status_code=503,
+            detail="POYNT_TERMINAL_ID is not configured. Cannot send payment to terminal.",
+        )
+    if not store_id:
+        raise HTTPException(
+            status_code=503,
+            detail="POYNT_STORE_ID is not configured.",
+        )
     return app_id, private_key, business_id, store_id, terminal_id
 
 
@@ -96,79 +106,12 @@ async def get_access_token() -> str:
         return token
 
 
-async def create_terminal_order(amount_cents: int, currency: str = "USD", order_ref: str = "") -> str:
+async def send_payment_to_terminal(amount_cents: int, currency: str = "USD", order_ref: str = "") -> dict:
     app_id, private_key_pem, business_id, store_id, terminal_id = _get_config()
     token = await get_access_token()
 
-    order_id = str(uuid.uuid4())
+    reference_id = str(uuid.uuid4())
 
-    order_payload = {
-        "id": order_id,
-        "context": {
-            "businessId": business_id,
-            "storeId": store_id,
-            "source": "WEB",
-        },
-        "amounts": {
-            "currency": currency,
-            "transactionAmount": amount_cents,
-            "orderAmount": amount_cents,
-        },
-        "items": [
-            {
-                "name": "BMM-POS Sale",
-                "sku": order_ref or "POS",
-                "unitOfMeasure": "EACH",
-                "quantity": 1.0,
-                "unitPrice": amount_cents,
-                "tax": 0,
-                "discount": 0,
-                "fee": 0,
-            }
-        ],
-        "statuses": {"status": "OPENED"},
-        "notes": f"Order ref: {order_ref}",
-    }
-
-    async with httpx.AsyncClient(timeout=15) as client:
-        resp = await client.post(
-            f"{POYNT_API_BASE}/businesses/{business_id}/orders",
-            json=order_payload,
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-                "api-version": "1.2",
-                "Poynt-Request-Id": str(uuid.uuid4()),
-            },
-        )
-        if resp.status_code not in (200, 201):
-            logger.error(f"Poynt create order error {resp.status_code}: {resp.text}")
-            raise HTTPException(status_code=502, detail=f"Poynt create order error: {resp.text[:200]}")
-        data = resp.json()
-        created_order_id = data.get("id") or data.get("orderId") or order_id
-
-        if terminal_id and store_id:
-            try:
-                await _send_payment_to_terminal(
-                    client, token, business_id, store_id, terminal_id,
-                    created_order_id, amount_cents, currency,
-                )
-            except Exception as e:
-                logger.warning(f"Terminal push failed (order still created): {e}")
-
-        return created_order_id
-
-
-async def _send_payment_to_terminal(
-    client: httpx.AsyncClient,
-    token: str,
-    business_id: str,
-    store_id: str,
-    terminal_id: str,
-    order_id: str,
-    amount_cents: int,
-    currency: str,
-):
     action_payload = {
         "action": "AUTHORIZE",
         "purchaseAction": "SALE",
@@ -177,60 +120,116 @@ async def _send_payment_to_terminal(
             "orderAmount": amount_cents,
             "currency": currency,
         },
-        "orderId": order_id,
-        "referenceId": str(uuid.uuid4()),
+        "referenceId": reference_id,
         "callbackUrl": "-",
         "skipReceiptScreen": True,
         "disableTip": True,
+        "notes": order_ref,
     }
 
-    resp = await client.post(
-        f"{POYNT_API_BASE}/businesses/{business_id}/stores/{store_id}/terminals/{terminal_id}/requests",
-        json=action_payload,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "api-version": "1.2",
-            "Poynt-Request-Id": str(uuid.uuid4()),
-        },
-    )
-    if resp.status_code not in (200, 201, 202):
-        logger.error(f"Poynt terminal request error {resp.status_code}: {resp.text}")
-        raise HTTPException(status_code=502, detail=f"Poynt terminal error: {resp.text[:200]}")
-    logger.info(f"Payment sent to terminal {terminal_id} for order {order_id}")
-    return resp.json()
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            f"{POYNT_API_BASE}/businesses/{business_id}/stores/{store_id}/terminals/{terminal_id}/requests",
+            json=action_payload,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+                "api-version": "1.2",
+                "Poynt-Request-Id": str(uuid.uuid4()),
+            },
+        )
+        logger.info(f"Poynt terminal request response {resp.status_code}: {resp.text[:500]}")
+
+        if resp.status_code not in (200, 201, 202):
+            logger.error(f"Poynt terminal request error {resp.status_code}: {resp.text}")
+            raise HTTPException(
+                status_code=502,
+                detail=f"Failed to send payment to terminal: {resp.text[:200]}",
+            )
+
+        return {"reference_id": reference_id}
 
 
-async def get_transaction_for_order(order_id: str) -> dict:
+async def check_terminal_payment(reference_id: str) -> dict:
     app_id, private_key_pem, business_id, store_id, terminal_id = _get_config()
     token = await get_access_token()
 
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.get(
             f"{POYNT_API_BASE}/businesses/{business_id}/transactions",
-            params={"orderID": order_id},
+            params={"limit": 10},
             headers={
                 "Authorization": f"Bearer {token}",
                 "api-version": "1.2",
             },
         )
         if resp.status_code != 200:
-            logger.error(f"Poynt status error {resp.status_code}: {resp.text}")
-            raise HTTPException(status_code=502, detail=f"Poynt status error: {resp.text[:200]}")
+            logger.error(f"Poynt transaction query error {resp.status_code}: {resp.text}")
+            return {"status": "ERROR", "transaction_id": None, "detail": resp.text[:200]}
 
         data = resp.json()
         transactions = data.get("list") or data.get("transactions") or []
 
-        if not transactions:
-            return {"status": "PENDING", "transaction_id": None}
+        for txn in transactions:
+            txn_ref = txn.get("references", [])
+            txn_context = txn.get("context", {})
+            txn_notes = txn.get("notes", "")
 
-        txn = transactions[-1]
-        txn_status = txn.get("status", "PENDING")
-        txn_id = str(txn.get("id", ""))
+            ref_match = False
+            for ref in txn_ref:
+                if ref.get("id") == reference_id or ref.get("customType") == reference_id:
+                    ref_match = True
+                    break
 
-        if txn_status in ("CAPTURED", "APPROVED", "AUTHORIZED"):
-            return {"status": "APPROVED", "transaction_id": txn_id}
-        elif txn_status in ("DECLINED", "VOIDED", "REFUNDED"):
-            return {"status": "DECLINED", "transaction_id": txn_id}
-        else:
-            return {"status": "PENDING", "transaction_id": None}
+            if not ref_match and reference_id not in (txn_notes or ""):
+                fund_txn = txn.get("fundingSource", {}).get("entryDetails", {})
+                action_ref = txn.get("actionReferenceId", "")
+                if action_ref != reference_id:
+                    continue
+
+            txn_status = txn.get("status", "")
+            txn_id = str(txn.get("id", ""))
+            txn_amount = txn.get("amounts", {}).get("transactionAmount", 0)
+
+            if txn_status in ("CAPTURED", "AUTHORIZED"):
+                return {
+                    "status": "APPROVED",
+                    "transaction_id": txn_id,
+                    "amount_cents": txn_amount,
+                }
+            elif txn_status in ("DECLINED", "VOIDED", "REFUNDED"):
+                return {
+                    "status": "DECLINED",
+                    "transaction_id": txn_id,
+                }
+
+        return {"status": "PENDING", "transaction_id": None}
+
+
+async def verify_transaction(transaction_id: str) -> dict:
+    app_id, private_key_pem, business_id, store_id, terminal_id = _get_config()
+    token = await get_access_token()
+
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(
+            f"{POYNT_API_BASE}/businesses/{business_id}/transactions/{transaction_id}",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "api-version": "1.2",
+            },
+        )
+        if resp.status_code != 200:
+            return {"valid": False, "detail": f"Transaction not found: {resp.status_code}"}
+
+        txn = resp.json()
+        txn_status = txn.get("status", "")
+        txn_amount = txn.get("amounts", {}).get("transactionAmount", 0)
+
+        if txn_status in ("CAPTURED", "AUTHORIZED"):
+            return {
+                "valid": True,
+                "status": txn_status,
+                "amount_cents": txn_amount,
+                "transaction_id": str(txn.get("id", "")),
+            }
+        return {"valid": False, "status": txn_status}

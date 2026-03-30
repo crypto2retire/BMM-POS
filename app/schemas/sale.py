@@ -72,9 +72,10 @@ class PoyntChargeRequest(BaseModel):
 
 
 class PoyntChargeResponse(BaseModel):
-    poynt_order_id: str
+    reference_id: str
 
 
 class PoyntStatusResponse(BaseModel):
     status: str
     transaction_id: Optional[str] = None
+    amount_cents: Optional[int] = None

@@ -194,6 +194,43 @@ async def pos_create_sale(
     if data.payment_method not in ("cash", "card", "split", "gift_card"):
         raise HTTPException(status_code=400, detail="payment_method must be cash, card, split, or gift_card")
 
+    if data.payment_method == "card":
+        if not data.card_transaction_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Card transaction ID is required for card payments. Payment must be completed on the terminal first.",
+            )
+        try:
+            verification = await poynt.verify_transaction(data.card_transaction_id)
+            if not verification.get("valid"):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Card payment not verified. Transaction status: {verification.get('status', 'NOT_FOUND')}",
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unable to verify card payment: {str(e)[:100]}",
+            )
+
+    if data.payment_method == "split" and data.card_transaction_id:
+        try:
+            verification = await poynt.verify_transaction(data.card_transaction_id)
+            if not verification.get("valid"):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Card portion not verified. Transaction status: {verification.get('status', 'NOT_FOUND')}",
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unable to verify card payment portion: {str(e)[:100]}",
+            )
+
     resolved_lines = []
     for cart_item in data.items:
         result = await db.execute(
@@ -610,24 +647,29 @@ async def poynt_charge(
     data: PoyntChargeRequest,
     current_user: Vendor = Depends(get_current_user),
 ):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
     amount_cents = math.ceil(data.amount * 100)
-    order_id = await poynt.create_terminal_order(
+    result = await poynt.send_payment_to_terminal(
         amount_cents=amount_cents,
         currency="USD",
         order_ref=data.order_ref,
     )
-    return PoyntChargeResponse(poynt_order_id=order_id)
+    return PoyntChargeResponse(reference_id=result["reference_id"])
 
 
-@router.get("/poynt/status/{poynt_order_id}", response_model=PoyntStatusResponse)
+@router.get("/poynt/status/{reference_id}", response_model=PoyntStatusResponse)
 async def poynt_status(
-    poynt_order_id: str,
+    reference_id: str,
     current_user: Vendor = Depends(get_current_user),
 ):
-    result = await poynt.get_transaction_for_order(poynt_order_id)
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+    result = await poynt.check_terminal_payment(reference_id)
     return PoyntStatusResponse(
         status=result["status"],
         transaction_id=result.get("transaction_id"),
+        amount_cents=result.get("amount_cents"),
     )
 
 
