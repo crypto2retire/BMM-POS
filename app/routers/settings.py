@@ -46,6 +46,7 @@ DEFAULT_SETTINGS = {
     "auto_vendor_email": "true",
     "vendor_online_store": "false",
     "vendor_photo_uploads": "true",
+    "require_photo_description_online": "true",
     "module_rent": "true",
     "module_studio": "true",
     "module_gift_cards": "true",

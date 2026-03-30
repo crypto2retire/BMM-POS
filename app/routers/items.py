@@ -17,6 +17,7 @@ from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse
 from app.routers.auth import get_current_user
 from app.services.barcode import generate_sku, generate_short_barcode
 from app.services.labels import generate_label_pdf, generate_label_sheet, generate_dymo_xml
+from app.models.store_setting import StoreSetting
 
 PHOTO_UPLOAD_DIR = "frontend/static/images/items"
 IMAGE_UPLOAD_DIR = "frontend/static/uploads/items"
@@ -119,6 +120,19 @@ async def create_item(
 
     has_photos = bool(data.photo_urls and len(data.photo_urls) > 0)
     is_online_val = data.is_online if has_photos else False
+
+    if is_online_val:
+        require_result = await db.execute(
+            select(StoreSetting.value).where(StoreSetting.key == "require_photo_description_online")
+        )
+        require_val = require_result.scalar_one_or_none()
+        if require_val is None:
+            require_val = "true"
+        if require_val in ("true", "1"):
+            if not has_photos:
+                raise HTTPException(status_code=400, detail="Items must have at least one photo to be listed online")
+            if not data.description or not data.description.strip():
+                raise HTTPException(status_code=400, detail="Items must have a description to be listed online")
 
     item = Item(
         vendor_id=vendor_id,
@@ -317,10 +331,24 @@ async def update_item(
 
     update_data = data.model_dump(exclude_none=True)
     if update_data.get("is_online"):
-        current_photos = item.photo_urls or []
+        current_photos = update_data.get("photo_urls", item.photo_urls) or []
         has_image = bool(item.image_path) if hasattr(item, 'image_path') else False
-        if not current_photos and not has_image:
-            raise HTTPException(status_code=400, detail="Items must have a photo to be listed online")
+        new_desc = update_data.get("description", item.description)
+
+        require_result = await db.execute(
+            select(StoreSetting.value).where(StoreSetting.key == "require_photo_description_online")
+        )
+        require_val = require_result.scalar_one_or_none()
+        if require_val is None:
+            require_val = "true"
+        if require_val in ("true", "1"):
+            if not current_photos and not has_image:
+                raise HTTPException(status_code=400, detail="Items must have at least one photo to be listed online")
+            if not new_desc or not new_desc.strip():
+                raise HTTPException(status_code=400, detail="Items must have a description to be listed online")
+        else:
+            if not current_photos and not has_image:
+                raise HTTPException(status_code=400, detail="Items must have a photo to be listed online")
     for field, value in update_data.items():
         setattr(item, field, value)
 

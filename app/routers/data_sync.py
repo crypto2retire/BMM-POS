@@ -319,6 +319,32 @@ async def store_images_to_db(
     }
 
 
+@router.post("/set-photo-items-online")
+async def set_photo_items_online(
+    secret: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    if secret != SYNC_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid key")
+
+    result = await db.execute(
+        select(Item).where(
+            Item.status == "active",
+            Item.image_path.isnot(None),
+            Item.image_path != "",
+            Item.is_online == False,
+        )
+    )
+    items = result.scalars().all()
+    updated = 0
+    for item in items:
+        item.is_online = True
+        updated += 1
+
+    await db.commit()
+    return {"updated": updated, "message": f"Set {updated} items with photos to online"}
+
+
 @router.post("/clear-item-photos")
 async def clear_item_photos(
     barcode: str = Query(...),
