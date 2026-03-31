@@ -287,8 +287,15 @@
             <p class="page-subtitle">Manage all vendor accounts, billing, and access</p>
         </div>
 
-        <div class="search-bar">
+        <div class="search-bar" style="flex-wrap:wrap">
             <input type="text" id="search-input" placeholder="Filter by name or booth number&hellip;" oninput="filterTable()">
+            <select id="vendor-status-filter" onchange="filterTable()"
+                style="padding:0.4rem 0.6rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text-light); font-size:0.78rem; font-family:'Roboto',sans-serif; cursor:pointer; min-height:44px">
+                <option value="active" selected>Active Vendors</option>
+                <option value="all-active">Active + Suspended</option>
+                <option value="archived">Archived Only</option>
+                <option value="all">All Vendors</option>
+            </select>
             <select id="vendor-page-size" onchange="changeVendorPageSize(this.value)"
                 style="padding:0.4rem 0.6rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text-light); font-size:0.72rem; font-family:'Roboto',sans-serif; cursor:pointer">
                 <option value="10">10 per page</option>
@@ -614,15 +621,35 @@
 
     /* ── Grid view ───────────────────────────────────────── */
 
+    function getFilteredVendors() {
+        const q = document.getElementById('search-input').value.trim().toLowerCase();
+        const statusFilter = document.getElementById('vendor-status-filter').value;
+
+        let filtered = allVendors;
+
+        // Status filter
+        if (statusFilter === 'active') {
+            filtered = filtered.filter(v => v.status === 'active');
+        } else if (statusFilter === 'all-active') {
+            filtered = filtered.filter(v => v.status !== 'archived');
+        } else if (statusFilter === 'archived') {
+            filtered = filtered.filter(v => v.status === 'archived');
+        }
+        // 'all' shows everything
+
+        // Text search
+        if (q) {
+            filtered = filtered.filter(v =>
+                v.name.toLowerCase().includes(q) ||
+                (v.booth_number && v.booth_number.toLowerCase().includes(q)));
+        }
+
+        return filtered;
+    }
+
     function filterTable() {
         vendorPage = 1;
-        const q = document.getElementById('search-input').value.trim().toLowerCase();
-        const filtered = q
-            ? allVendors.filter(v =>
-                v.name.toLowerCase().includes(q) ||
-                (v.booth_number && v.booth_number.toLowerCase().includes(q)))
-            : allVendors;
-        renderGrid(filtered);
+        renderGrid(getFilteredVendors());
     }
 
     function renderGrid(vendors) {
@@ -722,25 +749,12 @@
 
     function changeVendorPage(delta) {
         vendorPage += delta;
-        // Re-run filter without resetting page
-        const q = document.getElementById('search-input').value.trim().toLowerCase();
-        const filtered = q
-            ? allVendors.filter(v =>
-                v.name.toLowerCase().includes(q) ||
-                (v.booth_number && v.booth_number.toLowerCase().includes(q)))
-            : allVendors;
-        renderGrid(filtered);
+        renderGrid(getFilteredVendors());
     }
 
     function goToVendorPage(page) {
         vendorPage = page;
-        const q = document.getElementById('search-input').value.trim().toLowerCase();
-        const filtered = q
-            ? allVendors.filter(v =>
-                v.name.toLowerCase().includes(q) ||
-                (v.booth_number && v.booth_number.toLowerCase().includes(q)))
-            : allVendors;
-        renderGrid(filtered);
+        renderGrid(getFilteredVendors());
     }
 
     function changeVendorPageSize(size) {
@@ -915,7 +929,7 @@
             await apiDelete(`/api/v1/vendors/${id}`);
             showAlert('alert-container', `${name} has been suspended.`, 'success');
             await loadVendors();
-            renderGrid(allVendors);
+            renderGrid(getFilteredVendors());
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
         }
@@ -927,7 +941,7 @@
             await apiPut(`/api/v1/vendors/${id}`, { status: 'active' });
             showAlert('alert-container', `${name} has been activated.`, 'success');
             await loadVendors();
-            renderGrid(allVendors);
+            renderGrid(getFilteredVendors());
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
         }
@@ -939,7 +953,7 @@
             const resp = await apiPost(`/api/v1/vendors/${id}/archive`);
             showAlert('alert-container', resp.detail || `${name} has been archived.`, 'success');
             await loadVendors();
-            renderGrid(allVendors);
+            renderGrid(getFilteredVendors());
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
         }
@@ -951,7 +965,7 @@
             const resp = await apiPost(`/api/v1/vendors/${id}/unarchive`);
             showAlert('alert-container', resp.detail || `${name} has been unarchived.`, 'success');
             await loadVendors();
-            renderGrid(allVendors);
+            renderGrid(getFilteredVendors());
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
         }
@@ -1022,7 +1036,7 @@
             showAlert('alert-container', 'Vendor created successfully.', 'success');
             closeAddModal();
             await loadVendors();
-            renderGrid(allVendors);
+            renderGrid(getFilteredVendors());
         } catch (err) {
             showAlert('add-modal-alert', err.message, 'error');
         } finally {
@@ -1094,7 +1108,7 @@
         }
         await loadVendors();
         document.getElementById('vendor-page-size').value = vendorPageSize;
-        renderGrid(allVendors);
+        renderGrid(getFilteredVendors());
     }
 
     init();
