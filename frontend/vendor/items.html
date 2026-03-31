@@ -1674,14 +1674,14 @@
                             <button onclick="printDymoLabel(${item.id})">Dymo Label</button>
                         </div>
                     </div>
-                    <div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+                    ${item.status === 'active' || item.status === 'inactive' ? `<div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
                         <label class="status-toggle" title="${isActive ? 'Mark not for sale' : 'Mark for sale'}">
                             <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
                             <span class="slider"></span>
                         </label>
                         <span style="font-size:0.65rem;color:${isActive ? '#6EE7B7' : 'var(--text-light)'};white-space:nowrap">${isActive ? 'For Sale' : 'Not For Sale'}</span>
-                    </div>
-                    <button class="btn btn-outline" onclick="event.stopPropagation();deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.68rem;padding:0.25rem 0.5rem;color:#FCA5A5;border-color:rgba(252,165,165,0.3)" title="Delete item">Delete</button>
+                    </div>` : ''}
+                    ${item.status !== 'removed' ? `<button class="btn btn-outline" onclick="event.stopPropagation();deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.68rem;padding:0.25rem 0.5rem;color:#FCA5A5;border-color:rgba(252,165,165,0.3)" title="Delete item">Delete</button>` : '<span style="font-size:0.65rem;color:#FCA5A5;opacity:0.6">Deleted</span>'}
                 </div>
                 <div class="item-card-photos">
                     ${(item.photo_urls || []).slice(1).map(url =>
@@ -1768,12 +1768,12 @@
                 <td><div class="actions-cell">
                     <button class="btn btn-outline" onclick="openModal(${itemJson})">Edit</button>
                     <button class="btn btn-secondary" onclick="printLabelAuto(${item.id}, '${style}')">Label</button>
-                    <label class="status-toggle" title="${isActive ? 'Mark not for sale' : 'Mark for sale'}">
+                    ${item.status === 'active' || item.status === 'inactive' ? `<label class="status-toggle" title="${isActive ? 'Mark not for sale' : 'Mark for sale'}">
                         <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
                         <span class="slider"></span>
                     </label>
-                    <span style="font-size:0.6rem;color:${isActive ? '#6EE7B7' : 'var(--text-light)'};min-width:50px">${isActive ? 'For Sale' : 'Not For Sale'}</span>
-                    <button class="btn btn-outline" onclick="deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:0.2rem 0.45rem;color:#FCA5A5;border-color:rgba(252,165,165,0.3)" title="Delete">&#x2716;</button>
+                    <span style="font-size:0.6rem;color:${isActive ? '#6EE7B7' : 'var(--text-light)'};min-width:50px">${isActive ? 'For Sale' : 'Not For Sale'}</span>` : ''}
+                    ${item.status !== 'removed' ? `<button class="btn btn-outline" onclick="deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:0.2rem 0.45rem;color:#FCA5A5;border-color:rgba(252,165,165,0.3)" title="Delete">&#x2716;</button>` : ''}
                 </div></td>
             </tr>`;
         });

@@ -214,6 +214,37 @@ async def lifespan(app: FastAPI):
             await session.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_poynt_payments_status ON poynt_payments(status)"
             ))
+            await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS eod_reports (
+                    id SERIAL PRIMARY KEY,
+                    report_date DATE NOT NULL,
+                    submitted_by INTEGER NOT NULL REFERENCES vendors(id),
+                    submitted_by_name VARCHAR(200),
+                    starting_balance NUMERIC(10,2) NOT NULL,
+                    counted_cash NUMERIC(10,2) NOT NULL,
+                    expected_cash NUMERIC(10,2) NOT NULL,
+                    variance NUMERIC(10,2) NOT NULL,
+                    deposit NUMERIC(10,2) NOT NULL,
+                    total_revenue NUMERIC(10,2) NOT NULL DEFAULT 0,
+                    total_tax NUMERIC(10,2) NOT NULL DEFAULT 0,
+                    total_transactions INTEGER NOT NULL DEFAULT 0,
+                    items_sold INTEGER NOT NULL DEFAULT 0,
+                    cash_total NUMERIC(10,2) NOT NULL DEFAULT 0,
+                    cash_count INTEGER NOT NULL DEFAULT 0,
+                    card_total NUMERIC(10,2) NOT NULL DEFAULT 0,
+                    card_count INTEGER NOT NULL DEFAULT 0,
+                    gift_card_total NUMERIC(10,2) NOT NULL DEFAULT 0,
+                    gift_card_count INTEGER NOT NULL DEFAULT 0,
+                    voided_count INTEGER NOT NULL DEFAULT 0,
+                    voided_total NUMERIC(10,2) NOT NULL DEFAULT 0,
+                    cashier_breakdown JSONB,
+                    notes TEXT,
+                    submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """))
+            await session.execute(text(
+                "CREATE INDEX IF NOT EXISTS idx_eod_reports_date ON eod_reports(report_date)"
+            ))
             await session.commit()
     except Exception as e:
         print(f"BMM-POS: column migration FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)

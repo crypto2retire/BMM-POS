@@ -1406,7 +1406,13 @@
             </div>
             <div style="background:#2D2D30;padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
                 <div style="font-size:0.75rem;color:#A8A6A1;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Starting Drawer Balance</div>
-                <div style="font-family:'EB Garamond',serif;font-size:1.1rem;color:#F0EDE8;font-weight:600" id="eod-starting-balance">$150.00</div>
+                <div style="display:flex;align-items:center;gap:6px">
+                    <span style="color:#F0EDE8;font-size:1rem">$</span>
+                    <input type="number" id="eod-starting-input" min="0" step="0.01" value="150.00"
+                        style="width:80px;background:#1E1E20;border:1px solid var(--border);color:#F0EDE8;font-family:'EB Garamond',serif;font-size:1.1rem;padding:2px 6px;text-align:right;border-radius:3px"
+                        onchange="saveStartingCash()" oninput="recalcFromStartingCash()">
+                    <button onclick="saveStartingCash()" style="font-size:0.6rem;padding:2px 6px;background:var(--gold-dim);color:#38383B;border:none;border-radius:3px;cursor:pointer;font-weight:700">SET</button>
+                </div>
             </div>
             <div style="background:#2D2D30;padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
                 <div style="font-size:0.75rem;color:#A8A6A1;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Expected Cash in Drawer</div>
@@ -1442,10 +1448,17 @@
                 <div style="font-size:0.7rem;color:#A8A6A1;margin-top:6px;text-align:center" id="eod-variance-note"></div>
             </div>
             <div id="eod-cashier-breakdown" style="margin-bottom:1rem"></div>
+            <div style="margin-bottom:1rem">
+                <div style="font-size:0.7rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-family:'Roboto',sans-serif">Notes (optional)</div>
+                <textarea id="eod-notes" rows="2" placeholder="Any notes about today's shift..."
+                    style="width:100%;background:#1E1E20;border:1px solid var(--border);color:#F0EDE8;font-family:'Roboto',sans-serif;font-size:0.8rem;padding:8px;border-radius:3px;resize:vertical;box-sizing:border-box"></textarea>
+            </div>
+            <div id="eod-submit-status" style="display:none;text-align:center;padding:6px;margin-bottom:8px;border-radius:3px;font-size:0.8rem"></div>
         </div>
         <div class="modal-actions">
             <button class="cancel-btn" onclick="document.getElementById('eod-modal').classList.add('hidden')">Close</button>
-            <button class="confirm-btn" onclick="printEndOfDay()">Print Report</button>
+            <button class="confirm-btn" onclick="printEndOfDay()" style="flex:1">Print Report</button>
+            <button class="confirm-btn" id="eod-submit-btn" onclick="submitEndOfDay()" style="flex:1;background:#065F46;border-color:#065F46">Submit &amp; Close Day</button>
         </div>
     </div>
 </div>
@@ -3525,8 +3538,13 @@ table { width: 100%; border-collapse: collapse; }
             document.getElementById('eod-gc-count').textContent = eodData.gift_card.count + ' sale' + (eodData.gift_card.count !== 1 ? 's' : '');
             document.getElementById('eod-tax-total').textContent = '$' + eodData.total_tax.toFixed(2);
             document.getElementById('eod-items-sold').textContent = eodData.items_sold + ' item' + (eodData.items_sold !== 1 ? 's' : '');
-            document.getElementById('eod-starting-balance').textContent = '$' + eodData.starting_balance.toFixed(2);
+            document.getElementById('eod-starting-input').value = eodData.starting_balance.toFixed(2);
             document.getElementById('eod-expected-cash').textContent = '$' + eodData.expected_cash_in_drawer.toFixed(2);
+
+            document.getElementById('eod-notes').value = '';
+            document.getElementById('eod-submit-status').style.display = 'none';
+            document.getElementById('eod-submit-btn').disabled = false;
+            document.getElementById('eod-submit-btn').textContent = 'Submit & Close Day';
 
             var voidedRow = document.getElementById('eod-voided-row');
             if (eodData.voided && eodData.voided.count > 0) {
@@ -3579,8 +3597,9 @@ table { width: 100%; border-collapse: collapse; }
         total = Math.round(total * 100) / 100;
         document.getElementById('eod-counted-cash').textContent = '$' + total.toFixed(2);
 
-        const expectedCash = eodData ? eodData.expected_cash_in_drawer : 150;
-        const startingBalance = eodData ? eodData.starting_balance : 150;
+        const startingBalance = parseFloat(document.getElementById('eod-starting-input').value) || 150;
+        const cashSales = eodData ? eodData.cash.total : 0;
+        const expectedCash = Math.round((startingBalance + cashSales) * 100) / 100;
         const variance = Math.round((total - expectedCash) * 100) / 100;
         const deposit = Math.max(Math.round((total - startingBalance) * 100) / 100, 0);
 
@@ -3602,6 +3621,88 @@ table { width: 100%; border-collapse: collapse; }
             varEl.textContent = '$0.00';
             varEl.style.color = '#7BC4A0';
             noteEl.textContent = 'Cash drawer matches expected amount';
+        }
+    }
+
+    async function saveStartingCash() {
+        const amount = parseFloat(document.getElementById('eod-starting-input').value);
+        if (isNaN(amount) || amount < 0) return;
+        try {
+            await apiFetch('POST', '/api/v1/pos/set-starting-cash', { amount: amount });
+            if (eodData) {
+                eodData.starting_balance = amount;
+                eodData.expected_cash_in_drawer = amount + eodData.cash.total;
+                document.getElementById('eod-expected-cash').textContent = '$' + eodData.expected_cash_in_drawer.toFixed(2);
+            }
+            updateCashCount();
+        } catch (err) {
+            alert('Failed to save starting cash: ' + (err.message || 'Unknown error'));
+        }
+    }
+
+    function recalcFromStartingCash() {
+        const sb = parseFloat(document.getElementById('eod-starting-input').value) || 150;
+        const cashSales = eodData ? eodData.cash.total : 0;
+        document.getElementById('eod-expected-cash').textContent = '$' + (sb + cashSales).toFixed(2);
+        updateCashCount();
+    }
+
+    async function submitEndOfDay() {
+        if (!eodData) return;
+        const countedText = document.getElementById('eod-counted-cash').textContent.replace('$', '');
+        const counted = parseFloat(countedText) || 0;
+        if (counted === 0) {
+            if (!confirm('You haven\'t counted any cash. Submit the report anyway?')) return;
+        }
+
+        const startingBalance = parseFloat(document.getElementById('eod-starting-input').value) || 150;
+        const cashSales = eodData.cash.total;
+        const expectedCash = Math.round((startingBalance + cashSales) * 100) / 100;
+        const variance = Math.round((counted - expectedCash) * 100) / 100;
+        const deposit = Math.max(Math.round((counted - startingBalance) * 100) / 100, 0);
+
+        const payload = {
+            report_date: eodData.date,
+            starting_balance: startingBalance,
+            counted_cash: counted,
+            expected_cash: expectedCash,
+            variance: variance,
+            deposit: deposit,
+            total_revenue: eodData.total_revenue,
+            total_tax: eodData.total_tax,
+            total_transactions: eodData.total_transactions,
+            items_sold: eodData.items_sold,
+            cash_total: eodData.cash.total,
+            cash_count: eodData.cash.count,
+            card_total: eodData.card.total,
+            card_count: eodData.card.count,
+            gift_card_total: eodData.gift_card.total,
+            gift_card_count: eodData.gift_card.count,
+            voided_count: eodData.voided ? eodData.voided.count : 0,
+            voided_total: eodData.voided ? eodData.voided.total : 0,
+            cashier_breakdown: eodData.cashier_breakdown || [],
+            notes: document.getElementById('eod-notes').value.trim() || null,
+        };
+
+        const btn = document.getElementById('eod-submit-btn');
+        const statusEl = document.getElementById('eod-submit-status');
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+
+        try {
+            const resp = await apiFetch('POST', '/api/v1/pos/end-of-day/submit', payload);
+            statusEl.style.display = 'block';
+            statusEl.style.background = '#065F46';
+            statusEl.style.color = '#6EE7B7';
+            statusEl.textContent = resp.detail || 'Report submitted successfully!';
+            btn.textContent = 'Submitted ✓';
+        } catch (err) {
+            statusEl.style.display = 'block';
+            statusEl.style.background = '#7F1D1D';
+            statusEl.style.color = '#FCA5A5';
+            statusEl.textContent = err.message || 'Failed to submit report';
+            btn.disabled = false;
+            btn.textContent = 'Submit & Close Day';
         }
     }
 

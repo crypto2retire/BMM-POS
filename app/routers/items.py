@@ -595,6 +595,8 @@ async def toggle_item_status(
         raise HTTPException(status_code=404, detail="Item not found")
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
+    if item.status not in ("active", "inactive"):
+        raise HTTPException(status_code=409, detail=f"Cannot toggle status of {item.status} items")
     item.status = "inactive" if item.status == "active" else "active"
     await db.commit()
     await db.refresh(item)

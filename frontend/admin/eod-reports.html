@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>End of Day Reports — Bowenstreet Market</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+    <style>
+        .report-list { margin-top: 1rem; }
+        .report-row {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1rem 1.25rem;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            display: grid;
+            grid-template-columns: 140px 1fr 100px 100px 100px 100px;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .report-row:hover { border-color: var(--gold-dim); }
+        .report-row .date { font-family: 'EB Garamond', serif; font-size: 1.05rem; color: var(--text); font-weight: 600; }
+        .report-row .sub { font-size: 0.72rem; color: var(--text-light); }
+        .report-row .val { font-family: 'EB Garamond', serif; font-size: 1.1rem; text-align: right; }
+        .report-row .val-label { font-size: 0.6rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.08em; text-align: right; }
+        .val-green { color: #7BC4A0; }
+        .val-gold { color: var(--gold); }
+        .val-blue { color: #6495ed; }
+        .val-red { color: #F87171; }
+
+        .detail-view { display: none; }
+        .detail-view.active { display: block; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
+        .detail-box { background: var(--bg); padding: 0.75rem; text-align: center; border: 1px solid var(--border); }
+        .detail-box .label { font-size: 0.6rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.1em; }
+        .detail-box .val { font-family: 'EB Garamond', serif; font-size: 1.5rem; margin-top: 4px; }
+        .detail-4grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 1rem; }
+        .detail-line { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .detail-line .dl-label { color: var(--text-light); }
+        .detail-line .dl-val { font-family: 'EB Garamond', serif; color: var(--text); font-weight: 600; }
+        .cashier-row { background: var(--bg); padding: 8px 12px; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .no-reports { text-align: center; padding: 3rem; color: var(--text-light); font-size: 0.95rem; }
+        .back-btn { cursor: pointer; font-size: 0.85rem; color: var(--gold); background: none; border: none; padding: 0; margin-bottom: 1rem; font-family: 'Roboto', sans-serif; }
+        .back-btn:hover { text-decoration: underline; }
+
+        @media (max-width: 768px) {
+            .report-row {
+                grid-template-columns: 1fr 1fr;
+                gap: 0.5rem;
+            }
+            .report-row .sub { grid-column: 1 / -1; }
+            .detail-4grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <a href="/admin/index.html" class="navbar-brand">
+        <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
+        <span class="store-name">Admin</span>
+    </a>
+    <div class="navbar-user">
+        <span id="user-name">Administrator</span>
+        <nav class="navbar-nav">
+            <a href="/admin/index.html">Dashboard</a>
+            <a href="/admin/vendors.html">Vendors</a>
+            <a href="/admin/rent.html">Rent</a>
+            <a href="/vendor/items.html">Items</a>
+            <a href="/admin/studio.html">Studio</a>
+            <a href="/admin/reports.html">Reports</a>
+            <a href="/admin/eod-reports.html" class="active">EOD Reports</a>
+            <a href="/admin/payouts.html">Payouts</a>
+            <a href="/admin/settings.html">Settings</a>
+            <a href="/pos/index.html">POS Terminal</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
+        </nav>
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
+    </div>
+</nav>
+<div class="mobile-nav-dropdown" id="mobile-nav">
+    <a href="/admin/index.html">Dashboard</a>
+    <a href="/admin/vendors.html">Vendors</a>
+    <a href="/admin/rent.html">Rent</a>
+    <a href="/vendor/items.html">Items</a>
+    <a href="/admin/studio.html">Studio</a>
+    <a href="/admin/reports.html">Reports</a>
+    <a href="/admin/eod-reports.html" class="active">EOD Reports</a>
+    <a href="/admin/payouts.html">Payouts</a>
+    <a href="/admin/settings.html">Settings</a>
+    <a href="/pos/index.html">POS Terminal</a>
+    <a href="#" onclick="handleLogout()">Logout</a>
+</div>
+
+<div class="main-content">
+    <div id="alert-container"></div>
+
+    <div id="list-view">
+        <h1 style="font-family:'EB Garamond',serif;font-size:1.6rem;margin-bottom:0.25rem">End of Day Reports</h1>
+        <p style="color:var(--text-light);font-size:0.85rem;margin-bottom:1.25rem">Daily closing reports submitted from the POS terminal</p>
+
+        <div class="report-list" id="report-list">
+            <div class="no-reports" id="loading-msg">Loading reports...</div>
+        </div>
+    </div>
+
+    <div id="detail-view" class="detail-view">
+        <button class="back-btn" onclick="showList()">&larr; Back to all reports</button>
+        <h1 style="font-family:'EB Garamond',serif;font-size:1.5rem;margin-bottom:0.25rem" id="detail-title">End of Day Report</h1>
+        <p style="color:var(--text-light);font-size:0.8rem;margin-bottom:1.25rem" id="detail-subtitle"></p>
+
+        <div class="detail-grid">
+            <div class="detail-box">
+                <div class="label">Total Sales</div>
+                <div class="val val-gold" id="d-revenue">$0.00</div>
+            </div>
+            <div class="detail-box">
+                <div class="label">Transactions</div>
+                <div class="val" style="color:var(--text)" id="d-txns">0</div>
+            </div>
+        </div>
+
+        <div class="detail-4grid">
+            <div class="detail-box">
+                <div class="label">Cash</div>
+                <div class="val val-green" id="d-cash" style="font-size:1.2rem">$0.00</div>
+                <div style="font-size:0.7rem;color:var(--text-light)" id="d-cash-count">0 sales</div>
+            </div>
+            <div class="detail-box">
+                <div class="label">Card</div>
+                <div class="val val-blue" id="d-card" style="font-size:1.2rem">$0.00</div>
+                <div style="font-size:0.7rem;color:var(--text-light)" id="d-card-count">0 sales</div>
+            </div>
+            <div class="detail-box">
+                <div class="label">Gift Card</div>
+                <div class="val val-gold" id="d-gc" style="font-size:1.2rem">$0.00</div>
+                <div style="font-size:0.7rem;color:var(--text-light)" id="d-gc-count">0 sales</div>
+            </div>
+            <div class="detail-box">
+                <div class="label">Tax Collected</div>
+                <div class="val" style="color:var(--text);font-size:1.2rem" id="d-tax">$0.00</div>
+                <div style="font-size:0.7rem;color:var(--text-light)" id="d-items">0 items</div>
+            </div>
+        </div>
+
+        <div id="d-voided-row" style="display:none;background:var(--bg);padding:0.5rem 0.75rem;margin-bottom:1rem;border:1px solid #7F1D1D">
+            <span style="color:#F87171;font-weight:600;font-size:0.85rem">Voided: </span>
+            <span style="color:#F87171" id="d-voided"></span>
+        </div>
+
+        <h3 style="font-family:'EB Garamond',serif;font-size:1.1rem;margin:1.25rem 0 0.5rem">Cash Drawer</h3>
+        <div class="detail-line"><span class="dl-label">Starting Balance</span><span class="dl-val" id="d-starting">$0.00</span></div>
+        <div class="detail-line"><span class="dl-label">Expected Cash in Drawer</span><span class="dl-val val-green" id="d-expected">$0.00</span></div>
+        <div class="detail-line"><span class="dl-label">Counted Cash</span><span class="dl-val" id="d-counted">$0.00</span></div>
+        <div class="detail-line"><span class="dl-label">Variance</span><span class="dl-val" id="d-variance">$0.00</span></div>
+        <div class="detail-line" style="border-bottom:2px solid var(--gold-dim)"><span class="dl-label" style="font-weight:700;color:var(--gold)">Deposit</span><span class="dl-val" style="font-size:1.2rem;color:var(--gold)" id="d-deposit">$0.00</span></div>
+
+        <div id="d-cashier-section" style="margin-top:1.25rem"></div>
+
+        <div id="d-notes-section" style="display:none;margin-top:1.25rem">
+            <h3 style="font-family:'EB Garamond',serif;font-size:1.1rem;margin-bottom:0.5rem">Notes</h3>
+            <div style="background:var(--bg);padding:0.75rem;border:1px solid var(--border);font-size:0.9rem;color:var(--text);white-space:pre-wrap" id="d-notes"></div>
+        </div>
+    </div>
+</div>
+
+<nav class="admin-bottom-nav">
+    <a href="/admin/index.html"><span class="nav-icon">&#127968;</span>Dashboard</a>
+    <a href="/admin/vendors.html"><span class="nav-icon">&#128101;</span>Vendors</a>
+    <a href="/admin/rent.html"><span class="nav-icon">&#128179;</span>Rent</a>
+    <a href="/admin/eod-reports.html" class="active"><span class="nav-icon">&#128203;</span>EOD</a>
+    <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
+</nav>
+
+<script src="/static/js/api.js"></script>
+<script>
+    function toggleMobileNav() {
+        document.getElementById('mobile-nav').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+        var nav = document.getElementById('mobile-nav');
+        var btn = document.getElementById('hamburger-btn');
+        if (nav.classList.contains('open') && !nav.contains(e.target) && !btn.contains(e.target)) {
+            nav.classList.remove('open');
+        }
+    });
+
+    function handleLogout() {
+        sessionStorage.removeItem('bmm_token');
+        sessionStorage.removeItem('bmm_user');
+        window.location.href = '/pos/index.html';
+    }
+
+    function escHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function fmt(n) { return '$' + (n || 0).toFixed(2); }
+
+    function fmtDate(iso) {
+        var d = new Date(iso + 'T12:00:00');
+        return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    var allReports = [];
+
+    async function loadReports() {
+        try {
+            var data = await apiGet('/api/v1/pos/end-of-day/reports?limit=100');
+            allReports = data.reports || [];
+            renderList();
+        } catch (err) {
+            document.getElementById('report-list').innerHTML = '<div class="no-reports">Failed to load reports: ' + escHtml(err.message || 'Unknown error') + '</div>';
+        }
+    }
+
+    function renderList() {
+        var container = document.getElementById('report-list');
+        if (allReports.length === 0) {
+            container.innerHTML = '<div class="no-reports">No End of Day reports have been submitted yet.<br><span style="font-size:0.8rem">Submit your first report from the POS terminal\'s End of Day screen.</span></div>';
+            return;
+        }
+        var html = '';
+        html += '<div class="report-row" style="cursor:default;border:none;background:none;padding:0.5rem 1.25rem;font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em">';
+        html += '<div>Date</div><div>Submitted By</div><div style="text-align:right">Revenue</div><div style="text-align:right">Cash</div><div style="text-align:right">Card</div><div style="text-align:right">Variance</div>';
+        html += '</div>';
+        allReports.forEach(function(r) {
+            var varColor = r.variance > 0 ? 'val-green' : r.variance < 0 ? 'val-red' : '';
+            var varPrefix = r.variance > 0 ? '+' : '';
+            html += '<div class="report-row" onclick="viewReport(' + r.id + ')">';
+            html += '<div><div class="date">' + fmtDate(r.report_date) + '</div></div>';
+            html += '<div class="sub">' + escHtml(r.submitted_by_name || 'Unknown') + '</div>';
+            html += '<div><div class="val-label">Revenue</div><div class="val val-gold">' + fmt(r.total_revenue) + '</div></div>';
+            html += '<div><div class="val-label">Cash</div><div class="val val-green">' + fmt(r.cash_total) + '</div></div>';
+            html += '<div><div class="val-label">Card</div><div class="val val-blue">' + fmt(r.card_total) + '</div></div>';
+            html += '<div><div class="val-label">Variance</div><div class="val ' + varColor + '">' + varPrefix + fmt(r.variance) + '</div></div>';
+            html += '</div>';
+        });
+        container.innerHTML = html;
+    }
+
+    async function viewReport(id) {
+        try {
+            var r = await apiGet('/api/v1/pos/end-of-day/reports/' + id);
+            document.getElementById('detail-title').textContent = 'End of Day — ' + fmtDate(r.report_date);
+            document.getElementById('detail-subtitle').textContent = 'Submitted by ' + (r.submitted_by_name || 'Unknown') + (r.submitted_at ? ' on ' + new Date(r.submitted_at).toLocaleString() : '');
+            document.getElementById('d-revenue').textContent = fmt(r.total_revenue);
+            document.getElementById('d-txns').textContent = r.total_transactions;
+            document.getElementById('d-cash').textContent = fmt(r.cash_total);
+            document.getElementById('d-cash-count').textContent = r.cash_count + ' sale' + (r.cash_count !== 1 ? 's' : '');
+            document.getElementById('d-card').textContent = fmt(r.card_total);
+            document.getElementById('d-card-count').textContent = r.card_count + ' sale' + (r.card_count !== 1 ? 's' : '');
+            document.getElementById('d-gc').textContent = fmt(r.gift_card_total);
+            document.getElementById('d-gc-count').textContent = r.gift_card_count + ' sale' + (r.gift_card_count !== 1 ? 's' : '');
+            document.getElementById('d-tax').textContent = fmt(r.total_tax);
+            document.getElementById('d-items').textContent = r.items_sold + ' item' + (r.items_sold !== 1 ? 's' : '');
+
+            if (r.voided_count > 0) {
+                document.getElementById('d-voided-row').style.display = 'block';
+                document.getElementById('d-voided').textContent = r.voided_count + ' sale(s) — ' + fmt(r.voided_total);
+            } else {
+                document.getElementById('d-voided-row').style.display = 'none';
+            }
+
+            document.getElementById('d-starting').textContent = fmt(r.starting_balance);
+            document.getElementById('d-expected').textContent = fmt(r.expected_cash);
+            document.getElementById('d-counted').textContent = fmt(r.counted_cash);
+            var v = r.variance;
+            var vEl = document.getElementById('d-variance');
+            if (v > 0) { vEl.textContent = '+' + fmt(v); vEl.className = 'dl-val val-green'; }
+            else if (v < 0) { vEl.textContent = '-' + fmt(Math.abs(v)); vEl.className = 'dl-val val-red'; }
+            else { vEl.textContent = fmt(0); vEl.className = 'dl-val'; }
+            document.getElementById('d-deposit').textContent = fmt(r.deposit);
+
+            var csec = document.getElementById('d-cashier-section');
+            if (r.cashier_breakdown && r.cashier_breakdown.length > 0) {
+                var ch = '<h3 style="font-family:\'EB Garamond\',serif;font-size:1.1rem;margin-bottom:0.5rem">Cashier Breakdown</h3>';
+                r.cashier_breakdown.forEach(function(cb) {
+                    ch += '<div class="cashier-row"><div><div style="font-weight:600;color:var(--text);font-size:0.9rem">' + escHtml(cb.name) + '</div>';
+                    ch += '<div style="font-size:0.72rem;color:var(--text-light)">' + cb.transactions + ' txn &middot; Cash: ' + fmt(cb.cash_total) + ' &middot; Card: ' + fmt(cb.card_total) + '</div>';
+                    ch += '</div><div style="font-family:\'EB Garamond\',serif;font-size:1.1rem;color:var(--gold)">' + fmt(cb.total) + '</div></div>';
+                });
+                csec.innerHTML = ch;
+            } else {
+                csec.innerHTML = '';
+            }
+
+            var nsec = document.getElementById('d-notes-section');
+            if (r.notes) {
+                nsec.style.display = 'block';
+                document.getElementById('d-notes').textContent = r.notes;
+            } else {
+                nsec.style.display = 'none';
+            }
+
+            document.getElementById('list-view').style.display = 'none';
+            document.getElementById('detail-view').classList.add('active');
+        } catch (err) {
+            alert('Failed to load report: ' + (err.message || 'Unknown error'));
+        }
+    }
+
+    function showList() {
+        document.getElementById('detail-view').classList.remove('active');
+        document.getElementById('list-view').style.display = 'block';
+    }
+
+    var user = JSON.parse(sessionStorage.getItem('bmm_user') || '{}');
+    if (!user.role || user.role !== 'admin') {
+        window.location.href = '/pos/index.html';
+    } else {
+        document.getElementById('user-name').textContent = user.name || 'Administrator';
+        loadReports();
+    }
+</script>
+</body>
+</html>

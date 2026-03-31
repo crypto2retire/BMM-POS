@@ -18,6 +18,7 @@ from app.database import get_db
 from app.routers.auth import get_current_user
 from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
+from app.models.eod_report import EodReport
 from app.models.item_image import ItemImage
 from app.models.sale import Sale, SaleItem
 from app.models.gift_card import GiftCard, GiftCardTransaction
@@ -879,6 +880,16 @@ async def end_of_day_report(
     )
 
     starting_balance = Decimal("150.00")
+    from app.models.store_setting import StoreSetting
+    sb_result = await db.execute(
+        select(StoreSetting).where(StoreSetting.key == "starting_cash_" + target_date.isoformat())
+    )
+    sb_setting = sb_result.scalar_one_or_none()
+    if sb_setting and sb_setting.value:
+        try:
+            starting_balance = Decimal(sb_setting.value)
+        except Exception:
+            pass
     expected_cash_in_drawer = (starting_balance + total_cash).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
     return {
@@ -906,6 +917,203 @@ async def end_of_day_report(
             }
             for cid, info in cashier_breakdown.items()
         ],
+    }
+
+
+@router.post("/set-starting-cash")
+async def set_starting_cash(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Cashier or admin access required")
+
+    body = await request.json()
+    amount = body.get("amount")
+    if amount is None:
+        raise HTTPException(status_code=400, detail="amount is required")
+    try:
+        amount_dec = Decimal(str(amount)).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid amount")
+    if amount_dec < 0:
+        raise HTTPException(status_code=400, detail="Amount cannot be negative")
+
+    from app.models.store_setting import StoreSetting
+    store_tz = ZoneInfo("America/Chicago")
+    today = datetime.now(store_tz).date()
+    key = "starting_cash_" + today.isoformat()
+
+    result = await db.execute(select(StoreSetting).where(StoreSetting.key == key))
+    setting = result.scalar_one_or_none()
+    if setting:
+        setting.value = str(amount_dec)
+    else:
+        setting = StoreSetting(key=key, value=str(amount_dec), description=f"Starting cash for {today.isoformat()}")
+        db.add(setting)
+    await db.commit()
+    return {"starting_balance": float(amount_dec), "date": today.isoformat()}
+
+
+@router.get("/starting-cash")
+async def get_starting_cash(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Cashier or admin access required")
+
+    from app.models.store_setting import StoreSetting
+    store_tz = ZoneInfo("America/Chicago")
+    today = datetime.now(store_tz).date()
+    key = "starting_cash_" + today.isoformat()
+
+    result = await db.execute(select(StoreSetting).where(StoreSetting.key == key))
+    setting = result.scalar_one_or_none()
+    amount = Decimal(setting.value) if setting and setting.value else Decimal("150.00")
+    return {"starting_balance": float(amount), "date": today.isoformat()}
+
+
+@router.post("/end-of-day/submit")
+async def submit_eod_report(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Cashier or admin access required")
+
+    body = await request.json()
+    required = ["report_date", "starting_balance", "counted_cash", "expected_cash",
+                "variance", "deposit", "total_revenue", "total_tax",
+                "total_transactions", "items_sold"]
+    for field in required:
+        if field not in body:
+            raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+
+    try:
+        report_date = date.fromisoformat(body["report_date"])
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format")
+
+    existing = await db.execute(
+        select(EodReport).where(EodReport.report_date == report_date)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail=f"An End of Day report for {report_date.isoformat()} has already been submitted.")
+
+    report = EodReport(
+        report_date=report_date,
+        submitted_by=current_user.id,
+        submitted_by_name=current_user.name,
+        starting_balance=Decimal(str(body["starting_balance"])),
+        counted_cash=Decimal(str(body["counted_cash"])),
+        expected_cash=Decimal(str(body["expected_cash"])),
+        variance=Decimal(str(body["variance"])),
+        deposit=Decimal(str(body["deposit"])),
+        total_revenue=Decimal(str(body["total_revenue"])),
+        total_tax=Decimal(str(body["total_tax"])),
+        total_transactions=int(body["total_transactions"]),
+        items_sold=int(body["items_sold"]),
+        cash_total=Decimal(str(body.get("cash_total", 0))),
+        cash_count=int(body.get("cash_count", 0)),
+        card_total=Decimal(str(body.get("card_total", 0))),
+        card_count=int(body.get("card_count", 0)),
+        gift_card_total=Decimal(str(body.get("gift_card_total", 0))),
+        gift_card_count=int(body.get("gift_card_count", 0)),
+        voided_count=int(body.get("voided_count", 0)),
+        voided_total=Decimal(str(body.get("voided_total", 0))),
+        cashier_breakdown=body.get("cashier_breakdown"),
+        notes=body.get("notes"),
+    )
+    db.add(report)
+    await db.commit()
+    await db.refresh(report)
+    return {"id": report.id, "detail": f"End of Day report for {report_date.isoformat()} submitted successfully."}
+
+
+@router.get("/end-of-day/reports")
+async def list_eod_reports(
+    limit: int = Query(30, le=100),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    count_result = await db.execute(select(func.count(EodReport.id)))
+    total = count_result.scalar()
+
+    result = await db.execute(
+        select(EodReport)
+        .order_by(EodReport.report_date.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    reports = result.scalars().all()
+
+    return {
+        "total": total,
+        "reports": [
+            {
+                "id": r.id,
+                "report_date": r.report_date.isoformat(),
+                "submitted_by_name": r.submitted_by_name,
+                "total_revenue": float(r.total_revenue),
+                "total_transactions": r.total_transactions,
+                "cash_total": float(r.cash_total),
+                "card_total": float(r.card_total),
+                "gift_card_total": float(r.gift_card_total),
+                "variance": float(r.variance),
+                "deposit": float(r.deposit),
+                "submitted_at": r.submitted_at.isoformat() if r.submitted_at else None,
+            }
+            for r in reports
+        ],
+    }
+
+
+@router.get("/end-of-day/reports/{report_id}")
+async def get_eod_report(
+    report_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    result = await db.execute(select(EodReport).where(EodReport.id == report_id))
+    report = result.scalar_one_or_none()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    return {
+        "id": report.id,
+        "report_date": report.report_date.isoformat(),
+        "submitted_by": report.submitted_by,
+        "submitted_by_name": report.submitted_by_name,
+        "starting_balance": float(report.starting_balance),
+        "counted_cash": float(report.counted_cash),
+        "expected_cash": float(report.expected_cash),
+        "variance": float(report.variance),
+        "deposit": float(report.deposit),
+        "total_revenue": float(report.total_revenue),
+        "total_tax": float(report.total_tax),
+        "total_transactions": report.total_transactions,
+        "items_sold": report.items_sold,
+        "cash_total": float(report.cash_total),
+        "cash_count": report.cash_count,
+        "card_total": float(report.card_total),
+        "card_count": report.card_count,
+        "gift_card_total": float(report.gift_card_total),
+        "gift_card_count": report.gift_card_count,
+        "voided_count": report.voided_count,
+        "voided_total": float(report.voided_total),
+        "cashier_breakdown": report.cashier_breakdown,
+        "notes": report.notes,
+        "submitted_at": report.submitted_at.isoformat() if report.submitted_at else None,
     }
 
 
