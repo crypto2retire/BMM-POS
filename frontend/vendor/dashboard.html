@@ -14,6 +14,16 @@
     <link rel="canonical" href="https://www.bowenstreetmm.com/vendor/dashboard.html">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+    <style>
+        @media (max-width: 767px) {
+            .rent-card-layout {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 1rem !important;
+            }
+            .rent-card-layout .btn { width: 100%; }
+        }
+    </style>
 </head>
 <body class="has-bottom-nav">
 <nav class="navbar" style="background:#1e1e20;">
@@ -80,12 +90,12 @@
             <h2 class="section-title">Rent</h2>
         </div>
         <div class="card" style="padding:1.25rem 1.5rem;">
-            <div style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+            <div class="rent-card-layout" style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
                 <div>
                     <div class="card-title" style="font-size:0.8rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Monthly Rent</div>
                     <div class="card-value" id="rent-amount" style="font-size:1.5rem;font-weight:700;">—</div>
                 </div>
-                <div style="flex:1;min-width:180px;">
+                <div style="flex:1;min-width:0;">
                     <div class="card-title" style="font-size:0.8rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Status for <span id="rent-current-month"></span></div>
                     <div id="rent-status-badge" style="font-size:0.9rem;">—</div>
                 </div>
@@ -111,7 +121,7 @@
             <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:0.75rem;">Give your AI assistant a custom name. It will introduce itself by this name when helping you manage items.</p>
             <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
                 <input type="text" id="assistant-name-input" placeholder="e.g. Rosie, Max, Sage" maxlength="50"
-                    style="flex:1;min-width:180px;max-width:280px;padding:0.5rem 0.75rem;font-size:0.85rem;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Roboto',sans-serif;">
+                    style="flex:1;min-width:0;max-width:280px;padding:0.5rem 0.75rem;font-size:0.85rem;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Roboto',sans-serif;">
                 <button class="btn btn-primary btn-sm" onclick="saveAssistantName()">Save</button>
                 <button class="btn btn-outline btn-sm" onclick="resetAssistantName()">Reset to Default</button>
             </div>
