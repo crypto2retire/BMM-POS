@@ -707,9 +707,12 @@
         if (pagDiv) {
             pagDiv.innerHTML = `
                 <span>Showing ${start + 1}&ndash;${end} of ${total} vendors</span>
-                <div style="display:flex;gap:6px">
+                <div style="display:flex;gap:6px;align-items:center">
+                    <button onclick="goToVendorPage(1)" ${vendorPage <= 1 ? 'disabled' : ''}>First</button>
                     <button onclick="changeVendorPage(-1)" ${vendorPage <= 1 ? 'disabled' : ''}>Prev</button>
+                    <span style="font-size:0.72rem;color:var(--text-light)">Page ${vendorPage} of ${totalPages}</span>
                     <button onclick="changeVendorPage(1)" ${vendorPage >= totalPages ? 'disabled' : ''}>Next</button>
+                    <button onclick="goToVendorPage(${totalPages})" ${vendorPage >= totalPages ? 'disabled' : ''}>Last</button>
                 </div>
             `;
         }
@@ -718,6 +721,17 @@
     function changeVendorPage(delta) {
         vendorPage += delta;
         // Re-run filter without resetting page
+        const q = document.getElementById('search-input').value.trim().toLowerCase();
+        const filtered = q
+            ? allVendors.filter(v =>
+                v.name.toLowerCase().includes(q) ||
+                (v.booth_number && v.booth_number.toLowerCase().includes(q)))
+            : allVendors;
+        renderGrid(filtered);
+    }
+
+    function goToVendorPage(page) {
+        vendorPage = page;
         const q = document.getElementById('search-input').value.trim().toLowerCase();
         const filtered = q
             ? allVendors.filter(v =>

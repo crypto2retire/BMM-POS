@@ -1862,9 +1862,12 @@
         // Pagination bar for grid view
         grid.innerHTML += `<div class="pagination-bar" style="grid-column:1/-1">
             <span>Showing ${start + 1}&ndash;${end} of ${total} items</span>
-            <div style="display:flex;gap:6px">
+            <div style="display:flex;gap:6px;align-items:center">
+                <button onclick="goToPage(1)" ${currentPage <= 1 ? 'disabled' : ''}>First</button>
                 <button onclick="changePage(-1)" ${currentPage <= 1 ? 'disabled' : ''}>Prev</button>
+                <span style="font-size:0.72rem;color:var(--text-light)">Page ${currentPage} of ${totalPages}</span>
                 <button onclick="changePage(1)" ${currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+                <button onclick="goToPage(${totalPages})" ${currentPage >= totalPages ? 'disabled' : ''}>Last</button>
             </div>
         </div>`;
     }
@@ -1946,9 +1949,12 @@
         // Pagination bar
         html += `<div class="pagination-bar">
             <span>Showing ${start + 1}&ndash;${end} of ${total} items</span>
-            <div style="display:flex;gap:6px">
+            <div style="display:flex;gap:6px;align-items:center">
+                <button onclick="goToPage(1)" ${currentPage <= 1 ? 'disabled' : ''}>First</button>
                 <button onclick="changePage(-1)" ${currentPage <= 1 ? 'disabled' : ''}>Prev</button>
+                <span style="font-size:0.72rem;color:var(--text-light)">Page ${currentPage} of ${totalPages}</span>
                 <button onclick="changePage(1)" ${currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+                <button onclick="goToPage(${totalPages})" ${currentPage >= totalPages ? 'disabled' : ''}>Last</button>
             </div>
         </div>`;
 
@@ -1957,6 +1963,11 @@
 
     function changePage(delta) {
         currentPage += delta;
+        displayItems();
+    }
+
+    function goToPage(page) {
+        currentPage = page;
         displayItems();
     }
 
