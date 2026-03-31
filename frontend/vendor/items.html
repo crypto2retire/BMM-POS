@@ -321,6 +321,7 @@
             <option value="10">10 per page</option>
             <option value="25">25 per page</option>
             <option value="50">50 per page</option>
+            <option value="100">100 per page</option>
         </select>
         <select id="sort-order" onchange="setSortOrder(this.value)"
             style="padding:0.4rem 0.6rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text-light); font-size:0.72rem; font-family:'Roboto',sans-serif; cursor:pointer">
@@ -1889,6 +1890,7 @@
         await loadLabelSizes();
 
         document.getElementById('page-size-select').value = pageSize;
+        document.getElementById('sort-order').value = sortDirection;
         setView(currentView);
         await loadItems();
     }

@@ -87,6 +87,7 @@ async def list_items(
                 func.lower(Item.sku).like(term),
             )
         )
+    query = query.order_by(Item.created_at.desc())
     if limit:
         query = query.limit(limit)
 
