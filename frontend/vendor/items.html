@@ -32,7 +32,7 @@
         }
         .ldd button:hover { background:rgba(201,169,110,0.06); color:var(--gold); }
         .label-btn-main { border-right:1px solid var(--border) !important; }
-        .label-btn-toggle { padding:0.3rem 0.5rem !important; min-width:36px; }
+        .label-btn-toggle { padding:0.3rem 0.5rem !important; min-width:44px; min-height:44px; }
 
         /* vendor filter bar */
         .vendor-filter-bar { display:flex; align-items:center; gap:0.75rem; margin-bottom:1.25rem; flex-wrap:wrap; }
@@ -229,17 +229,24 @@
         .items-list-table td img { width:40px; height:40px; object-fit:cover; display:block; }
         .items-list-table .sku-cell { font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--text-light); }
         .items-list-table .actions-cell { white-space:nowrap; display:flex; gap:4px; }
-        .items-list-table .actions-cell button { padding:0.25rem 0.5rem; font-size:0.68rem; }
+        .items-list-table .actions-cell button { padding:0.35rem 0.6rem; font-size:0.72rem; min-height:36px; }
 
         /* Pagination */
         .pagination-bar { display:flex; align-items:center; justify-content:space-between; margin-top:1rem; font-size:0.78rem; color:var(--text-light); }
         .pagination-bar button {
             padding:0.35rem 0.8rem; background:var(--surface-2); border:1px solid var(--border);
             color:var(--text-light); cursor:pointer; font-size:0.72rem; font-family:'Roboto',sans-serif;
-            transition:background 0.15s;
+            transition:background 0.15s; min-height:44px;
         }
         .pagination-bar button:hover:not(:disabled) { background:var(--gold-dim); color:var(--gold); }
         .pagination-bar button:disabled { opacity:0.3; cursor:default; }
+        @media (max-width: 480px) {
+            .pagination-bar {
+                flex-direction: column; gap: 0.5rem; align-items: stretch;
+            }
+            .pagination-bar > span { text-align: center; }
+            .pagination-bar > div { justify-content: center; }
+        }
 
         /* Image path preview in modal */
         .image-path-preview { width:120px; height:120px; object-fit:cover; border:1px solid var(--border); margin-bottom:8px; }
@@ -590,7 +597,7 @@
                         <div id="mini-chat-messages"></div>
                         <div style="display:flex; gap:6px; padding:8px; border-top:1px solid var(--border); background:var(--surface-2); align-items:center">
                             <button type="button" id="mini-chat-photo-btn" title="Send a photo"
-                                style="background:#4e4e54;border:none;color:#fff;font-size:0.85rem;cursor:pointer;min-height:36px;min-width:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                style="background:#4e4e54;border:none;color:#fff;font-size:1rem;cursor:pointer;min-height:44px;min-width:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:0">
                                 📷
                                 <input type="file" accept="image/*" capture="environment" id="mini-chat-photo-input" style="display:none">
                             </button>
@@ -1957,7 +1964,8 @@
             return `class="${cls}" onclick="setSort('${col}')"`;
         }
 
-        let html = `<table class="items-list-table">
+        let html = `<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -0.5rem;padding:0 0.5rem">`;
+        html += `<table class="items-list-table" style="min-width:700px">
             <thead><tr>
                 <th style="cursor:default;width:32px;padding:0 4px"><input type="checkbox" onchange="toggleSelectAll()" style="width:15px;height:15px;accent-color:var(--gold);cursor:pointer"></th>
                 <th style="cursor:default">Photo</th>
@@ -2008,7 +2016,7 @@
             </tr>`;
         });
 
-        html += `</tbody></table>`;
+        html += `</tbody></table></div>`;
 
         // Pagination bar
         html += `<div class="pagination-bar">
