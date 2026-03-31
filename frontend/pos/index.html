@@ -1378,7 +1378,7 @@
                     <div style="font-family:'EB Garamond',serif;font-size:1.8rem;color:#F0EDE8;margin-top:4px" id="eod-total-txns">0</div>
                 </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:1rem">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:1rem">
                 <div style="background:#2D2D30;padding:0.75rem;text-align:center">
                     <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Cash</div>
                     <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:#7BC4A0;margin-top:4px" id="eod-cash-total">$0.00</div>
@@ -1390,6 +1390,11 @@
                     <div style="font-size:0.72rem;color:#A8A6A1" id="eod-card-count">0 sales</div>
                 </div>
                 <div style="background:#2D2D30;padding:0.75rem;text-align:center">
+                    <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Gift Card</div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:#C9A96E;margin-top:4px" id="eod-gc-total">$0.00</div>
+                    <div style="font-size:0.72rem;color:#A8A6A1" id="eod-gc-count">0 sales</div>
+                </div>
+                <div style="background:#2D2D30;padding:0.75rem;text-align:center">
                     <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Tax</div>
                     <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:#F0EDE8;margin-top:4px" id="eod-tax-total">$0.00</div>
                     <div style="font-size:0.72rem;color:#A8A6A1" id="eod-items-sold">0 items</div>
@@ -1398,6 +1403,14 @@
             <div id="eod-voided-row" class="hidden" style="background:#2D2D30;padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
                 <div style="font-size:0.75rem;color:#F87171;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Voided Sales</div>
                 <div><span style="color:#F87171;font-size:0.85rem;font-weight:700" id="eod-voided-count">0</span><span style="color:#A8A6A1;font-size:0.8rem"> sale(s) — </span><span style="color:#F87171;font-size:0.85rem;font-weight:700" id="eod-voided-total">$0.00</span></div>
+            </div>
+            <div style="background:#2D2D30;padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+                <div style="font-size:0.75rem;color:#A8A6A1;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Starting Drawer Balance</div>
+                <div style="font-family:'EB Garamond',serif;font-size:1.1rem;color:#F0EDE8;font-weight:600" id="eod-starting-balance">$150.00</div>
+            </div>
+            <div style="background:#2D2D30;padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+                <div style="font-size:0.75rem;color:#A8A6A1;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Expected Cash in Drawer</div>
+                <div style="font-family:'EB Garamond',serif;font-size:1.1rem;color:#7BC4A0;font-weight:600" id="eod-expected-cash">$150.00</div>
             </div>
             <div style="margin-bottom:1rem">
                 <div style="font-size:0.7rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-family:'Roboto',sans-serif">Cash Drawer Count</div>
@@ -1412,14 +1425,18 @@
                     <div class="denom-row"><label>Dimes</label><input type="number" min="0" value="0" data-denom="0.10" onchange="updateCashCount()" oninput="updateCashCount()"></div>
                     <div class="denom-row"><label>Other $</label><input type="number" min="0" step="0.01" value="0" data-denom="1" data-raw="true" onchange="updateCashCount()" oninput="updateCashCount()"></div>
                 </div>
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:8px 12px;background:#2D2D30">
-                    <div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-top:10px;background:#2D2D30">
+                    <div style="padding:8px 12px;text-align:center">
                         <div style="font-size:0.65rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Counted Cash</div>
-                        <div style="font-family:'EB Garamond',serif;font-size:1.5rem;color:#F0EDE8" id="eod-counted-cash">$0.00</div>
+                        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;color:#F0EDE8" id="eod-counted-cash">$0.00</div>
                     </div>
-                    <div style="text-align:right">
+                    <div style="padding:8px 12px;text-align:center;border-left:1px solid #38383B;border-right:1px solid #38383B">
                         <div style="font-size:0.65rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Variance</div>
-                        <div style="font-family:'EB Garamond',serif;font-size:1.5rem" id="eod-variance">$0.00</div>
+                        <div style="font-family:'EB Garamond',serif;font-size:1.4rem" id="eod-variance">$0.00</div>
+                    </div>
+                    <div style="padding:8px 12px;text-align:center">
+                        <div style="font-size:0.65rem;color:#C9A96E;text-transform:uppercase;letter-spacing:0.1em;font-weight:700">Deposit</div>
+                        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;color:#C9A96E;font-weight:700" id="eod-deposit">$0.00</div>
                     </div>
                 </div>
                 <div style="font-size:0.7rem;color:#A8A6A1;margin-top:6px;text-align:center" id="eod-variance-note"></div>
@@ -1771,7 +1788,7 @@
     }
 
     function removeFromCart(itemId) {
-        cart = cart.filter(c => String(c.item.id) !== String(itemId));
+        cart = cart.filter(c => c.item.id !== itemId);
         renderCart();
     }
 
@@ -2011,7 +2028,7 @@
         try {
             const payload = buildSalePayload('cash');
             payload.cash_tendered = tendered;
-            const sale = await apiPost('/api/v1/pos/sale', payload);
+            const sale = await apiPost('/api/v1/sales/', payload);
             currentSale = sale;
             closeCashModal();
             showReceiptModal(sale);
@@ -2784,25 +2801,10 @@ table { width: 100%; border-collapse: collapse; }
         btn.disabled = true; btn.textContent = 'Loading...';
         try {
             var card = await apiPost('/api/v1/pos/gift-cards/' + encodeURIComponent(bc) + '/load', { amount: amount, notes: notes || null });
-            var lastFour = bc.length > 4 ? bc.slice(-4) : bc;
-            cart.push({
-                item: {
-                    id: 'gc-load-' + bc + '-' + Date.now(),
-                    barcode: bc,
-                    name: 'Gift Card Reload #' + lastFour,
-                    is_gift_card_purchase: true,
-                    gift_card_amount: amount,
-                    is_tax_exempt: true,
-                },
-                quantity: 1
-            });
-            closeGcModal();
-            renderCart();
-            showToast('Gift card loaded — $' + amount.toFixed(2) + ' added to cart. Collect payment to complete.', 'success');
-            document.getElementById('gc-load-barcode').value = '';
+            errEl.style.color = '#6EE7B7';
+            errEl.textContent = 'Loaded $' + amount.toFixed(2) + ' — New balance: $' + parseFloat(card.balance).toFixed(2);
             document.getElementById('gc-load-amount').value = '';
             document.getElementById('gc-load-notes').value = '';
-            errEl.textContent = '';
         } catch (err) {
             errEl.style.color = '#F87171';
             errEl.textContent = err.message || 'Failed to load card';
@@ -2822,26 +2824,8 @@ table { width: 100%; border-collapse: collapse; }
         btn.disabled = true; btn.textContent = 'Activating...';
         try {
             var card = await apiPost('/api/v1/pos/gift-cards/activate', { barcode: bc, initial_balance: amount, notes: notes || null });
-            if (amount > 0) {
-                var lastFour = bc.length > 4 ? bc.slice(-4) : bc;
-                cart.push({
-                    item: {
-                        id: 'gc-activate-' + bc + '-' + Date.now(),
-                        barcode: bc,
-                        name: 'Gift Card #' + lastFour,
-                        is_gift_card_purchase: true,
-                        gift_card_amount: amount,
-                        is_tax_exempt: true,
-                    },
-                    quantity: 1
-                });
-                closeGcModal();
-                renderCart();
-                showToast('Gift card activated — $' + amount.toFixed(2) + ' added to cart. Collect payment to complete.', 'success');
-            } else {
-                errEl.style.color = '#6EE7B7';
-                errEl.textContent = 'Card activated with $0.00 balance';
-            }
+            errEl.style.color = '#6EE7B7';
+            errEl.textContent = 'Card activated with $' + parseFloat(card.balance).toFixed(2) + ' balance';
             document.getElementById('gc-activate-barcode').value = '';
             document.getElementById('gc-activate-amount').value = '';
             document.getElementById('gc-activate-notes').value = '';
@@ -2917,11 +2901,13 @@ table { width: 100%; border-collapse: collapse; }
         var btn = document.getElementById('gc-pay-submit');
         btn.disabled = true; btn.textContent = 'Processing...';
         try {
-            var payload = buildSalePayload('gift_card');
-            payload.gift_card_barcode = bc;
-            var sale = await apiPost('/api/v1/pos/sale', payload);
+            var items = cart.map(function(c) { return { barcode: c.item.barcode, quantity: c.quantity }; });
+            var sale = await apiPost('/api/v1/pos/sale', {
+                items: items,
+                payment_method: 'gift_card',
+                gift_card_barcode: bc
+            });
             closeGcPayModal();
-            currentSale = sale;
             cart = [];
             renderCart();
             showReceiptModal(sale);
@@ -3535,8 +3521,12 @@ table { width: 100%; border-collapse: collapse; }
             document.getElementById('eod-cash-count').textContent = eodData.cash.count + ' sale' + (eodData.cash.count !== 1 ? 's' : '');
             document.getElementById('eod-card-total').textContent = '$' + eodData.card.total.toFixed(2);
             document.getElementById('eod-card-count').textContent = eodData.card.count + ' sale' + (eodData.card.count !== 1 ? 's' : '');
+            document.getElementById('eod-gc-total').textContent = '$' + eodData.gift_card.total.toFixed(2);
+            document.getElementById('eod-gc-count').textContent = eodData.gift_card.count + ' sale' + (eodData.gift_card.count !== 1 ? 's' : '');
             document.getElementById('eod-tax-total').textContent = '$' + eodData.total_tax.toFixed(2);
             document.getElementById('eod-items-sold').textContent = eodData.items_sold + ' item' + (eodData.items_sold !== 1 ? 's' : '');
+            document.getElementById('eod-starting-balance').textContent = '$' + eodData.starting_balance.toFixed(2);
+            document.getElementById('eod-expected-cash').textContent = '$' + eodData.expected_cash_in_drawer.toFixed(2);
 
             var voidedRow = document.getElementById('eod-voided-row');
             if (eodData.voided && eodData.voided.count > 0) {
@@ -3589,14 +3579,21 @@ table { width: 100%; border-collapse: collapse; }
         total = Math.round(total * 100) / 100;
         document.getElementById('eod-counted-cash').textContent = '$' + total.toFixed(2);
 
-        const expectedCash = eodData ? eodData.cash.total : 0;
+        const expectedCash = eodData ? eodData.expected_cash_in_drawer : 150;
+        const startingBalance = eodData ? eodData.starting_balance : 150;
         const variance = Math.round((total - expectedCash) * 100) / 100;
+        const deposit = Math.max(Math.round((total - startingBalance) * 100) / 100, 0);
+
         const varEl = document.getElementById('eod-variance');
         const noteEl = document.getElementById('eod-variance-note');
+        const depositEl = document.getElementById('eod-deposit');
+
+        depositEl.textContent = '$' + deposit.toFixed(2);
+
         if (variance > 0) {
             varEl.textContent = '+$' + variance.toFixed(2);
             varEl.style.color = '#7BC4A0';
-            noteEl.textContent = 'Over by $' + variance.toFixed(2) + ' (check for unrecorded sales)';
+            noteEl.textContent = 'Over by $' + variance.toFixed(2);
         } else if (variance < 0) {
             varEl.textContent = '-$' + Math.abs(variance).toFixed(2);
             varEl.style.color = '#c87070';
@@ -3614,11 +3611,17 @@ table { width: 100%; border-collapse: collapse; }
         const dateLabel = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
         const countedCash = document.getElementById('eod-counted-cash').textContent;
         const variance = document.getElementById('eod-variance').textContent;
+        const deposit = document.getElementById('eod-deposit').textContent;
 
         let cashierRows = '';
         (eodData.cashier_breakdown || []).forEach(cb => {
-            cashierRows += `<tr><td style="padding:3px 0">${escHtml(cb.name)}</td><td style="text-align:right;padding:3px 0">${cb.transactions}</td><td style="text-align:right;padding:3px 0">$${cb.total.toFixed(2)}</td></tr>`;
+            cashierRows += `<tr><td style="padding:3px 0">${escHtml(cb.name)}</td><td style="text-align:right;padding:3px 0">${cb.transactions}</td><td style="text-align:right;padding:3px 0">$${cb.cash_total.toFixed(2)}</td><td style="text-align:right;padding:3px 0">$${cb.card_total.toFixed(2)}</td><td style="text-align:right;padding:3px 0">$${cb.total.toFixed(2)}</td></tr>`;
         });
+
+        let voidedSection = '';
+        if (eodData.voided && eodData.voided.count > 0) {
+            voidedSection = `<div class="summary-line" style="color:#c33"><strong>Voided:</strong> ${eodData.voided.count} sale(s) — $${eodData.voided.total.toFixed(2)}</div>`;
+        }
 
         const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>End of Day Report</title>
 <style>
@@ -3630,13 +3633,16 @@ h1 { font-size: 18px; text-align: center; margin-bottom: 4px; }
 .box { border: 1px solid #ccc; padding: 8px; text-align: center; }
 .box .label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #666; }
 .box .val { font-size: 20px; font-weight: 700; margin-top: 2px; }
-.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
 hr { border: none; border-top: 1px solid #ccc; margin: 10px 0; }
 table { width: 100%; border-collapse: collapse; }
 th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #666; padding: 4px 0; border-bottom: 1px solid #ccc; }
 td { padding: 4px 0; font-size: 12px; }
 .section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #333; margin: 14px 0 6px; }
-.variance-row { display: flex; justify-content: space-between; padding: 6px 8px; border: 1px solid #ccc; margin-top: 8px; }
+.summary-line { padding: 4px 0; font-size: 12px; }
+.deposit-box { border: 2px solid #000; padding: 10px; text-align: center; margin: 12px 0; }
+.deposit-box .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #666; }
+.deposit-box .val { font-size: 24px; font-weight: 700; margin-top: 4px; }
 </style></head><body>
 <h1>Bowenstreet Market</h1>
 <div class="sub">End of Day Report — ${escHtml(dateLabel)}</div>
@@ -3644,17 +3650,32 @@ td { padding: 4px 0; font-size: 12px; }
     <div class="box"><div class="label">Total Sales</div><div class="val">$${eodData.total_revenue.toFixed(2)}</div></div>
     <div class="box"><div class="label">Transactions</div><div class="val">${eodData.total_transactions}</div></div>
 </div>
-<div class="grid3">
-    <div class="box"><div class="label">Cash</div><div class="val">$${eodData.cash.total.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.cash.count} sales</div></div>
-    <div class="box"><div class="label">Card</div><div class="val">$${eodData.card.total.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.card.count} sales</div></div>
-    <div class="box"><div class="label">Tax Collected</div><div class="val">$${eodData.total_tax.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.items_sold} items</div></div>
+<div class="section-title">Sales by Payment Method</div>
+<div class="grid4">
+    <div class="box"><div class="label">Cash</div><div class="val" style="font-size:16px">$${eodData.cash.total.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.cash.count} sales</div></div>
+    <div class="box"><div class="label">Credit/Debit Card</div><div class="val" style="font-size:16px">$${eodData.card.total.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.card.count} sales</div></div>
+    <div class="box"><div class="label">Gift Card</div><div class="val" style="font-size:16px">$${eodData.gift_card.total.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.gift_card.count} sales</div></div>
+    <div class="box"><div class="label">Tax Collected</div><div class="val" style="font-size:16px">$${eodData.total_tax.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.items_sold} items</div></div>
 </div>
+${voidedSection}
 <hr>
 <div class="section-title">Cash Drawer</div>
-<div class="variance-row"><div><strong>Counted:</strong> ${countedCash}</div><div><strong>Variance:</strong> ${variance}</div></div>
+<div class="summary-line"><strong>Starting Balance:</strong> $${eodData.starting_balance.toFixed(2)}</div>
+<div class="summary-line"><strong>Cash Sales:</strong> $${eodData.cash.total.toFixed(2)}</div>
+<div class="summary-line"><strong>Expected in Drawer:</strong> $${eodData.expected_cash_in_drawer.toFixed(2)}</div>
+<div class="summary-line"><strong>Counted Cash:</strong> ${countedCash}</div>
+<div class="summary-line"><strong>Variance:</strong> ${variance}</div>
+<div class="deposit-box"><div class="label">Cash Deposit (Leave $${eodData.starting_balance.toFixed(2)} in drawer)</div><div class="val">${deposit}</div></div>
 <hr>
-${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead><tr><th>Cashier</th><th style="text-align:right">Txns</th><th style="text-align:right">Total</th></tr></thead><tbody>${cashierRows}</tbody></table>` : ''}
+${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead><tr><th>Cashier</th><th style="text-align:right">Txns</th><th style="text-align:right">Cash</th><th style="text-align:right">Card</th><th style="text-align:right">Total</th></tr></thead><tbody>${cashierRows}</tbody></table>` : ''}
 <div style="text-align:center;margin-top:20px;font-size:10px;color:#999">Generated ${new Date().toLocaleString()}</div>
+<div style="margin-top:30px;border-top:1px solid #ccc;padding-top:10px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:20px">
+        <div style="font-size:11px"><strong>Prepared by:</strong> ___________________________</div>
+        <div style="font-size:11px"><strong>Date:</strong> _______________</div>
+    </div>
+    <div style="font-size:11px"><strong>Verified by:</strong> ___________________________</div>
+</div>
 </body></html>`;
 
         const w = window.open('', '_blank', 'width=700,height=900');

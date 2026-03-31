@@ -203,23 +203,8 @@ async def pos_create_sale(
                 detail="Card transaction ID is required for card payments. Confirm payment on the terminal first.",
             )
 
-    if data.payment_method == "gift_card":
-        if not data.gift_card_barcode:
-            raise HTTPException(
-                status_code=400,
-                detail="Gift card barcode is required for gift card payments.",
-            )
-
     resolved_lines = []
-    gc_purchase_lines = []
     for cart_item in data.items:
-        if cart_item.is_gift_card_purchase:
-            if not cart_item.gift_card_amount or cart_item.gift_card_amount <= 0:
-                raise HTTPException(status_code=400, detail="Gift card purchase amount must be positive")
-            gc_amount = Decimal(str(cart_item.gift_card_amount)).quantize(Decimal("0.01"), ROUND_HALF_UP)
-            gc_purchase_lines.append((cart_item.name or "Gift Card", gc_amount, cart_item.barcode))
-            continue
-
         result = await db.execute(
             select(Item).options(selectinload(Item.vendor)).where(Item.barcode == cart_item.barcode)
         )
@@ -359,7 +344,6 @@ async def pos_create_sale(
             sale_id=sale.id,
             item_id=item.id,
             vendor_id=item.vendor_id,
-            item_name=item.name,
             quantity=qty,
             unit_price=unit_price,
             line_total=line_total_after_discount,
@@ -384,19 +368,6 @@ async def pos_create_sale(
         vendor_totals[item.vendor_id] = (
             vendor_totals.get(item.vendor_id, Decimal("0")) + vendor_credit
         )
-
-    for gc_name, gc_amount, gc_barcode in gc_purchase_lines:
-        gc_sale_item = SaleItem(
-            sale_id=sale.id,
-            item_id=None,
-            vendor_id=None,
-            item_name=gc_name,
-            quantity=1,
-            unit_price=gc_amount,
-            line_total=gc_amount,
-            is_consignment=False,
-        )
-        db.add(gc_sale_item)
 
     for vendor_id, amount in vendor_totals.items():
         result = await db.execute(
@@ -463,7 +434,7 @@ async def pos_create_sale(
                 id=si.id,
                 item_id=si.item_id,
                 vendor_id=si.vendor_id,
-                item_name=si.item_name or (si.item.name if si.item else "Gift Card"),
+                item_name=si.item.name if si.item else "Unknown",
                 booth_number=si.vendor.booth_number if si.vendor else None,
                 sku=si.item.sku if si.item else "",
                 quantity=si.quantity,
@@ -486,7 +457,7 @@ async def pos_create_sale(
                 asyncio.ensure_future(bg_notify_product_sold(
                     vendor_name=si.vendor.name or "Vendor",
                     vendor_email=si.vendor.email,
-                    item_name=si.item_name or si.item.name,
+                    item_name=si.item.name,
                     item_sku=si.item.sku or "",
                     sale_price=float(si.line_total),
                     sale_id=sale.id,
@@ -497,7 +468,7 @@ async def pos_create_sale(
 
     if sale.receipt_email:
         try:
-            email_items = [{"name": si.item_name or (si.item.name if si.item else "Gift Card"),
+            email_items = [{"name": si.item.name if si.item else "Unknown",
                             "price": float(si.unit_price)} for si in sale.items]
             asyncio.ensure_future(bg_notify_order_confirmation(
                 receipt_email=sale.receipt_email,
@@ -640,7 +611,7 @@ async def void_sale(
                 id=si.id,
                 item_id=si.item_id,
                 vendor_id=si.vendor_id,
-                item_name=si.item_name or (si.item.name if si.item else "Gift Card"),
+                item_name=si.item.name if si.item else "Unknown",
                 booth_number=si.vendor.booth_number if si.vendor else None,
                 sku=si.item.sku if si.item else "",
                 quantity=si.quantity,
@@ -907,12 +878,17 @@ async def end_of_day_report(
         si.quantity for sale in sales if not sale.is_voided for si in sale.items
     )
 
+    starting_balance = Decimal("150.00")
+    expected_cash_in_drawer = (starting_balance + total_cash).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
     return {
         "date": target_date.isoformat(),
         "total_revenue": float(total_revenue),
         "total_tax": float(total_tax),
         "total_transactions": total_transactions,
         "items_sold": items_sold,
+        "starting_balance": float(starting_balance),
+        "expected_cash_in_drawer": float(expected_cash_in_drawer),
         "voided": {"count": voided_count, "total": float(voided_total)},
         "cash": {"total": float(total_cash), "count": cash_count},
         "card": {"total": float(total_card), "count": card_count},
