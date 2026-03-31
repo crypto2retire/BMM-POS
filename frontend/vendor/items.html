@@ -117,8 +117,16 @@
 
         @media (max-width: 767px) {
             .desktop-only { display:none !important; }
-            .items-toolbar { gap: 0.5rem; }
+            .items-toolbar {
+                gap: 0.5rem;
+                flex-wrap: wrap;
+            }
             .items-toolbar .search-input { min-width: 0; width: 100%; order: -1; }
+            .items-toolbar select {
+                flex: 1; min-width: 0; font-size: 0.78rem !important;
+                padding: 0.5rem 0.6rem !important; min-height: 44px;
+            }
+            .items-toolbar .view-toggle { margin-left: auto; }
             .filter-label-bar { flex-direction: column; align-items: stretch !important; gap: 0.6rem !important; }
             .filter-label-bar .status-filter-bar { justify-content: flex-start; }
             .filter-label-bar > div[style*="display:flex"] { width: 100%; }
@@ -235,6 +243,38 @@
 
         /* Image path preview in modal */
         .image-path-preview { width:120px; height:120px; object-fit:cover; border:1px solid var(--border); margin-bottom:8px; }
+
+        /* ── Batch actions mobile ────────────────────────── */
+        .batch-actions-inline { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+        .batch-more-wrap { position: relative; }
+        .batch-more-btn {
+            font-size: 0.75rem; padding: 0.4rem 1rem; background: var(--surface-2);
+            border: 1px solid var(--border); color: var(--text-light); cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+        }
+        .batch-more-btn:hover { background: var(--gold-dim); color: var(--gold); border-color: var(--gold-dim); }
+        .batch-more-menu {
+            display: none; position: absolute; top: 100%; left: 0; z-index: 50;
+            background: var(--surface); border: 1px solid var(--warm-border);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4); min-width: 200px; margin-top: 4px;
+        }
+        .batch-more-menu.open { display: block; }
+        .batch-more-menu button {
+            display: block; width: 100%; text-align: left; padding: 0.7rem 1rem;
+            background: none; border: none; border-bottom: 1px solid rgba(201,169,110,0.1);
+            color: var(--text-light); font-size: 0.82rem; cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+        }
+        .batch-more-menu button:last-child { border-bottom: none; }
+        .batch-more-menu button:hover { background: rgba(201,169,110,0.08); color: var(--gold); }
+
+        @media (min-width: 768px) {
+            .batch-mobile-only { display: none !important; }
+        }
+        @media (max-width: 767px) {
+            .batch-desktop-only { display: none !important; }
+            .batch-actions-inline { gap: 0.5rem; }
+        }
     </style>
 </head>
 <body class="has-bottom-nav">
@@ -276,12 +316,27 @@
     <!-- batch actions bar -->
     <div id="batch-actions-bar" style="display:none; align-items:center; gap:0.75rem; margin-bottom:1rem; padding:0.75rem 1rem; background:var(--surface); border:1px solid var(--warm-border); flex-wrap:wrap">
         <span style="font-size:0.8rem; color:var(--text)"><strong id="selected-count">0</strong> selected</span>
-        <button class="btn btn-primary" id="batch-print-btn" onclick="printSelectedLabels()" style="font-size:0.75rem; padding:0.4rem 1rem">Print Selected Labels</button>
-        <button class="btn btn-outline" onclick="selectUnprinted()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select Unprinted</button>
-        <button class="btn btn-outline" onclick="toggleSelectAll()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select All</button>
-        <button class="btn btn-primary" onclick="openBulkSaleModal()" style="font-size:0.75rem; padding:0.4rem 1rem; background:#C9A96E; border-color:#C9A96E; color:#38383B">Apply Sale</button>
-        <button class="btn btn-outline" onclick="bulkClearSale()" style="font-size:0.72rem; padding:0.35rem 0.8rem; color:#F59E0B; border-color:rgba(245,158,11,0.3)">Clear Sale</button>
-        <button class="btn btn-secondary" onclick="clearSelection()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Clear</button>
+
+        <!-- Desktop: all buttons visible -->
+        <button class="btn btn-primary batch-desktop-only" id="batch-print-btn" onclick="printSelectedLabels()" style="font-size:0.75rem; padding:0.4rem 1rem">Print Selected Labels</button>
+        <button class="btn btn-outline batch-desktop-only" onclick="selectUnprinted()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select Unprinted</button>
+        <button class="btn btn-outline batch-desktop-only" onclick="toggleSelectAll()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select All</button>
+        <button class="btn btn-primary batch-desktop-only" onclick="openBulkSaleModal()" style="font-size:0.75rem; padding:0.4rem 1rem; background:#C9A96E; border-color:#C9A96E; color:#38383B">Apply Sale</button>
+        <button class="btn btn-outline batch-desktop-only" onclick="bulkClearSale()" style="font-size:0.72rem; padding:0.35rem 0.8rem; color:#F59E0B; border-color:rgba(245,158,11,0.3)">Clear Sale</button>
+        <button class="btn btn-secondary batch-desktop-only" onclick="clearSelection()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Clear</button>
+
+        <!-- Mobile: primary actions + More dropdown -->
+        <button class="btn btn-primary batch-mobile-only" onclick="printSelectedLabels()" style="font-size:0.78rem; padding:0.5rem 1rem">Print Labels</button>
+        <button class="btn btn-outline batch-mobile-only" onclick="toggleSelectAll()" style="font-size:0.78rem; padding:0.5rem 0.8rem">Select All</button>
+        <div class="batch-more-wrap batch-mobile-only">
+            <button class="batch-more-btn" onclick="toggleBatchMenu(event)">More Actions &#x25BE;</button>
+            <div class="batch-more-menu" id="batch-more-menu">
+                <button onclick="openBulkSaleModal(); closeBatchMenu()">Apply Sale</button>
+                <button onclick="bulkClearSale(); closeBatchMenu()">Clear Sale</button>
+                <button onclick="selectUnprinted(); closeBatchMenu()">Select Unprinted</button>
+                <button onclick="clearSelection(); closeBatchMenu()">Clear Selection</button>
+            </div>
+        </div>
     </div>
 
     <div id="unprinted-banner" style="display:none; align-items:center; gap:0.75rem; margin-bottom:0.75rem; padding:0.6rem 1rem; background:#2D1F0E; border:1px solid #C9A96E; flex-wrap:wrap; cursor:pointer" onclick="selectUnprintedAndShow()">
@@ -302,14 +357,14 @@
         </div>
         <div style="display:flex;align-items:center;gap:6px">
             <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Label Type:</label>
-            <select id="label-pref-select" class="form-control" onchange="saveLabelPref()" style="width:auto;min-width:120px;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
+            <select id="label-pref-select" class="form-control" onchange="saveLabelPref()" style="width:auto;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
                 <option value="standard">Standard PDF</option>
                 <option value="dymo">Dymo LabelWriter</option>
             </select>
         </div>
         <div style="display:flex;align-items:center;gap:6px" id="label-size-container">
             <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Label Size:</label>
-            <select id="label-size-select" class="form-control" onchange="saveLabelSize()" style="width:auto;min-width:180px;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
+            <select id="label-size-select" class="form-control" onchange="saveLabelSize()" style="width:auto;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
             </select>
         </div>
     </div>
@@ -1634,6 +1689,15 @@
             showAlert('alert-container', err.message || 'Failed to clear sales.', 'error');
         }
     }
+
+    function toggleBatchMenu(e) {
+        e.stopPropagation();
+        document.getElementById('batch-more-menu').classList.toggle('open');
+    }
+    function closeBatchMenu() {
+        document.getElementById('batch-more-menu').classList.remove('open');
+    }
+    document.addEventListener('click', function() { closeBatchMenu(); });
 
     // ── Vendor filter ──────────────────────────────────────────────────
     async function loadVendors() {
