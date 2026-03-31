@@ -2914,13 +2914,11 @@ table { width: 100%; border-collapse: collapse; }
         var btn = document.getElementById('gc-pay-submit');
         btn.disabled = true; btn.textContent = 'Processing...';
         try {
-            var items = cart.map(function(c) { return { barcode: c.item.barcode, quantity: c.quantity }; });
-            var sale = await apiPost('/api/v1/pos/sale', {
-                items: items,
-                payment_method: 'gift_card',
-                gift_card_barcode: bc
-            });
+            var payload = buildSalePayload('gift_card');
+            payload.gift_card_barcode = bc;
+            var sale = await apiPost('/api/v1/pos/sale', payload);
             closeGcPayModal();
+            currentSale = sale;
             cart = [];
             renderCart();
             showReceiptModal(sale);
