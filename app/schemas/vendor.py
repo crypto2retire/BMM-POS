@@ -15,6 +15,7 @@ class VendorCreate(BaseModel):
     commission_rate: Decimal = Decimal("0.10")
     payout_method: Optional[str] = None
     zelle_handle: Optional[str] = None
+    notes: Optional[str] = None
 
     @field_validator('role')
     @classmethod
@@ -38,6 +39,7 @@ class VendorUpdate(BaseModel):
     status: Optional[str] = None
     rent_flagged: Optional[bool] = None
     label_preference: Optional[str] = None
+    notes: Optional[str] = None
 
 class VendorResponse(BaseModel):
     id: int
@@ -57,6 +59,7 @@ class VendorResponse(BaseModel):
     label_preference: Optional[str] = "standard"
     pdf_label_size: Optional[str] = "2.25x1.25"
     assistant_name: Optional[str] = None
+    notes: Optional[str] = None
     created_at: datetime
 
     class Config:
