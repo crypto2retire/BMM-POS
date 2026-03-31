@@ -1768,10 +1768,15 @@
 
     function calcTotals() {
         let subtotal = 0;
+        let taxableSubtotal = 0;
         for (const { item, quantity } of cart) {
-            subtotal += getActivePrice(item) * quantity;
+            const lineTotal = getActivePrice(item) * quantity;
+            subtotal += lineTotal;
+            if (!item.is_tax_exempt) {
+                taxableSubtotal += lineTotal;
+            }
         }
-        const taxAmount = subtotal * TAX_RATE;
+        const taxAmount = taxableSubtotal * TAX_RATE;
         const total = subtotal + taxAmount;
         return {
             subtotal: Math.round(subtotal * 100) / 100,
@@ -1821,9 +1826,10 @@
                     : `$${activePrice.toFixed(2)}`;
 
                 const consignTag = item.is_consignment ? ' <span style="background:#C9A96E;color:#38383B;font-size:0.6rem;padding:1px 5px;border-radius:2px;font-weight:700;vertical-align:middle">C</span>' : '';
+                const taxExTag = item.is_tax_exempt ? ' <span style="background:#065F46;color:#6EE7B7;font-size:0.6rem;padding:1px 5px;border-radius:2px;font-weight:700;vertical-align:middle">TE</span>' : '';
                 return `<tr>
                     <td class="item-name-cell">
-                        <strong>${item.name}${consignTag}</strong>
+                        <strong>${item.name}${consignTag}${taxExTag}</strong>
                         <small>Booth: ${item.booth_number || 'N/A'} &bull; ${item.category || ''}</small>
                     </td>
                     <td>
