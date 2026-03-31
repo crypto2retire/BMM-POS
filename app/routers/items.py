@@ -1,6 +1,7 @@
 import uuid
 import os
 import shutil
+from decimal import Decimal
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Body
 from fastapi.responses import Response
@@ -581,6 +582,78 @@ async def bulk_set_item_status(
     await db.commit()
     label = "for sale" if target_status == "active" else "not for sale"
     return {"detail": f"{updated} item(s) marked {label}.", "updated": updated}
+
+
+@router.post("/bulk-sale")
+async def bulk_apply_sale(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    """Apply a percentage-off sale to multiple items at once."""
+    item_ids = body.get("item_ids", [])
+    percent_off = body.get("percent_off")
+    sale_start = body.get("sale_start")
+    sale_end = body.get("sale_end")
+
+    if not item_ids:
+        raise HTTPException(status_code=400, detail="No items selected")
+    if not percent_off or float(percent_off) <= 0 or float(percent_off) > 100:
+        raise HTTPException(status_code=400, detail="Percent off must be between 1 and 100")
+    if not sale_start or not sale_end:
+        raise HTTPException(status_code=400, detail="Sale start and end dates are required")
+    if sale_end < sale_start:
+        raise HTTPException(status_code=400, detail="Sale end must be after sale start")
+
+    percent = Decimal(str(percent_off)) / Decimal("100")
+
+    query = select(Item).where(Item.id.in_(item_ids))
+    if current_user.role == "vendor":
+        query = query.where(Item.vendor_id == current_user.id)
+
+    result = await db.execute(query)
+    items = result.scalars().all()
+
+    updated = 0
+    for item in items:
+        original_price = Decimal(str(item.price))
+        sale_price = (original_price * (Decimal("1") - percent)).quantize(Decimal("0.01"))
+        item.sale_price = sale_price
+        item.sale_start = sale_start
+        item.sale_end = sale_end
+        updated += 1
+
+    await db.commit()
+    return {"updated": updated, "percent_off": float(percent_off), "sale_start": sale_start, "sale_end": sale_end}
+
+
+@router.post("/bulk-clear-sale")
+async def bulk_clear_sale(
+    body: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    """Remove sale pricing from multiple items at once."""
+    item_ids = body.get("item_ids", [])
+    if not item_ids:
+        raise HTTPException(status_code=400, detail="No items selected")
+
+    query = select(Item).where(Item.id.in_(item_ids))
+    if current_user.role == "vendor":
+        query = query.where(Item.vendor_id == current_user.id)
+
+    result = await db.execute(query)
+    items = result.scalars().all()
+
+    updated = 0
+    for item in items:
+        item.sale_price = None
+        item.sale_start = None
+        item.sale_end = None
+        updated += 1
+
+    await db.commit()
+    return {"cleared": updated}
 
 
 @router.patch("/{item_id}/toggle-status", response_model=ItemResponse)

@@ -279,6 +279,8 @@
         <button class="btn btn-primary" id="batch-print-btn" onclick="printSelectedLabels()" style="font-size:0.75rem; padding:0.4rem 1rem">Print Selected Labels</button>
         <button class="btn btn-outline" onclick="selectUnprinted()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select Unprinted</button>
         <button class="btn btn-outline" onclick="toggleSelectAll()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select All</button>
+        <button class="btn btn-primary" onclick="openBulkSaleModal()" style="font-size:0.75rem; padding:0.4rem 1rem; background:#C9A96E; border-color:#C9A96E; color:#38383B">Apply Sale</button>
+        <button class="btn btn-outline" onclick="bulkClearSale()" style="font-size:0.72rem; padding:0.35rem 0.8rem; color:#F59E0B; border-color:rgba(245,158,11,0.3)">Clear Sale</button>
         <button class="btn btn-secondary" onclick="clearSelection()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Clear</button>
     </div>
 
@@ -595,6 +597,45 @@
                 <button class="btn btn-secondary" onclick="closeLabelQtyModal()">Cancel</button>
                 <button class="btn btn-primary" id="label-qty-print-btn" onclick="confirmPrintLabels()">Print Labels</button>
             </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay hidden" id="bulk-sale-modal">
+    <div class="modal" style="max-width:400px">
+        <div class="modal-header">
+            <h3 class="modal-title">Apply Sale to Selected Items</h3>
+            <button class="modal-close" onclick="closeBulkSaleModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div id="bulk-sale-alert"></div>
+            <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem">
+                <strong id="bulk-sale-count">0</strong> items selected — each item's sale price will be calculated from its regular price.
+            </p>
+            <div class="form-group" style="margin-bottom:1rem">
+                <label class="form-label">Percent Off *</label>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <input class="form-control" type="number" id="bulk-sale-percent"
+                        min="1" max="100" step="1" placeholder="e.g. 20" inputmode="numeric"
+                        style="max-width:120px">
+                    <span style="font-size:1rem;color:var(--text-light)">% off</span>
+                </div>
+            </div>
+            <div style="display:flex;gap:1rem">
+                <div class="form-group" style="flex:1">
+                    <label class="form-label">Sale Start *</label>
+                    <input class="form-control" type="date" id="bulk-sale-start">
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label class="form-label">Sale End *</label>
+                    <input class="form-control" type="date" id="bulk-sale-end">
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeBulkSaleModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="submitBulkSale()" id="bulk-sale-submit"
+                style="background:#C9A96E;border-color:#C9A96E;color:#38383B">Apply Sale</button>
         </div>
     </div>
 </div>
@@ -1515,6 +1556,82 @@
             await loadItems();
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
+        }
+    }
+
+    function openBulkSaleModal() {
+        const count = selectedItemIds.size;
+        if (count === 0) { showAlert('alert-container', 'No items selected.', 'warning'); return; }
+        document.getElementById('bulk-sale-count').textContent = count;
+        document.getElementById('bulk-sale-percent').value = '';
+        document.getElementById('bulk-sale-start').value = '';
+        document.getElementById('bulk-sale-end').value = '';
+        document.getElementById('bulk-sale-alert').innerHTML = '';
+        document.getElementById('bulk-sale-modal').classList.remove('hidden');
+        document.getElementById('bulk-sale-percent').focus();
+    }
+
+    function closeBulkSaleModal() {
+        document.getElementById('bulk-sale-modal').classList.add('hidden');
+    }
+
+    async function submitBulkSale() {
+        const percent = parseFloat(document.getElementById('bulk-sale-percent').value);
+        const start = document.getElementById('bulk-sale-start').value;
+        const end = document.getElementById('bulk-sale-end').value;
+
+        if (!percent || percent <= 0 || percent > 100) {
+            showAlert('bulk-sale-alert', 'Enter a valid percentage (1-100).', 'error');
+            return;
+        }
+        if (!start || !end) {
+            showAlert('bulk-sale-alert', 'Both start and end dates are required.', 'error');
+            return;
+        }
+        if (end < start) {
+            showAlert('bulk-sale-alert', 'End date must be after start date.', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('bulk-sale-submit');
+        btn.disabled = true;
+        btn.textContent = 'Applying…';
+
+        try {
+            const ids = Array.from(selectedItemIds);
+            const resp = await apiFetch('POST', '/api/v1/items/bulk-sale', {
+                item_ids: ids,
+                percent_off: percent,
+                sale_start: start,
+                sale_end: end,
+            });
+            closeBulkSaleModal();
+            showAlert('alert-container', `Sale applied to ${resp.updated} items (${percent}% off, ${start} to ${end}).`, 'success');
+            selectedItemIds.clear();
+            updateSelectionUI();
+            await loadItems();
+        } catch (err) {
+            showAlert('bulk-sale-alert', err.message || 'Failed to apply sale.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Apply Sale';
+        }
+    }
+
+    async function bulkClearSale() {
+        const count = selectedItemIds.size;
+        if (count === 0) { showAlert('alert-container', 'No items selected.', 'warning'); return; }
+        if (!confirm(`Clear sale pricing from ${count} item(s)?`)) return;
+
+        try {
+            const ids = Array.from(selectedItemIds);
+            const resp = await apiFetch('POST', '/api/v1/items/bulk-clear-sale', { item_ids: ids });
+            showAlert('alert-container', `Sale cleared from ${resp.cleared} items.`, 'success');
+            selectedItemIds.clear();
+            updateSelectionUI();
+            await loadItems();
+        } catch (err) {
+            showAlert('alert-container', err.message || 'Failed to clear sales.', 'error');
         }
     }
 
