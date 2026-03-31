@@ -572,7 +572,9 @@
         </div>
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-primary btn-lg" onclick="saveItem()" id="save-btn">Save Item</button>
+            <button class="btn btn-primary" onclick="saveItem(false)" id="save-close-btn" style="display:none">Save &amp; Close</button>
+            <button class="btn btn-primary" onclick="saveItem(true)" id="save-another-btn" style="display:none">Save &amp; Add Another</button>
+            <button class="btn btn-primary btn-lg" onclick="saveItem(false)" id="save-btn">Save Item</button>
         </div>
     </div>
 </div>
@@ -1077,6 +1079,17 @@
             else { sel.disabled = false; if (selectedVendorId) sel.value = selectedVendorId; }
         }
 
+        // Show appropriate save buttons
+        if (item) {
+            document.getElementById('save-btn').style.display = '';
+            document.getElementById('save-close-btn').style.display = 'none';
+            document.getElementById('save-another-btn').style.display = 'none';
+        } else {
+            document.getElementById('save-btn').style.display = 'none';
+            document.getElementById('save-close-btn').style.display = '';
+            document.getElementById('save-another-btn').style.display = '';
+        }
+
         document.getElementById('modal-overlay').classList.remove('hidden');
         setTimeout(() => document.getElementById('f-name').focus(), 100);
     }
@@ -1341,7 +1354,7 @@
         e.target.value = '';
     });
 
-    async function saveItem() {
+    async function saveItem(addAnother = false) {
         const name = document.getElementById('f-name').value.trim();
         const price = parseFloat(document.getElementById('f-price').value);
         if (!name || isNaN(price)) {
@@ -1376,8 +1389,10 @@
             body.vendor_id = parseInt(vid);
         }
 
-        const btn = document.getElementById('save-btn');
+        const btn = addAnother ? document.getElementById('save-another-btn') : (editingId ? document.getElementById('save-btn') : document.getElementById('save-close-btn'));
+        const otherBtn = addAnother ? document.getElementById('save-close-btn') : document.getElementById('save-another-btn');
         btn.disabled = true;
+        if (otherBtn) otherBtn.disabled = true;
         btn.textContent = 'Saving…';
         try {
             let savedItem;
@@ -1415,13 +1430,43 @@
                 } catch (e2) { /* best effort */ }
             }
 
-            closeModal();
-            await loadItems();
+            if (!editingId && addAnother) {
+                document.getElementById('f-name').value = '';
+                document.getElementById('f-price').value = '';
+                document.getElementById('f-quantity').value = '1';
+                document.getElementById('f-description').value = '';
+                document.getElementById('f-sale-price').value = '';
+                document.getElementById('f-sale-start').value = '';
+                document.getElementById('f-sale-end').value = '';
+                document.getElementById('f-is-online').checked = false;
+                document.getElementById('f-is-tax-exempt').checked = false;
+                document.getElementById('f-is-consignment').checked = false;
+                document.getElementById('f-consignment-rate').value = '';
+                document.getElementById('consignment-rate-group').style.display = 'none';
+                pendingPhotoFile = null;
+                pendingPhotoBase64 = null;
+                pendingPhotoMime = null;
+                var preview = document.getElementById('photo-preview');
+                if (preview) preview.innerHTML = '';
+                var previewC = document.getElementById('photo-preview-container');
+                if (previewC) previewC.innerHTML = '';
+                document.getElementById('modal-alert').innerHTML = '';
+                showAlert('modal-alert', 'Item saved! Add another below.', 'success');
+                document.getElementById('f-name').focus();
+                await loadItems();
+            } else {
+                closeModal();
+                await loadItems();
+            }
         } catch (err) {
             showAlert('modal-alert', err.message, 'error');
         } finally {
             btn.disabled = false;
-            btn.textContent = 'Save Item';
+            btn.textContent = addAnother ? 'Save & Add Another' : (editingId ? 'Save Item' : 'Save & Close');
+            if (otherBtn) {
+                otherBtn.disabled = false;
+                otherBtn.textContent = addAnother ? 'Save & Close' : 'Save & Add Another';
+            }
         }
     }
 
