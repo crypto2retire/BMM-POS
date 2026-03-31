@@ -316,6 +316,12 @@
     <div class="items-toolbar" id="items-toolbar">
         <input type="text" class="form-control search-input" id="items-search"
             placeholder="Search by name or SKU…" oninput="onSearchInput()" autocomplete="off">
+        <select id="page-size-select" onchange="changePageSize(this.value)"
+            style="padding:0.4rem 0.6rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text-light); font-size:0.72rem; font-family:'Roboto',sans-serif; cursor:pointer">
+            <option value="10">10 per page</option>
+            <option value="25">25 per page</option>
+            <option value="50">50 per page</option>
+        </select>
         <select id="sort-order" onchange="setSortOrder(this.value)"
             style="padding:0.4rem 0.6rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text-light); font-size:0.72rem; font-family:'Roboto',sans-serif; cursor:pointer">
             <option value="desc" selected>Newest First</option>
@@ -617,7 +623,7 @@
     let sortColumn = 'created_at';
     let sortDirection = 'desc';
     let currentPage = 1;
-    const PAGE_SIZE = 50;
+    let pageSize = parseInt(localStorage.getItem('bmm_items_pageSize')) || 25;
     let statusFilter = 'active';
 
     // ── Nav helpers ────────────────────────────────────────────────────
@@ -1605,15 +1611,22 @@
 
     function renderGridView(items, grid) {
         const today = new Date().toISOString().split('T')[0];
+        const total = items.length;
 
-        if (items.length === 0) {
+        if (total === 0) {
             grid.innerHTML = `<div style="grid-column:1/-1" class="card">
                 <div class="empty-state">No items yet. Tap <strong>+ Add Item</strong> to get started.</div>
             </div>`;
             return;
         }
 
-        grid.innerHTML = items.map(item => {
+        const totalPages = Math.ceil(total / pageSize);
+        if (currentPage > totalPages) currentPage = totalPages;
+        const start = (currentPage - 1) * pageSize;
+        const end = Math.min(start + pageSize, total);
+        const pageItems = items.slice(start, end);
+
+        grid.innerHTML = pageItems.map(item => {
             const isOnSale = item.sale_price && item.sale_start && item.sale_end &&
                 item.sale_start <= today && today <= item.sale_end;
             const priceHtml = isOnSale
@@ -1681,6 +1694,15 @@
                 </div>
             </div>`;
         }).join('');
+
+        // Pagination bar for grid view
+        grid.innerHTML += `<div class="pagination-bar" style="grid-column:1/-1">
+            <span>Showing ${start + 1}&ndash;${end} of ${total} items</span>
+            <div style="display:flex;gap:6px">
+                <button onclick="changePage(-1)" ${currentPage <= 1 ? 'disabled' : ''}>Prev</button>
+                <button onclick="changePage(1)" ${currentPage >= totalPages ? 'disabled' : ''}>Next</button>
+            </div>
+        </div>`;
     }
 
     function renderListView(items, grid) {
@@ -1692,10 +1714,10 @@
             return;
         }
 
-        const totalPages = Math.ceil(total / PAGE_SIZE);
+        const totalPages = Math.ceil(total / pageSize);
         if (currentPage > totalPages) currentPage = totalPages;
-        const start = (currentPage - 1) * PAGE_SIZE;
-        const end = Math.min(start + PAGE_SIZE, total);
+        const start = (currentPage - 1) * pageSize;
+        const end = Math.min(start + pageSize, total);
         const pageItems = items.slice(start, end);
 
         function sortArrow(col) {
@@ -1771,6 +1793,13 @@
 
     function changePage(delta) {
         currentPage += delta;
+        displayItems();
+    }
+
+    function changePageSize(size) {
+        pageSize = parseInt(size);
+        localStorage.setItem('bmm_items_pageSize', pageSize);
+        currentPage = 1;
         displayItems();
     }
 
@@ -1859,6 +1888,7 @@
 
         await loadLabelSizes();
 
+        document.getElementById('page-size-select').value = pageSize;
         setView(currentView);
         await loadItems();
     }

@@ -52,6 +52,16 @@
         .search-bar input::placeholder { color: var(--text-light); opacity: 0.6; }
         .search-bar input:focus { outline: none; border-color: var(--gold-dim); box-shadow: 0 0 0 2px rgba(201,169,110,0.12); }
 
+        /* ── Pagination bar ──────────────────────────────── */
+        .pagination-bar { display:flex; align-items:center; justify-content:space-between; margin-top:1rem; font-size:0.78rem; color:var(--text-light); }
+        .pagination-bar button {
+            padding:0.3rem 0.8rem; background:var(--surface-2); border:1px solid var(--border);
+            color:var(--text-light); font-size:0.72rem; cursor:pointer; font-family:'Roboto',sans-serif;
+            transition:background 0.15s, color 0.15s;
+        }
+        .pagination-bar button:hover:not(:disabled) { background:var(--gold-dim); color:var(--gold); }
+        .pagination-bar button:disabled { opacity:0.3; cursor:default; }
+
         /* ── Vendor grid table ────────────────────────────── */
         .vendor-flag { color: #f87171; margin-right: 4px; font-size: 0.85rem; }
         .role-badge {
@@ -275,6 +285,12 @@
 
         <div class="search-bar">
             <input type="text" id="search-input" placeholder="Filter by name or booth number&hellip;" oninput="filterTable()">
+            <select id="vendor-page-size" onchange="changeVendorPageSize(this.value)"
+                style="padding:0.4rem 0.6rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text-light); font-size:0.72rem; font-family:'Roboto',sans-serif; cursor:pointer">
+                <option value="10">10 per page</option>
+                <option value="25">25 per page</option>
+                <option value="50">50 per page</option>
+            </select>
             <button class="btn btn-primary" id="add-vendor-btn" onclick="openAddModal()">+ Add Vendor</button>
         </div>
 
@@ -300,6 +316,7 @@
             <div class="vendor-cards" id="vendor-cards">
                 <div style="color:#A8A6A1;padding:1rem;text-align:center">Loading vendors&hellip;</div>
             </div>
+            <div id="vendor-pagination" class="pagination-bar"></div>
         </div>
     </div>
 
@@ -543,6 +560,8 @@
     let allVendors = [];
     let editingVendor = null;
     let isAdmin = false;
+    let vendorPage = 1;
+    let vendorPageSize = parseInt(localStorage.getItem('bmm_vendors_pageSize')) || 25;
 
     function toggleMobileNav() {
         document.getElementById('mobile-nav').classList.toggle('open');
@@ -591,6 +610,7 @@
     /* ── Grid view ───────────────────────────────────────── */
 
     function filterTable() {
+        vendorPage = 1;
         const q = document.getElementById('search-input').value.trim().toLowerCase();
         const filtered = q
             ? allVendors.filter(v =>
@@ -603,14 +623,23 @@
     function renderGrid(vendors) {
         const tbody = document.getElementById('vendors-table-body');
         const cards = document.getElementById('vendor-cards');
+        const pagDiv = document.getElementById('vendor-pagination');
 
         if (vendors.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No vendors found.</td></tr>';
             cards.innerHTML = '<div style="color:#A8A6A1;padding:1rem;text-align:center">No vendors found.</div>';
+            if (pagDiv) pagDiv.innerHTML = '';
             return;
         }
 
-        tbody.innerHTML = vendors.map(v => `
+        const total = vendors.length;
+        const totalPages = Math.ceil(total / vendorPageSize);
+        if (vendorPage > totalPages) vendorPage = totalPages;
+        const start = (vendorPage - 1) * vendorPageSize;
+        const end = Math.min(start + vendorPageSize, total);
+        const pageVendors = vendors.slice(start, end);
+
+        tbody.innerHTML = pageVendors.map(v => `
             <tr>
                 <td>
                     ${v.rent_flagged ? '<span class="vendor-flag" title="Rent flagged">&#9888;</span>' : ''}
@@ -636,7 +665,7 @@
             </tr>
         `).join('');
 
-        cards.innerHTML = vendors.map(v => `
+        cards.innerHTML = pageVendors.map(v => `
             <div class="vendor-card${v.status === 'archived' ? ' archived' : ''}">
                 <div class="vendor-card-header" onclick="toggleCardDetail(${v.id})">
                     <div>
@@ -671,6 +700,35 @@
                 </div>
             </div>
         `).join('');
+
+        if (pagDiv) {
+            pagDiv.innerHTML = `
+                <span>Showing ${start + 1}&ndash;${end} of ${total} vendors</span>
+                <div style="display:flex;gap:6px">
+                    <button onclick="changeVendorPage(-1)" ${vendorPage <= 1 ? 'disabled' : ''}>Prev</button>
+                    <button onclick="changeVendorPage(1)" ${vendorPage >= totalPages ? 'disabled' : ''}>Next</button>
+                </div>
+            `;
+        }
+    }
+
+    function changeVendorPage(delta) {
+        vendorPage += delta;
+        // Re-run filter without resetting page
+        const q = document.getElementById('search-input').value.trim().toLowerCase();
+        const filtered = q
+            ? allVendors.filter(v =>
+                v.name.toLowerCase().includes(q) ||
+                (v.booth_number && v.booth_number.toLowerCase().includes(q)))
+            : allVendors;
+        renderGrid(filtered);
+    }
+
+    function changeVendorPageSize(size) {
+        vendorPageSize = parseInt(size);
+        localStorage.setItem('bmm_vendors_pageSize', vendorPageSize);
+        vendorPage = 1;
+        filterTable();
     }
 
     function toggleCardDetail(id) {
@@ -1016,6 +1074,7 @@
             document.getElementById('add-vendor-btn').style.display = 'none';
         }
         await loadVendors();
+        document.getElementById('vendor-page-size').value = vendorPageSize;
         renderGrid(allVendors);
     }
 
