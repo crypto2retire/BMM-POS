@@ -1035,7 +1035,8 @@
 
 <!-- Receipt Modal -->
 <div class="pos-modal-overlay hidden" id="receipt-modal">
-    <div class="pos-modal receipt-modal">
+    <div class="pos-modal receipt-modal" style="position:relative">
+        <button onclick="document.getElementById('receipt-modal').classList.add('hidden')" style="position:absolute;top:10px;right:14px;background:none;border:none;color:#A8A6A1;font-size:1.4rem;cursor:pointer;line-height:1;padding:4px 8px;z-index:1" title="Close">✕</button>
         <h2 id="receipt-modal-title">✅ Sale Complete</h2>
         <div class="receipt-print-area" id="receipt-content"></div>
         <button class="print-receipt-btn" onclick="printReceipt()">🖨 Print Receipt</button>
@@ -2278,7 +2279,6 @@
                 <img src="/static/images/logo.webp" alt="BMM" style="width:120px;height:auto;display:block;margin:0 auto 6px">
                 <h3>Bowenstreet Market</h3>
                 <p>${dateStr} at ${timeStr}</p>
-                <p>Cashier: ${cashierName}</p>
                 <p>Sale #${sale.id}</p>
             </div>
             <hr class="receipt-divider">
@@ -2454,7 +2454,6 @@ table { width: 100%; border-collapse: collapse; }
 <hr class="rule">
 <div class="meta-block">
     <div>${dateStr} at ${timeStr}</div>
-    <div><span class="meta-label">Cashier:</span> ${cashierName}</div>
     <div><span class="meta-label">Sale</span> #${sale.id}</div>
 </div>
 <hr class="rule">
@@ -2791,7 +2790,7 @@ table { width: 100%; border-collapse: collapse; }
                     var color = t.type === 'load' ? '#6EE7B7' : '#F87171';
                     var sign = t.type === 'load' ? '+' : '-';
                     return '<div style="display:flex;justify-content:space-between;padding:4px 6px;background:#2D2D30;margin-bottom:2px;font-size:0.82rem">'
-                        + '<span style="color:#A8A6A1">' + escHtml(dateStr + ' ' + timeStr + ' · ' + (t.cashier_name||'') + (t.notes ? ' · ' + t.notes : '')) + '</span>'
+                        + '<span style="color:#A8A6A1">' + escHtml(dateStr + ' ' + timeStr + (t.notes ? ' · ' + t.notes : '')) + '</span>'
                         + '<span style="color:' + color + ';font-weight:600">' + sign + '$' + parseFloat(t.amount).toFixed(2) + '</span>'
                         + '</div>';
                 }).join('');
@@ -3357,7 +3356,6 @@ table { width: 100%; border-collapse: collapse; }
                     <img src="/static/images/logo.webp" alt="BMM" style="width:120px;height:auto;display:block;margin:0 auto 6px">
                     <h3>Bowenstreet Market</h3>
                     <p>${dateStr} at ${timeStr}</p>
-                    <p>Cashier: ${cashierName}</p>
                     <p>Sale #${sale.id}</p>
                 </div>
                 <hr class="receipt-divider">
