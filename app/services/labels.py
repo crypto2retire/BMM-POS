@@ -3,7 +3,7 @@ import math
 import datetime
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas as pdf_canvas
-from reportlab.graphics.barcode import code39
+from reportlab.graphics.barcode import code128
 
 
 THERMAL_DPI = 203
@@ -147,20 +147,23 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
         bar_h = _snap_down(price_y - 8 * scale_h - barcode_y)
         bar_h = max(bar_h, _snap_down(0.32 * inch * scale_h))
 
-        probe = code39.Standard39(barcode_val, barHeight=10, barWidth=1.0,
-                                   humanReadable=False, quiet=False, checksum=False)
+        probe = code128.Code128(barcode_val, barHeight=10, barWidth=1.0,
+                                humanReadable=False, quiet=False)
         min_modules = probe.width
 
-        raw_bar_w = avail_w / min_modules
+        # Reserve 10x module width for quiet zones (5x each side)
+        quiet_zone = 10 * DOT
+        usable_w = avail_w - quiet_zone * 2
+
+        raw_bar_w = usable_w / min_modules
         bar_w = max(math.floor(raw_bar_w / DOT), 1) * DOT
 
-        barcode_obj = code39.Standard39(
+        barcode_obj = code128.Code128(
             barcode_val,
             barHeight=bar_h,
             barWidth=bar_w,
             humanReadable=False,
             quiet=False,
-            checksum=False,
         )
 
         barcode_w = barcode_obj.width
@@ -347,7 +350,7 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
       <IsMirrored>False</IsMirrored>
       <IsVariable>False</IsVariable>
       <Text>{barcode_str}</Text>
-      <Type>Code39</Type>
+      <Type>Code128Auto</Type>
       <Size>Large</Size>
       <TextPosition>Bottom</TextPosition>
       <TextFont Family="Arial" Size="{'6' if label_size == '30347' else '7'}" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
@@ -355,7 +358,7 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
       <TextEmbedding>None</TextEmbedding>
       <ECLevel>0</ECLevel>
       <HorizontalAlignment>Center</HorizontalAlignment>
-      <QuietZonesPadding Left="0" Top="0" Right="0" Bottom="0"/>
+      <QuietZonesPadding Left="10" Top="0" Right="10" Bottom="0"/>
     </BarcodeObject>
     <ObjectLayout>
       <DYMOPoint><X>{m}</X><Y>{barcode_y}</Y></DYMOPoint>
