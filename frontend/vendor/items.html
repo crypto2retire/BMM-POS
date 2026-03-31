@@ -315,7 +315,7 @@
     <!-- items toolbar: search + view toggle -->
     <div class="items-toolbar" id="items-toolbar">
         <input type="text" class="form-control search-input" id="items-search"
-            placeholder="Search by name or SKU…" oninput="onSearchInput()" autocomplete="off">
+            placeholder="Search by name, SKU, or barcode…" oninput="onSearchInput()" autocomplete="off">
         <select id="page-size-select" onchange="changePageSize(this.value)"
             style="padding:0.4rem 0.6rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text-light); font-size:0.72rem; font-family:'Roboto',sans-serif; cursor:pointer">
             <option value="10">10 per page</option>
@@ -1594,7 +1594,8 @@
         return allItems.filter(item => {
             const name = (item.name || '').toLowerCase();
             const sku = (item.sku || '').toLowerCase();
-            return name.includes(searchTerm) || sku.includes(searchTerm);
+            const barcode = (item.barcode || '').toLowerCase();
+            return name.includes(searchTerm) || sku.includes(searchTerm) || barcode.includes(searchTerm);
         });
     }
 
