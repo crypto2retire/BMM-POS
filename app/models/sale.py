@@ -26,6 +26,9 @@ class Sale(Base):
     voided_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     voided_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("vendors.id"), nullable=True)
     void_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    discount_type: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    discount_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    discount_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), nullable=False, default=datetime.utcnow)
 
     cashier: Mapped[Optional["Vendor"]] = relationship("Vendor", foreign_keys=[cashier_id])
@@ -46,6 +49,9 @@ class SaleItem(Base):
     is_consignment: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     consignment_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 4), nullable=True)
     consignment_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    discount_type: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    discount_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    discount_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
 
     sale: Mapped["Sale"] = relationship("Sale", back_populates="items")
     item: Mapped["Item"] = relationship("Item")

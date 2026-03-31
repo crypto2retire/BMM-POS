@@ -220,17 +220,43 @@ async def pos_create_sale(
             )
         unit_price = _get_active_price(item)
         line_total = (unit_price * cart_item.quantity).quantize(Decimal("0.01"), ROUND_HALF_UP)
-        resolved_lines.append((item, cart_item.quantity, unit_price, line_total))
 
-    subtotal = sum(lt for _, _, _, lt in resolved_lines).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        # Per-item discount
+        item_discount_type = cart_item.discount_type
+        item_discount_value = Decimal(str(cart_item.discount_value)) if cart_item.discount_value else Decimal("0")
+        item_discount_amount = Decimal("0")
+
+        if item_discount_type == 'dollar':
+            item_discount_amount = min(item_discount_value, line_total)
+        elif item_discount_type == 'percent':
+            item_discount_amount = (line_total * item_discount_value / Decimal("100")).quantize(Decimal("0.01"), ROUND_HALF_UP)
+            item_discount_amount = min(item_discount_amount, line_total)
+
+        line_total_after_discount = (line_total - item_discount_amount).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        resolved_lines.append((item, cart_item, unit_price, line_total, line_total_after_discount, item_discount_type, item_discount_value, item_discount_amount))
+
+    subtotal = sum(ltad for _, _, _, _, ltad, _, _, _ in resolved_lines).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+    # Cart-wide discount
+    cart_discount_amount = Decimal("0")
+    if data.cart_discount_type == 'dollar' and data.cart_discount_value:
+        cart_discount_amount = min(Decimal(str(data.cart_discount_value)), subtotal)
+    elif data.cart_discount_type == 'percent' and data.cart_discount_value:
+        cart_discount_amount = (subtotal * Decimal(str(data.cart_discount_value)) / Decimal("100")).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        cart_discount_amount = min(cart_discount_amount, subtotal)
+
+    subtotal_after_discount = subtotal - cart_discount_amount
 
     db_tax_rate = await get_tax_rate(db)
     tax_rate = Decimal(str(db_tax_rate)).quantize(Decimal("0.0001"), ROUND_HALF_UP)
     taxable_subtotal = sum(
-        lt for item, _, _, lt in resolved_lines if not item.is_tax_exempt
+        ltad for item, _, _, _, ltad, _, _, _ in resolved_lines if not item.is_tax_exempt
     ).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    # Proportionally reduce taxable amount by cart discount
+    if subtotal > 0 and cart_discount_amount > 0:
+        taxable_subtotal = (taxable_subtotal * (subtotal_after_discount / subtotal)).quantize(Decimal("0.01"), ROUND_HALF_UP)
     tax_amount = (taxable_subtotal * tax_rate).quantize(Decimal("0.01"), ROUND_HALF_UP)
-    total = (subtotal + tax_amount).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    total = (subtotal_after_discount + tax_amount).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
     change_given = None
     cash_tendered = None
@@ -287,7 +313,7 @@ async def pos_create_sale(
 
     sale = Sale(
         cashier_id=current_user.id,
-        subtotal=subtotal,
+        subtotal=subtotal_after_discount,
         tax_rate=tax_rate,
         tax_amount=tax_amount,
         total=total,
@@ -298,17 +324,21 @@ async def pos_create_sale(
         gift_card_amount=gc_amount_applied if gc_amount_applied else (total if data.payment_method == "gift_card" and data.gift_card_barcode else None),
         gift_card_barcode=data.gift_card_barcode if (gc_amount_applied or data.payment_method == "gift_card") else None,
         receipt_email=data.receipt_email,
+        discount_type=data.cart_discount_type,
+        discount_value=Decimal(str(data.cart_discount_value)) if data.cart_discount_value else None,
+        discount_amount=cart_discount_amount if cart_discount_amount > 0 else None,
     )
     db.add(sale)
     await db.flush()
 
     vendor_totals: dict[int, Decimal] = {}
-    for item, qty, unit_price, line_total in resolved_lines:
+    for item, cart_item, unit_price, line_total, line_total_after_discount, i_disc_type, i_disc_val, i_disc_amt in resolved_lines:
+        qty = cart_item.quantity
         consignment_amt = None
         c_rate = None
         if item.is_consignment and item.consignment_rate is not None:
             c_rate = Decimal(str(item.consignment_rate))
-            consignment_amt = (line_total * c_rate).quantize(Decimal("0.01"), ROUND_HALF_UP)
+            consignment_amt = (line_total_after_discount * c_rate).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
         sale_item = SaleItem(
             sale_id=sale.id,
@@ -316,10 +346,13 @@ async def pos_create_sale(
             vendor_id=item.vendor_id,
             quantity=qty,
             unit_price=unit_price,
-            line_total=line_total,
+            line_total=line_total_after_discount,
             is_consignment=item.is_consignment,
             consignment_rate=c_rate,
             consignment_amount=consignment_amt,
+            discount_type=i_disc_type if i_disc_amt > 0 else None,
+            discount_value=i_disc_val if i_disc_amt > 0 else None,
+            discount_amount=i_disc_amt if i_disc_amt > 0 else None,
         )
         db.add(sale_item)
 
@@ -328,9 +361,9 @@ async def pos_create_sale(
         if new_qty <= 0:
             item.status = "sold"
 
-        vendor_credit = line_total
+        vendor_credit = line_total_after_discount
         if consignment_amt is not None:
-            vendor_credit = (line_total - consignment_amt).quantize(Decimal("0.01"), ROUND_HALF_UP)
+            vendor_credit = (line_total_after_discount - consignment_amt).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
         vendor_totals[item.vendor_id] = (
             vendor_totals.get(item.vendor_id, Decimal("0")) + vendor_credit
@@ -410,6 +443,9 @@ async def pos_create_sale(
                 is_consignment=si.is_consignment,
                 consignment_rate=si.consignment_rate,
                 consignment_amount=si.consignment_amount,
+                discount_type=si.discount_type,
+                discount_value=si.discount_value,
+                discount_amount=si.discount_amount,
             )
         )
 
@@ -462,6 +498,9 @@ async def pos_create_sale(
         gift_card_amount=sale.gift_card_amount,
         gift_card_barcode=sale.gift_card_barcode,
         receipt_email=sale.receipt_email,
+        discount_type=sale.discount_type,
+        discount_value=sale.discount_value,
+        discount_amount=sale.discount_amount,
         created_at=sale.created_at,
         line_items=line_items,
     )
@@ -581,6 +620,9 @@ async def void_sale(
                 is_consignment=si.is_consignment,
                 consignment_rate=si.consignment_rate,
                 consignment_amount=si.consignment_amount,
+                discount_type=si.discount_type,
+                discount_value=si.discount_value,
+                discount_amount=si.discount_amount,
             )
         )
 
@@ -604,6 +646,9 @@ async def void_sale(
         voided_by=sale.voided_by,
         voided_by_name=sale.voided_by_user.name if sale.voided_by_user else None,
         void_reason=sale.void_reason,
+        discount_type=sale.discount_type,
+        discount_value=sale.discount_value,
+        discount_amount=sale.discount_amount,
         created_at=sale.created_at,
         line_items=line_items,
     )

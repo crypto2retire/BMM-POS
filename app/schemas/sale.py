@@ -7,6 +7,8 @@ from pydantic import BaseModel
 class CartItem(BaseModel):
     barcode: str
     quantity: int = 1
+    discount_type: Optional[str] = None
+    discount_value: Optional[float] = None
 
 
 class SaleCreate(BaseModel):
@@ -17,6 +19,8 @@ class SaleCreate(BaseModel):
     receipt_email: Optional[str] = None
     gift_card_barcode: Optional[str] = None
     gift_card_amount: Optional[Decimal] = None
+    cart_discount_type: Optional[str] = None
+    cart_discount_value: Optional[float] = None
 
 
 class SaleItemResponse(BaseModel):
@@ -32,6 +36,9 @@ class SaleItemResponse(BaseModel):
     is_consignment: bool = False
     consignment_rate: Optional[Decimal] = None
     consignment_amount: Optional[Decimal] = None
+    discount_type: Optional[str] = None
+    discount_value: Optional[Decimal] = None
+    discount_amount: Optional[Decimal] = None
 
     model_config = {"from_attributes": True}
 
@@ -56,6 +63,9 @@ class SaleResponse(BaseModel):
     voided_by: Optional[int] = None
     voided_by_name: Optional[str] = None
     void_reason: Optional[str] = None
+    discount_type: Optional[str] = None
+    discount_value: Optional[Decimal] = None
+    discount_amount: Optional[Decimal] = None
     created_at: datetime
     line_items: List[SaleItemResponse] = []
 

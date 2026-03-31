@@ -57,6 +57,9 @@ def sale_to_response(sale: Sale) -> SaleResponse:
                 is_consignment=si.is_consignment,
                 consignment_rate=si.consignment_rate,
                 consignment_amount=si.consignment_amount,
+                discount_type=getattr(si, 'discount_type', None),
+                discount_value=getattr(si, 'discount_value', None),
+                discount_amount=getattr(si, 'discount_amount', None),
             )
         )
 
@@ -80,6 +83,9 @@ def sale_to_response(sale: Sale) -> SaleResponse:
         voided_by=sale.voided_by,
         voided_by_name=sale.voided_by_user.name if hasattr(sale, 'voided_by_user') and sale.voided_by_user else None,
         void_reason=sale.void_reason,
+        discount_type=getattr(sale, 'discount_type', None),
+        discount_value=getattr(sale, 'discount_value', None),
+        discount_amount=getattr(sale, 'discount_amount', None),
         created_at=sale.created_at,
         line_items=line_items,
     )

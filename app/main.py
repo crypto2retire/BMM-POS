@@ -179,6 +179,18 @@ async def lifespan(app: FastAPI):
                     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
                 )
             """))
+            # Discount columns on sale_items and sales
+            for tbl, col_def in [
+                ("sale_items", "discount_type VARCHAR(10)"),
+                ("sale_items", "discount_value NUMERIC(10,2)"),
+                ("sale_items", "discount_amount NUMERIC(10,2)"),
+                ("sales", "discount_type VARCHAR(10)"),
+                ("sales", "discount_value NUMERIC(10,2)"),
+                ("sales", "discount_amount NUMERIC(10,2)"),
+            ]:
+                await session.execute(text(
+                    f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {col_def}"
+                ))
             # Poynt payments table (Phase 4)
             await session.execute(text("""
                 CREATE TABLE IF NOT EXISTS poynt_payments (

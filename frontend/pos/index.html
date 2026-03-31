@@ -899,6 +899,8 @@
     <div class="pos-right">
         <div class="totals-card">
             <div class="row"><span class="label">Subtotal</span><span id="subtotal">$0.00</span></div>
+            <div class="row" id="discount-row" style="display:none;color:#F59E0B"><span class="label">Item Discounts</span><span>-$0.00</span></div>
+            <div class="row" id="cart-discount-row" style="display:none;color:#F59E0B"><span class="label">Cart Discount</span><span>-$0.00</span></div>
             <div class="row"><span class="label">Tax (<span id="tax-rate-label">5%</span>)</span><span id="tax-amount">$0.00</span></div>
             <div class="row total-row">
                 <span class="label">TOTAL</span>
@@ -908,6 +910,7 @@
         <div class="item-count-badge"><span id="item-count">0</span> item(s) in cart</div>
         <div style="display:flex;gap:6px;margin-bottom:6px">
             <button class="clear-btn" onclick="clearCart()" style="flex:1;margin:0">✕ Clear</button>
+            <button class="clear-btn" onclick="openCartDiscount()" style="flex:1;margin:0;background:#92400E;color:#FDE68A">🏷 Discount</button>
             <button class="clear-btn" onclick="suspendOrder()" id="suspend-btn" style="flex:1;margin:0;background:#92400E;color:#FDE68A" disabled>⏸ Hold</button>
         </div>
         <button class="clear-btn" onclick="openResumeModal()" id="resume-btn" style="background:#065F46;color:#6EE7B7;margin-bottom:6px;display:none">▶ Resume Held Order (<span id="held-count">0</span>)</button>
@@ -994,6 +997,41 @@
     </div>
 </div>
 
+
+<!-- Item Discount Modal -->
+<div class="pos-modal-overlay hidden" id="item-discount-modal">
+    <div class="pos-modal" style="max-width:360px">
+        <h2>🏷 Item Discount</h2>
+        <div id="item-disc-name" style="font-weight:700;color:#C9A96E;margin-bottom:0.75rem;text-align:center"></div>
+        <div style="display:flex;gap:0.5rem;justify-content:center;margin-bottom:0.75rem">
+            <button id="item-disc-dollar-btn" onclick="setItemDiscType('dollar')" style="padding:0.5rem 1.2rem;background:var(--surface-2);border:1px solid var(--border);color:var(--text);cursor:pointer;font-weight:700;font-size:1rem">$</button>
+            <button id="item-disc-percent-btn" onclick="setItemDiscType('percent')" style="padding:0.5rem 1.2rem;background:var(--surface-2);border:1px solid var(--border);color:var(--text);cursor:pointer;font-weight:700;font-size:1rem">%</button>
+        </div>
+        <input type="number" id="item-disc-value" class="form-control" min="0" step="0.01" placeholder="Enter value" style="text-align:center;font-size:1.2rem;margin-bottom:0.75rem">
+        <div class="modal-actions">
+            <button class="cancel-btn" onclick="removeItemDiscount()">Remove</button>
+            <button class="cancel-btn" onclick="document.getElementById('item-discount-modal').classList.add('hidden')">Cancel</button>
+            <button class="confirm-btn" onclick="applyItemDiscount()">Apply</button>
+        </div>
+    </div>
+</div>
+
+<!-- Cart Discount Modal -->
+<div class="pos-modal-overlay hidden" id="cart-discount-modal">
+    <div class="pos-modal" style="max-width:360px">
+        <h2>🏷 Cart Discount</h2>
+        <div style="display:flex;gap:0.5rem;justify-content:center;margin-bottom:0.75rem">
+            <button id="cart-disc-dollar-btn" onclick="setCartDiscType('dollar')" style="padding:0.5rem 1.2rem;background:var(--surface-2);border:1px solid var(--border);color:var(--text);cursor:pointer;font-weight:700;font-size:1rem">$</button>
+            <button id="cart-disc-percent-btn" onclick="setCartDiscType('percent')" style="padding:0.5rem 1.2rem;background:var(--surface-2);border:1px solid var(--border);color:var(--text);cursor:pointer;font-weight:700;font-size:1rem">%</button>
+        </div>
+        <input type="number" id="cart-disc-value" class="form-control" min="0" step="0.01" placeholder="Enter value" style="text-align:center;font-size:1.2rem;margin-bottom:0.75rem">
+        <div class="modal-actions">
+            <button class="cancel-btn" onclick="clearCartDiscount()">Remove</button>
+            <button class="cancel-btn" onclick="document.getElementById('cart-discount-modal').classList.add('hidden')">Cancel</button>
+            <button class="confirm-btn" onclick="applyCartDiscount()">Apply</button>
+        </div>
+    </div>
+</div>
 
 <!-- Receipt Modal -->
 <div class="pos-modal-overlay hidden" id="receipt-modal">
@@ -1472,6 +1510,8 @@
     let cart = [];          // { item, quantity }
     let currentSale = null;
     let poyntOrderId = null; // legacy, kept for compat
+    let cartDiscountType = null;
+    let cartDiscountValue = 0;
     const TAX_RATE = 0.05;
 
     // ─── Init ─────────────────────────────────────────────────────────────────
@@ -1754,6 +1794,8 @@
         if (cart.length === 0) return;
         if (!confirm('Clear the cart?')) return;
         cart = [];
+        cartDiscountType = null;
+        cartDiscountValue = 0;
         renderCart();
     }
 
@@ -1768,18 +1810,52 @@
 
     function calcTotals() {
         let subtotal = 0;
-        let taxableSubtotal = 0;
-        for (const { item, quantity } of cart) {
-            const lineTotal = getActivePrice(item) * quantity;
-            subtotal += lineTotal;
-            if (!item.is_tax_exempt) {
-                taxableSubtotal += lineTotal;
+        let totalItemDiscounts = 0;
+
+        for (const entry of cart) {
+            const lineTotal = getActivePrice(entry.item) * entry.quantity;
+            let itemDiscount = 0;
+            if (entry.discountType === 'dollar') {
+                itemDiscount = Math.min(entry.discountValue || 0, lineTotal);
+            } else if (entry.discountType === 'percent') {
+                itemDiscount = Math.min(lineTotal * (entry.discountValue || 0) / 100, lineTotal);
+            }
+            entry.calculatedDiscount = Math.round(itemDiscount * 100) / 100;
+            subtotal += lineTotal - itemDiscount;
+            totalItemDiscounts += itemDiscount;
+        }
+
+        // Cart-wide discount
+        let cartDiscount = 0;
+        if (cartDiscountType === 'dollar') {
+            cartDiscount = Math.min(cartDiscountValue || 0, subtotal);
+        } else if (cartDiscountType === 'percent') {
+            cartDiscount = Math.min(subtotal * (cartDiscountValue || 0) / 100, subtotal);
+        }
+        cartDiscount = Math.round(cartDiscount * 100) / 100;
+
+        const discountedSubtotal = subtotal - cartDiscount;
+
+        // Tax only on non-exempt items (after discounts)
+        let taxableAmount = 0;
+        for (const entry of cart) {
+            if (!entry.item.is_tax_exempt) {
+                const lineTotal = getActivePrice(entry.item) * entry.quantity;
+                const itemDiscount = entry.calculatedDiscount || 0;
+                taxableAmount += lineTotal - itemDiscount;
             }
         }
-        const taxAmount = taxableSubtotal * TAX_RATE;
-        const total = subtotal + taxAmount;
+        if (subtotal > 0 && cartDiscount > 0) {
+            taxableAmount = taxableAmount * (1 - cartDiscount / subtotal);
+        }
+
+        const taxAmount = taxableAmount * TAX_RATE;
+        const total = discountedSubtotal + taxAmount;
+
         return {
-            subtotal: Math.round(subtotal * 100) / 100,
+            subtotal: Math.round((subtotal + totalItemDiscounts) * 100) / 100,
+            itemDiscounts: Math.round(totalItemDiscounts * 100) / 100,
+            cartDiscount: cartDiscount,
             taxAmount: Math.round(taxAmount * 100) / 100,
             total: Math.round(total * 100) / 100,
         };
@@ -1817,7 +1893,8 @@
             document.getElementById('gc-pay-btn').disabled = false;
             document.getElementById('split-pay-btn').disabled = false;
 
-            tbody.innerHTML = cart.map(({ item, quantity }) => {
+            tbody.innerHTML = cart.map((entry, idx) => {
+                const { item, quantity } = entry;
                 const activePrice = getActivePrice(item);
                 const lineTotal = activePrice * quantity;
                 const isOnSale = activePrice < parseFloat(item.price);
@@ -1827,6 +1904,11 @@
 
                 const consignTag = item.is_consignment ? ' <span style="background:#C9A96E;color:#38383B;font-size:0.6rem;padding:1px 5px;border-radius:2px;font-weight:700;vertical-align:middle">C</span>' : '';
                 const taxExTag = item.is_tax_exempt ? ' <span style="background:#065F46;color:#6EE7B7;font-size:0.6rem;padding:1px 5px;border-radius:2px;font-weight:700;vertical-align:middle">TE</span>' : '';
+
+                const disc = entry.calculatedDiscount || 0;
+                const discLabel = entry.discountType === 'percent' ? `−${entry.discountValue}%` : entry.discountType === 'dollar' ? `−$${(entry.discountValue||0).toFixed(2)}` : '';
+                const discLine = disc > 0 ? `<tr style="background:transparent"><td colspan="3" style="padding:0 0 0 0.5rem;border:none"><small style="color:#F59E0B">${discLabel} discount → −$${disc.toFixed(2)}</small></td><td class="price-cell" style="border:none;color:#F59E0B;font-size:0.8rem">$${(lineTotal - disc).toFixed(2)}</td><td style="border:none"></td></tr>` : '';
+                const discBtnLabel = disc > 0 ? '✏️' : '%';
                 return `<tr>
                     <td class="item-name-cell">
                         <strong>${item.name}${consignTag}${taxExTag}</strong>
@@ -1843,15 +1925,25 @@
                     </td>
                     <td class="price-cell${isOnSale ? ' sale-price' : ''}">${priceDisplay}</td>
                     <td class="price-cell">$${lineTotal.toFixed(2)}</td>
-                    <td><button class="remove-btn" onclick="removeFromCart(${item.id})">✕</button></td>
-                </tr>`;
+                    <td>
+                        <button class="remove-btn" onclick="openItemDiscount(${idx})" title="Discount" style="background:#92400E;color:#FDE68A;font-size:0.65rem;padding:2px 5px;margin-bottom:2px">${discBtnLabel}</button>
+                        <button class="remove-btn" onclick="removeFromCart(${item.id})">✕</button>
+                    </td>
+                </tr>${discLine}`;
             }).join('');
         }
 
-        const { subtotal, taxAmount, total } = calcTotals();
-        document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
-        document.getElementById('tax-amount').textContent = `$${taxAmount.toFixed(2)}`;
-        document.getElementById('total-amount').textContent = `$${total.toFixed(2)}`;
+        const totals = calcTotals();
+        document.getElementById('subtotal').textContent = `$${totals.subtotal.toFixed(2)}`;
+        // Show discount lines
+        const discRow = document.getElementById('discount-row');
+        const cartDiscRow = document.getElementById('cart-discount-row');
+        if (discRow) discRow.style.display = totals.itemDiscounts > 0 ? 'flex' : 'none';
+        if (discRow) discRow.querySelector('span:last-child').textContent = `-$${totals.itemDiscounts.toFixed(2)}`;
+        if (cartDiscRow) cartDiscRow.style.display = totals.cartDiscount > 0 ? 'flex' : 'none';
+        if (cartDiscRow) cartDiscRow.querySelector('span:last-child').textContent = `-$${totals.cartDiscount.toFixed(2)}`;
+        document.getElementById('tax-amount').textContent = `$${totals.taxAmount.toFixed(2)}`;
+        document.getElementById('total-amount').textContent = `$${totals.total.toFixed(2)}`;
         const itemCount = cart.reduce((s, c) => s + c.quantity, 0);
         document.getElementById('item-count').textContent = itemCount;
         if (mobileTotal) mobileTotal.textContent = `$${total.toFixed(2)}`;
@@ -1969,13 +2061,98 @@
 
     // ─── Sale payload builder ─────────────────────────────────────────────────
     function buildSalePayload(paymentMethod) {
-        return {
-            items: cart.map(({ item, quantity }) => ({
+        const payload = {
+            items: cart.map(({ item, quantity, discountType, discountValue }) => ({
                 barcode: item.barcode,
                 quantity,
+                discount_type: discountType || null,
+                discount_value: discountValue || null,
             })),
             payment_method: paymentMethod,
         };
+        if (cartDiscountType && cartDiscountValue) {
+            payload.cart_discount_type = cartDiscountType;
+            payload.cart_discount_value = cartDiscountValue;
+        }
+        return payload;
+    }
+
+    // ─── Discount Functions ────────────────────────────────────────────────────
+    let _itemDiscIdx = null;
+    let _itemDiscType = 'percent';
+    let _cartDiscType = 'percent';
+
+    function openItemDiscount(idx) {
+        _itemDiscIdx = idx;
+        const entry = cart[idx];
+        _itemDiscType = entry.discountType || 'percent';
+        document.getElementById('item-disc-name').textContent = entry.item.name;
+        document.getElementById('item-disc-value').value = entry.discountValue || '';
+        _updateItemDiscBtns();
+        document.getElementById('item-discount-modal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('item-disc-value').focus(), 100);
+    }
+
+    function setItemDiscType(t) { _itemDiscType = t; _updateItemDiscBtns(); }
+
+    function _updateItemDiscBtns() {
+        document.getElementById('item-disc-dollar-btn').style.background = _itemDiscType === 'dollar' ? '#C9A96E' : 'var(--surface-2)';
+        document.getElementById('item-disc-dollar-btn').style.color = _itemDiscType === 'dollar' ? '#38383B' : 'var(--text)';
+        document.getElementById('item-disc-percent-btn').style.background = _itemDiscType === 'percent' ? '#C9A96E' : 'var(--surface-2)';
+        document.getElementById('item-disc-percent-btn').style.color = _itemDiscType === 'percent' ? '#38383B' : 'var(--text)';
+    }
+
+    function applyItemDiscount() {
+        const val = parseFloat(document.getElementById('item-disc-value').value);
+        if (!val || val <= 0) { showToast('Enter a discount value', 'error'); return; }
+        cart[_itemDiscIdx].discountType = _itemDiscType;
+        cart[_itemDiscIdx].discountValue = val;
+        document.getElementById('item-discount-modal').classList.add('hidden');
+        renderCart();
+    }
+
+    function removeItemDiscount() {
+        if (_itemDiscIdx !== null) {
+            delete cart[_itemDiscIdx].discountType;
+            delete cart[_itemDiscIdx].discountValue;
+            delete cart[_itemDiscIdx].calculatedDiscount;
+        }
+        document.getElementById('item-discount-modal').classList.add('hidden');
+        renderCart();
+    }
+
+    function openCartDiscount() {
+        if (cart.length === 0) { showToast('Cart is empty', 'error'); return; }
+        _cartDiscType = cartDiscountType || 'percent';
+        document.getElementById('cart-disc-value').value = cartDiscountValue || '';
+        _updateCartDiscBtns();
+        document.getElementById('cart-discount-modal').classList.remove('hidden');
+        setTimeout(() => document.getElementById('cart-disc-value').focus(), 100);
+    }
+
+    function setCartDiscType(t) { _cartDiscType = t; _updateCartDiscBtns(); }
+
+    function _updateCartDiscBtns() {
+        document.getElementById('cart-disc-dollar-btn').style.background = _cartDiscType === 'dollar' ? '#C9A96E' : 'var(--surface-2)';
+        document.getElementById('cart-disc-dollar-btn').style.color = _cartDiscType === 'dollar' ? '#38383B' : 'var(--text)';
+        document.getElementById('cart-disc-percent-btn').style.background = _cartDiscType === 'percent' ? '#C9A96E' : 'var(--surface-2)';
+        document.getElementById('cart-disc-percent-btn').style.color = _cartDiscType === 'percent' ? '#38383B' : 'var(--text)';
+    }
+
+    function applyCartDiscount() {
+        const val = parseFloat(document.getElementById('cart-disc-value').value);
+        if (!val || val <= 0) { showToast('Enter a discount value', 'error'); return; }
+        cartDiscountType = _cartDiscType;
+        cartDiscountValue = val;
+        document.getElementById('cart-discount-modal').classList.add('hidden');
+        renderCart();
+    }
+
+    function clearCartDiscount() {
+        cartDiscountType = null;
+        cartDiscountValue = 0;
+        document.getElementById('cart-discount-modal').classList.add('hidden');
+        renderCart();
     }
 
     // ─── Receipt Modal ────────────────────────────────────────────────────────
@@ -1997,6 +2174,13 @@
                 <span class="left"></span>
                 <span class="right">$${parseFloat(li.line_total).toFixed(2)}</span>
             </div>`;
+            if (li.discount_amount && parseFloat(li.discount_amount) > 0) {
+                const dLabel = li.discount_type === 'percent' ? `${parseFloat(li.discount_value)}% off` : `$${parseFloat(li.discount_value).toFixed(2)} off`;
+                lines += `<div class="receipt-line" style="color:#F59E0B;font-size:0.85em">
+                    <span class="left">&nbsp;&nbsp;Discount (${dLabel})</span>
+                    <span class="right">-$${parseFloat(li.discount_amount).toFixed(2)}</span>
+                </div>`;
+            }
         }
 
         let paymentLine = {'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[sale.payment_method] || (sale.payment_method || '').toUpperCase();
@@ -2074,6 +2258,10 @@
                 <span class="left">Subtotal</span>
                 <span class="right">$${parseFloat(sale.subtotal).toFixed(2)}</span>
             </div>
+            ${sale.discount_amount && parseFloat(sale.discount_amount) > 0 ? `<div class="receipt-line" style="color:#F59E0B">
+                <span class="left">Cart Discount (${sale.discount_type === 'percent' ? parseFloat(sale.discount_value) + '%' : '$' + parseFloat(sale.discount_value).toFixed(2)})</span>
+                <span class="right">-$${parseFloat(sale.discount_amount).toFixed(2)}</span>
+            </div>` : ''}
             <div class="receipt-line">
                 <span class="left">Tax (${(parseFloat(sale.tax_rate) * 100).toFixed(1)}%)</span>
                 <span class="right">$${parseFloat(sale.tax_amount).toFixed(2)}</span>
@@ -2272,6 +2460,8 @@ table { width: 100%; border-collapse: collapse; }
         cart = [];
         currentSale = null;
         poyntOrderId = null;
+        cartDiscountType = null;
+        cartDiscountValue = 0;
         poyntReferenceId = null;
         poyntPollCount = 0;
         document.getElementById('receipt-modal').classList.add('hidden');
