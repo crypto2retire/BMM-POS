@@ -77,8 +77,9 @@
             border: 1px solid var(--border);
             color: var(--text-light);
             cursor: pointer;
-            padding: 3px 8px;
-            font-size: 0.75rem;
+            padding: 8px 12px;
+            font-size: 0.78rem;
+            min-height: 40px;
             transition: border-color 0.2s, color 0.2s;
             font-family: 'Roboto', sans-serif;
         }
@@ -93,7 +94,7 @@
         }
         .search-bar input {
             flex: 1;
-            max-width: 340px;
+            max-width: 420px;
             background: var(--surface-2);
             border: 1px solid var(--border);
             color: var(--text);
@@ -122,8 +123,9 @@
             background: rgba(123,196,160,0.12);
             color: #7BC4A0;
             border: 1px solid rgba(123,196,160,0.3);
-            padding: 4px 12px;
-            font-size: 0.72rem;
+            padding: 8px 14px;
+            font-size: 0.78rem;
+            min-height: 40px;
             cursor: pointer;
             font-family: 'Roboto', sans-serif;
             text-transform: uppercase;
@@ -357,7 +359,8 @@
             .table-wrapper { display: none; }
             .rent-cards-mobile { display: flex; }
             .search-bar { flex-direction: column; }
-            .search-bar input { max-width: 100%; }
+            .search-bar input { max-width: 100%; min-height: 44px; font-size: 16px; }
+            .search-bar { flex-wrap: wrap; }
         }
     </style>
 </head>

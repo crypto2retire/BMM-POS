@@ -570,8 +570,9 @@ a:hover { color: var(--gold-light); }
 }
 
 /* ── TABLES — LEDGER STYLE ────────────────────────────── */
-.table-wrapper { overflow-x: auto; }
+.table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 table { width: 100%; border-collapse: collapse; }
+td { word-break: break-word; overflow-wrap: break-word; }
 thead th {
     background: transparent;
     padding: 0.6rem 0.9rem 0.8rem;

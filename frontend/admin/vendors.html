@@ -40,7 +40,7 @@
         }
         .search-bar input {
             flex: 1;
-            max-width: 340px;
+            max-width: 420px;
             background: var(--surface-2);
             border: 1px solid var(--border);
             color: var(--text);
@@ -55,9 +55,9 @@
         /* ── Pagination bar ──────────────────────────────── */
         .pagination-bar { display:flex; align-items:center; justify-content:space-between; margin-top:1rem; font-size:0.78rem; color:var(--text-light); }
         .pagination-bar button {
-            padding:0.3rem 0.8rem; background:var(--surface-2); border:1px solid var(--border);
-            color:var(--text-light); font-size:0.72rem; cursor:pointer; font-family:'Roboto',sans-serif;
-            transition:background 0.15s, color 0.15s;
+            padding:0.45rem 0.8rem; background:var(--surface-2); border:1px solid var(--border);
+            color:var(--text-light); font-size:0.78rem; cursor:pointer; font-family:'Roboto',sans-serif;
+            transition:background 0.15s, color 0.15s; min-height:44px;
         }
         .pagination-bar button:hover:not(:disabled) { background:var(--gold-dim); color:var(--gold); }
         .pagination-bar button:disabled { opacity:0.3; cursor:default; }
@@ -66,8 +66,8 @@
         .vendor-flag { color: #f87171; margin-right: 4px; font-size: 0.85rem; }
         .role-badge {
             display: inline-block;
-            padding: 2px 8px;
-            font-size: 0.6rem;
+            padding: 4px 10px;
+            font-size: 0.68rem;
             font-weight: 500;
             letter-spacing: 0.1em;
             text-transform: uppercase;
@@ -222,6 +222,8 @@
         }
 
         @media (max-width: 767px) {
+            .search-bar input { max-width: 100%; min-height: 44px; font-size: 16px; }
+            .search-bar { flex-wrap: wrap; }
             .main-content { padding-bottom: 70px; }
             .table-wrapper { display: none; }
             .vendor-cards { display: flex; }
