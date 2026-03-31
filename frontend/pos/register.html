@@ -222,13 +222,13 @@
             gap: 0.3rem;
         }
         .qty-btn {
-            width: 22px; height: 22px;
+            width: 40px; height: 40px;
             border: 1px solid #555558;
             border-radius: 0;
             background: #44444A;
             color: #F0EDE8;
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 1rem;
             display: flex; align-items: center; justify-content: center;
             transition: background 0.1s;
         }
@@ -391,7 +391,8 @@
             background: #44444A;
             border: 1px solid rgba(201,169,110,0.25);
             border-radius: 0;
-            width: 420px;
+            width: 100%;
+            max-width: 420px;
             max-height: 85vh;
             overflow-y: auto;
             padding: 1.5rem;
@@ -498,6 +499,38 @@
             .receipt-total-row { color: #000 !important; display: flex !important; }
             .receipt-total-row.bold { color: #000 !important; border-color: #333 !important; }
             .change-big { color: #000 !important; }
+        }
+
+        /* ── Mobile responsive ───────────────────────────── */
+        @media (max-width: 767px) {
+            .reg-layout {
+                flex-direction: column;
+                height: auto;
+                min-height: calc(100vh - 56px);
+                overflow: auto;
+            }
+            .reg-left {
+                flex: none;
+                max-height: 50vh;
+                overflow-y: auto;
+            }
+            .reg-right {
+                flex: none;
+                overflow: visible;
+            }
+            .results-area {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+            .pay-btn { min-height: 44px; font-size: 0.9rem; padding: 0.65rem; }
+            .cash-input-row input { min-height: 44px; font-size: 1rem; padding: 0.6rem; }
+            .btn-charge { min-height: 52px; font-size: 0.95rem; }
+            .receipt-card { width: calc(100% - 2rem); max-width: 420px; }
+        }
+
+        @media (max-width: 1023px) and (min-width: 768px) {
+            .reg-layout { /* keep side-by-side on tablet */ }
+            .reg-left { flex: 0 0 55%; }
+            .reg-right { flex: 0 0 45%; }
         }
     </style>
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">

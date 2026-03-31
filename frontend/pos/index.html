@@ -104,8 +104,11 @@
             background: none;
             border: none;
             cursor: pointer;
-            font-size: 0.72rem;
-            padding: 0.3rem 0.6rem;
+            font-size: 0.78rem;
+            padding: 0.5rem 0.7rem;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
             letter-spacing: 0.08em;
             text-transform: uppercase;
             font-family: 'Roboto', sans-serif;
@@ -184,7 +187,7 @@
         .cart-table { width: 100%; border-collapse: collapse; }
         .cart-table th {
             text-align: left;
-            font-size: 0.62rem;
+            font-size: 0.75rem;
             font-weight: 400;
             text-transform: uppercase;
             letter-spacing: 0.12em;
@@ -213,15 +216,15 @@
         .item-name-cell small { color: #A8A6A1; font-size: 0.7rem; }
         .item-sale-badge { color: #e8a060; font-size: 0.72rem; font-weight: 500; }
 
-        .qty-control { display: flex; align-items: center; gap: 0.25rem; }
+        .qty-control { display: flex; align-items: center; gap: 0.35rem; }
         .qty-control button {
-            width: 24px;
-            height: 24px;
+            width: 44px;
+            height: 44px;
             border: 1px solid #555558;
             background: #4e4e54;
             color: #F0EDE8;
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 1.1rem;
             line-height: 1;
             display: flex;
             align-items: center;
@@ -375,8 +378,10 @@
             background: #44444A;
             border: 1px solid rgba(201,169,110,0.25);
             padding: 1.75rem;
-            width: 100%;
+            width: calc(100% - 2rem);
             max-width: 460px;
+            max-height: 90vh;
+            overflow-y: auto;
             color: #F0EDE8;
             box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.08);
             animation: fadeUp 0.25s ease;
@@ -417,12 +422,13 @@
         .quick-cash button {
             flex: 1;
             min-width: 50px;
+            min-height: 44px;
             background: var(--surface-2);
             border: 1px solid rgba(255,255,255,0.1);
             color: #F0EDE8;
-            padding: 0.55rem 0.4rem;
+            padding: 0.65rem 0.5rem;
             cursor: pointer;
-            font-size: 0.82rem;
+            font-size: 0.88rem;
             font-family: 'Roboto', sans-serif;
             transition: background 0.12s, border-color 0.12s;
         }
@@ -587,7 +593,7 @@
         }
 
         /* Receipt Modal */
-        .receipt-modal { max-width: 380px; max-height: 85vh; overflow-y: auto; }
+        .receipt-modal { width: calc(100% - 2rem); max-width: 380px; max-height: 85vh; overflow-y: auto; }
         .receipt-print-area {
             font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
             font-size: 12px;
@@ -777,10 +783,11 @@
             background: #2a2a2d;
             border: 1px solid #555558;
             color: #F0EDE8;
-            padding: 0.55rem 0.7rem;
-            font-size: 0.875rem;
+            padding: 0.7rem 0.75rem;
+            font-size: 1rem;
             font-family: 'Roboto', sans-serif;
             box-sizing: border-box;
+            min-height: 44px;
         }
         .manual-form-group input:focus, .manual-form-group select:focus {
             outline: none;
@@ -798,25 +805,26 @@
         .denom-row {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 8px;
             background: #2D2D30;
-            padding: 4px 8px;
+            padding: 8px 12px;
         }
         .denom-row label {
-            font-size: 0.72rem;
+            font-size: 0.8rem;
             color: #A8A6A1;
             min-width: 55px;
             font-family: 'Roboto', sans-serif;
         }
         .denom-row input {
-            width: 50px;
+            width: 60px;
             background: #44444A;
             border: 1px solid #555558;
             color: #F0EDE8;
-            padding: 4px 6px;
-            font-size: 0.85rem;
+            padding: 8px 6px;
+            font-size: 0.9rem;
             text-align: center;
             font-family: 'Roboto Mono', monospace;
+            min-height: 40px;
         }
         .denom-row input:focus { outline: none; border-color: rgba(201,169,110,0.4); }
     </style>
@@ -1204,10 +1212,10 @@
         <div style="font-size:0.7rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.05em">Total</div>
         <div style="font-size:1.25rem;font-weight:800;color:#F9FAFB" id="mobile-total">$0.00</div>
     </div>
-    <button class="pay-btn cash" id="mobile-cash-btn" onclick="openCashModal()" disabled style="flex:1;max-width:140px;padding:0.75rem">
+    <button class="pay-btn cash" id="mobile-cash-btn" onclick="openCashModal()" disabled style="flex:1;padding:0.75rem;min-height:48px;font-size:0.9rem">
         💵 Cash
     </button>
-    <button class="pay-btn card" id="mobile-card-btn" onclick="startCardPayment()" disabled style="flex:1;max-width:140px;padding:0.75rem">
+    <button class="pay-btn card" id="mobile-card-btn" onclick="startCardPayment()" disabled style="flex:1;padding:0.75rem;min-height:48px;font-size:0.9rem">
         💳 Card
     </button>
 </div>
