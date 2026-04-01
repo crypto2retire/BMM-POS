@@ -32,6 +32,7 @@ class Vendor(Base):
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     theme_preference: Mapped[str] = mapped_column(String(10), default="dark", nullable=False, server_default="dark")
     font_size_preference: Mapped[str] = mapped_column(String(10), default="medium", nullable=False, server_default="medium")
+    sale_notify_preference: Mapped[str] = mapped_column(String(10), default="instant", nullable=False, server_default="instant")
 
     items = relationship("Item", back_populates="vendor")
     sales = relationship("Sale", back_populates="cashier", foreign_keys="[Sale.cashier_id]")

@@ -619,8 +619,8 @@ async def send_weekly_reports(
     period_label = f"{week_start.strftime('%-m/%-d')} – {today.strftime('%-m/%-d/%Y')}"
 
     from datetime import timezone as tz
-    from zoneinfo import ZoneInfo
-    cst = ZoneInfo("America/Chicago")
+    from app.timezone import STORE_TZ
+    cst = STORE_TZ
     start_utc = datetime(week_start.year, week_start.month, week_start.day, tzinfo=cst).astimezone(tz.utc)
     end_utc = datetime(today.year, today.month, today.day, tzinfo=cst).astimezone(tz.utc) + timedelta(days=1)
 

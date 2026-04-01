@@ -80,6 +80,10 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
                 "font_size_preference VARCHAR(10) NOT NULL DEFAULT 'medium'"
             ))
+            await session.execute(text("""
+                ALTER TABLE vendors
+                ADD COLUMN IF NOT EXISTS sale_notify_preference VARCHAR(10) NOT NULL DEFAULT 'instant'
+            """))
             await session.execute(text(
                 "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
                 "image_path VARCHAR(500)"
@@ -274,6 +278,24 @@ async def lifespan(app: FastAPI):
             await session.commit()
     except Exception as e:
         print(f"BMM-POS: column migration FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
+    # ── PRIORITY: Force-clear ALL consignment flags ──
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(text("""
+                UPDATE items
+                SET is_consignment = false,
+                    consignment_rate = NULL
+                WHERE is_consignment = true OR consignment_rate IS NOT NULL
+            """))
+            await session.commit()
+            count = result.rowcount
+            if count > 0:
+                print(f"BMM-POS: CLEARED consignment flags on {count} items", file=sys.stderr, flush=True)
+            else:
+                print("BMM-POS: consignment check OK — no items flagged", file=sys.stderr, flush=True)
+    except Exception as e:
+        print(f"BMM-POS: CRITICAL — consignment cleanup failed: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
 
     # Verify connectivity
     try:

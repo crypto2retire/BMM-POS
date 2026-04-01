@@ -1,7 +1,6 @@
 import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
-from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 logger = logging.getLogger(__name__)
@@ -16,10 +15,9 @@ from app.models.payout import Payout
 from app.models.reservation import Reservation
 from app.models.item import Item
 from app.routers.auth import require_cashier_or_admin, require_admin
+from app.timezone import STORE_TZ
 
 router = APIRouter(prefix="/admin/reports", tags=["reports"])
-
-STORE_TZ = ZoneInfo("America/Chicago")
 
 
 def _local_today():
@@ -462,7 +460,7 @@ async def report_hourly_sales(
     hourly = {}
     for s in sales:
         if s.created_at:
-            h = s.created_at.hour
+            h = _to_local(s.created_at).hour
             if h not in hourly:
                 hourly[h] = {"count": 0, "total": 0}
             hourly[h]["count"] += 1

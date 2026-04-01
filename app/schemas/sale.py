@@ -67,6 +67,7 @@ class SaleResponse(BaseModel):
     discount_value: Optional[Decimal] = None
     discount_amount: Optional[Decimal] = None
     created_at: datetime
+    created_at_display: Optional[str] = None
     line_items: List[SaleItemResponse] = []
 
     model_config = {"from_attributes": True}

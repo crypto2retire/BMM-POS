@@ -1,7 +1,8 @@
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
-CST = ZoneInfo("America/Chicago")
+from app.timezone import STORE_TZ
+
+CST = STORE_TZ
 
 BRAND_BG = "#38383B"
 BRAND_GOLD = "#C9A96E"
@@ -104,6 +105,14 @@ EMAIL_TEMPLATE_DEFAULTS = {
         "body": "Great news! Your order from Bowenstreet Market is ready for pickup.",
         "closing": "We look forward to seeing you!",
         "variables": ["customer_name", "item_name", "store_hours"],
+    },
+    "sale_digest": {
+        "label": "Sale Digest",
+        "subject": "{period_label} Sales Summary — {items_sold} item(s) sold",
+        "greeting": "Hello {vendor_name},",
+        "body": "Here is your {period_label} sales summary from Bowenstreet Market.",
+        "closing": "View your full sales history and balance on your vendor dashboard.",
+        "variables": ["vendor_name", "period_label", "items_sold", "total_revenue", "current_balance"],
     },
 }
 
@@ -215,6 +224,7 @@ async def product_sold_email(
     sale_price: float,
     sale_id: int,
     sold_at: str,
+    current_balance: float = None,
     db=None,
 ) -> tuple[str, str, str]:
     custom = await get_custom_template("product_sold", db)
@@ -232,10 +242,11 @@ async def product_sold_email(
             ("Sale Price", f"${sale_price:.2f}"),
             ("Sale #", str(sale_id)),
             ("Date", sold_at),
-        ])
+        ] + ([("Current Balance", f"${current_balance:.2f}")] if current_balance is not None else []))
         + (_p(closing) if closing else "")
     )
-    plain = f"{greeting} {body_text} Item: {item_name}, SKU: {item_sku}, ${sale_price:.2f}. Sale #{sale_id} on {sold_at}."
+    balance_str = f" Current balance: ${current_balance:.2f}." if current_balance is not None else ""
+    plain = f"{greeting} {body_text} Item: {item_name}, SKU: {item_sku}, ${sale_price:.2f}. Sale #{sale_id} on {sold_at}.{balance_str}"
     return subject, _base_template("Item Sold", body), plain
 
 
@@ -583,3 +594,54 @@ async def rent_shortfall_email(
     )
     plain = f"{greeting} {body_text} Booth: {booth}, shortfall: ${shortfall:.2f}."
     return subject, _base_template("Rent Balance Due", body), plain
+
+
+async def sale_digest_email(
+    vendor_name: str,
+    period_label: str,
+    items: list[dict],
+    total_revenue: float,
+    current_balance: float,
+    db=None,
+) -> tuple[str, str, str]:
+    """
+    items: list of dicts with keys: item_name, item_sku, sale_price, sale_id, sold_at
+    """
+    custom = await get_custom_template("sale_digest", db)
+    items_sold = len(items)
+    variables = dict(
+        vendor_name=vendor_name,
+        period_label=period_label,
+        items_sold=str(items_sold),
+        total_revenue=f"{total_revenue:.2f}",
+        current_balance=f"{current_balance:.2f}",
+    )
+    defaults = EMAIL_TEMPLATE_DEFAULTS["sale_digest"]
+    subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
+
+    # Build item list table
+    item_rows = ""
+    for it in items:
+        item_rows += _info_row(it["item_name"], f"${it['sale_price']:.2f}")
+    items_table = f'<table width="100%" cellpadding="0" cellspacing="0" style="background:{BRAND_BG};margin:16px 0">{item_rows}</table>' if item_rows else ""
+
+    body = (
+        _p(greeting)
+        + _p(body_text)
+        + items_table
+        + _info_table([
+            ("Items Sold", str(items_sold)),
+            ("Total Revenue", f"${total_revenue:.2f}"),
+            ("Current Balance", f"${current_balance:.2f}"),
+        ])
+        + (_p(closing) if closing else "")
+    )
+
+    # Plain text version
+    items_plain = "; ".join(f"{it['item_name']} (${it['sale_price']:.2f})" for it in items)
+    plain = (
+        f"{greeting} {body_text} "
+        f"Items sold: {items_plain}. "
+        f"Total revenue: ${total_revenue:.2f}. Current balance: ${current_balance:.2f}."
+    )
+    return subject, _base_template(f"{period_label} Sales Summary", body), plain

@@ -1,8 +1,5 @@
 from datetime import date, datetime, timedelta, timezone
 import datetime as dt
-from zoneinfo import ZoneInfo
-
-_STORE_TZ = ZoneInfo("America/Chicago")
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -17,8 +14,21 @@ from app.schemas.sale import SaleCreate, SaleResponse, SaleItemResponse
 from app.routers.auth import get_current_user
 from app.config import settings
 from app.routers.settings import get_tax_rate
+from app.timezone import STORE_TZ as _STORE_TZ
 
 router = APIRouter(prefix="/sales", tags=["sales"])
+
+
+def _format_cst(dt):
+    """Format a datetime as a display string in store local time."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        from datetime import timezone as _tz
+        dt = dt.replace(tzinfo=_tz.utc)
+    local_dt = dt.astimezone(_STORE_TZ)
+    tz_abbr = local_dt.strftime("%Z")  # "CST" or "CDT" depending on time of year
+    return local_dt.strftime("%b %-d, %Y at %-I:%M %p") + f" {tz_abbr}"
 
 
 def get_active_price(item: Item) -> Decimal:
@@ -87,6 +97,7 @@ def sale_to_response(sale: Sale) -> SaleResponse:
         discount_value=getattr(sale, 'discount_value', None),
         discount_amount=getattr(sale, 'discount_amount', None),
         created_at=sale.created_at,
+        created_at_display=_format_cst(sale.created_at),
         line_items=line_items,
     )
 
@@ -159,12 +170,7 @@ async def create_sale(
 
     vendor_totals: dict[int, Decimal] = {}
     for item, qty, unit_price, line_total in resolved_lines:
-        consignment_amt = None
-        c_rate = None
-        if item.is_consignment and item.consignment_rate is not None:
-            c_rate = Decimal(str(item.consignment_rate))
-            consignment_amt = (line_total * c_rate).quantize(Decimal("0.01"), ROUND_HALF_UP)
-
+        # Safety: no consignment — vendors receive 100% of line total (ignore stale DB flags)
         sale_item = SaleItem(
             sale_id=sale.id,
             item_id=item.id,
@@ -172,9 +178,9 @@ async def create_sale(
             quantity=qty,
             unit_price=unit_price,
             line_total=line_total,
-            is_consignment=item.is_consignment,
-            consignment_rate=c_rate,
-            consignment_amount=consignment_amt,
+            is_consignment=False,
+            consignment_rate=None,
+            consignment_amount=None,
         )
         db.add(sale_item)
 
@@ -184,8 +190,6 @@ async def create_sale(
             item.status = "sold"
 
         vendor_credit = line_total
-        if consignment_amt is not None:
-            vendor_credit = (line_total - consignment_amt).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
         vendor_totals[item.vendor_id] = vendor_totals.get(item.vendor_id, Decimal("0")) + vendor_credit
 

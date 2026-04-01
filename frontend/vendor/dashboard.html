@@ -146,6 +146,15 @@
                     <option value="large">Large</option>
                 </select>
             </div>
+            <div>
+                <label style="font-size:0.72rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.1em; display:block; margin-bottom:0.3rem; font-family:'Roboto',sans-serif">Sale Notifications</label>
+                <select id="sale-notify-select" onchange="setSaleNotifyPref(this.value)" style="padding:0.5rem 0.75rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:0.82rem; font-family:'Roboto',sans-serif; min-height:44px">
+                    <option value="instant">Instant (every sale)</option>
+                    <option value="daily">Daily Summary</option>
+                    <option value="weekly">Weekly Summary</option>
+                    <option value="monthly">Monthly Summary</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -475,6 +484,28 @@
         bmmSetFontSize(size);
     };
 
+    window.setSaleNotifyPref = function(val) {
+        fetch('/api/v1/auth/me/preferences', {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + sessionStorage.getItem('bmm_token'),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ sale_notify_preference: val }),
+        })
+        .then(function(res) {
+            if (!res.ok) throw new Error('Failed to save');
+            // Show brief confirmation
+            var sel = document.getElementById('sale-notify-select');
+            var origBorder = sel.style.borderColor;
+            sel.style.borderColor = 'var(--success-light)';
+            setTimeout(function() { sel.style.borderColor = origBorder; }, 1500);
+        })
+        .catch(function() {
+            alert('Failed to save notification preference');
+        });
+    };
+
     window.updateThemeButtons = function(theme) {
         var darkBtn = document.getElementById('theme-dark-btn');
         var lightBtn = document.getElementById('theme-light-btn');
@@ -506,6 +537,10 @@
                 var fontSize = data.font_size_preference || 'medium';
                 window.updateThemeButtons(theme);
                 document.getElementById('font-size-select').value = fontSize;
+                // Set sale notification dropdown
+                var notifyPref = data.sale_notify_preference || 'instant';
+                var notifySel = document.getElementById('sale-notify-select');
+                if (notifySel) notifySel.value = notifyPref;
             })
             .catch(function() {});
     };

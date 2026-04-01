@@ -286,15 +286,9 @@ async def bulk_import_inventory(
                 except (InvalidOperation, ValueError):
                     pass
 
-            consignment_pct_str = (clean_row.get("consignor %") or "").strip()
-            consignment = bool(consignment_pct_str and consignment_pct_str != "0")
+            # Consignment — ignored from Ricochet CSV (was junk data)
+            consignment = False
             consignment_rate = None
-            if consignment and consignment_pct_str:
-                try:
-                    cr = Decimal(consignment_pct_str.replace("%", ""))
-                    consignment_rate = cr / 100 if cr > 1 else cr
-                except (InvalidOperation, ValueError):
-                    consignment_rate = None
 
             barcode = barcode_raw or None
             sale_price = None
@@ -338,14 +332,9 @@ async def bulk_import_inventory(
             description = clean_row.get("description")
             barcode = clean_row.get("barcode")
             is_tax_exempt = clean_row.get("tax_exempt", "").lower() in ("true", "yes", "1", "y")
-            consignment = clean_row.get("consignment", "").lower() in ("true", "yes", "1", "y")
+            # Consignment — not set from CSV imports
+            consignment = False
             consignment_rate = None
-            if consignment and clean_row.get("consignment_rate"):
-                try:
-                    cr = Decimal(clean_row["consignment_rate"].replace("%", ""))
-                    consignment_rate = cr / 100 if cr > 1 else cr
-                except (InvalidOperation, ValueError):
-                    consignment_rate = None
             sale_price = None
             if clean_row.get("sale_price"):
                 try:
@@ -685,15 +674,9 @@ async def batch_import_items(
                     is_tax_exempt = Decimal(tax_rate_str) == 0
                 except (InvalidOperation, ValueError):
                     pass
-            consignment_pct_str = (clean.get("consignor %") or "").strip()
-            is_consignment = bool(consignment_pct_str and consignment_pct_str != "0")
+            # Consignment — ignored from Ricochet CSV (was junk data)
+            is_consignment = False
             cr = None
-            if is_consignment and consignment_pct_str:
-                try:
-                    crv = Decimal(consignment_pct_str.replace("%", ""))
-                    cr = float(crv / 100 if crv > 1 else crv)
-                except (InvalidOperation, ValueError):
-                    pass
             sp = None
             aged_str = (clean.get("aged price") or "").replace("$", "").replace(",", "")
             if aged_str:
@@ -706,15 +689,10 @@ async def batch_import_items(
             description = clean.get("short description")
             category = clean.get("category")
         else:
-            is_consignment = clean.get("consignment", "").lower() in ("true", "yes", "1", "y")
+            # Consignment — not set from CSV imports
+            is_consignment = False
             is_tax_exempt = clean.get("tax_exempt", "").lower() in ("true", "yes", "1", "y")
             cr = None
-            if is_consignment and clean.get("consignment_rate"):
-                try:
-                    crv = Decimal(clean["consignment_rate"].replace("%", ""))
-                    cr = float(crv / 100 if crv > 1 else crv)
-                except (InvalidOperation, ValueError):
-                    pass
             sp = None
             if clean.get("sale_price"):
                 try:

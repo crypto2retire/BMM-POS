@@ -196,6 +196,37 @@
             margin-left: auto;
         }
 
+        .save-banner {
+            position: fixed;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            padding: 0.85rem 2rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: 'Roboto', sans-serif;
+            letter-spacing: 0.03em;
+            border: 1px solid;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            animation: bannerSlide 0.3s ease;
+            white-space: nowrap;
+        }
+        .save-banner.success {
+            background: var(--success);
+            color: #fff;
+            border-color: var(--success-light);
+        }
+        .save-banner.error {
+            background: var(--danger);
+            color: #fff;
+            border-color: var(--danger-dark);
+        }
+        @keyframes bannerSlide {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
         .role-grid {
             display: grid;
             grid-template-columns: 1fr repeat(3, 80px);
@@ -1076,6 +1107,20 @@
         }
     }
 
+    function showSaveBanner(message, type) {
+        var existing = document.querySelector('.save-banner');
+        if (existing) existing.remove();
+        var banner = document.createElement('div');
+        banner.className = 'save-banner ' + (type || 'success');
+        banner.textContent = (type === 'error' ? '✕ ' : '✓ ') + message;
+        document.body.appendChild(banner);
+        setTimeout(function() {
+            banner.style.opacity = '0';
+            banner.style.transition = 'opacity 0.3s';
+            setTimeout(function() { banner.remove(); }, 300);
+        }, 5000);
+    }
+
     async function saveSettings() {
         var data = {};
         getAllSettingIds().forEach(function(key) {
@@ -1088,13 +1133,23 @@
             }
         });
 
-        var statusEl = document.getElementById('save-status');
+        var btn = document.querySelector('.save-bar .btn-save');
+        var originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+
         try {
             await apiPost('/api/v1/admin/settings', data);
-            statusEl.innerHTML = '<span style="color:var(--success-light)">Settings saved successfully</span>';
-            setTimeout(function() { statusEl.innerHTML = ''; }, 4000);
+            btn.textContent = '✓ Saved!';
+            showSaveBanner('Settings saved successfully', 'success');
+            setTimeout(function() {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }, 2000);
         } catch (e) {
-            statusEl.innerHTML = '<span style="color:var(--danger)">' + (e.message || 'Failed to save') + '</span>';
+            btn.textContent = originalText;
+            btn.disabled = false;
+            showSaveBanner(e.message || 'Failed to save settings', 'error');
         }
     }
 
@@ -1182,7 +1237,6 @@
         data['email_tpl_' + currentTplKey + '_body'] = document.getElementById('tpl-body').value;
         data['email_tpl_' + currentTplKey + '_closing'] = document.getElementById('tpl-closing').value;
 
-        var statusEl = document.getElementById('tpl-save-status');
         try {
             await apiPost('/api/v1/admin/settings', data);
 
@@ -1195,10 +1249,9 @@
             if (bodH) bodH.value = data['email_tpl_' + currentTplKey + '_body'];
             if (cloH) cloH.value = data['email_tpl_' + currentTplKey + '_closing'];
 
-            statusEl.innerHTML = '<span style="color:var(--success-light)">Template saved</span>';
-            setTimeout(function() { statusEl.innerHTML = ''; }, 4000);
+            showSaveBanner('Email template saved successfully', 'success');
         } catch (e) {
-            statusEl.innerHTML = '<span style="color:var(--danger)">' + (e.message || 'Failed to save') + '</span>';
+            showSaveBanner(e.message || 'Failed to save template', 'error');
         }
     }
 

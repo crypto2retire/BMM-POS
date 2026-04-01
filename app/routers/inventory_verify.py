@@ -14,7 +14,7 @@ from app.services.barcode import generate_sku, generate_short_barcode
 
 router = APIRouter(prefix="/inventory-verify", tags=["inventory-verify"])
 
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 
 # ── Helpers ─────────────────────────────────────────────────
 
@@ -121,7 +121,7 @@ async def verify_vendor_inventory(
 
     raw = await file.read()
     if len(raw) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
+        raise HTTPException(status_code=400, detail="File too large (max 50MB)")
 
     try:
         text = raw.decode("utf-8-sig")
@@ -254,16 +254,9 @@ async def verify_vendor_inventory(
                 except (InvalidOperation, ValueError):
                     pass
 
-            # Consignment
-            consignment_pct = (clean_row.get("consignor %") or "").strip()
-            is_consignment = bool(consignment_pct and consignment_pct != "0")
+            # Consignment — ignored from Ricochet CSV (was junk data)
+            is_consignment = False
             consignment_rate = None
-            if is_consignment and consignment_pct:
-                try:
-                    cr = Decimal(consignment_pct.replace("%", ""))
-                    consignment_rate = cr / 100 if cr > 1 else cr
-                except (InvalidOperation, ValueError):
-                    consignment_rate = None
 
             new_item = Item(
                 vendor_id=vendor_id,
@@ -299,6 +292,220 @@ async def verify_vendor_inventory(
     }
 
 
+@router.post("/upload-bulk")
+async def verify_bulk_inventory(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_role("admin")),
+):
+    """
+    Upload a single Ricochet CSV containing ALL vendors' items.
+    Uses the 'Consignor' column to match items to vendors by name.
+    - Items matching an existing barcode for the correct vendor → verified
+    - Items matching a barcode for a DIFFERENT vendor → flagged as error
+    - Items not in BMM-POS → created as pending_review under matched vendor
+    - Items with no/unmatched Consignor → grouped in skipped
+    """
+    if not file.filename or not file.filename.lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Please upload a CSV file")
+
+    raw = await file.read()
+    if len(raw) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="File too large (max 50MB)")
+
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1")
+
+    lines = text.split("\n")
+    if lines and not lines[0].strip().startswith("Product ID"):
+        text = "\n".join(lines[1:])
+
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise HTTPException(status_code=400, detail="CSV has no headers")
+
+    headers_lower = {h.strip().lower(): h.strip() for h in reader.fieldnames}
+    if "sku" not in headers_lower:
+        raise HTTPException(status_code=400, detail="CSV must have a 'SKU' column")
+
+    vendor_result = await db.execute(select(Vendor))
+    all_vendors = vendor_result.scalars().all()
+    vendor_by_name = {}
+    for v in all_vendors:
+        if v.name:
+            vendor_by_name[v.name.strip().lower()] = v
+        if v.booth_number:
+            vendor_by_name[v.booth_number.strip().lower()] = v
+
+    existing_result = await db.execute(select(Item).where(Item.status.in_(["active", "pending_review"])))
+    existing_by_barcode = {}
+    for item in existing_result.scalars().all():
+        if item.barcode:
+            existing_by_barcode[item.barcode] = item
+
+    all_skus = set()
+    sku_result = await db.execute(select(Item.sku))
+    for (s,) in sku_result.all():
+        if s:
+            all_skus.add(s)
+
+    sku_seqs = {}
+
+    async def get_next_sku(vid):
+        if vid not in sku_seqs:
+            seq_result = await db.execute(
+                select(func.count(Item.id)).where(Item.vendor_id == vid)
+            )
+            sku_seqs[vid] = (seq_result.scalar() or 0) + 1
+        while True:
+            sku = f"BSM-{vid:04d}-{sku_seqs[vid]:06d}"
+            if sku not in all_skus:
+                all_skus.add(sku)
+                sku_seqs[vid] += 1
+                return sku
+            sku_seqs[vid] += 1
+
+    now = datetime.utcnow()
+    verified_count = 0
+    added_count = 0
+    skipped = []
+    errors = []
+    vendor_stats = {}
+    unmatched_vendors = {}
+    rows_processed = 0
+
+    for row_num, row in enumerate(reader, start=2):
+        rows_processed += 1
+        clean_row = {k.strip().lower(): _clean(v) for k, v in row.items()}
+
+        barcode_raw = (clean_row.get("sku") or "").strip().strip("'").strip()
+        if not barcode_raw:
+            skipped.append({"row": row_num, "reason": "Empty SKU"})
+            continue
+
+        name = clean_row.get("name") or ""
+        if not name:
+            skipped.append({"row": row_num, "barcode": barcode_raw, "reason": "Empty name"})
+            continue
+
+        consignor = (clean_row.get("consignor") or "").strip()
+        if not consignor:
+            skipped.append({"row": row_num, "barcode": barcode_raw, "name": name, "reason": "No vendor (Consignor empty)"})
+            continue
+
+        vendor = vendor_by_name.get(consignor.lower())
+        if not vendor:
+            if consignor.lower() not in unmatched_vendors:
+                unmatched_vendors[consignor.lower()] = {"name": consignor, "count": 0}
+            unmatched_vendors[consignor.lower()]["count"] += 1
+            skipped.append({"row": row_num, "barcode": barcode_raw, "name": name, "reason": f"Vendor not found: '{consignor}'"})
+            continue
+
+        vid = vendor.id
+        if vid not in vendor_stats:
+            vendor_stats[vid] = {"name": vendor.name, "verified": 0, "added": 0, "errors": 0}
+
+        if barcode_raw in existing_by_barcode:
+            existing_item = existing_by_barcode[barcode_raw]
+            if existing_item.vendor_id == vid:
+                existing_item.verified_at = now
+                price_str = (clean_row.get("agreed price") or "").replace("$", "").replace(",", "")
+                if price_str:
+                    try:
+                        new_price = Decimal(price_str)
+                        if new_price > 0 and new_price != existing_item.price:
+                            existing_item.price = new_price
+                    except (InvalidOperation, ValueError):
+                        pass
+                try:
+                    qty = int(clean_row.get("quantity") or "1")
+                    if qty > 0:
+                        existing_item.quantity = qty
+                except ValueError:
+                    pass
+                verified_count += 1
+                vendor_stats[vid]["verified"] += 1
+            else:
+                errors.append({
+                    "row": row_num,
+                    "barcode": barcode_raw,
+                    "name": name,
+                    "consignor": consignor,
+                    "error": f"Barcode belongs to vendor {existing_item.vendor_id}, not {vid}",
+                })
+                vendor_stats[vid]["errors"] += 1
+                continue
+        else:
+            price_str = (clean_row.get("agreed price") or "0").replace("$", "").replace(",", "")
+            try:
+                price = Decimal(price_str)
+                if price <= 0:
+                    raise ValueError()
+            except (InvalidOperation, ValueError):
+                skipped.append({"row": row_num, "name": name, "reason": f"Invalid price: {price_str}"})
+                continue
+
+            try:
+                qty = int(clean_row.get("quantity") or "1")
+                if qty <= 0:
+                    qty = 1
+            except ValueError:
+                qty = 1
+
+            category = clean_row.get("category") or None
+            description = clean_row.get("short description") or None
+
+            tax_rate_str = (clean_row.get("tax rate") or "").replace("%", "").strip()
+            is_tax_exempt = False
+            if tax_rate_str:
+                try:
+                    is_tax_exempt = Decimal(tax_rate_str) == 0
+                except (InvalidOperation, ValueError):
+                    pass
+
+            sku = await get_next_sku(vid)
+
+            new_item = Item(
+                vendor_id=vid,
+                sku=sku,
+                barcode=barcode_raw,
+                name=name,
+                price=price,
+                quantity=qty,
+                category=category,
+                description=description,
+                status="pending_review",
+                is_tax_exempt=is_tax_exempt,
+                is_consignment=False,
+                consignment_rate=None,
+                verified_at=now,
+                import_source="ricochet",
+            )
+            db.add(new_item)
+            existing_by_barcode[barcode_raw] = new_item
+            added_count += 1
+            vendor_stats[vid]["added"] += 1
+
+        if rows_processed % 500 == 0:
+            await db.flush()
+
+    await db.commit()
+
+    return {
+        "total_rows_processed": rows_processed,
+        "verified": verified_count,
+        "added": added_count,
+        "skipped": len(skipped),
+        "errors": len(errors),
+        "vendor_summary": sorted(vendor_stats.values(), key=lambda v: v["name"]),
+        "unmatched_vendors": sorted(unmatched_vendors.values(), key=lambda v: -v["count"]),
+        "skipped_details": skipped[:50],
+        "error_details": errors[:50],
+    }
+
+
 # ── Reset vendor verification (admin only) ──────────────────
 
 @router.post("/reset/{vendor_id}")
@@ -318,6 +525,21 @@ async def reset_vendor_verification(
     )
     await db.commit()
     return {"detail": f"Verification reset for vendor {vendor_id}"}
+
+
+@router.post("/reset-all")
+async def reset_all_verification(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_role("admin")),
+):
+    """Clear verified_at for ALL items (re-do full verification)."""
+    result = await db.execute(
+        update(Item)
+        .where(Item.verified_at.isnot(None))
+        .values(verified_at=None)
+    )
+    await db.commit()
+    return {"detail": "Verification reset for all items", "count": result.rowcount}
 
 
 @router.get("/unverified/{vendor_id}")

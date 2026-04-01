@@ -526,6 +526,61 @@
 
     <!-- TAB 1: Upload (admin only) -->
     <div id="tab-upload" class="tab-panel admin-only">
+        <div class="upload-section" style="border-bottom:1px solid var(--warm-border); padding-bottom:1.5rem; margin-bottom:1.5rem">
+            <h3>Upload Full Inventory (All Vendors)</h3>
+            <p style="font-size:0.75rem; color:var(--text-light); margin:0.35rem 0 0.75rem; opacity:0.85">
+                One Ricochet &ldquo;Products&rdquo; export containing every vendor. Rows are matched by the <strong>Consignor</strong> column to vendor names in BMM-POS. The first line may be a title row; it is skipped automatically if it does not start with <code>Product ID</code>.
+            </p>
+            <div class="upload-row">
+                <div>
+                    <label for="bulk-csv-file">Full CSV</label>
+                    <input type="file" id="bulk-csv-file" accept=".csv">
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:0.5rem; align-items:flex-end">
+                    <button class="btn btn-primary" onclick="uploadBulkCSV()" id="bulk-upload-btn" style="min-height:44px">
+                        Upload Full Inventory
+                    </button>
+                    <button type="button" class="btn-danger" onclick="resetAllVerification()" id="reset-all-btn" style="min-height:44px; opacity:0.95" title="Clears verified_at on every item">
+                        Reset All Verification
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="upload-result" id="bulk-upload-result">
+            <h3 style="font-family:'EB Garamond',Georgia,serif; font-size:1.05rem; color:var(--text); margin-bottom:0.75rem">
+                Bulk Upload Results
+            </h3>
+            <div class="result-stats">
+                <div class="result-stat">Rows processed: <strong id="bulk-result-rows">0</strong></div>
+                <div class="result-stat">Verified: <strong id="bulk-result-verified">0</strong></div>
+                <div class="result-stat">Added (review): <strong id="bulk-result-added" style="color:var(--warning)">0</strong></div>
+                <div class="result-stat">Skipped: <strong id="bulk-result-skipped">0</strong></div>
+                <div class="result-stat">Errors: <strong id="bulk-result-errors" style="color:var(--danger)">0</strong></div>
+            </div>
+            <div id="bulk-result-vendor-wrap" style="display:none; margin-top:1rem">
+                <div style="font-weight:500; color:var(--gold); margin-bottom:0.4rem; font-size:0.85rem">Per-vendor summary</div>
+                <div class="vendor-table-wrap" style="max-height:220px; overflow:auto">
+                    <table class="verify-table" style="font-size:0.8rem">
+                        <thead>
+                            <tr>
+                                <th>Vendor</th>
+                                <th>Verified</th>
+                                <th>Added</th>
+                                <th>Errors</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bulk-vendor-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="bulk-result-unmatched-wrap" style="display:none; margin-top:1rem">
+                <div style="font-weight:500; color:var(--warning); margin-bottom:0.4rem; font-size:0.85rem">Unmatched Consignor names (not in BMM-POS)</div>
+                <div id="bulk-result-unmatched" class="result-detail-list" style="max-height:140px; overflow:auto"></div>
+            </div>
+            <div id="bulk-result-details" class="result-detail-list" style="margin-top:0.75rem"></div>
+        </div>
+
         <div class="upload-section">
             <h3>Upload Ricochet CSV</h3>
             <div class="upload-row">
@@ -970,6 +1025,115 @@ async function uploadCSV() {
     } finally {
         btn.disabled = false;
         btn.textContent = 'Upload & Verify';
+    }
+}
+
+async function uploadBulkCSV() {
+    var fileInput = document.getElementById('bulk-csv-file');
+    if (!fileInput.files.length) {
+        showAlert('Please select a CSV file for bulk upload', 'error');
+        return;
+    }
+
+    var btn = document.getElementById('bulk-upload-btn');
+    btn.disabled = true;
+    btn.textContent = 'Uploading…';
+
+    var formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    try {
+        var res = await fetch(API + '/inventory-verify/upload-bulk', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token },
+            body: formData,
+        });
+
+        var data = await res.json();
+        if (!res.ok) throw new Error(typeof data.detail === 'string' ? data.detail : (data.detail && data.detail[0] && data.detail[0].msg) || 'Bulk upload failed');
+
+        var panel = document.getElementById('bulk-upload-result');
+        panel.classList.add('visible');
+
+        document.getElementById('bulk-result-rows').textContent = data.total_rows_processed != null ? data.total_rows_processed : '—';
+        document.getElementById('bulk-result-verified').textContent = data.verified;
+        document.getElementById('bulk-result-added').textContent = data.added;
+        document.getElementById('bulk-result-skipped').textContent = data.skipped;
+        document.getElementById('bulk-result-errors').textContent = data.errors;
+
+        var vendorWrap = document.getElementById('bulk-result-vendor-wrap');
+        var tbody = document.getElementById('bulk-vendor-tbody');
+        tbody.innerHTML = '';
+        if (data.vendor_summary && data.vendor_summary.length) {
+            vendorWrap.style.display = 'block';
+            data.vendor_summary.forEach(function (v) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td>' + esc(v.name) + '</td><td>' + (v.verified || 0) + '</td><td>' + (v.added || 0) + '</td><td>' + (v.errors || 0) + '</td>';
+                tbody.appendChild(tr);
+            });
+        } else {
+            vendorWrap.style.display = 'none';
+        }
+
+        var unmatchedWrap = document.getElementById('bulk-result-unmatched-wrap');
+        var unmatchedEl = document.getElementById('bulk-result-unmatched');
+        unmatchedEl.innerHTML = '';
+        if (data.unmatched_vendors && data.unmatched_vendors.length) {
+            unmatchedWrap.style.display = 'block';
+            data.unmatched_vendors.forEach(function (u) {
+                var line = document.createElement('div');
+                line.textContent = u.name + ' — ' + u.count + ' row(s)';
+                unmatchedEl.appendChild(line);
+            });
+        } else {
+            unmatchedWrap.style.display = 'none';
+        }
+
+        var detailsDiv = document.getElementById('bulk-result-details');
+        var html = '';
+        if (data.added > 0) {
+            html += '<div style="margin-bottom:0.5rem; color:var(--warning); font-weight:500">' + data.added + ' new items added to Review Queue — use the Review tab to approve or reject.</div>';
+        }
+        if (data.skipped_details && data.skipped_details.length) {
+            html += '<div style="margin-bottom:0.5rem; color:var(--gold); font-weight:500">Skipped (first ' + data.skipped_details.length + '):</div>';
+            data.skipped_details.forEach(function (s) {
+                html += '<div>Row ' + s.row + ': ' + esc(s.reason) + (s.name ? ' — ' + esc(s.name) : '') + (s.barcode ? ' (' + esc(s.barcode) + ')' : '') + '</div>';
+            });
+        }
+        if (data.error_details && data.error_details.length) {
+            html += '<div style="margin-top:0.5rem; color:var(--danger); font-weight:500">Errors (first ' + data.error_details.length + '):</div>';
+            data.error_details.forEach(function (e) {
+                html += '<div>Row ' + e.row + ': ' + esc(e.error) + ' — ' + esc(e.name) + ' (' + esc(e.barcode) + ')</div>';
+            });
+        }
+        detailsDiv.innerHTML = html;
+
+        showAlert('Bulk upload complete: ' + data.verified + ' verified, ' + data.added + ' added, ' + data.skipped + ' skipped, ' + data.errors + ' errors.', 'success');
+        loadStatus();
+        fileInput.value = '';
+    } catch (e) {
+        showAlert('Bulk upload error: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Upload Full Inventory';
+    }
+}
+
+async function resetAllVerification() {
+    if (!confirm('Reset verification for ALL items? Every verified_at timestamp will be cleared. This cannot be undone.')) return;
+
+    var btn = document.getElementById('reset-all-btn');
+    btn.disabled = true;
+    try {
+        var res = await fetch(API + '/inventory-verify/reset-all', { method: 'POST', headers: headers });
+        var data = await res.json().catch(function () { return {}; });
+        if (!res.ok) throw new Error(data.detail || 'Reset failed');
+        showAlert(data.detail || 'All verification flags cleared.', 'success');
+        loadStatus();
+    } catch (e) {
+        showAlert('Error: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
     }
 }
 

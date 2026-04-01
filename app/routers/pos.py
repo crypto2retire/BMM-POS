@@ -6,7 +6,6 @@ import base64
 import io
 import logging
 from datetime import date, datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, status
@@ -35,12 +34,25 @@ from app.services import poynt
 from app.config import settings
 from app.routers.notifications import bg_notify_product_sold, bg_notify_order_confirmation
 from app.routers.settings import get_tax_rate
+from app.timezone import STORE_TZ
 
 router = APIRouter(prefix="/pos", tags=["pos"])
 
 
+def _format_cst(dt):
+    """Format a datetime as a display string in store local time."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        from datetime import timezone as _tz
+        dt = dt.replace(tzinfo=_tz.utc)
+    local_dt = dt.astimezone(STORE_TZ)
+    tz_abbr = local_dt.strftime("%Z")  # "CST" or "CDT" depending on time of year
+    return local_dt.strftime("%b %-d, %Y at %-I:%M %p") + f" {tz_abbr}"
+
+
 def _get_active_price(item: Item) -> Decimal:
-    today = datetime.now(ZoneInfo("America/Chicago")).date()
+    today = datetime.now(STORE_TZ).date()
     if (
         item.sale_price is not None
         and item.sale_start is not None
@@ -136,18 +148,11 @@ async def pos_manual_item(
     price = body.get("price")
     quantity = body.get("quantity", 1)
     is_tax_exempt = body.get("is_tax_exempt", False)
-    is_consignment = body.get("is_consignment", False)
-    consignment_rate = body.get("consignment_rate")
+    is_consignment = False
+    consignment_rate = None
 
     if not vendor_id or not name or not price:
         raise HTTPException(status_code=400, detail="vendor_id, name, and price are required")
-
-    if is_consignment and consignment_rate is None:
-        raise HTTPException(status_code=400, detail="consignment_rate is required for consignment items")
-    if consignment_rate is not None and (consignment_rate < 0 or consignment_rate > 1):
-        raise HTTPException(status_code=400, detail="consignment_rate must be between 0 and 1")
-    if not is_consignment:
-        consignment_rate = None
 
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -167,8 +172,8 @@ async def pos_manual_item(
         category="Manual Entry",
         status="active",
         is_tax_exempt=is_tax_exempt,
-        is_consignment=is_consignment,
-        consignment_rate=Decimal(str(consignment_rate)) if consignment_rate is not None else None,
+        is_consignment=False,
+        consignment_rate=None,
     )
     db.add(item)
     await db.commit()
@@ -335,12 +340,7 @@ async def pos_create_sale(
     vendor_totals: dict[int, Decimal] = {}
     for item, cart_item, unit_price, line_total, line_total_after_discount, i_disc_type, i_disc_val, i_disc_amt in resolved_lines:
         qty = cart_item.quantity
-        consignment_amt = None
-        c_rate = None
-        if item.is_consignment and item.consignment_rate is not None:
-            c_rate = Decimal(str(item.consignment_rate))
-            consignment_amt = (line_total_after_discount * c_rate).quantize(Decimal("0.01"), ROUND_HALF_UP)
-
+        # Safety: no consignment — vendors receive 100% of line total (ignore stale DB flags)
         sale_item = SaleItem(
             sale_id=sale.id,
             item_id=item.id,
@@ -348,9 +348,9 @@ async def pos_create_sale(
             quantity=qty,
             unit_price=unit_price,
             line_total=line_total_after_discount,
-            is_consignment=item.is_consignment,
-            consignment_rate=c_rate,
-            consignment_amount=consignment_amt,
+            is_consignment=False,
+            consignment_rate=None,
+            consignment_amount=None,
             discount_type=i_disc_type if i_disc_amt > 0 else None,
             discount_value=i_disc_val if i_disc_amt > 0 else None,
             discount_amount=i_disc_amt if i_disc_amt > 0 else None,
@@ -363,8 +363,6 @@ async def pos_create_sale(
             item.status = "sold"
 
         vendor_credit = line_total_after_discount
-        if consignment_amt is not None:
-            vendor_credit = (line_total_after_discount - consignment_amt).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
         vendor_totals[item.vendor_id] = (
             vendor_totals.get(item.vendor_id, Decimal("0")) + vendor_credit
@@ -451,11 +449,18 @@ async def pos_create_sale(
         )
 
     _logger = logging.getLogger(__name__)
-    sold_at_str = sale.created_at.strftime("%-m/%-d/%Y %-I:%M %p") if sale.created_at else ""
+    if sale.created_at:
+        _sat = sale.created_at
+        if _sat.tzinfo is None:
+            _sat = _sat.replace(tzinfo=timezone.utc)
+        sold_at_str = _sat.astimezone(STORE_TZ).strftime("%-m/%-d/%Y %-I:%M %p")
+    else:
+        sold_at_str = ""
     for si in sale.items:
         if si.item and si.vendor and si.vendor.email:
             try:
                 asyncio.ensure_future(bg_notify_product_sold(
+                    vendor_id=si.vendor.id,
                     vendor_name=si.vendor.name or "Vendor",
                     vendor_email=si.vendor.email,
                     item_name=si.item.name,
@@ -503,6 +508,7 @@ async def pos_create_sale(
         discount_value=sale.discount_value,
         discount_amount=sale.discount_amount,
         created_at=sale.created_at,
+        created_at_display=_format_cst(sale.created_at),
         line_items=line_items,
     )
 
@@ -651,6 +657,7 @@ async def void_sale(
         discount_value=sale.discount_value,
         discount_amount=sale.discount_amount,
         created_at=sale.created_at,
+        created_at_display=_format_cst(sale.created_at),
         line_items=line_items,
     )
 
@@ -781,7 +788,7 @@ async def end_of_day_report(
     if current_user.role not in ("admin", "cashier"):
         raise HTTPException(status_code=403, detail="Cashier or admin access required")
 
-    store_tz = ZoneInfo("America/Chicago")
+    store_tz = STORE_TZ
 
     if report_date:
         try:
@@ -941,7 +948,7 @@ async def set_starting_cash(
         raise HTTPException(status_code=400, detail="Amount cannot be negative")
 
     from app.models.store_setting import StoreSetting
-    store_tz = ZoneInfo("America/Chicago")
+    store_tz = STORE_TZ
     today = datetime.now(store_tz).date()
     key = "starting_cash_" + today.isoformat()
 
@@ -965,7 +972,7 @@ async def get_starting_cash(
         raise HTTPException(status_code=403, detail="Cashier or admin access required")
 
     from app.models.store_setting import StoreSetting
-    store_tz = ZoneInfo("America/Chicago")
+    store_tz = STORE_TZ
     today = datetime.now(store_tz).date()
     key = "starting_cash_" + today.isoformat()
 

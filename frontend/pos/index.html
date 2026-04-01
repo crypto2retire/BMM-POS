@@ -1065,7 +1065,7 @@
 <!-- Receipt Modal -->
 <div class="pos-modal-overlay hidden" id="receipt-modal">
     <div class="pos-modal receipt-modal" style="position:relative">
-        <button onclick="document.getElementById('receipt-modal').classList.add('hidden')" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--text-light);font-size:1.4rem;cursor:pointer;line-height:1;padding:4px 8px;z-index:1" title="Close">✕</button>
+        <button onclick="startNewSale()" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--text-light);font-size:1.4rem;cursor:pointer;line-height:1;padding:4px 8px;z-index:1" title="Close">✕</button>
         <h2 id="receipt-modal-title">✅ Sale Complete</h2>
         <div class="receipt-print-area" id="receipt-content"></div>
         <button class="print-receipt-btn" onclick="printReceipt()">🖨 Print Receipt</button>
@@ -1100,14 +1100,18 @@
             <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;font-size:0.8rem;letter-spacing:0">
                 <input type="checkbox" id="manual-tax-exempt"> Tax Exempt
             </label>
-            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;font-size:0.8rem;letter-spacing:0">
-                <input type="checkbox" id="manual-consignment" onchange="toggleManualConsignment()"> Consignment
-            </label>
         </div>
-        <div class="manual-form-group" id="manual-consignment-group" style="display:none">
-            <label for="manual-consignment-rate">Consignment Rate (%)</label>
-            <input type="number" id="manual-consignment-rate" min="0" max="100" step="0.01" placeholder="e.g. 40">
-            <small style="color:var(--text-muted);font-size:0.7rem">Percentage the store keeps</small>
+        <div style="display:none !important" aria-hidden="true">
+            <div class="manual-form-group" style="display:flex;gap:1.5rem;flex-wrap:wrap">
+                <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;font-size:0.8rem;letter-spacing:0">
+                    <input type="checkbox" id="manual-consignment" onchange="toggleManualConsignment()"> Consignment
+                </label>
+            </div>
+            <div class="manual-form-group" id="manual-consignment-group" style="display:none">
+                <label for="manual-consignment-rate">Consignment Rate (%)</label>
+                <input type="number" id="manual-consignment-rate" min="0" max="100" step="0.01" placeholder="e.g. 40">
+                <small style="color:var(--text-muted);font-size:0.7rem">Percentage the store keeps</small>
+            </div>
         </div>
         <div id="manual-error" style="color:var(--danger);font-size:0.8rem;min-height:20px"></div>
         <div class="modal-actions">
@@ -1175,7 +1179,7 @@
     </div>
 </div>
 
-<div class="pos-modal-overlay hidden" id="void-confirm-modal" style="z-index:450">
+<div class="pos-modal-overlay hidden" id="void-confirm-modal" style="z-index:1100">
     <div class="pos-modal" style="max-width:360px">
         <h2 style="color:var(--danger)">⚠ Void Sale</h2>
         <p style="color:var(--text-light);font-size:0.85rem;margin-bottom:0.75rem" id="void-sale-info"></p>
@@ -1771,10 +1775,6 @@
         const price = parseFloat(document.getElementById('manual-price').value);
         const quantity = parseInt(document.getElementById('manual-qty').value) || 1;
         const isTaxExempt = document.getElementById('manual-tax-exempt').checked;
-        const isConsignment = document.getElementById('manual-consignment').checked;
-        const consignmentRate = isConsignment
-            ? (parseFloat(document.getElementById('manual-consignment-rate').value) || 0) / 100
-            : null;
         const errEl = document.getElementById('manual-error');
 
         if (!vendorId) { errEl.textContent = 'Please select a vendor'; return; }
@@ -1790,8 +1790,8 @@
                 price: price,
                 quantity: quantity,
                 is_tax_exempt: isTaxExempt,
-                is_consignment: isConsignment,
-                consignment_rate: consignmentRate,
+                is_consignment: false,
+                consignment_rate: null,
             });
             addToCart(item);
             closeManualEntry();
@@ -2022,7 +2022,7 @@
                     ? `<span style="text-decoration:line-through;color:var(--text-muted);font-size:0.75rem">$${parseFloat(item.price).toFixed(2)}</span><br><span class="item-sale-badge">$${activePrice.toFixed(2)}</span>`
                     : `$${activePrice.toFixed(2)}`;
 
-                const consignTag = item.is_consignment ? ' <span style="background:var(--gold);color:var(--bg);font-size:0.6rem;padding:1px 5px;border-radius:2px;font-weight:700;vertical-align:middle">C</span>' : '';
+                const consignTag = '';
                 const taxExTag = item.is_tax_exempt ? ' <span style="background:var(--success);color:var(--success-light);font-size:0.6rem;padding:1px 5px;border-radius:2px;font-weight:700;vertical-align:middle">TE</span>' : '';
 
                 const disc = entry.calculatedDiscount || 0;
@@ -2279,9 +2279,15 @@
     function showReceiptModal(sale) {
         const payload = parseToken();
         const cashierName = payload?.name || 'Cashier';
-        const now = new Date(sale.created_at || Date.now());
-        const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        let receiptDateTime;
+        if (sale.created_at_display) {
+            receiptDateTime = sale.created_at_display;
+        } else {
+            const now = new Date(sale.created_at || Date.now());
+            const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+            const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+            receiptDateTime = dateStr + ' at ' + timeStr;
+        }
 
         let lines = '';
         for (const li of (sale.line_items || [])) {
@@ -2367,7 +2373,7 @@
             <div class="receipt-header">
                 <img src="/static/images/logo.webp" alt="BMM" style="width:120px;height:auto;display:block;margin:0 auto 6px">
                 <h3>Bowenstreet Market</h3>
-                <p>${dateStr} at ${timeStr}</p>
+                <p>${receiptDateTime}</p>
                 <p>Sale #${sale.id}</p>
             </div>
             <hr class="receipt-divider">
@@ -2422,9 +2428,15 @@
         if (!sale) return;
         const payload = parseToken();
         const cashierName = payload?.name || 'Cashier';
-        const now = new Date(sale.created_at || Date.now());
-        const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        let receiptDateTime;
+        if (sale.created_at_display) {
+            receiptDateTime = sale.created_at_display;
+        } else {
+            const now = new Date(sale.created_at || Date.now());
+            const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+            const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+            receiptDateTime = dateStr + ' at ' + timeStr;
+        }
 
         let itemRows = '';
         for (const li of (sale.line_items || [])) {
@@ -2542,7 +2554,7 @@ table { width: 100%; border-collapse: collapse; }
 </div>
 <hr class="rule">
 <div class="meta-block">
-    <div>${dateStr} at ${timeStr}</div>
+    <div>${receiptDateTime}</div>
     <div><span class="meta-label">Sale</span> #${sale.id}</div>
 </div>
 <hr class="rule">
@@ -2765,7 +2777,7 @@ table { width: 100%; border-collapse: collapse; }
         if (cart.length === 0) return;
         const held = {
             id: Date.now(),
-            time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+            time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }),
             items: JSON.parse(JSON.stringify(cart)),
             itemCount: cart.reduce((s, c) => s + c.quantity, 0),
         };
@@ -2874,8 +2886,8 @@ table { width: 100%; border-collapse: collapse; }
                 html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:6px">Transaction History</div>';
                 html += data.transactions.slice(0, 10).map(function(t) {
                     var d = new Date(t.created_at);
-                    var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                    var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                    var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
+                    var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
                     var color = t.type === 'load' ? 'var(--success-light)' : 'var(--danger)';
                     var sign = t.type === 'load' ? '+' : '-';
                     return '<div style="display:flex;justify-content:space-between;padding:4px 6px;background:var(--surface-2);margin-bottom:2px;font-size:0.82rem">'
@@ -3343,9 +3355,9 @@ table { width: 100%; border-collapse: collapse; }
             var sales = await apiGet(url);
             var d1 = new Date(dateFrom + 'T00:00:00');
             var d2 = new Date(dateTo + 'T00:00:00');
-            var rangeLabel = d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            var rangeLabel = d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
             if (dateFrom !== dateTo) {
-                rangeLabel += ' – ' + d2.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                rangeLabel += ' – ' + d2.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
             }
             renderReceiptResults(sales, rangeLabel);
         } catch (err) {
@@ -3368,15 +3380,19 @@ table { width: 100%; border-collapse: collapse; }
                 + '</div>';
         }
         results.innerHTML = header + sales.slice(0, 200).map(function(s) {
-            var d = new Date(s.created_at);
-            var dateStr = (d.getMonth()+1) + '/' + d.getDate() + '/' + d.getFullYear();
-            var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            var when;
+            if (s.created_at_display) {
+                when = s.created_at_display.replace(/\s+(CST|CDT)$/i, '').replace(/\s+at\s+/i, ' ');
+            } else {
+                var d = new Date(s.created_at);
+                when = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+            }
             var itemCount = (s.line_items || []).reduce(function(sum, li){ return sum + li.quantity; }, 0);
             var voidTag = s.is_voided ? ' · <span style="color:var(--danger);font-weight:700">VOIDED</span>' : '';
             return '<div onclick="viewReceiptDetail(' + s.id + ')" style="background:var(--surface-2);padding:0.65rem 0.75rem;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center' + (s.is_voided ? ';opacity:0.6' : '') + '">'
                 + '<div>'
                 + '<div style="font-weight:600;color:var(--text)">Sale #' + s.id + voidTag + '</div>'
-                + '<div style="font-size:0.8rem;color:var(--text-light)">' + dateStr + ' ' + timeStr + ' · ' + itemCount + ' item(s) · ' + ({'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[s.payment_method] || (s.payment_method||'').toUpperCase()) + '</div>'
+                + '<div style="font-size:0.8rem;color:var(--text-light)">' + when + ' · ' + itemCount + ' item(s) · ' + ({'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[s.payment_method] || (s.payment_method||'').toUpperCase()) + '</div>'
                 + '</div>'
                 + '<div style="font-weight:700;color:' + (s.is_voided ? 'var(--danger)' : 'var(--gold)') + ';font-size:1.05rem">' + (s.is_voided ? '-' : '') + '$' + parseFloat(s.total).toFixed(2) + '</div>'
                 + '</div>';
@@ -3390,9 +3406,15 @@ table { width: 100%; border-collapse: collapse; }
             currentSale = sale;
             const payload = parseToken();
             const cashierName = sale.cashier_name || payload?.name || 'Cashier';
-            const now = new Date(sale.created_at);
-            const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+            let receiptDateTime;
+            if (sale.created_at_display) {
+                receiptDateTime = sale.created_at_display;
+            } else {
+                const now = new Date(sale.created_at);
+                const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+                const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+                receiptDateTime = dateStr + ' at ' + timeStr;
+            }
 
             let lines = '';
             for (const li of (sale.line_items || [])) {
@@ -3444,7 +3466,7 @@ table { width: 100%; border-collapse: collapse; }
                 <div class="receipt-header">
                     <img src="/static/images/logo.webp" alt="BMM" style="width:120px;height:auto;display:block;margin:0 auto 6px">
                     <h3>Bowenstreet Market</h3>
-                    <p>${dateStr} at ${timeStr}</p>
+                    <p>${receiptDateTime}</p>
                     <p>Sale #${sale.id}</p>
                 </div>
                 <hr class="receipt-divider">
@@ -3513,8 +3535,8 @@ table { width: 100%; border-collapse: collapse; }
             }
             list.innerHTML = orders.map(o => {
                 const d = new Date(o.date || o.created_at);
-                const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
+                const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
                 const statusColor = o.status === 'pending' ? 'color-mix(in srgb, var(--warning) 38%, var(--white))' : o.status === 'ready' ? 'color-mix(in srgb, var(--info) 48%, var(--white))' : o.status === 'completed' ? 'var(--success-light)' : 'var(--border)';
                 const statusBg = o.status === 'pending' ? 'color-mix(in srgb, var(--warning) 58%, var(--bg))' : o.status === 'ready' ? 'color-mix(in srgb, var(--info) 42%, var(--bg))' : o.status === 'completed' ? 'var(--success)' : 'var(--text-light)';
                 var actionBtns = '';
@@ -3612,7 +3634,7 @@ table { width: 100%; border-collapse: collapse; }
         try {
             eodData = await apiGet('/api/v1/pos/end-of-day');
             const d = new Date(eodData.date + 'T12:00:00');
-            document.getElementById('eod-date-label').textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+            document.getElementById('eod-date-label').textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
             document.getElementById('eod-total-revenue').textContent = '$' + eodData.total_revenue.toFixed(2);
             document.getElementById('eod-total-txns').textContent = eodData.total_transactions;
             document.getElementById('eod-cash-total').textContent = '$' + eodData.cash.total.toFixed(2);
@@ -3794,7 +3816,7 @@ table { width: 100%; border-collapse: collapse; }
     function printEndOfDay() {
         if (!eodData) return;
         const d = new Date(eodData.date + 'T12:00:00');
-        const dateLabel = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+        const dateLabel = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
         const countedCash = document.getElementById('eod-counted-cash').textContent;
         const variance = document.getElementById('eod-variance').textContent;
         const deposit = document.getElementById('eod-deposit').textContent;

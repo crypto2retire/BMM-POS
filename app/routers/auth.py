@@ -145,12 +145,14 @@ async def get_me(current_user: Vendor = Depends(get_current_user)):
         "assistant_name": getattr(current_user, 'assistant_name', None),
         "theme_preference": current_user.theme_preference,
         "font_size_preference": current_user.font_size_preference,
+        "sale_notify_preference": current_user.sale_notify_preference,
     }
 
 
 class DisplayPreferencesUpdate(BaseModel):
     theme_preference: Optional[str] = None
     font_size_preference: Optional[str] = None
+    sale_notify_preference: Optional[str] = None
 
 
 @router.put("/me/preferences")
@@ -173,11 +175,18 @@ async def update_preferences(
             raise HTTPException(status_code=400, detail=f"Invalid font size. Must be one of: {valid_font_sizes}")
         current_user.font_size_preference = prefs.font_size_preference
 
+    valid_notify_prefs = {"instant", "daily", "weekly", "monthly"}
+    if prefs.sale_notify_preference is not None:
+        if prefs.sale_notify_preference not in valid_notify_prefs:
+            raise HTTPException(status_code=400, detail=f"Invalid notification preference. Must be one of: {valid_notify_prefs}")
+        current_user.sale_notify_preference = prefs.sale_notify_preference
+
     await db.commit()
 
     return {
         "theme_preference": current_user.theme_preference,
         "font_size_preference": current_user.font_size_preference,
+        "sale_notify_preference": current_user.sale_notify_preference,
         "detail": "Preferences updated.",
     }
 

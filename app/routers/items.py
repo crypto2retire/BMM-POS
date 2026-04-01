@@ -148,8 +148,8 @@ async def create_item(
         photo_urls=data.photo_urls,
         is_online=is_online_val,
         is_tax_exempt=data.is_tax_exempt,
-        is_consignment=data.is_consignment or False,
-        consignment_rate=data.consignment_rate,
+        is_consignment=False,
+        consignment_rate=None,
         sale_price=data.sale_price,
         sale_start=data.sale_start,
         sale_end=data.sale_end,
@@ -351,6 +351,10 @@ async def update_item(
         else:
             if not current_photos and not has_image:
                 raise HTTPException(status_code=400, detail="Items must have a photo to be listed online")
+    update_data.pop("is_consignment", None)
+    update_data.pop("consignment_rate", None)
+    update_data["is_consignment"] = False
+    update_data["consignment_rate"] = None
     for field, value in update_data.items():
         setattr(item, field, value)
 
