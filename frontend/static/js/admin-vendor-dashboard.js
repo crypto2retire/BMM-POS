@@ -106,7 +106,7 @@
                     '<td>' +
                     esc(v.booth_number) +
                     '</td>' +
-                    '<td style="color:var(--success-light);font-weight:600">' +
+                    '<td style="color:' + (v.balance < 0 ? 'var(--danger)' : 'var(--success-light)') + ';font-weight:600">' +
                     fmt(v.balance) +
                     '</td>' +
                     '<td>' +
@@ -134,7 +134,7 @@
                         '<div class="vh-mob-sub">Booth ' +
                         esc(v.booth_number) +
                         '</div></div>' +
-                        '<div class="vh-mob-bal">' +
+                        '<div class="vh-mob-bal" style="color:' + (v.balance < 0 ? 'var(--danger)' : '') + '">' +
                         fmt(v.balance) +
                         '</div></div>' +
                         '<div style="margin-top:0.5rem">' +
@@ -204,7 +204,61 @@
             buildDetailHtml(v) +
             '</td>';
         row.parentNode.insertBefore(tr, row.nextSibling);
+
+        // Lazy-load sales history for this vendor
+        loadVendorSalesHistory(vendorId);
     };
+
+    async function loadVendorSalesHistory(vendorId) {
+        var container = document.getElementById('vh-sales-' + vendorId);
+        if (!container) return;
+        try {
+            var sales = await apiGet('/api/v1/sales/?vendor_id=' + vendorId + '&limit=50');
+            if (!sales || !sales.length) {
+                container.innerHTML = '<p style="color:var(--text-light);font-style:italic">No sales recorded yet.</p>';
+                return;
+            }
+            var html = '<div style="max-height:300px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent">' +
+                '<table style="width:100%;border-collapse:collapse">' +
+                '<thead><tr>' +
+                '<th style="text-align:left;font-size:0.62rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;padding:0.4rem 0.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg)">Date</th>' +
+                '<th style="text-align:left;font-size:0.62rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;padding:0.4rem 0.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg)">Items</th>' +
+                '<th style="text-align:right;font-size:0.62rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;padding:0.4rem 0.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg)">Total</th>' +
+                '<th style="text-align:left;font-size:0.62rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;padding:0.4rem 0.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg)">Method</th>' +
+                '</tr></thead><tbody>';
+
+            sales.forEach(function(sale) {
+                var saleDate = '—';
+                if (sale.created_at) {
+                    var d = new Date(sale.created_at);
+                    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+                    saleDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+                }
+                // Get items that belong to this vendor
+                var vendorItems = (sale.items || []).filter(function(si) {
+                    return si.vendor_id === vendorId;
+                });
+                var itemNames = vendorItems.map(function(si) {
+                    return (si.item_name || si.name || 'Item') + (si.quantity > 1 ? ' x' + si.quantity : '');
+                }).join(', ') || '—';
+                var vendorTotal = vendorItems.reduce(function(sum, si) {
+                    return sum + (parseFloat(si.price) || 0) * (si.quantity || 1);
+                }, 0);
+
+                html += '<tr style="border-bottom:1px solid var(--border)">' +
+                    '<td style="padding:0.4rem 0.5rem;font-size:0.82rem;color:var(--text);white-space:nowrap">' + saleDate + '</td>' +
+                    '<td style="padding:0.4rem 0.5rem;font-size:0.82rem;color:var(--text);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + itemNames.replace(/"/g, '&quot;') + '">' + itemNames + '</td>' +
+                    '<td style="padding:0.4rem 0.5rem;font-size:0.82rem;color:var(--gold);text-align:right;font-weight:600">$' + vendorTotal.toFixed(2) + '</td>' +
+                    '<td style="padding:0.4rem 0.5rem;font-size:0.82rem;color:var(--text-light)">' + (sale.payment_method || '—') + '</td>' +
+                    '</tr>';
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+        } catch (e) {
+            container.innerHTML = '<p style="color:var(--danger)">Failed to load sales: ' + (e.message || e) + '</p>';
+        }
+    }
 
     function buildDetailHtml(v) {
         var pp = v.payout_preview || {};
@@ -219,7 +273,7 @@
             '<div class="vh-detail-grid">' +
             '<div class="vh-detail-col">' +
             '<h4 class="vh-detail-h">Balance &amp; Payout</h4>' +
-            '<p style="font-size:1.75rem;font-family:EB Garamond,serif;color:var(--success-light);margin:0.25rem 0">' +
+            '<p style="font-size:1.75rem;font-family:EB Garamond,serif;color:' + (v.balance < 0 ? 'var(--danger)' : 'var(--success-light)') + ';margin:0.25rem 0">' +
             fmt(v.balance) +
             '</p>' +
             '<div style="font-size:0.82rem;color:var(--text-light);line-height:1.5">' +
@@ -288,6 +342,12 @@
             v.id +
             '" class="btn btn-sm" style="display:inline-block;text-decoration:none;border:1px solid var(--border);padding:0.45rem 0.75rem;font-size:0.78rem" onclick="event.stopPropagation()">View Items</a>' +
             '</div></div>' +
+            '</div>' +
+
+            /* ── Sales History section ── */
+            '<div style="border-top:1px solid var(--border);padding:1rem 1.25rem">' +
+            '<h4 class="vh-detail-h" style="margin-bottom:0.5rem">Sales History</h4>' +
+            '<div id="vh-sales-' + v.id + '" style="font-size:0.85rem;color:var(--text-light)">Loading sales...</div>' +
             '</div>'
         );
     }
