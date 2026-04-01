@@ -88,14 +88,12 @@
         <span id="user-name">Loading...</span>
         <nav class="navbar-nav" id="nav-links">
             <a href="/admin/index.html">Dashboard</a>
-            <a href="/admin/vendors.html">Vendors</a>
-            <a href="/admin/rent.html">Rent</a>
-            <a href="/vendor/items.html">Items</a>
-            <a href="/admin/customers.html" class="active">Vendor Directory</a>
-            <a href="/admin/studio.html">Studio</a>
             <a href="/admin/reports.html">Reports</a>
             <a href="/admin/eod-reports.html">EOD Reports</a>
-            <a href="/admin/payouts.html">Payouts</a>
+            <a href="/admin/inventory-verify.html">Inventory</a>
+            <a href="/admin/studio.html">Studio</a>
+            <a href="/admin/customers.html" class="active">Vendor Directory</a>
+            <a href="/vendor/items.html">Items</a>
             <a href="/admin/settings.html">Settings</a>
             <a href="/pos/index.html">POS Terminal</a>
             <a href="#" onclick="handleLogout()">Logout</a>
@@ -105,14 +103,12 @@
 </nav>
 <div class="mobile-nav-dropdown" id="mobile-nav">
     <a href="/admin/index.html">Dashboard</a>
-    <a href="/admin/vendors.html">Vendors</a>
-    <a href="/admin/rent.html">Rent</a>
-    <a href="/vendor/items.html">Items</a>
-    <a href="/admin/customers.html" class="active">Vendor Directory</a>
-    <a href="/admin/studio.html">Studio</a>
     <a href="/admin/reports.html">Reports</a>
     <a href="/admin/eod-reports.html">EOD Reports</a>
-    <a href="/admin/payouts.html">Payouts</a>
+    <a href="/admin/inventory-verify.html">Inventory</a>
+    <a href="/admin/studio.html">Studio</a>
+    <a href="/admin/customers.html" class="active">Vendor Directory</a>
+    <a href="/vendor/items.html">Items</a>
     <a href="/admin/settings.html">Settings</a>
     <a href="/pos/index.html">POS Terminal</a>
     <a href="#" onclick="handleLogout()">Logout</a>
@@ -159,8 +155,7 @@
 
 <nav class="admin-bottom-nav">
     <a href="/admin/index.html"><span class="nav-icon">&#127968;</span>Dashboard</a>
-    <a href="/admin/vendors.html"><span class="nav-icon">&#128101;</span>Vendors</a>
-    <a href="/admin/rent.html"><span class="nav-icon">&#128179;</span>Rent</a>
+    <a href="/admin/reports.html"><span class="nav-icon">&#128196;</span>Reports</a>
     <a href="/vendor/items.html"><span class="nav-icon">&#127991;&#65039;</span>Items</a>
     <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
 </nav>
@@ -362,9 +357,11 @@
         if (role === 'admin') {
             document.getElementById('nav-links').innerHTML = `
                 <a href="/admin/index.html">Dashboard</a>
-                <a href="/admin/vendors.html">Manage Vendors</a>
+                <a href="/admin/reports.html">Reports</a>
+                <a href="/admin/inventory-verify.html">Inventory</a>
                 <a href="/vendor/items.html">Items</a>
                 <a href="/admin/customers.html" class="active">Vendor Directory</a>
+                <a href="/admin/settings.html">Settings</a>
                 <a href="#" onclick="handleLogout()">Logout</a>`;
         }
 

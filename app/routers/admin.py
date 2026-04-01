@@ -50,6 +50,142 @@ def _rent_status(today: date, last_payment: Optional[RentPayment]) -> str:
     return "due"
 
 
+@router.get("/vendor-overview")
+async def vendor_overview(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_admin),
+):
+    """All vendor data for consolidated admin dashboard (balances, rent, payout preview)."""
+    today = date.today()
+    current_period = date(today.year, today.month, 1)
+    period_label = current_period.strftime("%B %Y")
+
+    vendors_result = await db.execute(
+        select(Vendor).where(Vendor.status == "active").order_by(Vendor.name)
+    )
+    vendors = vendors_result.scalars().all()
+
+    bal_result = await db.execute(select(VendorBalance.vendor_id, VendorBalance.balance))
+    balance_map = {row.vendor_id: float(row.balance or 0) for row in bal_result.all()}
+
+    rent_result = await db.execute(
+        select(RentPayment).where(RentPayment.period_month == current_period)
+    )
+    rent_map: dict = {}
+    for rp in rent_result.scalars().all():
+        rent_map[rp.vendor_id] = {
+            "paid": rp.status == "paid",
+            "method": rp.method,
+            "amount": float(rp.amount),
+            "date": rp.processed_at.strftime("%m/%d/%Y") if rp.processed_at else None,
+        }
+
+    last_rent_result = await db.execute(
+        select(
+            RentPayment.vendor_id,
+            func.max(RentPayment.processed_at).label("last_date"),
+        )
+        .where(RentPayment.status == "paid")
+        .group_by(RentPayment.vendor_id)
+    )
+    last_rent_map = {row.vendor_id: row.last_date for row in last_rent_result.all()}
+
+    payout_result = await db.execute(
+        select(Payout).where(Payout.period_month == current_period)
+    )
+    payout_map: dict = {}
+    for p in payout_result.scalars().all():
+        payout_map[p.vendor_id] = {
+            "gross_sales": float(p.gross_sales),
+            "rent_deducted": float(p.rent_deducted),
+            "net_payout": float(p.net_payout),
+            "status": p.status,
+        }
+
+    existing_any = await db.execute(
+        select(Payout).where(Payout.period_month == current_period).limit(1)
+    )
+    already_processed = existing_any.scalar_one_or_none() is not None
+
+    rows = []
+    totals = {"gross": 0.0, "rent_due": 0.0, "rent_collected": 0.0, "net": 0.0, "shortfalls": 0.0}
+
+    for v in vendors:
+        balance = balance_map.get(v.id, 0.0)
+        rent = float(v.monthly_rent or 0)
+        rent_info = rent_map.get(v.id)
+        rent_paid = rent_info is not None and rent_info["paid"]
+        last_rent_date = last_rent_map.get(v.id)
+        payout_info = payout_map.get(v.id)
+
+        if rent <= 0:
+            rent_status = "none"
+        elif rent_paid:
+            rent_status = "current"
+        else:
+            if today.day > 15:
+                rent_status = "overdue"
+            else:
+                rent_status = "due"
+
+        rent_to_deduct = 0.0 if rent_paid else rent
+        if balance >= rent_to_deduct:
+            net_payout = round(balance - rent_to_deduct, 2)
+            shortfall = 0.0
+        else:
+            net_payout = 0.0
+            shortfall = round(rent_to_deduct - balance, 2)
+
+        totals["gross"] += balance
+        totals["rent_due"] += rent if not rent_paid else 0.0
+        totals["rent_collected"] += rent_info["amount"] if rent_info and rent_paid else 0.0
+        totals["net"] += net_payout
+        totals["shortfalls"] += shortfall
+
+        rows.append({
+            "id": v.id,
+            "name": v.name,
+            "email": v.email or "",
+            "phone": v.phone or "",
+            "booth_number": v.booth_number or "—",
+            "monthly_rent": rent,
+            "balance": round(balance, 2),
+            "rent_status": rent_status,
+            "rent_paid": rent_paid,
+            "rent_paid_method": rent_info["method"] if rent_info else None,
+            "rent_paid_date": rent_info["date"] if rent_info else None,
+            "rent_flagged": v.rent_flagged,
+            "last_rent_date": last_rent_date.strftime("%m/%d/%Y") if last_rent_date else None,
+            "payout_preview": {
+                "gross": round(balance, 2),
+                "rent_deducted": round(rent_to_deduct, 2),
+                "net": net_payout,
+                "shortfall": shortfall,
+            },
+            "payout_processed": payout_info is not None,
+            "payout_method": v.payout_method or "—",
+            "zelle_handle": v.zelle_handle or "",
+            "commission_rate": float(v.commission_rate or 0),
+            "role": v.role,
+            "status": v.status,
+            "notes": v.notes or "",
+        })
+
+    return {
+        "period": period_label,
+        "already_processed": already_processed,
+        "totals": {
+            "gross_sales": round(totals["gross"], 2),
+            "rent_due": round(totals["rent_due"], 2),
+            "rent_collected": round(totals["rent_collected"], 2),
+            "net_payouts": round(totals["net"], 2),
+            "shortfalls": round(totals["shortfalls"], 2),
+            "vendor_count": len(rows),
+        },
+        "vendors": rows,
+    }
+
+
 @router.get("/rent-status")
 async def rent_status(
     db: AsyncSession = Depends(get_db),

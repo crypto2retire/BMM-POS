@@ -260,6 +260,91 @@
         @media (min-width: 768px) and (max-width: 1023px) {
             .store-summary { grid-template-columns: repeat(3, 1fr); }
         }
+
+        .vendor-hub-section { margin-bottom: 1.75rem; }
+        .vendor-action-bar { display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: center; margin-bottom: 1rem; }
+        .vendor-action-bar .process-btn {
+            background: color-mix(in srgb, var(--success-light) 12%, transparent);
+            color: var(--success-light);
+            border: 1px solid color-mix(in srgb, var(--success-light) 30%, transparent);
+            padding: 0.55rem 1.2rem;
+            font-size: 0.78rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            min-height: 44px;
+        }
+        .vendor-action-bar .process-btn:hover:not(:disabled) {
+            background: color-mix(in srgb, var(--success-light) 22%, transparent);
+        }
+        .vendor-action-bar .process-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        .vendor-action-bar .reminder-btn {
+            background: color-mix(in srgb, var(--warning) 12%, transparent);
+            color: var(--warning);
+            border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+            padding: 0.55rem 1.2rem;
+            font-size: 0.78rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            min-height: 44px;
+        }
+        .vendor-action-bar .reminder-btn--green {
+            background: color-mix(in srgb, var(--success) 35%, var(--bg));
+            border-color: color-mix(in srgb, var(--success) 50%, var(--border));
+            color: var(--success-light);
+        }
+        #vh-processed-badge {
+            display: none;
+            padding: 4px 10px;
+            font-size: 0.65rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: color-mix(in srgb, var(--success-light) 12%, transparent);
+            color: var(--success-light);
+            border: 1px solid color-mix(in srgb, var(--success-light) 28%, transparent);
+        }
+        .vh-badge { display: inline-block; padding: 2px 8px; font-size: 0.58rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; font-family: 'Roboto', sans-serif; }
+        .vh-badge--ok { background: color-mix(in srgb, var(--success-light) 12%, transparent); color: var(--success-light); border: 1px solid color-mix(in srgb, var(--success-light) 28%, transparent); }
+        .vh-badge--warn { background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent); }
+        .vh-badge--bad { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 28%, transparent); }
+        .vh-badge--muted { background: var(--surface-2); color: var(--text-light); border: 1px solid var(--border); }
+        .vh-row { cursor: pointer; }
+        .vh-row:hover td { background: var(--gold-glow); }
+        .vh-chevron { font-size: 0.65rem; color: var(--text-light); margin-left: 4px; }
+        .vh-detail-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            padding: 1.15rem 1.25rem;
+        }
+        .vh-detail-h {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 1rem;
+            font-style: italic;
+            color: var(--gold);
+            margin: 0 0 0.5rem;
+        }
+        .vendor-hub-cards-mobile { display: none; flex-direction: column; gap: 0.65rem; }
+        .vh-mob-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 0.85rem;
+            cursor: pointer;
+        }
+        .vh-mob-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; }
+        .vh-mob-name { font-family: 'EB Garamond', serif; font-size: 1.05rem; font-weight: 500; }
+        .vh-mob-sub { font-size: 0.75rem; color: var(--text-light); margin-top: 2px; }
+        .vh-mob-bal { font-family: 'EB Garamond', serif; font-size: 1.1rem; color: var(--success-light); }
+        @media (max-width: 767px) {
+            .vh-detail-grid { grid-template-columns: 1fr; }
+            #vendor-hub-table-wrap { display: none; }
+            .vendor-hub-cards-mobile { display: flex; }
+            .vendor-action-bar { flex-direction: column; align-items: stretch; }
+            .vendor-action-bar button { width: 100%; text-align: center; }
+        }
     </style>
 </head>
 <body>
@@ -273,14 +358,12 @@
         <span id="user-name">Administrator</span>
         <nav class="navbar-nav">
             <a href="/admin/index.html" class="active">Dashboard</a>
-            <a href="/admin/vendors.html">Vendors</a>
-            <a href="/admin/rent.html">Rent</a>
-            <a href="/vendor/items.html">Items</a>
-            <a href="/admin/inventory-verify.html">Verify</a>
-            <a href="/admin/studio.html">Studio</a>
             <a href="/admin/reports.html">Reports</a>
             <a href="/admin/eod-reports.html">EOD Reports</a>
-            <a href="/admin/payouts.html">Payouts</a>
+            <a href="/admin/inventory-verify.html">Inventory</a>
+            <a href="/admin/studio.html">Studio</a>
+            <a href="/admin/customers.html">Customers</a>
+            <a href="/vendor/items.html">Items</a>
             <a href="/admin/settings.html">Settings</a>
             <a href="/pos/index.html">POS Terminal</a>
             <a href="#" onclick="handleLogout()">Logout</a>
@@ -290,14 +373,12 @@
 </nav>
 <div class="mobile-nav-dropdown" id="mobile-nav">
     <a href="/admin/index.html" class="active">Dashboard</a>
-    <a href="/admin/vendors.html">Vendors</a>
-    <a href="/admin/rent.html">Rent</a>
-    <a href="/vendor/items.html">Items</a>
-    <a href="/admin/inventory-verify.html">Verify</a>
-    <a href="/admin/studio.html">Studio</a>
     <a href="/admin/reports.html">Reports</a>
-            <a href="/admin/eod-reports.html">EOD Reports</a>
-            <a href="/admin/payouts.html">Payouts</a>
+    <a href="/admin/eod-reports.html">EOD Reports</a>
+    <a href="/admin/inventory-verify.html">Inventory</a>
+    <a href="/admin/studio.html">Studio</a>
+    <a href="/admin/customers.html">Customers</a>
+    <a href="/vendor/items.html">Items</a>
     <a href="/admin/settings.html">Settings</a>
     <a href="/pos/index.html">POS Terminal</a>
     <a href="#" onclick="handleLogout()">Logout</a>
@@ -328,6 +409,52 @@
         <div class="sum-card"><div class="sum-label">Active Vendors</div><div class="sum-value white" id="s-vendors">&mdash;</div></div>
         <div class="sum-card"><div class="sum-label">Inventory Items</div><div class="sum-value white" id="s-inventory">&mdash;</div></div>
     </div>
+
+    <div class="ornament">&loz;</div>
+
+    <div id="vendor-hub-section" class="vendor-hub-section section">
+        <div class="section-header" style="flex-wrap:wrap;gap:0.75rem">
+            <h2 class="section-title" style="margin:0"><span id="vendor-period-label">Vendor operations</span></h2>
+        </div>
+        <div class="vendor-action-bar">
+            <span id="vh-processed-badge">Already processed this month</span>
+            <button type="button" id="vh-process-btn" class="process-btn" onclick="window.confirmProcessPayoutsHub()">Process Payouts</button>
+            <button type="button" class="reminder-btn" onclick="window.sendRentRemindersHub()">Send Rent Reminders</button>
+            <button type="button" class="reminder-btn reminder-btn--green" onclick="window.sendWeeklyReportsHub()">Send Weekly Reports</button>
+        </div>
+        <div class="store-summary" style="margin-bottom:1rem">
+            <div class="sum-card"><div class="sum-label">Gross balances</div><div class="sum-value" id="vh-stat-gross">&mdash;</div></div>
+            <div class="sum-card"><div class="sum-label">Rent collected</div><div class="sum-value green" id="vh-stat-rent-coll">&mdash;</div></div>
+            <div class="sum-card"><div class="sum-label">Rent due</div><div class="sum-value white" id="vh-stat-rent-due">&mdash;</div></div>
+            <div class="sum-card"><div class="sum-label">Net payouts</div><div class="sum-value green" id="vh-stat-net">&mdash;</div></div>
+            <div class="sum-card"><div class="sum-label">Shortfalls</div><div class="sum-value white" id="vh-stat-short">&mdash;</div></div>
+            <div class="sum-card"><div class="sum-label">Vendors</div><div class="sum-value white" id="vh-stat-count">&mdash;</div></div>
+        </div>
+        <div style="margin-bottom:0.75rem">
+            <input type="search" id="vendor-search-input" class="form-control" placeholder="Search by vendor name or booth&hellip;" oninput="window.filterVendorHub()" style="max-width:28rem;width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.75rem;font-size:0.88rem;box-sizing:border-box">
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+            <div id="vendor-hub-table-wrap" class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Vendor</th>
+                            <th>Booth</th>
+                            <th>Balance</th>
+                            <th>Rent</th>
+                            <th>Payout method</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vendor-hub-tbody">
+                        <tr><td colspan="5" class="loading">Loading vendors&hellip;</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="vendor-hub-cards-mobile" id="vendor-hub-cards-mobile"></div>
+        </div>
+    </div>
+
+    <div class="ornament">&loz;</div>
 
     <div class="dash-row">
         <div class="dash-section">
@@ -442,38 +569,6 @@
         </div>
     </div>
 
-    <div class="ornament">&loz;</div>
-
-    <div class="section">
-        <div class="section-header">
-            <h2 class="section-title">All Vendors</h2>
-            <a href="/admin/vendors.html" class="btn btn-primary btn-sm">Manage Vendors</a>
-        </div>
-        <div class="card">
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Booth</th>
-                            <th>Monthly Rent</th>
-                            <th>Balance</th>
-                            <th>Status</th>
-                            <th>Role</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="vendors-table-body">
-                        <tr><td colspan="7" class="loading">Loading vendors...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="vendor-cards-mobile" id="vendor-cards">
-                <div style="color:var(--text-light);padding:1rem;text-align:center">Loading vendors&hellip;</div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- Add Employee Modal -->
@@ -560,15 +655,144 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="rent-modal-overlay" style="display:none;position:fixed;inset:0;background:color-mix(in srgb, black 78%, transparent);z-index:1000;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)window.closeRentModalHub()">
+    <div style="background:var(--surface);border:1px solid var(--warm-border);padding:1.75rem;width:100%;max-width:440px;color:var(--text)" onclick="event.stopPropagation()">
+        <h2 style="font-family:'EB Garamond',serif;font-size:1.35rem;font-weight:500;margin-bottom:0.5rem;color:var(--gold);font-style:italic">Record Rent Payment</h2>
+        <p id="rent-modal-vendor" style="color:var(--gold);font-size:0.9rem;margin-bottom:1rem;font-weight:600"></p>
+        <div style="margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Amount ($)</label>
+            <input type="number" id="rent-pay-amount" step="0.01" min="0.01" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box">
+        </div>
+        <div style="margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Payment method</label>
+            <select id="rent-pay-method" onchange="window.onRentPayMethodChange()" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box">
+                <option value="cash">Cash</option>
+                <option value="check">Check</option>
+                <option value="zelle">Zelle</option>
+                <option value="card">Card (terminal)</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        <div id="rent-card-info" style="display:none;background:var(--gold-glow);border:1px solid var(--warm-border);padding:0.75rem;margin-bottom:0.75rem;font-size:0.82rem;color:var(--text-light)">
+            Payment will be sent to the Poynt terminal. Have the vendor present their card on the terminal.
+        </div>
+        <div style="margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Period</label>
+            <input type="month" id="rent-pay-period" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box">
+        </div>
+        <div style="margin-bottom:1rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Notes (optional)</label>
+            <input type="text" id="rent-pay-notes" placeholder="e.g. Check #1234" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box">
+        </div>
+        <div style="display:flex;gap:0.5rem">
+            <button type="button" onclick="window.closeRentModalHub()" style="flex:1;padding:0.7rem;background:var(--surface-2);color:var(--text-light);border:1px solid var(--border);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Cancel</button>
+            <button type="button" id="rent-pay-submit" onclick="window.submitRentModalHub()" style="flex:1;padding:0.7rem;background:var(--success);color:var(--white);border:none;cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Record Payment</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="rent-terminal-overlay" style="display:none;position:fixed;inset:0;background:color-mix(in srgb, black 78%, transparent);z-index:1001;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)window.closeRentTerminalHub()">
+    <div style="background:var(--surface);border:1px solid var(--warm-border);padding:1.75rem;width:100%;max-width:420px;color:var(--text);text-align:center" onclick="event.stopPropagation()">
+        <h2 style="font-family:'EB Garamond',serif;font-size:1.2rem;margin-bottom:0.5rem;color:var(--gold);font-style:italic">Card payment</h2>
+        <p id="rent-terminal-vendor" style="color:var(--gold);font-size:0.9rem;margin-bottom:1rem;font-weight:600"></p>
+        <div id="rent-terminal-status">
+            <div style="font-size:2.2rem;margin-bottom:0.5rem">&#128179;</div>
+            <p style="color:var(--text);font-size:0.95rem;margin:0 0 0.35rem">Present card on terminal</p>
+            <p style="color:var(--text-light);font-size:0.82rem;margin:0">Waiting for payment&hellip;</p>
+        </div>
+        <div id="rent-terminal-amount" style="font-family:'EB Garamond',Georgia,serif;font-size:1.85rem;color:var(--text);margin:1rem 0"></div>
+        <div id="rent-terminal-result" style="display:none;margin:1rem 0;padding:0.75rem;font-size:0.88rem"></div>
+        <button type="button" id="rent-terminal-close" onclick="window.closeRentTerminalHub()" style="margin-top:0.5rem;padding:0.65rem 1.5rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em">Cancel</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="edit-vendor-overlay" style="display:none;position:fixed;inset:0;background:color-mix(in srgb, black 78%, transparent);z-index:1000;align-items:center;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)window.closeEditModalHub()">
+    <div style="background:var(--surface);border:1px solid var(--warm-border);padding:1.75rem;width:100%;max-width:520px;color:var(--text);margin:auto" onclick="event.stopPropagation()">
+        <h2 style="font-family:'EB Garamond',serif;font-size:1.35rem;font-weight:500;margin-bottom:1rem;color:var(--gold);font-style:italic">Edit vendor</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem">
+            <div>
+                <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Name</label>
+                <input type="text" id="edit-v-name" class="form-control" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.65rem">
+            </div>
+            <div>
+                <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Email</label>
+                <input type="email" id="edit-v-email" class="form-control" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.65rem">
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem">
+            <div>
+                <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Phone</label>
+                <input type="text" id="edit-v-phone" class="form-control" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.65rem">
+            </div>
+            <div>
+                <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Booth</label>
+                <input type="text" id="edit-v-booth" class="form-control" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.65rem">
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem">
+            <div>
+                <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Monthly rent ($)</label>
+                <input type="number" id="edit-v-rent" step="0.01" min="0" class="form-control" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.65rem">
+            </div>
+            <div>
+                <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Commission rate</label>
+                <input type="number" id="edit-v-comm" step="0.001" min="0" max="1" class="form-control" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.65rem" placeholder="0.10">
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem">
+            <div>
+                <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Payout method</label>
+                <select id="edit-v-payout" onchange="window.onEditPayoutChange()" class="form-control" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.65rem">
+                    <option value="zelle">Zelle</option>
+                    <option value="check">Check</option>
+                    <option value="cash">Cash</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Status</label>
+                <select id="edit-v-status" class="form-control" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.65rem">
+                    <option value="active">Active</option>
+                    <option value="suspended">Suspended</option>
+                    <option value="archived">Archived</option>
+                </select>
+            </div>
+        </div>
+        <div id="edit-zelle-wrap" style="margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Zelle handle</label>
+            <input type="text" id="edit-v-zelle" placeholder="Phone or email" class="form-control" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.65rem">
+        </div>
+        <div style="margin-bottom:1rem">
+            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Notes</label>
+            <textarea id="edit-v-notes" rows="2" class="form-control" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.65rem;resize:vertical;font-family:'Roboto',sans-serif;font-size:0.85rem"></textarea>
+        </div>
+        <div style="display:flex;gap:0.5rem">
+            <button type="button" onclick="window.closeEditModalHub()" style="flex:1;padding:0.7rem;background:var(--surface-2);color:var(--text-light);border:1px solid var(--border);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em">Cancel</button>
+            <button type="button" id="edit-v-submit" onclick="window.submitEditModalHub()" style="flex:1;padding:0.7rem;background:var(--success);color:var(--white);border:none;cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em">Save</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="payout-confirm-overlay" style="display:none;position:fixed;inset:0;background:color-mix(in srgb, black 55%, transparent);z-index:1002;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)window.closePayoutConfirmHub()">
+    <div style="background:var(--bg);border:1px solid var(--border);width:min(440px,92vw);padding:1.5rem;color:var(--text)" onclick="event.stopPropagation()">
+        <h3 style="font-family:'EB Garamond',serif;font-weight:500;font-size:1.25rem;margin:0 0 1rem;color:var(--text)">Process monthly payouts?</h3>
+        <p id="payout-confirm-msg" style="font-size:0.9rem;color:var(--text-light);margin:0 0 1.25rem;line-height:1.5"></p>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;flex-wrap:wrap">
+            <button type="button" onclick="window.closePayoutConfirmHub()" style="background:none;border:1px solid var(--border);color:var(--text-light);padding:0.5rem 1.25rem;cursor:pointer;font-family:'Roboto',sans-serif;font-size:0.82rem">Cancel</button>
+            <button type="button" id="payout-confirm-go" onclick="window.doProcessPayoutsHub()" style="background:var(--success-light);border:1px solid var(--success-light);color:var(--charcoal-deep);padding:0.5rem 1.25rem;cursor:pointer;font-family:'Roboto',sans-serif;font-size:0.82rem;font-weight:600">Process Payouts</button>
+        </div>
+    </div>
+</div>
+
 <nav class="admin-bottom-nav">
     <a href="/admin/index.html" class="active"><span class="nav-icon">&#127968;</span>Dashboard</a>
-    <a href="/admin/vendors.html"><span class="nav-icon">&#128101;</span>Vendors</a>
-    <a href="/admin/rent.html"><span class="nav-icon">&#128179;</span>Rent</a>
+    <a href="/admin/reports.html"><span class="nav-icon">&#128196;</span>Reports</a>
     <a href="/vendor/items.html"><span class="nav-icon">&#127991;&#65039;</span>Items</a>
     <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
 </nav>
 
 <script src="/static/js/api.js"></script>
+<script src="/static/js/admin-vendor-dashboard.js"></script>
 <script>
     function toggleMobileNav() {
         document.getElementById('mobile-nav').classList.toggle('open');
@@ -690,49 +914,6 @@
         }).join('');
     }
 
-    async function loadVendors() {
-        try {
-            var vendors = await apiGet('/api/v1/vendors/');
-            var tbody = document.getElementById('vendors-table-body');
-            if (!vendors.length) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No vendors found.</td></tr>';
-            } else {
-                tbody.innerHTML = vendors.map(function(v) {
-                    return '<tr><td><strong>' + escapeHtml(v.name) + '</strong></td><td>' + escapeHtml(v.email) + '</td><td>' + escapeHtml(v.booth_number || '-') + '</td>'
-                        + '<td>' + (v.monthly_rent ? fmt(parseFloat(v.monthly_rent)) : '-') + '</td>'
-                        + '<td><strong>' + fmt(parseFloat(v.current_balance || 0)) + '</strong></td>'
-                        + '<td>' + statusBadge(v.status) + '</td><td>' + roleBadge(v.role) + '</td>'
-                        + '<td><button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px;background:var(--gold);color:var(--charcoal-deep)" onclick="openAdjustModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\',' + parseFloat(v.current_balance || 0) + ')">Adjust</button>'
-                        + ' <button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px" onclick="openHistoryModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\')">History</button></td></tr>';
-                }).join('');
-            }
-
-            var cards = document.getElementById('vendor-cards');
-            if (!vendors.length) {
-                cards.innerHTML = '<div style="color:var(--text-light);padding:1rem;text-align:center">No vendors found.</div>';
-            } else {
-                cards.innerHTML = vendors.map(function(v) {
-                    return '<div class="vendor-card" onclick="toggleCardDetail(' + v.id + ')">'
-                        + '<div class="vendor-card-header"><div>'
-                        + '<div class="vendor-card-name">' + v.name + '</div>'
-                        + '<div class="vendor-card-sub">' + v.email + ' &middot; Booth ' + (v.booth_number || '-') + '</div>'
-                        + '</div><div class="vendor-card-right">'
-                        + statusBadge(v.status)
-                        + '<span class="vendor-card-balance">' + fmt(parseFloat(v.current_balance || 0)) + '</span>'
-                        + '<span class="vendor-card-chevron">&rsaquo;</span></div></div>'
-                        + '<div class="vendor-card-detail collapsed" id="vcard-detail-' + v.id + '">'
-                        + '<span><label>Monthly Rent</label>' + (v.monthly_rent ? fmt(parseFloat(v.monthly_rent)) : '-') + '</span>'
-                        + '<span><label>Role</label>' + v.role + '</span>'
-                        + '<span><label>Payout</label>' + (v.payout_method || '-') + '</span>'
-                        + '<div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px;background:var(--gold);color:var(--charcoal-deep)" onclick="event.stopPropagation();openAdjustModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\',' + parseFloat(v.current_balance || 0) + ')">Adjust Balance</button>'
-                        + '<button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px" onclick="event.stopPropagation();openHistoryModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\')">History</button></div></div></div>';
-                }).join('');
-            }
-        } catch (e) {
-            showAlert('alert-container', e.message, 'error');
-        }
-    }
-
     async function loadDashboard() {
         var token = sessionStorage.getItem('bmm_token');
         if (!token) { window.location.href = '/vendor/login.html'; return; }
@@ -749,7 +930,9 @@
         document.getElementById('greeting').textContent = greet + ', ' + name.split(' ')[0] + '.';
 
         loadDashboardStats('today');
-        loadVendors();
+        if (typeof window.loadVendorOverview === 'function') {
+            window.loadVendorOverview();
+        }
     }
 
     loadDashboard();
@@ -1000,7 +1183,7 @@
             }
             results.innerHTML = html;
             fileInput.value = '';
-            loadVendors();
+            if (typeof window.loadVendorOverview === 'function') window.loadVendorOverview();
         } catch (err) {
             results.innerHTML = '<p style="color:var(--danger)">' + escapeHtml(err.message) + '</p>';
         } finally {
@@ -1072,7 +1255,7 @@
             var data = await resp.json();
             if (!resp.ok) throw new Error(data.detail || 'Failed to reset data');
             results.innerHTML = '<div style="padding:0.75rem;background:var(--surface);color:var(--gold)">' + escapeHtml(data.message) + '</div>';
-            loadVendors();
+            if (typeof window.loadVendorOverview === 'function') window.loadVendorOverview();
         } catch (err) {
             results.innerHTML = '<p style="color:var(--danger)">' + escapeHtml(err.message) + '</p>';
         }
@@ -1091,7 +1274,7 @@
             var data = await resp.json();
             if (!resp.ok) throw new Error(data.detail || 'Failed to clear data');
             results.innerHTML = '<div style="padding:0.75rem;background:var(--surface);color:var(--gold)">' + escapeHtml(data.message) + '</div>';
-            loadVendors();
+            if (typeof window.loadVendorOverview === 'function') window.loadVendorOverview();
         } catch (err) {
             results.innerHTML = '<p style="color:var(--danger)">' + escapeHtml(err.message) + '</p>';
         }
@@ -1136,7 +1319,7 @@
             if (!resp.ok) throw new Error(data.detail || 'Adjustment failed');
             showAlert('alert-container', label + ' of ' + fmt(amount) + ' applied. New balance: ' + fmt(parseFloat(data.balance_after)), 'success');
             closeAdjustModal();
-            loadVendors();
+            if (typeof window.loadVendorOverview === 'function') window.loadVendorOverview();
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
             btn.disabled = false; btn.textContent = 'Submit Adjustment';
