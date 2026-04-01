@@ -617,7 +617,11 @@ async def process_payouts(
                 db.add(rent_payment)
 
         if bal:
-            bal.balance = Decimal("0")
+            if shortfall > 0:
+                # Vendor owes more rent than they earned — carry negative balance
+                bal.balance = -shortfall
+            else:
+                bal.balance = Decimal("0")
 
         total_net += net
         processed += 1
