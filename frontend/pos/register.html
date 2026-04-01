@@ -8,10 +8,10 @@
     <style>
         body {
             overflow: hidden;
-            background: #38383B;
+            background: var(--bg);
             background-image:
-                radial-gradient(ellipse at 15% 0%, rgba(201,169,110,0.04) 0%, transparent 55%),
-                radial-gradient(ellipse at 85% 100%, rgba(168,166,161,0.03) 0%, transparent 55%);
+                radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--gold) 4%, transparent) 0%, transparent 55%),
+                radial-gradient(ellipse at 85% 100%, color-mix(in srgb, var(--text-light) 3%, transparent) 0%, transparent 55%);
             background-attachment: fixed;
         }
 
@@ -26,34 +26,34 @@
             flex: 0 0 60%;
             display: flex;
             flex-direction: column;
-            border-right: 1px solid rgba(201,169,110,0.12);
-            background: #38383B;
+            border-right: 1px solid var(--gold-glow);
+            background: var(--bg);
             overflow: hidden;
         }
 
         .search-bar-wrap {
             padding: 1rem;
-            border-bottom: 1px solid rgba(201,169,110,0.1);
-            background: #2e2e31;
+            border-bottom: 1px solid color-mix(in srgb, var(--gold) 10%, transparent);
+            background: var(--surface-2);
         }
 
         .search-bar-wrap input {
             width: 100%;
             padding: 0.65rem 1rem;
             font-size: 1rem;
-            border: 1px solid #555558;
+            border: 1px solid var(--border);
             border-radius: 0;
             outline: none;
             transition: border-color 0.15s;
-            background: #44444A;
-            color: #F0EDE8;
+            background: var(--surface);
+            color: var(--text);
             font-family: 'Roboto', sans-serif;
         }
-        .search-bar-wrap input:focus { border-color: rgba(201,169,110,0.5); background: #4e4e54; box-shadow: 0 0 0 2px rgba(201,169,110,0.1); }
-        .search-bar-wrap input::placeholder { color: #A8A6A1; opacity: 0.7; }
+        .search-bar-wrap input:focus { border-color: color-mix(in srgb, var(--gold) 50%, transparent); background: var(--surface-2); box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 10%, transparent); }
+        .search-bar-wrap input::placeholder { color: var(--text-light); opacity: 0.7; }
         .search-bar-wrap .search-hint {
             font-size: 0.75rem;
-            color: #A8A6A1;
+            color: var(--text-light);
             margin-top: 0.4rem;
         }
 
@@ -70,7 +70,7 @@
         .results-empty {
             grid-column: 1 / -1;
             text-align: center;
-            color: #A8A6A1;
+            color: var(--text-light);
             padding: 3rem 1rem;
             font-size: 0.9rem;
             font-family: 'EB Garamond', serif;
@@ -78,8 +78,8 @@
         }
 
         .item-card {
-            background: #44444A;
-            border: 1px solid rgba(201,169,110,0.1);
+            background: var(--surface);
+            border: 1px solid color-mix(in srgb, var(--gold) 10%, transparent);
             border-radius: 0;
             padding: 0.75rem;
             cursor: pointer;
@@ -89,21 +89,21 @@
             gap: 0.25rem;
         }
         .item-card:hover {
-            border-color: rgba(201,169,110,0.35);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            border-color: color-mix(in srgb, var(--gold) 35%, transparent);
+            box-shadow: 0 2px 8px color-mix(in srgb, black 30%, transparent);
             transform: translateY(-1px);
         }
         .item-card:active { transform: translateY(0); }
         .item-card .ic-name {
             font-weight: 500;
             font-size: 0.88rem;
-            color: #F0EDE8;
+            color: var(--text);
             line-height: 1.3;
             font-family: 'EB Garamond', serif;
         }
         .item-card .ic-booth {
             font-size: 0.72rem;
-            color: #A8A6A1;
+            color: var(--text-light);
             font-family: 'Roboto', sans-serif;
             letter-spacing: 0.03em;
         }
@@ -116,19 +116,19 @@
         .item-card .ic-price {
             font-size: 0.95rem;
             font-weight: 500;
-            color: #C9A96E;
+            color: var(--gold);
             font-family: 'EB Garamond', serif;
         }
         .item-card .ic-price-orig {
             font-size: 0.8rem;
-            color: #A8A6A1;
+            color: var(--text-light);
             text-decoration: line-through;
         }
         .item-card .ic-sale-badge {
             font-size: 0.6rem;
             font-weight: 600;
-            color: #1e1e20;
-            background: #e8a060;
+            color: var(--bg);
+            background: color-mix(in srgb, var(--warning) 72%, var(--gold));
             padding: 0.1rem 0.35rem;
             border-radius: 0;
             letter-spacing: 0.06em;
@@ -137,7 +137,7 @@
         }
         .item-card .ic-barcode {
             font-size: 0.7rem;
-            color: #777;
+            color: var(--text-muted);
             font-family: 'Roboto Mono', monospace;
         }
 
@@ -146,18 +146,18 @@
             flex: 0 0 40%;
             display: flex;
             flex-direction: column;
-            background: #2e2e31;
+            background: var(--surface-2);
             overflow: hidden;
         }
 
         .cart-header {
             padding: 0.85rem 1rem;
-            border-bottom: 1px solid rgba(201,169,110,0.15);
+            border-bottom: 1px solid color-mix(in srgb, var(--gold) 15%, transparent);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: #1e1e20;
-            color: #F0EDE8;
+            background: var(--bg);
+            color: var(--text);
         }
         .cart-header h2 {
             font-size: 1rem;
@@ -168,9 +168,9 @@
         }
         .cart-header .cart-count {
             font-size: 0.72rem;
-            background: rgba(201,169,110,0.15);
-            border: 1px solid rgba(201,169,110,0.2);
-            color: #C9A96E;
+            background: color-mix(in srgb, var(--gold) 15%, transparent);
+            border: 1px solid color-mix(in srgb, var(--gold) 20%, transparent);
+            color: var(--gold);
             padding: 0.2rem 0.6rem;
             border-radius: 0;
             font-family: 'Roboto', sans-serif;
@@ -186,7 +186,7 @@
 
         .cart-empty {
             text-align: center;
-            color: #A8A6A1;
+            color: var(--text-light);
             padding: 2.5rem 1rem;
             font-size: 0.9rem;
             font-family: 'EB Garamond', serif;
@@ -198,10 +198,10 @@
             align-items: center;
             padding: 0.5rem 0.75rem;
             gap: 0.5rem;
-            border-bottom: 1px solid rgba(201,169,110,0.06);
+            border-bottom: 1px solid color-mix(in srgb, var(--gold) 6%, transparent);
             transition: background 0.1s;
         }
-        .cart-row:hover { background: rgba(201,169,110,0.03); }
+        .cart-row:hover { background: color-mix(in srgb, var(--gold) 3%, transparent); }
         .cart-row-info { flex: 1; min-width: 0; }
         .cart-row-name {
             font-size: 0.85rem;
@@ -209,12 +209,12 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            color: #F0EDE8;
+            color: var(--text);
             font-family: 'EB Garamond', serif;
         }
         .cart-row-sub {
             font-size: 0.72rem;
-            color: #A8A6A1;
+            color: var(--text-light);
         }
         .cart-qty-controls {
             display: flex;
@@ -223,27 +223,27 @@
         }
         .qty-btn {
             width: 40px; height: 40px;
-            border: 1px solid #555558;
+            border: 1px solid var(--border);
             border-radius: 0;
-            background: #44444A;
-            color: #F0EDE8;
+            background: var(--surface);
+            color: var(--text);
             cursor: pointer;
             font-size: 1rem;
             display: flex; align-items: center; justify-content: center;
             transition: background 0.1s;
         }
-        .qty-btn:hover { background: #5a5a62; }
+        .qty-btn:hover { background: var(--surface-2); }
         .qty-display {
             font-size: 0.85rem;
             font-weight: 600;
             min-width: 1.5rem;
             text-align: center;
-            color: #F0EDE8;
+            color: var(--text);
         }
         .cart-row-price {
             font-size: 0.85rem;
             font-weight: 500;
-            color: #F0EDE8;
+            color: var(--text);
             min-width: 4rem;
             text-align: right;
             font-family: 'EB Garamond', serif;
@@ -251,7 +251,7 @@
         .remove-btn {
             border: none;
             background: none;
-            color: #777;
+            color: var(--text-muted);
             cursor: pointer;
             font-size: 1rem;
             padding: 0.15rem 0.25rem;
@@ -259,11 +259,11 @@
             line-height: 1;
             transition: color 0.1s, background 0.1s;
         }
-        .remove-btn:hover { color: #c87070; background: rgba(200,112,112,0.1); }
+        .remove-btn:hover { color: color-mix(in srgb, var(--danger) 72%, var(--surface)); background: color-mix(in srgb, var(--danger) 10%, transparent); }
 
         /* TOTALS */
         .totals-section {
-            border-top: 1px solid rgba(201,169,110,0.2);
+            border-top: 1px solid color-mix(in srgb, var(--gold) 20%, transparent);
             padding: 0.75rem 1rem 0;
         }
         .totals-row {
@@ -271,27 +271,27 @@
             justify-content: space-between;
             font-size: 0.85rem;
             margin-bottom: 0.35rem;
-            color: #d8d4cc;
+            color: var(--text-light);
         }
         .totals-row.total-bold {
             font-size: 1.25rem;
             font-weight: 500;
-            border-top: 1px solid rgba(201,169,110,0.2);
+            border-top: 1px solid color-mix(in srgb, var(--gold) 20%, transparent);
             padding-top: 0.5rem;
             margin-top: 0.2rem;
-            color: #F0EDE8;
+            color: var(--text);
             font-family: 'EB Garamond', serif;
         }
 
         /* PAYMENT SECTION */
         .payment-section {
             padding: 0.75rem 1rem;
-            border-top: 1px solid rgba(201,169,110,0.1);
+            border-top: 1px solid color-mix(in srgb, var(--gold) 10%, transparent);
         }
         .payment-label {
             font-size: 0.65rem;
             font-weight: 400;
-            color: #A8A6A1;
+            color: var(--text-light);
             text-transform: uppercase;
             letter-spacing: 0.1em;
             margin-bottom: 0.4rem;
@@ -305,21 +305,21 @@
         .pay-btn {
             flex: 1;
             padding: 0.5rem;
-            border: 1px solid #555558;
+            border: 1px solid var(--border);
             border-radius: 0;
-            background: #44444A;
+            background: var(--surface);
             font-size: 0.85rem;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.15s;
-            color: #A8A6A1;
+            color: var(--text-light);
             font-family: 'Roboto', sans-serif;
         }
-        .pay-btn:hover { border-color: rgba(201,169,110,0.4); color: #C9A96E; }
+        .pay-btn:hover { border-color: color-mix(in srgb, var(--gold) 40%, transparent); color: var(--gold); }
         .pay-btn.active {
-            border-color: rgba(201,169,110,0.4);
-            background: rgba(201,169,110,0.1);
-            color: #C9A96E;
+            border-color: color-mix(in srgb, var(--gold) 40%, transparent);
+            background: color-mix(in srgb, var(--gold) 10%, transparent);
+            color: var(--gold);
         }
 
         .cash-input-row {
@@ -332,23 +332,23 @@
             font-size: 0.8rem;
             font-weight: 500;
             white-space: nowrap;
-            color: #A8A6A1;
+            color: var(--text-light);
         }
         .cash-input-row input {
             flex: 1;
             padding: 0.45rem 0.6rem;
             font-size: 0.9rem;
-            border: 1px solid #555558;
+            border: 1px solid var(--border);
             border-radius: 0;
             outline: none;
-            background: #44444A;
-            color: #F0EDE8;
+            background: var(--surface);
+            color: var(--text);
         }
-        .cash-input-row input:focus { border-color: rgba(201,169,110,0.5); }
+        .cash-input-row input:focus { border-color: color-mix(in srgb, var(--gold) 50%, transparent); }
         .change-display {
             font-size: 0.9rem;
             font-weight: 700;
-            color: #7BC4A0;
+            color: var(--success-light);
             text-align: right;
             min-height: 1.4rem;
         }
@@ -362,8 +362,8 @@
             padding: 0.9rem;
             font-size: 0.85rem;
             font-weight: 500;
-            background: #C9A96E;
-            color: #1e1e20;
+            background: var(--gold);
+            color: var(--bg);
             border: none;
             border-radius: 0;
             cursor: pointer;
@@ -371,9 +371,9 @@
             letter-spacing: 0.1em;
             text-transform: uppercase;
             font-family: 'Roboto', sans-serif;
-            box-shadow: 0 2px 0 rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
+            box-shadow: 0 2px 0 color-mix(in srgb, black 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 15%, transparent);
         }
-        .btn-charge:hover:not(:disabled) { background: #b8954f; }
+        .btn-charge:hover:not(:disabled) { background: var(--gold-dim); }
         .btn-charge:disabled { opacity: 0.4; cursor: not-allowed; }
 
         /* SUCCESS OVERLAY */
@@ -381,35 +381,35 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.78);
+            background: color-mix(in srgb, black 78%, transparent);
             z-index: 500;
             align-items: center;
             justify-content: center;
         }
         .overlay.show { display: flex; }
         .receipt-card {
-            background: #44444A;
-            border: 1px solid rgba(201,169,110,0.25);
+            background: var(--surface);
+            border: 1px solid color-mix(in srgb, var(--gold) 25%, transparent);
             border-radius: 0;
             width: 100%;
             max-width: 420px;
             max-height: 85vh;
             overflow-y: auto;
             padding: 1.5rem;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
-            color: #F0EDE8;
+            box-shadow: 0 20px 50px color-mix(in srgb, black 60%, transparent);
+            color: var(--text);
         }
         .receipt-card h2 {
             font-size: 1.2rem;
             font-weight: 500;
-            color: #C9A96E;
+            color: var(--gold);
             margin-bottom: 0.25rem;
             font-family: 'EB Garamond', serif;
             font-style: italic;
         }
         .receipt-card .receipt-time {
             font-size: 0.75rem;
-            color: #A8A6A1;
+            color: var(--text-light);
             margin-bottom: 1rem;
         }
         .receipt-items { margin-bottom: 1rem; }
@@ -418,37 +418,37 @@
             justify-content: space-between;
             font-size: 0.85rem;
             padding: 0.3rem 0;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-            color: #d8d4cc;
+            border-bottom: 1px solid color-mix(in srgb, var(--white) 6%, transparent);
+            color: var(--text-light);
         }
         .receipt-item:last-child { border-bottom: none; }
-        .receipt-totals { margin-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.4rem; }
+        .receipt-totals { margin-top: 0.5rem; border-top: 1px solid color-mix(in srgb, var(--white) 10%, transparent); padding-top: 0.4rem; }
         .receipt-total-row {
             display: flex;
             justify-content: space-between;
             font-size: 0.85rem;
             padding: 0.2rem 0;
-            color: #d8d4cc;
+            color: var(--text-light);
         }
         .receipt-total-row.bold {
             font-weight: 700;
             font-size: 1.15rem;
-            border-top: 2px solid rgba(201,169,110,0.3);
-            border-bottom: 2px solid rgba(201,169,110,0.3);
+            border-top: 2px solid color-mix(in srgb, var(--gold) 30%, transparent);
+            border-bottom: 2px solid color-mix(in srgb, var(--gold) 30%, transparent);
             padding: 0.4rem 0;
             margin-top: 0.3rem;
-            color: #F0EDE8;
+            color: var(--text);
             font-family: 'EB Garamond', serif;
         }
         .change-big {
             text-align: center;
             font-size: 1.5rem;
             font-weight: 500;
-            color: #7BC4A0;
+            color: var(--success-light);
             margin: 0.75rem 0;
             padding: 0.6rem;
-            background: rgba(20,122,84,0.15);
-            border: 1px solid rgba(123,196,160,0.2);
+            background: color-mix(in srgb, var(--success) 15%, transparent);
+            border: 1px solid color-mix(in srgb, var(--success-light) 20%, transparent);
             border-radius: 0;
             font-family: 'EB Garamond', serif;
         }
@@ -470,16 +470,16 @@
             text-transform: uppercase;
         }
         .btn-new-sale {
-            background: #C9A96E;
-            color: #1e1e20;
+            background: var(--gold);
+            color: var(--bg);
         }
-        .btn-new-sale:hover { background: #b8954f; }
+        .btn-new-sale:hover { background: var(--gold-dim); }
         .btn-print {
-            background: #4e4e54;
-            border: 1px solid rgba(201,169,110,0.15) !important;
-            color: #A8A6A1;
+            background: var(--surface-2);
+            border: 1px solid color-mix(in srgb, var(--gold) 15%, transparent) !important;
+            color: var(--text-light);
         }
-        .btn-print:hover { background: #5a5a62; color: #F0EDE8; }
+        .btn-print:hover { background: var(--surface-2); color: var(--text); }
 
         /* Navbar store name override */
         .navbar .store-name {
@@ -492,13 +492,13 @@
         @media print {
             .overlay { display: flex !important; }
             .navbar, .reg-left, .reg-right, .receipt-actions { display: none !important; }
-            .receipt-card { box-shadow: none; width: 80mm; padding: 4mm; margin: 0; background: #fff !important; color: #000 !important; }
-            .receipt-card h2 { color: #000 !important; }
-            .receipt-card .receipt-time { color: #333 !important; }
-            .receipt-item { color: #000 !important; display: flex !important; }
-            .receipt-total-row { color: #000 !important; display: flex !important; }
-            .receipt-total-row.bold { color: #000 !important; border-color: #333 !important; }
-            .change-big { color: #000 !important; }
+            .receipt-card { box-shadow: none; width: 80mm; padding: 4mm; margin: 0; background: var(--white) !important; color: black !important; }
+            .receipt-card h2 { color: black !important; }
+            .receipt-card .receipt-time { color: black !important; }
+            .receipt-item { color: black !important; display: flex !important; }
+            .receipt-total-row { color: black !important; display: flex !important; }
+            .receipt-total-row.bold { color: black !important; border-color: black !important; }
+            .change-big { color: black !important; }
         }
 
         /* ── Mobile responsive ───────────────────────────── */

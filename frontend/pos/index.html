@@ -15,11 +15,16 @@
     <link rel="stylesheet" href="/static/css/main.css">
     <script src="https://unpkg.com/@zxing/browser@latest/umd/index.min.js"></script>
     <style>
+        :root {
+            --pos-payment-gift: #7C3AED;
+        }
+
+
         body {
-            background: #38383B;
+            background: var(--bg);
             background-image:
-                radial-gradient(ellipse at 15% 0%, rgba(201,169,110,0.04) 0%, transparent 55%),
-                radial-gradient(ellipse at 85% 100%, rgba(168,166,161,0.03) 0%, transparent 55%);
+                radial-gradient(ellipse at 15% 0%, color-mix(in srgb, var(--gold) 4%, transparent) 0%, transparent 55%),
+                radial-gradient(ellipse at 85% 100%, color-mix(in srgb, var(--text-light) 3%, transparent) 0%, transparent 55%);
             background-attachment: fixed;
         }
 
@@ -59,8 +64,8 @@
                 position: fixed;
                 bottom: 0; left: 0; right: 0;
                 padding: 0.5rem 0.75rem;
-                background: #1e1e20;
-                border-top: 1px solid rgba(201,169,110,0.15);
+                background: var(--bg);
+                border-top: 1px solid color-mix(in srgb, var(--gold) 15%, transparent);
                 gap: 0.5rem;
                 z-index: 50;
             }
@@ -76,20 +81,20 @@
         /* Navbar */
         .pos-navbar {
             grid-column: 1 / -1;
-            background: #1e1e20;
-            color: #F0EDE8;
+            background: var(--bg);
+            color: var(--text);
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 1rem;
             height: 56px;
-            border-bottom: 1px solid rgba(201,169,110,0.15);
+            border-bottom: 1px solid color-mix(in srgb, var(--gold) 15%, transparent);
         }
         .pos-navbar-brand { display: flex; align-items: center; gap: 0.75rem; }
         .pos-navbar-brand span.label {
-            background: rgba(201,169,110,0.15);
-            border: 1px solid rgba(201,169,110,0.25);
-            color: #C9A96E;
+            background: color-mix(in srgb, var(--gold) 15%, transparent);
+            border: 1px solid color-mix(in srgb, var(--gold) 25%, transparent);
+            color: var(--gold);
             font-size: 0.62rem;
             font-weight: 500;
             padding: 0.2rem 0.6rem;
@@ -99,7 +104,7 @@
         }
         .pos-navbar-right { display: flex; align-items: center; gap: 0.75rem; font-size: 0.875rem; }
         .pos-navbar-right a, .pos-navbar-right button.nav-link {
-            color: rgba(240,237,232,0.6);
+            color: color-mix(in srgb, var(--text) 60%, transparent);
             text-decoration: none;
             background: none;
             border: none;
@@ -115,31 +120,31 @@
             transition: color 0.15s, background 0.15s;
         }
         .pos-navbar-right a:hover, .pos-navbar-right button.nav-link:hover {
-            background: rgba(255,255,255,0.06);
-            color: #F0EDE8;
+            background: color-mix(in srgb, var(--white) 6%, transparent);
+            color: var(--text);
         }
 
         /* Left panel */
         .pos-left {
-            background: #44444A;
+            background: var(--surface);
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
         .scanner-bar {
-            background: #3a3a3d;
+            background: var(--surface-2);
             padding: 0.75rem 1rem;
             display: flex;
             gap: 0.5rem;
             align-items: center;
-            border-bottom: 1px solid rgba(201,169,110,0.1);
+            border-bottom: 1px solid color-mix(in srgb, var(--gold) 10%, transparent);
         }
         .scanner-bar input {
             flex: 1;
-            background: #44444A;
-            border: 1px solid #555558;
-            color: #F0EDE8;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
             padding: 0.55rem 0.85rem;
             font-size: 0.95rem;
             font-family: 'Roboto Mono', monospace;
@@ -147,13 +152,13 @@
         }
         .scanner-bar input:focus {
             outline: none;
-            border-color: rgba(201,169,110,0.5);
-            box-shadow: 0 0 0 2px rgba(201,169,110,0.12);
+            border-color: color-mix(in srgb, var(--gold) 50%, transparent);
+            box-shadow: 0 0 0 2px var(--gold-glow);
         }
-        .scanner-bar input::placeholder { color: #A8A6A1; opacity: 0.7; }
+        .scanner-bar input::placeholder { color: var(--text-light); opacity: 0.7; }
         .scanner-bar .scan-btn {
-            background: #A8A6A1;
-            color: #1e1e20;
+            background: var(--text-light);
+            color: var(--bg);
             border: none;
             padding: 0.55rem 1rem;
             font-size: 0.78rem;
@@ -164,9 +169,9 @@
             text-transform: uppercase;
             font-weight: 500;
             transition: background 0.15s;
-            box-shadow: 0 1px 0 rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08);
+            box-shadow: 0 1px 0 color-mix(in srgb, black 30%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 8%, transparent);
         }
-        .scanner-bar .scan-btn:hover { background: #8e8c87; }
+        .scanner-bar .scan-btn:hover { background: var(--text-muted); }
 
         .cart-area { flex: 1; overflow-y: auto; padding: 0.75rem; }
 
@@ -176,7 +181,7 @@
             align-items: center;
             justify-content: center;
             height: 100%;
-            color: #A8A6A1;
+            color: var(--text-light);
             font-size: 1rem;
             gap: 0.5rem;
             font-family: 'EB Garamond', serif;
@@ -191,20 +196,20 @@
             font-weight: 400;
             text-transform: uppercase;
             letter-spacing: 0.12em;
-            color: #A8A6A1;
+            color: var(--text-light);
             padding: 0.4rem 0.5rem 0.6rem;
-            border-bottom: 1px solid rgba(201,169,110,0.2);
+            border-bottom: 1px solid color-mix(in srgb, var(--gold) 20%, transparent);
             font-family: 'Roboto', sans-serif;
         }
         .cart-table td {
             padding: 0.65rem 0.5rem;
-            border-bottom: 1px solid rgba(201,169,110,0.06);
+            border-bottom: 1px solid color-mix(in srgb, var(--gold) 6%, transparent);
             vertical-align: middle;
-            color: #F0EDE8;
+            color: var(--text);
             font-size: 0.875rem;
         }
         .cart-table tr:last-child td { border-bottom: none; }
-        .cart-table tr:hover td { background: rgba(201,169,110,0.03); }
+        .cart-table tr:hover td { background: color-mix(in srgb, var(--gold) 3%, transparent); }
 
         .item-name-cell { max-width: 180px; }
         .item-name-cell strong {
@@ -213,16 +218,16 @@
             font-family: 'EB Garamond', serif;
             font-weight: 500;
         }
-        .item-name-cell small { color: #A8A6A1; font-size: 0.7rem; }
-        .item-sale-badge { color: #e8a060; font-size: 0.72rem; font-weight: 500; }
+        .item-name-cell small { color: var(--text-light); font-size: 0.7rem; }
+        .item-sale-badge { color: color-mix(in srgb, var(--warning) 72%, var(--gold)); font-size: 0.72rem; font-weight: 500; }
 
         .qty-control { display: flex; align-items: center; gap: 0.35rem; }
         .qty-control button {
             width: 44px;
             height: 44px;
-            border: 1px solid #555558;
-            background: #4e4e54;
-            color: #F0EDE8;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--text);
             cursor: pointer;
             font-size: 1.1rem;
             line-height: 1;
@@ -231,36 +236,36 @@
             justify-content: center;
             transition: background 0.12s;
         }
-        .qty-control button:hover { background: #5a5a62; }
+        .qty-control button:hover { background: var(--surface-2); }
         .qty-control input {
             width: 38px;
             text-align: center;
-            background: #44444A;
-            border: 1px solid #555558;
-            color: #F0EDE8;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
             padding: 0.2rem;
             font-size: 0.875rem;
         }
-        .qty-control input:focus { outline: none; border-color: rgba(201,169,110,0.4); }
+        .qty-control input:focus { outline: none; border-color: color-mix(in srgb, var(--gold) 40%, transparent); }
 
         .remove-btn {
             background: none;
             border: none;
-            color: #c87070;
+            color: color-mix(in srgb, var(--danger) 72%, var(--surface));
             cursor: pointer;
             font-size: 1rem;
             padding: 0.25rem;
             transition: background 0.12s;
         }
-        .remove-btn:hover { background: rgba(200,112,112,0.12); }
+        .remove-btn:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); }
 
-        .price-cell { color: #F0EDE8; white-space: nowrap; text-align: right; }
-        .price-cell.sale-price { color: #e8a060; }
+        .price-cell { color: var(--text); white-space: nowrap; text-align: right; }
+        .price-cell.sale-price { color: color-mix(in srgb, var(--warning) 72%, var(--gold)); }
 
         /* Right panel — totals + payment */
         .pos-right {
-            background: #38383B;
-            border-left: 1px solid rgba(201,169,110,0.12);
+            background: var(--bg);
+            border-left: 1px solid var(--gold-glow);
             display: flex;
             flex-direction: column;
             padding: 1rem;
@@ -268,9 +273,9 @@
         }
 
         .totals-card {
-            background: #44444A;
+            background: var(--surface);
             padding: 1.1rem 1rem;
-            border: 1px solid rgba(201,169,110,0.15);
+            border: 1px solid color-mix(in srgb, var(--gold) 15%, transparent);
         }
         .totals-card .row {
             display: flex;
@@ -278,21 +283,21 @@
             align-items: baseline;
             padding: 0.3rem 0;
             font-size: 0.85rem;
-            color: #d8d4cc;
+            color: var(--text-light);
         }
         .totals-card .row.total-row {
-            border-top: 1px solid rgba(201,169,110,0.2);
+            border-top: 1px solid color-mix(in srgb, var(--gold) 20%, transparent);
             margin-top: 0.6rem;
             padding-top: 0.85rem;
             font-size: 2.2rem;
             font-family: 'EB Garamond', serif;
             font-weight: 500;
-            color: #F0EDE8;
+            color: var(--text);
             line-height: 1;
         }
-        .totals-card .row .label { color: #A8A6A1; font-size: 0.78rem; }
+        .totals-card .row .label { color: var(--text-light); font-size: 0.78rem; }
         .totals-card .row.total-row .label {
-            color: #A8A6A1;
+            color: var(--text-light);
             font-size: 0.7rem;
             font-weight: 400;
             font-family: 'Roboto', sans-serif;
@@ -303,20 +308,20 @@
         }
 
         .item-count-badge {
-            background: rgba(201,169,110,0.05);
-            border: 1px solid rgba(201,169,110,0.12);
+            background: color-mix(in srgb, var(--gold) 5%, transparent);
+            border: 1px solid var(--gold-glow);
             padding: 0.5rem 0.75rem;
             font-size: 0.78rem;
-            color: #A8A6A1;
+            color: var(--text-light);
             text-align: center;
         }
-        .item-count-badge span { color: #F0EDE8; font-weight: 500; }
+        .item-count-badge span { color: var(--text); font-weight: 500; }
 
         .clear-btn {
             width: 100%;
             background: transparent;
-            border: 1px solid rgba(201,169,110,0.15);
-            color: #A8A6A1;
+            border: 1px solid color-mix(in srgb, var(--gold) 15%, transparent);
+            color: var(--text-light);
             padding: 0.5rem;
             cursor: pointer;
             font-size: 0.72rem;
@@ -325,7 +330,7 @@
             text-transform: uppercase;
             transition: border-color 0.15s, color 0.15s;
         }
-        .clear-btn:hover { border-color: #c87070; color: #c87070; }
+        .clear-btn:hover { border-color: color-mix(in srgb, var(--danger) 72%, var(--surface)); color: color-mix(in srgb, var(--danger) 72%, var(--surface)); }
 
         .payment-section { display: flex; flex-direction: column; gap: 0.5rem; margin-top: auto; }
 
@@ -348,23 +353,23 @@
         .pay-btn:disabled { opacity: 0.35; cursor: not-allowed; }
         .pay-btn:active:not(:disabled) { transform: translateY(1px); }
         .pay-btn.cash {
-            background: #147a54;
-            color: #fff;
-            box-shadow: 0 2px 0 rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+            background: var(--success);
+            color: var(--white);
+            box-shadow: 0 2px 0 color-mix(in srgb, black 35%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 8%, transparent);
         }
-        .pay-btn.cash:hover:not(:disabled) { background: #0f6043; box-shadow: 0 3px 10px rgba(0,0,0,0.3); }
+        .pay-btn.cash:hover:not(:disabled) { background: var(--success); box-shadow: 0 3px 10px color-mix(in srgb, black 30%, transparent); }
         .pay-btn.card {
-            background: #1a52a8;
-            color: #fff;
-            box-shadow: 0 2px 0 rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08);
+            background: color-mix(in srgb, var(--info) 62%, var(--bg));
+            color: var(--white);
+            box-shadow: 0 2px 0 color-mix(in srgb, black 35%, transparent), inset 0 1px 0 color-mix(in srgb, var(--white) 8%, transparent);
         }
-        .pay-btn.card:hover:not(:disabled) { background: #153f85; box-shadow: 0 3px 10px rgba(0,0,0,0.3); }
+        .pay-btn.card:hover:not(:disabled) { background: color-mix(in srgb, var(--info) 50%, var(--bg)); box-shadow: 0 3px 10px color-mix(in srgb, black 30%, transparent); }
 
         /* Modals */
         .pos-modal-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.78);
+            background: color-mix(in srgb, black 78%, transparent);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -375,15 +380,15 @@
         .pos-modal-overlay.hidden { display: none; }
 
         .pos-modal {
-            background: #44444A;
-            border: 1px solid rgba(201,169,110,0.25);
+            background: var(--surface);
+            border: 1px solid color-mix(in srgb, var(--gold) 25%, transparent);
             padding: 1.75rem;
             width: calc(100% - 2rem);
             max-width: 460px;
             max-height: 90vh;
             overflow-y: auto;
-            color: #F0EDE8;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(201,169,110,0.08);
+            color: var(--text);
+            box-shadow: 0 20px 50px color-mix(in srgb, black 60%, transparent), 0 0 0 1px color-mix(in srgb, var(--gold) 8%, transparent);
             animation: fadeUp 0.25s ease;
         }
         .pos-modal h2 {
@@ -393,24 +398,24 @@
             margin-bottom: 1.25rem;
             font-style: italic;
             letter-spacing: 0.01em;
-            color: #C9A96E;
+            color: var(--gold);
         }
         .pos-modal .total-display {
             text-align: center;
             font-family: 'EB Garamond', serif;
             font-size: 3rem;
             font-weight: 500;
-            color: #F0EDE8;
+            color: var(--text);
             margin: 1rem 0;
             padding: 0.75rem;
-            background: rgba(0,0,0,0.2);
-            border: 1px solid rgba(201,169,110,0.12);
+            background: color-mix(in srgb, black 20%, transparent);
+            border: 1px solid var(--gold-glow);
             line-height: 1;
         }
         .pos-modal .total-display small {
             display: block;
             font-size: 0.65rem;
-            color: #A8A6A1;
+            color: var(--text-light);
             font-weight: 400;
             font-family: 'Roboto', sans-serif;
             letter-spacing: 0.12em;
@@ -424,15 +429,15 @@
             min-width: 50px;
             min-height: 44px;
             background: var(--surface-2);
-            border: 1px solid rgba(255,255,255,0.1);
-            color: #F0EDE8;
+            border: 1px solid color-mix(in srgb, var(--white) 10%, transparent);
+            color: var(--text);
             padding: 0.65rem 0.5rem;
             cursor: pointer;
             font-size: 0.88rem;
             font-family: 'Roboto', sans-serif;
             transition: background 0.12s, border-color 0.12s;
         }
-        .quick-cash button:hover { background: #5a5a62; border-color: rgba(201,169,110,0.2); }
+        .quick-cash button:hover { background: var(--surface-2); border-color: color-mix(in srgb, var(--gold) 20%, transparent); }
 
         .change-display {
             text-align: center;
@@ -443,15 +448,15 @@
             margin: 0.75rem 0;
             line-height: 1;
         }
-        .change-display.positive { background: rgba(20,122,84,0.15); color: #7BC4A0; border: 1px solid rgba(123,196,160,0.2); }
-        .change-display.negative { background: rgba(200,112,112,0.12); color: #c87070; border: 1px solid rgba(200,112,112,0.2); }
-        .change-display.zero { background: rgba(168,166,161,0.07); color: #A8A6A1; border: 1px solid rgba(168,166,161,0.1); }
+        .change-display.positive { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success-light); border: 1px solid color-mix(in srgb, var(--success-light) 20%, transparent); }
+        .change-display.negative { background: color-mix(in srgb, var(--danger) 12%, transparent); color: color-mix(in srgb, var(--danger) 72%, var(--surface)); border: 1px solid color-mix(in srgb, var(--danger) 20%, transparent); }
+        .change-display.zero { background: color-mix(in srgb, var(--text-light) 7%, transparent); color: var(--text-light); border: 1px solid color-mix(in srgb, var(--text-light) 10%, transparent); }
 
         .pos-modal .form-group { margin-bottom: 1rem; }
         .pos-modal .form-label {
             display: block;
             font-size: 0.65rem;
-            color: #A8A6A1;
+            color: var(--text-light);
             margin-bottom: 0.35rem;
             font-weight: 400;
             font-family: 'Roboto', sans-serif;
@@ -460,15 +465,15 @@
         }
         .pos-modal .form-control {
             width: 100%;
-            background: #3a3a3d;
-            border: 1px solid #555558;
-            color: #F0EDE8;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
             padding: 0.65rem 0.85rem;
             font-size: 1rem;
             font-family: 'Roboto', sans-serif;
             transition: border-color 0.15s;
         }
-        .pos-modal .form-control:focus { outline: none; border-color: rgba(201,169,110,0.4); }
+        .pos-modal .form-control:focus { outline: none; border-color: color-mix(in srgb, var(--gold) 40%, transparent); }
 
         .modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
         .modal-actions button {
@@ -484,21 +489,21 @@
             transition: background 0.15s, transform 0.1s;
         }
         .modal-actions button:active { transform: translateY(1px); }
-        .modal-actions .cancel-btn { background: #4e4e54; color: #A8A6A1; border: 1px solid rgba(255,255,255,0.08); }
-        .modal-actions .cancel-btn:hover { background: #5a5a62; color: #F0EDE8; }
+        .modal-actions .cancel-btn { background: var(--surface-2); color: var(--text-light); border: 1px solid color-mix(in srgb, var(--white) 8%, transparent); }
+        .modal-actions .cancel-btn:hover { background: var(--surface-2); color: var(--text); }
         .modal-actions .confirm-btn {
-            background: #147a54;
-            color: #fff;
-            box-shadow: 0 1px 0 rgba(0,0,0,0.3);
+            background: var(--success);
+            color: var(--white);
+            box-shadow: 0 1px 0 color-mix(in srgb, black 30%, transparent);
         }
-        .modal-actions .confirm-btn:hover:not(:disabled) { background: #0f6043; }
+        .modal-actions .confirm-btn:hover:not(:disabled) { background: var(--success); }
         .modal-actions .confirm-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
         /* Card waiting overlay */
         .card-waiting-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.88);
+            background: color-mix(in srgb, black 88%, transparent);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -506,31 +511,31 @@
         }
         .card-waiting-overlay.hidden { display: none; }
         .card-waiting-box {
-            background: #44444A;
-            border: 1px solid rgba(201,169,110,0.25);
+            background: var(--surface);
+            border: 1px solid color-mix(in srgb, var(--gold) 25%, transparent);
             padding: 2.5rem;
             text-align: center;
             max-width: 360px;
             width: 100%;
-            color: #F0EDE8;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+            color: var(--text);
+            box-shadow: 0 20px 50px color-mix(in srgb, black 60%, transparent);
         }
         .card-waiting-box .amount {
             font-family: 'EB Garamond', serif;
             font-size: 3rem;
             font-weight: 500;
-            color: #6495ed;
+            color: var(--info);
             margin: 1rem 0;
             line-height: 1;
         }
-        .card-waiting-box .status-msg { font-size: 0.9rem; color: #A8A6A1; margin-bottom: 1.5rem; }
+        .card-waiting-box .status-msg { font-size: 0.9rem; color: var(--text-light); margin-bottom: 1.5rem; }
         .pulse { animation: pulse 1.5s ease-in-out infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
         .spinner {
             width: 36px;
             height: 36px;
-            border: 3px solid rgba(255,255,255,0.1);
-            border-top-color: #1a52a8;
+            border: 3px solid color-mix(in srgb, var(--white) 10%, transparent);
+            border-top-color: color-mix(in srgb, var(--info) 62%, var(--bg));
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 1.25rem;
@@ -550,19 +555,19 @@
             align-items: center;
         }
         .toast {
-            background: #44444A;
-            border: 1px solid rgba(201,169,110,0.15);
-            color: #F0EDE8;
+            background: var(--surface);
+            border: 1px solid color-mix(in srgb, var(--gold) 15%, transparent);
+            color: var(--text);
             padding: 0.6rem 1.25rem;
             font-size: 0.85rem;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            box-shadow: 0 4px 16px color-mix(in srgb, black 50%, transparent);
             animation: fadeUp 0.2s ease;
             max-width: 400px;
             text-align: center;
             font-family: 'Roboto', sans-serif;
         }
-        .toast.success { border-color: rgba(123,196,160,0.3); color: #7BC4A0; }
-        .toast.error { border-color: rgba(200,112,112,0.3); color: #c87070; }
+        .toast.success { border-color: color-mix(in srgb, var(--success-light) 30%, transparent); color: var(--success-light); }
+        .toast.error { border-color: color-mix(in srgb, var(--danger) 30%, transparent); color: color-mix(in srgb, var(--danger) 72%, var(--surface)); }
 
         /* Void Sale */
         .void-sale-btn {
@@ -570,8 +575,8 @@
             padding: 0.5rem;
             margin-top: 0.35rem;
             background: transparent;
-            border: 1px solid #991B1B;
-            color: #F87171;
+            border: 1px solid var(--danger-dark);
+            color: var(--danger);
             font-size: 0.8rem;
             font-weight: 600;
             text-transform: uppercase;
@@ -579,12 +584,12 @@
             cursor: pointer;
             transition: background 0.15s;
         }
-        .void-sale-btn:hover { background: #991B1B; color: #FEE2E2; }
+        .void-sale-btn:hover { background: var(--danger-dark); color: color-mix(in srgb, var(--danger) 10%, var(--surface)); }
         .void-badge {
             display: inline-block;
             padding: 2px 10px;
-            background: #991B1B;
-            color: #FEE2E2;
+            background: var(--danger-dark);
+            color: color-mix(in srgb, var(--danger) 10%, var(--surface));
             font-size: 0.75rem;
             font-weight: 700;
             text-transform: uppercase;
@@ -597,43 +602,43 @@
         .receipt-print-area {
             font-family: 'Roboto', 'Segoe UI', Arial, sans-serif;
             font-size: 12px;
-            color: #F0EDE8;
+            color: var(--text);
             line-height: 1.45;
         }
         .receipt-header { text-align: center; margin-bottom: 0.75rem; }
         .receipt-header h3 { font-family: 'EB Garamond', Georgia, serif; font-size: 1.1rem; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase; }
-        .receipt-header p { font-size: 0.72rem; color: #A8A6A1; margin-top: 2px; }
-        .receipt-divider { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 0.5rem 0; }
+        .receipt-header p { font-size: 0.72rem; color: var(--text-light); margin-top: 2px; }
+        .receipt-divider { border: none; border-top: 1px solid color-mix(in srgb, var(--white) 10%, transparent); margin: 0.5rem 0; }
         .receipt-line { display: flex; justify-content: space-between; font-size: 0.78rem; padding: 0.15rem 0; }
         .receipt-line .left { flex: 1; font-weight: 400; }
         .receipt-line .right { text-align: right; min-width: 70px; font-weight: 500; }
-        .receipt-total-line { font-weight: 700; font-size: 0.95rem; padding: 0.3rem 0; border-top: 2px solid rgba(255,255,255,0.15); border-bottom: 2px solid rgba(255,255,255,0.15); margin: 0.2rem 0; }
-        .receipt-footer { text-align: center; margin-top: 0.75rem; font-size: 0.72rem; color: #A8A6A1; }
-        .receipt-footer p:last-child { font-family: 'EB Garamond', Georgia, serif; font-weight: 500; font-size: 0.85rem; color: #C9A96E; }
+        .receipt-total-line { font-weight: 700; font-size: 0.95rem; padding: 0.3rem 0; border-top: 2px solid color-mix(in srgb, var(--white) 15%, transparent); border-bottom: 2px solid color-mix(in srgb, var(--white) 15%, transparent); margin: 0.2rem 0; }
+        .receipt-footer { text-align: center; margin-top: 0.75rem; font-size: 0.72rem; color: var(--text-light); }
+        .receipt-footer p:last-child { font-family: 'EB Garamond', Georgia, serif; font-weight: 500; font-size: 0.85rem; color: var(--gold); }
         .print-receipt-btn {
-            width: 100%; background: #A8A6A1; color: #1e1e20; border: none;
+            width: 100%; background: var(--text-light); color: var(--bg); border: none;
             padding: 0.75rem; cursor: pointer; font-size: 0.78rem; font-weight: 500;
             margin-top: 0.75rem; font-family: 'Roboto', sans-serif;
             letter-spacing: 0.1em; text-transform: uppercase;
-            box-shadow: 0 1px 0 rgba(0,0,0,0.3);
+            box-shadow: 0 1px 0 color-mix(in srgb, black 30%, transparent);
             transition: background 0.15s;
         }
-        .print-receipt-btn:hover { background: #8e8c87; }
+        .print-receipt-btn:hover { background: var(--text-muted); }
         .new-sale-btn {
-            width: 100%; background: transparent; color: #A8A6A1;
-            border: 1px solid rgba(255,255,255,0.1); padding: 0.65rem;
+            width: 100%; background: transparent; color: var(--text-light);
+            border: 1px solid color-mix(in srgb, var(--white) 10%, transparent); padding: 0.65rem;
             cursor: pointer; font-size: 0.78rem; margin-top: 0.5rem;
             font-family: 'Roboto', sans-serif; letter-spacing: 0.08em;
             text-transform: uppercase; transition: background 0.15s, color 0.15s;
         }
-        .new-sale-btn:hover { background: rgba(255,255,255,0.05); color: #F0EDE8; }
+        .new-sale-btn:hover { background: color-mix(in srgb, var(--white) 5%, transparent); color: var(--text); }
 
         /* Camera button */
         .camera-scan-btn {
             display: none;
-            background: #4e4e54;
-            border: 1px solid rgba(201,169,110,0.15);
-            color: #F0EDE8;
+            background: var(--surface-2);
+            border: 1px solid color-mix(in srgb, var(--gold) 15%, transparent);
+            color: var(--text);
             font-size: 1.2rem;
             height: 44px;
             width: 44px;
@@ -643,7 +648,7 @@
             justify-content: center;
             transition: background 0.15s;
         }
-        .camera-scan-btn:hover { background: #5a5a62; }
+        .camera-scan-btn:hover { background: var(--surface-2); }
         @media (max-width: 1023px) { .camera-scan-btn { display: flex; } }
 
         /* Scanner overlay */
@@ -651,7 +656,7 @@
             position: fixed;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            background: #000;
+            background: black;
             z-index: 600;
             flex-direction: column;
             align-items: center;
@@ -664,9 +669,9 @@
             top: 50%;
             left: 0; right: 0;
             height: 2px;
-            background: #C9A96E;
+            background: var(--gold);
             transform: translateY(-50%);
-            box-shadow: 0 0 8px rgba(201,169,110,0.8);
+            box-shadow: 0 0 8px color-mix(in srgb, var(--gold) 80%, transparent);
             animation: scan-pulse 1.5s ease-in-out infinite;
         }
         @keyframes scan-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
@@ -675,27 +680,27 @@
             position: absolute;
             width: 28px;
             height: 28px;
-            border-color: #C9A96E;
+            border-color: var(--gold);
             border-style: solid;
         }
         .scanner-corners::before { top: 0; left: 0; border-width: 3px 0 0 3px; }
         .scanner-corners::after { top: 0; right: 0; border-width: 3px 3px 0 0; }
 
         /* Error state */
-        .scan-error { color: #c87070; font-size: 0.75rem; padding: 0 1rem 0.5rem; min-height: 20px; }
+        .scan-error { color: color-mix(in srgb, var(--danger) 72%, var(--surface)); font-size: 0.75rem; padding: 0 1rem 0.5rem; min-height: 20px; }
 
         /* Search */
         .search-bar {
-            background: #3d3d40;
+            background: var(--surface-2);
             padding: 0.5rem 1rem;
-            border-bottom: 1px solid rgba(201,169,110,0.08);
+            border-bottom: 1px solid color-mix(in srgb, var(--gold) 8%, transparent);
             position: relative;
         }
         .search-bar input {
             width: 100%;
-            background: #44444A;
-            border: 1px solid #555558;
-            color: #F0EDE8;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
             padding: 0.5rem 0.85rem;
             font-size: 0.875rem;
             font-family: 'Roboto', sans-serif;
@@ -703,17 +708,17 @@
         }
         .search-bar input:focus {
             outline: none;
-            border-color: rgba(201,169,110,0.4);
-            box-shadow: 0 0 0 2px rgba(201,169,110,0.1);
+            border-color: color-mix(in srgb, var(--gold) 40%, transparent);
+            box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 10%, transparent);
         }
-        .search-bar input::placeholder { color: #A8A6A1; opacity: 0.65; }
+        .search-bar input::placeholder { color: var(--text-light); opacity: 0.65; }
         .search-results {
             position: absolute;
             left: 1rem;
             right: 1rem;
             top: calc(100% - 2px);
-            background: #2e2e31;
-            border: 1px solid rgba(201,169,110,0.15);
+            background: var(--surface-2);
+            border: 1px solid color-mix(in srgb, var(--gold) 15%, transparent);
             border-top: none;
             z-index: 500;
             max-height: 320px;
@@ -725,37 +730,37 @@
             justify-content: space-between;
             align-items: center;
             padding: 0.6rem 0.85rem;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+            border-bottom: 1px solid color-mix(in srgb, var(--white) 4%, transparent);
             cursor: pointer;
             gap: 0.5rem;
             transition: background 0.1s;
         }
         .search-result-item:last-child { border-bottom: none; }
-        .search-result-item:hover { background: rgba(201,169,110,0.06); }
+        .search-result-item:hover { background: color-mix(in srgb, var(--gold) 6%, transparent); }
         .search-result-left { flex: 1; min-width: 0; }
         .search-result-name {
             font-size: 0.875rem;
-            color: #F0EDE8;
+            color: var(--text);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             font-family: 'EB Garamond', serif;
         }
-        .search-result-meta { font-size: 0.7rem; color: #A8A6A1; margin-top: 1px; }
+        .search-result-meta { font-size: 0.7rem; color: var(--text-light); margin-top: 1px; }
         .search-result-price {
             font-family: 'EB Garamond', serif;
             font-size: 1rem;
             font-weight: 500;
-            color: #F0EDE8;
+            color: var(--text);
             white-space: nowrap;
         }
-        .search-result-price.on-sale { color: #e8a060; }
-        .search-no-results { padding: 0.75rem; text-align: center; color: #A8A6A1; font-size: 0.85rem; font-style: italic; font-family: 'EB Garamond', serif; }
+        .search-result-price.on-sale { color: color-mix(in srgb, var(--warning) 72%, var(--gold)); }
+        .search-no-results { padding: 0.75rem; text-align: center; color: var(--text-light); font-size: 0.85rem; font-style: italic; font-family: 'EB Garamond', serif; }
 
         .manual-entry-btn {
-            background: rgba(201,169,110,0.12);
-            border: 1px solid rgba(201,169,110,0.3);
-            color: #C9A96E;
+            background: var(--gold-glow);
+            border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+            color: var(--gold);
             font-size: 0.72rem;
             font-weight: 500;
             padding: 0.5rem 0.75rem;
@@ -766,7 +771,7 @@
             white-space: nowrap;
             transition: background 0.2s, border-color 0.2s;
         }
-        .manual-entry-btn:hover { background: rgba(201,169,110,0.2); border-color: rgba(201,169,110,0.5); }
+        .manual-entry-btn:hover { background: color-mix(in srgb, var(--gold) 20%, transparent); border-color: color-mix(in srgb, var(--gold) 50%, transparent); }
 
         .manual-form-group { margin-bottom: 0.75rem; }
         .manual-form-group label {
@@ -774,15 +779,15 @@
             font-size: 0.6rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            color: #A8A6A1;
+            color: var(--text-light);
             margin-bottom: 0.25rem;
             font-family: 'Roboto', sans-serif;
         }
         .manual-form-group input, .manual-form-group select {
             width: 100%;
-            background: #2a2a2d;
-            border: 1px solid #555558;
-            color: #F0EDE8;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
             padding: 0.7rem 0.75rem;
             font-size: 1rem;
             font-family: 'Roboto', sans-serif;
@@ -791,7 +796,7 @@
         }
         .manual-form-group input:focus, .manual-form-group select:focus {
             outline: none;
-            border-color: rgba(201,169,110,0.5);
+            border-color: color-mix(in srgb, var(--gold) 50%, transparent);
         }
         .manual-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 
@@ -806,27 +811,27 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            background: #2D2D30;
+            background: var(--surface-2);
             padding: 8px 12px;
         }
         .denom-row label {
             font-size: 0.8rem;
-            color: #A8A6A1;
+            color: var(--text-light);
             min-width: 55px;
             font-family: 'Roboto', sans-serif;
         }
         .denom-row input {
             width: 60px;
-            background: #44444A;
-            border: 1px solid #555558;
-            color: #F0EDE8;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
             padding: 8px 6px;
             font-size: 0.9rem;
             text-align: center;
             font-family: 'Roboto Mono', monospace;
             min-height: 40px;
         }
-        .denom-row input:focus { outline: none; border-color: rgba(201,169,110,0.4); }
+        .denom-row input:focus { outline: none; border-color: color-mix(in srgb, var(--gold) 40%, transparent); }
     </style>
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
 </head>
@@ -855,7 +860,7 @@
                     <option value="large">Large</option>
                 </select>
             </div>
-            <button class="nav-link" onclick="openOnlineOrdersPanel()" style="position:relative">Orders <span id="orders-badge" style="display:none;position:absolute;top:-4px;right:-8px;background:#EF4444;color:#fff;font-size:10px;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 4px">0</span></button>
+            <button class="nav-link" onclick="openOnlineOrdersPanel()" style="position:relative">Orders <span id="orders-badge" style="display:none;position:absolute;top:-4px;right:-8px;background:var(--danger);color:var(--white);font-size:10px;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 4px">0</span></button>
             <button class="nav-link" onclick="openGiftCardModal()">Gift Cards</button>
             <button class="nav-link" onclick="openReceiptLookup()">Receipts</button>
             <button class="nav-link" onclick="openEndOfDay()">End of Day</button>
@@ -896,13 +901,13 @@
         </div>
         <div class="scan-error" id="scan-error"></div>
         <div class="cart-area" id="cart-area">
-            <div id="mobile-cart-header" style="display:none;padding:0.4rem 0 0.5rem;font-size:0.8rem;color:#A8A6A1;font-weight:600;text-transform:uppercase;letter-spacing:0.04em">
+            <div id="mobile-cart-header" style="display:none;padding:0.4rem 0 0.5rem;font-size:0.8rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:0.04em">
                 Cart · <span id="mobile-cart-count">0 items</span>
             </div>
             <div class="cart-empty" id="cart-empty">
                 <div class="icon">🛒</div>
                 <span>Scan or search an item to begin</span>
-                <small style="color:#4B5563">Barcode scanner or search above</small>
+                <small style="color:var(--text-muted)">Barcode scanner or search above</small>
             </div>
             <table class="cart-table" id="cart-table" style="display:none">
                 <thead>
@@ -923,8 +928,8 @@
     <div class="pos-right">
         <div class="totals-card">
             <div class="row"><span class="label">Subtotal</span><span id="subtotal">$0.00</span></div>
-            <div class="row" id="discount-row" style="display:none;color:#F59E0B"><span class="label">Item Discounts</span><span>-$0.00</span></div>
-            <div class="row" id="cart-discount-row" style="display:none;color:#F59E0B"><span class="label">Cart Discount</span><span>-$0.00</span></div>
+            <div class="row" id="discount-row" style="display:none;color:var(--warning)"><span class="label">Item Discounts</span><span>-$0.00</span></div>
+            <div class="row" id="cart-discount-row" style="display:none;color:var(--warning)"><span class="label">Cart Discount</span><span>-$0.00</span></div>
             <div class="row"><span class="label">Tax (<span id="tax-rate-label">5%</span>)</span><span id="tax-amount">$0.00</span></div>
             <div class="row total-row">
                 <span class="label">TOTAL</span>
@@ -934,10 +939,10 @@
         <div class="item-count-badge"><span id="item-count">0</span> item(s) in cart</div>
         <div style="display:flex;gap:6px;margin-bottom:6px">
             <button class="clear-btn" onclick="clearCart()" style="flex:1;margin:0">✕ Clear</button>
-            <button class="clear-btn" onclick="openCartDiscount()" style="flex:1;margin:0;background:#92400E;color:#FDE68A">🏷 Discount</button>
-            <button class="clear-btn" onclick="suspendOrder()" id="suspend-btn" style="flex:1;margin:0;background:#92400E;color:#FDE68A" disabled>⏸ Hold</button>
+            <button class="clear-btn" onclick="openCartDiscount()" style="flex:1;margin:0;background:color-mix(in srgb, var(--warning) 58%, var(--bg));color:color-mix(in srgb, var(--warning) 38%, var(--white))">🏷 Discount</button>
+            <button class="clear-btn" onclick="suspendOrder()" id="suspend-btn" style="flex:1;margin:0;background:color-mix(in srgb, var(--warning) 58%, var(--bg));color:color-mix(in srgb, var(--warning) 38%, var(--white))" disabled>⏸ Hold</button>
         </div>
-        <button class="clear-btn" onclick="openResumeModal()" id="resume-btn" style="background:#065F46;color:#6EE7B7;margin-bottom:6px;display:none">▶ Resume Held Order (<span id="held-count">0</span>)</button>
+        <button class="clear-btn" onclick="openResumeModal()" id="resume-btn" style="background:var(--success);color:var(--success-light);margin-bottom:6px;display:none">▶ Resume Held Order (<span id="held-count">0</span>)</button>
         <div class="payment-section">
             <button class="pay-btn cash" id="cash-btn" onclick="openCashModal()" disabled>
                 💵 CASH
@@ -946,13 +951,13 @@
                 💳 CARD
             </button>
         </div>
-        <button class="pay-btn card" id="gc-pay-btn" onclick="openGcPayModal()" disabled style="width:100%;margin-top:6px;background:#7C3AED;border-color:#7C3AED">
+        <button class="pay-btn card" id="gc-pay-btn" onclick="openGcPayModal()" disabled style="width:100%;margin-top:6px;background:var(--pos-payment-gift);border-color:var(--pos-payment-gift)">
             🎁 GIFT CARD
         </button>
-        <button class="pay-btn card" id="split-pay-btn" onclick="openSplitModal()" disabled style="width:100%;margin-top:6px;background:#0E7490;border-color:#0E7490">
+        <button class="pay-btn card" id="split-pay-btn" onclick="openSplitModal()" disabled style="width:100%;margin-top:6px;background:var(--info);border-color:var(--info)">
             ✂ SPLIT PAY
         </button>
-        <button class="pay-btn cash" onclick="openRentPaymentModal()" style="width:100%;margin-top:6px;background:#92400E;border-color:#92400E">
+        <button class="pay-btn cash" onclick="openRentPaymentModal()" style="width:100%;margin-top:6px;background:color-mix(in srgb, var(--warning) 58%, var(--bg));border-color:color-mix(in srgb, var(--warning) 58%, var(--bg))">
             🏠 RENT PAYMENT
         </button>
     </div>
@@ -989,7 +994,7 @@
         <div class="change-display zero" id="change-display">
             Change: $0.00
         </div>
-        <div id="cash-error" style="color:#F87171;font-size:0.8rem;min-height:20px;text-align:center"></div>
+        <div id="cash-error" style="color:var(--danger);font-size:0.8rem;min-height:20px;text-align:center"></div>
         <div class="modal-actions">
             <button class="cancel-btn" onclick="closeCashModal()">Cancel</button>
             <button class="confirm-btn" id="complete-sale-btn" onclick="completeCashSale()" disabled>
@@ -1006,15 +1011,15 @@
         <div style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem">
             Card Payment
         </div>
-        <div class="amount" id="card-amount-display" style="font-size:2rem;font-weight:800;color:#C9A96E;margin-bottom:0.75rem">$0.00</div>
-        <div data-instructions style="color:#A8A6A1;font-size:0.9rem;margin-bottom:1rem;line-height:1.4">
+        <div class="amount" id="card-amount-display" style="font-size:2rem;font-weight:800;color:var(--gold);margin-bottom:0.75rem">$0.00</div>
+        <div data-instructions style="color:var(--text-light);font-size:0.9rem;margin-bottom:1rem;line-height:1.4">
             Enter this amount on the Poynt terminal and process the card. The POS will detect the payment automatically.
         </div>
         <div style="display:flex;gap:0.75rem;justify-content:center">
-            <button onclick="cancelCardPayment()" style="background:#374151;color:#D1D5DB;border:none;padding:0.75rem 1.5rem;border-radius:0;cursor:pointer;font-size:0.9rem;font-weight:600">
+            <button onclick="cancelCardPayment()" style="background:var(--text-light);color:var(--border);border:none;padding:0.75rem 1.5rem;border-radius:0;cursor:pointer;font-size:0.9rem;font-weight:600">
                 Cancel
             </button>
-            <button onclick="confirmCardPayment()" id="card-confirm-btn" style="background:#2a6e3f;color:#fff;border:none;padding:0.75rem 1.5rem;border-radius:0;cursor:pointer;font-size:0.9rem;font-weight:600">
+            <button onclick="confirmCardPayment()" id="card-confirm-btn" style="background:var(--success);color:var(--white);border:none;padding:0.75rem 1.5rem;border-radius:0;cursor:pointer;font-size:0.9rem;font-weight:600">
                 Payment Received ✓
             </button>
         </div>
@@ -1026,7 +1031,7 @@
 <div class="pos-modal-overlay hidden" id="item-discount-modal">
     <div class="pos-modal" style="max-width:360px">
         <h2>🏷 Item Discount</h2>
-        <div id="item-disc-name" style="font-weight:700;color:#C9A96E;margin-bottom:0.75rem;text-align:center"></div>
+        <div id="item-disc-name" style="font-weight:700;color:var(--gold);margin-bottom:0.75rem;text-align:center"></div>
         <div style="display:flex;gap:0.5rem;justify-content:center;margin-bottom:0.75rem">
             <button id="item-disc-dollar-btn" onclick="setItemDiscType('dollar')" style="padding:0.5rem 1.2rem;background:var(--surface-2);border:1px solid var(--border);color:var(--text);cursor:pointer;font-weight:700;font-size:1rem">$</button>
             <button id="item-disc-percent-btn" onclick="setItemDiscType('percent')" style="padding:0.5rem 1.2rem;background:var(--surface-2);border:1px solid var(--border);color:var(--text);cursor:pointer;font-weight:700;font-size:1rem">%</button>
@@ -1060,7 +1065,7 @@
 <!-- Receipt Modal -->
 <div class="pos-modal-overlay hidden" id="receipt-modal">
     <div class="pos-modal receipt-modal" style="position:relative">
-        <button onclick="document.getElementById('receipt-modal').classList.add('hidden')" style="position:absolute;top:10px;right:14px;background:none;border:none;color:#A8A6A1;font-size:1.4rem;cursor:pointer;line-height:1;padding:4px 8px;z-index:1" title="Close">✕</button>
+        <button onclick="document.getElementById('receipt-modal').classList.add('hidden')" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--text-light);font-size:1.4rem;cursor:pointer;line-height:1;padding:4px 8px;z-index:1" title="Close">✕</button>
         <h2 id="receipt-modal-title">✅ Sale Complete</h2>
         <div class="receipt-print-area" id="receipt-content"></div>
         <button class="print-receipt-btn" onclick="printReceipt()">🖨 Print Receipt</button>
@@ -1102,9 +1107,9 @@
         <div class="manual-form-group" id="manual-consignment-group" style="display:none">
             <label for="manual-consignment-rate">Consignment Rate (%)</label>
             <input type="number" id="manual-consignment-rate" min="0" max="100" step="0.01" placeholder="e.g. 40">
-            <small style="color:#999;font-size:0.7rem">Percentage the store keeps</small>
+            <small style="color:var(--text-muted);font-size:0.7rem">Percentage the store keeps</small>
         </div>
-        <div id="manual-error" style="color:#F87171;font-size:0.8rem;min-height:20px"></div>
+        <div id="manual-error" style="color:var(--danger);font-size:0.8rem;min-height:20px"></div>
         <div class="modal-actions">
             <button class="cancel-btn" onclick="closeManualEntry()">Cancel</button>
             <button class="confirm-btn" onclick="addManualItem()">Add to Cart</button>
@@ -1128,26 +1133,26 @@
     <div class="pos-modal" style="max-width:560px">
         <h2>🔍 Receipt Lookup</h2>
         <div style="margin-bottom:0.75rem">
-            <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:4px">Search by Sale #</label>
+            <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px">Search by Sale #</label>
             <div style="display:flex;gap:8px">
-                <input type="text" id="receipt-search-input" placeholder="e.g. 12345" inputmode="numeric" onkeydown="if(event.key==='Enter')searchReceiptById()" style="flex:1;background:#2D2D30;border:1px solid #555558;color:#F0EDE8;padding:0.5rem 0.75rem;font-size:0.9rem">
+                <input type="text" id="receipt-search-input" placeholder="e.g. 12345" inputmode="numeric" onkeydown="if(event.key==='Enter')searchReceiptById()" style="flex:1;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.75rem;font-size:0.9rem">
                 <button class="confirm-btn" onclick="searchReceiptById()" style="padding:0.5rem 1rem">Find</button>
             </div>
         </div>
-        <div style="border-top:1px solid #555558;padding-top:0.75rem;margin-bottom:0.75rem">
-            <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:4px">Search by Date Range</label>
+        <div style="border-top:1px solid var(--border);padding-top:0.75rem;margin-bottom:0.75rem">
+            <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px">Search by Date Range</label>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                <input type="date" id="receipt-date-from" style="flex:1;min-width:130px;background:#2D2D30;border:1px solid #555558;color:#F0EDE8;padding:0.5rem 0.5rem;font-size:0.85rem">
-                <span style="color:#A8A6A1;font-size:0.8rem">to</span>
-                <input type="date" id="receipt-date-to" style="flex:1;min-width:130px;background:#2D2D30;border:1px solid #555558;color:#F0EDE8;padding:0.5rem 0.5rem;font-size:0.85rem">
+                <input type="date" id="receipt-date-from" style="flex:1;min-width:130px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.5rem;font-size:0.85rem">
+                <span style="color:var(--text-light);font-size:0.8rem">to</span>
+                <input type="date" id="receipt-date-to" style="flex:1;min-width:130px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.5rem;font-size:0.85rem">
                 <button class="confirm-btn" onclick="searchReceiptsByDate()" style="padding:0.5rem 1rem">Search</button>
             </div>
             <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-                <button onclick="setReceiptDatePreset('today')" style="background:#3A3A3D;color:#C9A96E;border:1px solid #555;padding:3px 10px;font-size:0.72rem;cursor:pointer">Today</button>
-                <button onclick="setReceiptDatePreset('yesterday')" style="background:#3A3A3D;color:#C9A96E;border:1px solid #555;padding:3px 10px;font-size:0.72rem;cursor:pointer">Yesterday</button>
-                <button onclick="setReceiptDatePreset('week')" style="background:#3A3A3D;color:#C9A96E;border:1px solid #555;padding:3px 10px;font-size:0.72rem;cursor:pointer">This Week</button>
-                <button onclick="setReceiptDatePreset('month')" style="background:#3A3A3D;color:#C9A96E;border:1px solid #555;padding:3px 10px;font-size:0.72rem;cursor:pointer">This Month</button>
-                <button onclick="setReceiptDatePreset('last30')" style="background:#3A3A3D;color:#C9A96E;border:1px solid #555;padding:3px 10px;font-size:0.72rem;cursor:pointer">Last 30 Days</button>
+                <button onclick="setReceiptDatePreset('today')" style="background:var(--surface-2);color:var(--gold);border:1px solid var(--border);padding:3px 10px;font-size:0.72rem;cursor:pointer">Today</button>
+                <button onclick="setReceiptDatePreset('yesterday')" style="background:var(--surface-2);color:var(--gold);border:1px solid var(--border);padding:3px 10px;font-size:0.72rem;cursor:pointer">Yesterday</button>
+                <button onclick="setReceiptDatePreset('week')" style="background:var(--surface-2);color:var(--gold);border:1px solid var(--border);padding:3px 10px;font-size:0.72rem;cursor:pointer">This Week</button>
+                <button onclick="setReceiptDatePreset('month')" style="background:var(--surface-2);color:var(--gold);border:1px solid var(--border);padding:3px 10px;font-size:0.72rem;cursor:pointer">This Month</button>
+                <button onclick="setReceiptDatePreset('last30')" style="background:var(--surface-2);color:var(--gold);border:1px solid var(--border);padding:3px 10px;font-size:0.72rem;cursor:pointer">Last 30 Days</button>
             </div>
         </div>
         <div id="receipt-search-results" style="max-height:45vh;overflow-y:auto"></div>
@@ -1172,17 +1177,17 @@
 
 <div class="pos-modal-overlay hidden" id="void-confirm-modal" style="z-index:450">
     <div class="pos-modal" style="max-width:360px">
-        <h2 style="color:#F87171">⚠ Void Sale</h2>
-        <p style="color:#A8A6A1;font-size:0.85rem;margin-bottom:0.75rem" id="void-sale-info"></p>
+        <h2 style="color:var(--danger)">⚠ Void Sale</h2>
+        <p style="color:var(--text-light);font-size:0.85rem;margin-bottom:0.75rem" id="void-sale-info"></p>
         <div style="margin-bottom:0.75rem">
-            <label style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:4px">Reason (optional)</label>
-            <input type="text" id="void-reason" placeholder="e.g. Wrong item, customer changed mind" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.5rem 0.6rem;font-size:0.9rem;box-sizing:border-box">
+            <label style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px">Reason (optional)</label>
+            <input type="text" id="void-reason" placeholder="e.g. Wrong item, customer changed mind" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.6rem;font-size:0.9rem;box-sizing:border-box">
         </div>
-        <p style="color:#F87171;font-size:0.78rem;margin-bottom:0.5rem">This will reverse the sale: items returned to inventory, vendor balances adjusted, and any gift card funds refunded.</p>
-        <div id="void-error" style="color:#F87171;font-size:0.82rem;text-align:center;margin-bottom:0.5rem"></div>
+        <p style="color:var(--danger);font-size:0.78rem;margin-bottom:0.5rem">This will reverse the sale: items returned to inventory, vendor balances adjusted, and any gift card funds refunded.</p>
+        <div id="void-error" style="color:var(--danger);font-size:0.82rem;text-align:center;margin-bottom:0.5rem"></div>
         <div class="modal-actions">
             <button class="cancel-btn" onclick="closeVoidModal()">Cancel</button>
-            <button class="confirm-btn" id="void-confirm-btn" onclick="confirmVoidSale()" style="background:#991B1B;color:#FEE2E2">Confirm Void</button>
+            <button class="confirm-btn" id="void-confirm-btn" onclick="confirmVoidSale()" style="background:var(--danger-dark);color:color-mix(in srgb, var(--danger) 10%, var(--surface))">Confirm Void</button>
         </div>
     </div>
 </div>
@@ -1192,7 +1197,7 @@
     <div class="pos-modal" style="max-width:560px">
         <h2>📦 Online Orders</h2>
         <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
-            <button class="confirm-btn" onclick="loadOnlineOrders('pending')" id="filter-pending" style="padding:0.4rem 1rem;font-size:0.8rem;background:#92400E;color:#FDE68A">Pending</button>
+            <button class="confirm-btn" onclick="loadOnlineOrders('pending')" id="filter-pending" style="padding:0.4rem 1rem;font-size:0.8rem;background:color-mix(in srgb, var(--warning) 58%, var(--bg));color:color-mix(in srgb, var(--warning) 38%, var(--white))">Pending</button>
             <button class="cancel-btn" onclick="loadOnlineOrders('ready')" id="filter-ready" style="padding:0.4rem 1rem;font-size:0.8rem">Ready</button>
             <button class="cancel-btn" onclick="loadOnlineOrders('completed')" id="filter-completed" style="padding:0.4rem 1rem;font-size:0.8rem">Completed</button>
             <button class="cancel-btn" onclick="loadOnlineOrders('')" id="filter-all" style="padding:0.4rem 1rem;font-size:0.8rem">All</button>
@@ -1207,17 +1212,17 @@
 <!-- Camera scanner overlay -->
 <div id="scanner-overlay" style="display:none">
     <div style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:1rem;z-index:10">
-        <span style="color:#fff;font-size:1rem;font-weight:600">Point camera at barcode</span>
-        <button onclick="stopScanner()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:1.1rem;width:44px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+        <span style="color:var(--white);font-size:1rem;font-weight:600">Point camera at barcode</span>
+        <button onclick="stopScanner()" style="background:color-mix(in srgb, var(--white) 15%, transparent);border:none;color:var(--white);font-size:1.1rem;width:44px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
     </div>
     <div class="scanner-frame scanner-corners">
         <video id="scanner-video" autoplay muted playsinline></video>
         <div class="scanner-line"></div>
     </div>
-    <p style="color:rgba(255,255,255,0.6);font-size:0.85rem;margin-top:1.25rem;text-align:center;padding:0 1.5rem">
+    <p style="color:color-mix(in srgb, var(--white) 60%, transparent);font-size:0.85rem;margin-top:1.25rem;text-align:center;padding:0 1.5rem">
         Hold steady over the barcode
     </p>
-    <button onclick="stopScanner()" style="margin-top:1.5rem;background:#38383B;color:#fff;border:1px solid #555558;padding:0.75rem 2.5rem;font-size:1rem;cursor:pointer">
+    <button onclick="stopScanner()" style="margin-top:1.5rem;background:var(--bg);color:var(--white);border:1px solid var(--border);padding:0.75rem 2.5rem;font-size:1rem;cursor:pointer">
         ✕ Cancel
     </button>
 </div>
@@ -1225,8 +1230,8 @@
 <!-- Mobile fixed payment bar (hidden on desktop via CSS) -->
 <div class="mobile-pay-bar" id="mobile-pay-bar" style="display:none">
     <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
-        <div style="font-size:0.7rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.05em">Total</div>
-        <div style="font-size:1.25rem;font-weight:800;color:#F9FAFB" id="mobile-total">$0.00</div>
+        <div style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em">Total</div>
+        <div style="font-size:1.25rem;font-weight:800;color:var(--surface-2)" id="mobile-total">$0.00</div>
     </div>
     <button class="pay-btn cash" id="mobile-cash-btn" onclick="openCashModal()" disabled style="flex:1;padding:0.75rem;min-height:48px;font-size:0.9rem">
         💵 Cash
@@ -1245,14 +1250,14 @@
             <span id="gc-pay-total">$0.00</span>
         </div>
         <div style="margin:1rem 0">
-            <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.3rem">Scan Gift Card Barcode</label>
-            <input type="text" id="gc-pay-barcode" placeholder="Scan or type barcode" inputmode="numeric" pattern="[0-9]*" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.6rem 0.75rem;font-size:1rem;box-sizing:border-box">
+            <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:0.3rem">Scan Gift Card Barcode</label>
+            <input type="text" id="gc-pay-barcode" placeholder="Scan or type barcode" inputmode="numeric" pattern="[0-9]*" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.6rem 0.75rem;font-size:1rem;box-sizing:border-box">
         </div>
         <div id="gc-pay-balance" style="min-height:30px;margin-bottom:0.5rem"></div>
-        <div id="gc-pay-error" style="color:#F87171;font-size:0.8rem;min-height:18px"></div>
+        <div id="gc-pay-error" style="color:var(--danger);font-size:0.8rem;min-height:18px"></div>
         <div style="display:flex;gap:8px">
             <button class="cancel-btn" onclick="closeGcPayModal()" style="flex:1">Cancel</button>
-            <button class="confirm-btn" onclick="processGcPayment()" id="gc-pay-submit" style="flex:1;background:#7C3AED">Pay with Gift Card</button>
+            <button class="confirm-btn" onclick="processGcPayment()" id="gc-pay-submit" style="flex:1;background:var(--pos-payment-gift)">Pay with Gift Card</button>
         </div>
     </div>
 </div>
@@ -1261,45 +1266,45 @@
 <div class="pos-modal-overlay hidden" id="split-modal">
     <div class="pos-modal" style="max-width:480px">
         <h2>Split Payment</h2>
-        <div style="display:flex;justify-content:space-between;align-items:center;background:#2D2D30;padding:0.6rem 0.8rem;margin-bottom:0.75rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface-2);padding:0.6rem 0.8rem;margin-bottom:0.75rem">
             <div>
-                <small style="color:#A8A6A1;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em">Order Total</small>
-                <div id="split-total-display" style="font-size:1.2rem;font-weight:700;color:#F0EDE8">$0.00</div>
+                <small style="color:var(--text-light);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em">Order Total</small>
+                <div id="split-total-display" style="font-size:1.2rem;font-weight:700;color:var(--text)">$0.00</div>
             </div>
             <div style="text-align:right">
-                <small style="color:#A8A6A1;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em">Remaining</small>
-                <div id="split-remaining-display" style="font-size:1.2rem;font-weight:700;color:#F59E0B">$0.00</div>
+                <small style="color:var(--text-light);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em">Remaining</small>
+                <div id="split-remaining-display" style="font-size:1.2rem;font-weight:700;color:var(--warning)">$0.00</div>
             </div>
         </div>
 
         <div id="split-applied-list" style="margin-bottom:0.6rem"></div>
 
         <div id="split-add-buttons" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0.75rem">
-            <button class="pay-btn card" id="split-add-gc-btn" onclick="splitShowGcInput()" style="flex:1;min-width:100px;padding:0.5rem;font-size:0.8rem;background:#7C3AED;border-color:#7C3AED">+ Gift Card</button>
+            <button class="pay-btn card" id="split-add-gc-btn" onclick="splitShowGcInput()" style="flex:1;min-width:100px;padding:0.5rem;font-size:0.8rem;background:var(--pos-payment-gift);border-color:var(--pos-payment-gift)">+ Gift Card</button>
             <button class="pay-btn cash" id="split-add-cash-btn" onclick="splitShowCashInput()" style="flex:1;min-width:100px;padding:0.5rem;font-size:0.8rem">+ Cash</button>
-            <button class="pay-btn card" id="split-add-card-btn" onclick="splitAddCard()" style="flex:1;min-width:100px;padding:0.5rem;font-size:0.8rem;background:#0E7490;border-color:#0E7490">+ Card (rest)</button>
+            <button class="pay-btn card" id="split-add-card-btn" onclick="splitAddCard()" style="flex:1;min-width:100px;padding:0.5rem;font-size:0.8rem;background:var(--info);border-color:var(--info)">+ Card (rest)</button>
         </div>
 
-        <div id="split-gc-input-section" style="display:none;margin:0.5rem 0;background:#1a1a2e;border:1px solid #7C3AED;padding:0.6rem 0.8rem">
-            <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#C4B5FD;margin-bottom:0.4rem;font-family:'Roboto',sans-serif">Scan Gift Card</div>
+        <div id="split-gc-input-section" style="display:none;margin:0.5rem 0;background:color-mix(in srgb, var(--info) 14%, var(--bg));border:1px solid var(--pos-payment-gift);padding:0.6rem 0.8rem">
+            <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:color-mix(in srgb, var(--pos-payment-gift) 48%, var(--white));margin-bottom:0.4rem;font-family:'Roboto',sans-serif">Scan Gift Card</div>
             <div style="display:flex;gap:6px;align-items:flex-end">
                 <div style="flex:1">
-                    <input type="text" id="split-gc-barcode" placeholder="Scan or type barcode" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.5rem 0.6rem;font-size:0.95rem;box-sizing:border-box">
+                    <input type="text" id="split-gc-barcode" placeholder="Scan or type barcode" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.6rem;font-size:0.95rem;box-sizing:border-box">
                 </div>
-                <button class="confirm-btn" onclick="splitApplyGiftCard()" style="padding:0.5rem 1rem;background:#7C3AED;white-space:nowrap;font-size:0.85rem">Apply</button>
+                <button class="confirm-btn" onclick="splitApplyGiftCard()" style="padding:0.5rem 1rem;background:var(--pos-payment-gift);white-space:nowrap;font-size:0.85rem">Apply</button>
             </div>
             <div style="display:flex;gap:6px;align-items:center;margin-top:0.4rem">
                 <div style="flex:1">
                     <label class="form-label" style="font-size:0.75rem">Amount to apply (leave blank for max)</label>
-                    <input type="number" id="split-gc-custom-amount" placeholder="Full balance" min="0.01" step="0.01" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.4rem 0.6rem;font-size:0.85rem;box-sizing:border-box">
+                    <input type="number" id="split-gc-custom-amount" placeholder="Full balance" min="0.01" step="0.01" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.6rem;font-size:0.85rem;box-sizing:border-box">
                 </div>
             </div>
             <div id="split-gc-info" style="min-height:20px;margin-top:0.3rem;font-size:0.8rem"></div>
-            <button onclick="splitCancelInput()" style="background:none;border:none;color:#A8A6A1;cursor:pointer;font-size:0.75rem;text-decoration:underline;margin-top:0.2rem">Cancel</button>
+            <button onclick="splitCancelInput()" style="background:none;border:none;color:var(--text-light);cursor:pointer;font-size:0.75rem;text-decoration:underline;margin-top:0.2rem">Cancel</button>
         </div>
 
-        <div id="split-cash-input-section" style="display:none;margin:0.5rem 0;background:#1a2e1a;border:1px solid #22C55E;padding:0.6rem 0.8rem">
-            <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#86EFAC;margin-bottom:0.4rem;font-family:'Roboto',sans-serif">Cash Payment</div>
+        <div id="split-cash-input-section" style="display:none;margin:0.5rem 0;background:color-mix(in srgb, var(--success) 12%, var(--bg));border:1px solid var(--success-light);padding:0.6rem 0.8rem">
+            <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--success-light);margin-bottom:0.4rem;font-family:'Roboto',sans-serif">Cash Payment</div>
             <div class="form-group" style="margin-bottom:0.4rem">
                 <label class="form-label" style="font-size:0.75rem">Cash Amount</label>
                 <input class="form-control" type="number" id="split-cash-amount" min="0.01" step="0.01" placeholder="0.00" oninput="splitCashAmountChanged()">
@@ -1317,12 +1322,12 @@
             </div>
             <div class="change-display zero" id="split-change-display">Change: $0.00</div>
             <div style="display:flex;gap:6px;margin-top:0.4rem">
-                <button onclick="splitCancelInput()" style="background:none;border:none;color:#A8A6A1;cursor:pointer;font-size:0.75rem;text-decoration:underline">Cancel</button>
+                <button onclick="splitCancelInput()" style="background:none;border:none;color:var(--text-light);cursor:pointer;font-size:0.75rem;text-decoration:underline">Cancel</button>
                 <button class="confirm-btn" id="split-cash-confirm-btn" onclick="splitConfirmCash()" disabled style="padding:0.4rem 0.8rem;font-size:0.8rem;margin-left:auto">Apply Cash</button>
             </div>
         </div>
 
-        <div id="split-error" style="color:#F87171;font-size:0.8rem;min-height:18px;text-align:center"></div>
+        <div id="split-error" style="color:var(--danger);font-size:0.8rem;min-height:18px;text-align:center"></div>
         <div class="modal-actions">
             <button class="cancel-btn" onclick="closeSplitModal()">Cancel</button>
             <button class="confirm-btn" id="split-complete-btn" onclick="completeSplitSale()" disabled>Complete Split Sale</button>
@@ -1336,13 +1341,13 @@
         <h2>Gift Cards</h2>
         <div style="display:flex;gap:6px;margin-bottom:1rem">
             <button class="confirm-btn" onclick="switchGcTab('check')" id="gc-tab-check" style="flex:1;padding:0.5rem;font-size:0.75rem">Check Balance</button>
-            <button class="confirm-btn" onclick="switchGcTab('load')" id="gc-tab-load" style="flex:1;padding:0.5rem;font-size:0.75rem;background:#555">Load Card</button>
-            <button class="confirm-btn" onclick="switchGcTab('activate')" id="gc-tab-activate" style="flex:1;padding:0.5rem;font-size:0.75rem;background:#555">Activate New</button>
+            <button class="confirm-btn" onclick="switchGcTab('load')" id="gc-tab-load" style="flex:1;padding:0.5rem;font-size:0.75rem;background:var(--border)">Load Card</button>
+            <button class="confirm-btn" onclick="switchGcTab('activate')" id="gc-tab-activate" style="flex:1;padding:0.5rem;font-size:0.75rem;background:var(--border)">Activate New</button>
         </div>
 
         <div id="gc-check-panel">
             <div style="display:flex;gap:6px;margin-bottom:0.75rem">
-                <input type="text" id="gc-check-barcode" placeholder="Scan or type gift card barcode" inputmode="numeric" pattern="[0-9]*" style="flex:1;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem">
+                <input type="text" id="gc-check-barcode" placeholder="Scan or type gift card barcode" inputmode="numeric" pattern="[0-9]*" style="flex:1;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.9rem">
                 <button class="confirm-btn" onclick="checkGcBalance()" style="padding:0.55rem 1rem;font-size:0.8rem">Check</button>
             </div>
             <div id="gc-check-result" style="min-height:100px"></div>
@@ -1350,36 +1355,36 @@
 
         <div id="gc-load-panel" style="display:none">
             <div style="margin-bottom:0.6rem">
-                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Gift Card Barcode</label>
-                <input type="text" id="gc-load-barcode" placeholder="Scan or type barcode" inputmode="numeric" pattern="[0-9]*" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:0.2rem">Gift Card Barcode</label>
+                <input type="text" id="gc-load-barcode" placeholder="Scan or type barcode" inputmode="numeric" pattern="[0-9]*" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
             </div>
             <div style="margin-bottom:0.6rem">
-                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Amount to Load ($)</label>
-                <input type="number" id="gc-load-amount" placeholder="25.00" min="1" step="0.01" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:0.2rem">Amount to Load ($)</label>
+                <input type="number" id="gc-load-amount" placeholder="25.00" min="1" step="0.01" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
             </div>
             <div style="margin-bottom:0.6rem">
-                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Notes (optional)</label>
-                <input type="text" id="gc-load-notes" placeholder="e.g. Birthday gift" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.85rem;box-sizing:border-box">
+                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:0.2rem">Notes (optional)</label>
+                <input type="text" id="gc-load-notes" placeholder="e.g. Birthday gift" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.85rem;box-sizing:border-box">
             </div>
-            <div id="gc-load-error" style="color:#F87171;font-size:0.8rem;min-height:18px"></div>
+            <div id="gc-load-error" style="color:var(--danger);font-size:0.8rem;min-height:18px"></div>
             <button class="confirm-btn" onclick="loadGiftCard()" id="gc-load-btn" style="width:100%;padding:0.7rem;margin-top:4px">Load Card</button>
         </div>
 
         <div id="gc-activate-panel" style="display:none">
             <div style="margin-bottom:0.6rem">
-                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Gift Card Barcode</label>
-                <input type="text" id="gc-activate-barcode" placeholder="Scan the new gift card barcode" inputmode="numeric" pattern="[0-9]*" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:0.2rem">Gift Card Barcode</label>
+                <input type="text" id="gc-activate-barcode" placeholder="Scan the new gift card barcode" inputmode="numeric" pattern="[0-9]*" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
             </div>
             <div style="margin-bottom:0.6rem">
-                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Initial Balance ($)</label>
-                <input type="number" id="gc-activate-amount" placeholder="25.00" min="0" step="0.01" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:0.2rem">Initial Balance ($)</label>
+                <input type="number" id="gc-activate-amount" placeholder="25.00" min="0" step="0.01" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
             </div>
             <div style="margin-bottom:0.6rem">
-                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:0.2rem">Notes (optional)</label>
-                <input type="text" id="gc-activate-notes" placeholder="e.g. Holiday promo" style="width:100%;background:#2D2D30;border:1px solid #555;color:#F0EDE8;padding:0.55rem 0.7rem;font-size:0.85rem;box-sizing:border-box">
+                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:0.2rem">Notes (optional)</label>
+                <input type="text" id="gc-activate-notes" placeholder="e.g. Holiday promo" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.85rem;box-sizing:border-box">
             </div>
-            <div id="gc-activate-error" style="color:#F87171;font-size:0.8rem;min-height:18px"></div>
-            <button class="confirm-btn" onclick="activateGiftCard()" id="gc-activate-btn" style="width:100%;padding:0.7rem;margin-top:4px;background:#147a54">Activate Card</button>
+            <div id="gc-activate-error" style="color:var(--danger);font-size:0.8rem;min-height:18px"></div>
+            <button class="confirm-btn" onclick="activateGiftCard()" id="gc-activate-btn" style="width:100%;padding:0.7rem;margin-top:4px;background:var(--success)">Activate Card</button>
         </div>
 
         <button class="cancel-btn" onclick="closeGcModal()" style="width:100%;margin-top:1rem">Close</button>
@@ -1390,61 +1395,61 @@
 <div class="pos-modal-overlay hidden" id="eod-modal">
     <div class="pos-modal" style="max-width:560px;max-height:90vh;overflow-y:auto">
         <h2>End of Day Report</h2>
-        <div id="eod-loading" style="text-align:center;padding:2rem;color:#A8A6A1">Loading report...</div>
+        <div id="eod-loading" style="text-align:center;padding:2rem;color:var(--text-light)">Loading report...</div>
         <div id="eod-content" style="display:none">
-            <div style="text-align:center;font-size:0.75rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem" id="eod-date-label"></div>
+            <div style="text-align:center;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem" id="eod-date-label"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem">
-                <div style="background:#2D2D30;padding:0.75rem;text-align:center">
-                    <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Total Sales</div>
-                    <div style="font-family:'EB Garamond',serif;font-size:1.8rem;color:#C9A96E;margin-top:4px" id="eod-total-revenue">$0.00</div>
+                <div style="background:var(--surface-2);padding:0.75rem;text-align:center">
+                    <div style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Total Sales</div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.8rem;color:var(--gold);margin-top:4px" id="eod-total-revenue">$0.00</div>
                 </div>
-                <div style="background:#2D2D30;padding:0.75rem;text-align:center">
-                    <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Transactions</div>
-                    <div style="font-family:'EB Garamond',serif;font-size:1.8rem;color:#F0EDE8;margin-top:4px" id="eod-total-txns">0</div>
+                <div style="background:var(--surface-2);padding:0.75rem;text-align:center">
+                    <div style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Transactions</div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.8rem;color:var(--text);margin-top:4px" id="eod-total-txns">0</div>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:1rem">
-                <div style="background:#2D2D30;padding:0.75rem;text-align:center">
-                    <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Cash</div>
-                    <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:#7BC4A0;margin-top:4px" id="eod-cash-total">$0.00</div>
-                    <div style="font-size:0.72rem;color:#A8A6A1" id="eod-cash-count">0 sales</div>
+                <div style="background:var(--surface-2);padding:0.75rem;text-align:center">
+                    <div style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Cash</div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:var(--success-light);margin-top:4px" id="eod-cash-total">$0.00</div>
+                    <div style="font-size:0.72rem;color:var(--text-light)" id="eod-cash-count">0 sales</div>
                 </div>
-                <div style="background:#2D2D30;padding:0.75rem;text-align:center">
-                    <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Card</div>
-                    <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:#6495ed;margin-top:4px" id="eod-card-total">$0.00</div>
-                    <div style="font-size:0.72rem;color:#A8A6A1" id="eod-card-count">0 sales</div>
+                <div style="background:var(--surface-2);padding:0.75rem;text-align:center">
+                    <div style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Card</div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:var(--info);margin-top:4px" id="eod-card-total">$0.00</div>
+                    <div style="font-size:0.72rem;color:var(--text-light)" id="eod-card-count">0 sales</div>
                 </div>
-                <div style="background:#2D2D30;padding:0.75rem;text-align:center">
-                    <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Gift Card</div>
-                    <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:#C9A96E;margin-top:4px" id="eod-gc-total">$0.00</div>
-                    <div style="font-size:0.72rem;color:#A8A6A1" id="eod-gc-count">0 sales</div>
+                <div style="background:var(--surface-2);padding:0.75rem;text-align:center">
+                    <div style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Gift Card</div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:var(--gold);margin-top:4px" id="eod-gc-total">$0.00</div>
+                    <div style="font-size:0.72rem;color:var(--text-light)" id="eod-gc-count">0 sales</div>
                 </div>
-                <div style="background:#2D2D30;padding:0.75rem;text-align:center">
-                    <div style="font-size:0.6rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Tax</div>
-                    <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:#F0EDE8;margin-top:4px" id="eod-tax-total">$0.00</div>
-                    <div style="font-size:0.72rem;color:#A8A6A1" id="eod-items-sold">0 items</div>
+                <div style="background:var(--surface-2);padding:0.75rem;text-align:center">
+                    <div style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Tax</div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:var(--text);margin-top:4px" id="eod-tax-total">$0.00</div>
+                    <div style="font-size:0.72rem;color:var(--text-light)" id="eod-items-sold">0 items</div>
                 </div>
             </div>
-            <div id="eod-voided-row" class="hidden" style="background:#2D2D30;padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
-                <div style="font-size:0.75rem;color:#F87171;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Voided Sales</div>
-                <div><span style="color:#F87171;font-size:0.85rem;font-weight:700" id="eod-voided-count">0</span><span style="color:#A8A6A1;font-size:0.8rem"> sale(s) — </span><span style="color:#F87171;font-size:0.85rem;font-weight:700" id="eod-voided-total">$0.00</span></div>
+            <div id="eod-voided-row" class="hidden" style="background:var(--surface-2);padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+                <div style="font-size:0.75rem;color:var(--danger);font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Voided Sales</div>
+                <div><span style="color:var(--danger);font-size:0.85rem;font-weight:700" id="eod-voided-count">0</span><span style="color:var(--text-light);font-size:0.8rem"> sale(s) — </span><span style="color:var(--danger);font-size:0.85rem;font-weight:700" id="eod-voided-total">$0.00</span></div>
             </div>
-            <div style="background:#2D2D30;padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
-                <div style="font-size:0.75rem;color:#A8A6A1;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Starting Drawer Balance</div>
+            <div style="background:var(--surface-2);padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+                <div style="font-size:0.75rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Starting Drawer Balance</div>
                 <div style="display:flex;align-items:center;gap:6px">
-                    <span style="color:#F0EDE8;font-size:1rem">$</span>
+                    <span style="color:var(--text);font-size:1rem">$</span>
                     <input type="number" id="eod-starting-input" min="0" step="0.01" value="150.00"
-                        style="width:80px;background:#1E1E20;border:1px solid var(--border);color:#F0EDE8;font-family:'EB Garamond',serif;font-size:1.1rem;padding:2px 6px;text-align:right;border-radius:3px"
+                        style="width:80px;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'EB Garamond',serif;font-size:1.1rem;padding:2px 6px;text-align:right;border-radius:3px"
                         onchange="saveStartingCash()" oninput="recalcFromStartingCash()">
-                    <button onclick="saveStartingCash()" style="font-size:0.6rem;padding:2px 6px;background:var(--gold-dim);color:#38383B;border:none;border-radius:3px;cursor:pointer;font-weight:700">SET</button>
+                    <button onclick="saveStartingCash()" style="font-size:0.6rem;padding:2px 6px;background:var(--gold-dim);color:var(--bg);border:none;border-radius:3px;cursor:pointer;font-weight:700">SET</button>
                 </div>
             </div>
-            <div style="background:#2D2D30;padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
-                <div style="font-size:0.75rem;color:#A8A6A1;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Expected Cash in Drawer</div>
-                <div style="font-family:'EB Garamond',serif;font-size:1.1rem;color:#7BC4A0;font-weight:600" id="eod-expected-cash">$150.00</div>
+            <div style="background:var(--surface-2);padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+                <div style="font-size:0.75rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Expected Cash in Drawer</div>
+                <div style="font-family:'EB Garamond',serif;font-size:1.1rem;color:var(--success-light);font-weight:600" id="eod-expected-cash">$150.00</div>
             </div>
             <div style="margin-bottom:1rem">
-                <div style="font-size:0.7rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-family:'Roboto',sans-serif">Cash Drawer Count</div>
+                <div style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-family:'Roboto',sans-serif">Cash Drawer Count</div>
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px" id="denom-grid">
                     <div class="denom-row"><label>$100 x</label><input type="number" min="0" value="0" data-denom="100" onchange="updateCashCount()" oninput="updateCashCount()"></div>
                     <div class="denom-row"><label>$50 x</label><input type="number" min="0" value="0" data-denom="50" onchange="updateCashCount()" oninput="updateCashCount()"></div>
@@ -1456,34 +1461,34 @@
                     <div class="denom-row"><label>Dimes</label><input type="number" min="0" value="0" data-denom="0.10" onchange="updateCashCount()" oninput="updateCashCount()"></div>
                     <div class="denom-row"><label>Other $</label><input type="number" min="0" step="0.01" value="0" data-denom="1" data-raw="true" onchange="updateCashCount()" oninput="updateCashCount()"></div>
                 </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-top:10px;background:#2D2D30">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-top:10px;background:var(--surface-2)">
                     <div style="padding:8px 12px;text-align:center">
-                        <div style="font-size:0.65rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Counted Cash</div>
-                        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;color:#F0EDE8" id="eod-counted-cash">$0.00</div>
+                        <div style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Counted Cash</div>
+                        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;color:var(--text)" id="eod-counted-cash">$0.00</div>
                     </div>
-                    <div style="padding:8px 12px;text-align:center;border-left:1px solid #38383B;border-right:1px solid #38383B">
-                        <div style="font-size:0.65rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em">Variance</div>
+                    <div style="padding:8px 12px;text-align:center;border-left:1px solid var(--bg);border-right:1px solid var(--bg)">
+                        <div style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Variance</div>
                         <div style="font-family:'EB Garamond',serif;font-size:1.4rem" id="eod-variance">$0.00</div>
                     </div>
                     <div style="padding:8px 12px;text-align:center">
-                        <div style="font-size:0.65rem;color:#C9A96E;text-transform:uppercase;letter-spacing:0.1em;font-weight:700">Deposit</div>
-                        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;color:#C9A96E;font-weight:700" id="eod-deposit">$0.00</div>
+                        <div style="font-size:0.65rem;color:var(--gold);text-transform:uppercase;letter-spacing:0.1em;font-weight:700">Deposit</div>
+                        <div style="font-family:'EB Garamond',serif;font-size:1.4rem;color:var(--gold);font-weight:700" id="eod-deposit">$0.00</div>
                     </div>
                 </div>
-                <div style="font-size:0.7rem;color:#A8A6A1;margin-top:6px;text-align:center" id="eod-variance-note"></div>
+                <div style="font-size:0.7rem;color:var(--text-light);margin-top:6px;text-align:center" id="eod-variance-note"></div>
             </div>
             <div id="eod-cashier-breakdown" style="margin-bottom:1rem"></div>
             <div style="margin-bottom:1rem">
-                <div style="font-size:0.7rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-family:'Roboto',sans-serif">Notes (optional)</div>
+                <div style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-family:'Roboto',sans-serif">Notes (optional)</div>
                 <textarea id="eod-notes" rows="2" placeholder="Any notes about today's shift..."
-                    style="width:100%;background:#1E1E20;border:1px solid var(--border);color:#F0EDE8;font-family:'Roboto',sans-serif;font-size:0.8rem;padding:8px;border-radius:3px;resize:vertical;box-sizing:border-box"></textarea>
+                    style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Roboto',sans-serif;font-size:0.8rem;padding:8px;border-radius:3px;resize:vertical;box-sizing:border-box"></textarea>
             </div>
             <div id="eod-submit-status" style="display:none;text-align:center;padding:6px;margin-bottom:8px;border-radius:3px;font-size:0.8rem"></div>
         </div>
         <div class="modal-actions">
             <button class="cancel-btn" onclick="document.getElementById('eod-modal').classList.add('hidden')">Close</button>
             <button class="confirm-btn" onclick="printEndOfDay()" style="flex:1">Print Report</button>
-            <button class="confirm-btn" id="eod-submit-btn" onclick="submitEndOfDay()" style="flex:1;background:#065F46;border-color:#065F46">Submit &amp; Close Day</button>
+            <button class="confirm-btn" id="eod-submit-btn" onclick="submitEndOfDay()" style="flex:1;background:var(--success);border-color:var(--success)">Submit &amp; Close Day</button>
         </div>
     </div>
 </div>
@@ -1492,21 +1497,21 @@
 <div class="pos-modal-overlay hidden" id="image-search-modal">
     <div class="pos-modal" style="max-width:480px">
         <h2>Search by Photo</h2>
-        <div style="font-size:0.8rem;color:#A8A6A1;margin-bottom:1rem">Take or upload a photo of the item to find matching inventory</div>
+        <div style="font-size:0.8rem;color:var(--text-light);margin-bottom:1rem">Take or upload a photo of the item to find matching inventory</div>
         <div style="display:flex;gap:8px;margin-bottom:1rem">
-            <label style="flex:1;display:flex;align-items:center;justify-content:center;background:#2D2D30;border:1px solid #555558;padding:1rem;cursor:pointer;color:#C9A96E;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;font-family:'Roboto',sans-serif;text-align:center;gap:6px">
+            <label style="flex:1;display:flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);padding:1rem;cursor:pointer;color:var(--gold);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;font-family:'Roboto',sans-serif;text-align:center;gap:6px">
                 📷 Camera
                 <input type="file" accept="image/*" capture="environment" id="img-search-camera" onchange="handleImageSearchFile(this)" style="display:none">
             </label>
-            <label style="flex:1;display:flex;align-items:center;justify-content:center;background:#2D2D30;border:1px solid #555558;padding:1rem;cursor:pointer;color:#C9A96E;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;font-family:'Roboto',sans-serif;text-align:center;gap:6px">
+            <label style="flex:1;display:flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);padding:1rem;cursor:pointer;color:var(--gold);font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;font-family:'Roboto',sans-serif;text-align:center;gap:6px">
                 📁 Upload
                 <input type="file" accept="image/*" id="img-search-upload" onchange="handleImageSearchFile(this)" style="display:none">
             </label>
         </div>
         <div id="img-search-preview" style="display:none;text-align:center;margin-bottom:1rem">
-            <img id="img-search-img" style="max-width:100%;max-height:200px;border:1px solid #555558">
+            <img id="img-search-img" style="max-width:100%;max-height:200px;border:1px solid var(--border)">
         </div>
-        <div id="img-search-status" style="display:none;text-align:center;padding:1.5rem;color:#A8A6A1">
+        <div id="img-search-status" style="display:none;text-align:center;padding:1.5rem;color:var(--text-light)">
             <div class="spinner" style="margin:0 auto 0.75rem"></div>
             <div>Analyzing image...</div>
         </div>
@@ -1522,31 +1527,31 @@
     <div class="pos-modal" style="max-width:520px">
         <h2>🏠 Rent Payment</h2>
         <div style="margin-bottom:1rem">
-            <label class="form-label" style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:4px;font-family:'Roboto',sans-serif">Search Vendor</label>
-            <input type="text" id="rent-vendor-search" placeholder="Type vendor name or booth number…" autocomplete="off" oninput="filterRentVendors(this.value)" style="width:100%;background:#2D2D30;border:1px solid #555558;color:#F0EDE8;padding:0.6rem 0.75rem;font-size:0.9rem;font-family:'Roboto',sans-serif">
+            <label class="form-label" style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px;font-family:'Roboto',sans-serif">Search Vendor</label>
+            <input type="text" id="rent-vendor-search" placeholder="Type vendor name or booth number…" autocomplete="off" oninput="filterRentVendors(this.value)" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.6rem 0.75rem;font-size:0.9rem;font-family:'Roboto',sans-serif">
         </div>
-        <div id="rent-vendor-list" style="max-height:220px;overflow-y:auto;margin-bottom:1rem;border:1px solid #555558;background:#2D2D30"></div>
+        <div id="rent-vendor-list" style="max-height:220px;overflow-y:auto;margin-bottom:1rem;border:1px solid var(--border);background:var(--surface-2)"></div>
         <div id="rent-selected-section" style="display:none">
-            <div style="background:#1e1e20;border:1px solid rgba(201,169,110,0.25);padding:0.75rem 1rem;margin-bottom:1rem">
+            <div style="background:var(--bg);border:1px solid color-mix(in srgb, var(--gold) 25%, transparent);padding:0.75rem 1rem;margin-bottom:1rem">
                 <div style="display:flex;justify-content:space-between;align-items:center">
                     <div>
-                        <div id="rent-vendor-name" style="font-weight:600;color:#F0EDE8;font-size:1rem"></div>
-                        <div id="rent-vendor-booth" style="font-size:0.8rem;color:#A8A6A1"></div>
+                        <div id="rent-vendor-name" style="font-weight:600;color:var(--text);font-size:1rem"></div>
+                        <div id="rent-vendor-booth" style="font-size:0.8rem;color:var(--text-light)"></div>
                     </div>
-                    <div id="rent-amount-display" style="font-size:1.4rem;font-weight:700;color:#C9A96E"></div>
+                    <div id="rent-amount-display" style="font-size:1.4rem;font-weight:700;color:var(--gold)"></div>
                 </div>
             </div>
             <div class="manual-form-group" style="margin-bottom:0.75rem">
-                <label class="form-label" style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:4px;font-family:'Roboto',sans-serif">Amount (override if different)</label>
-                <input type="number" id="rent-amount-input" step="0.01" min="0" style="width:100%;background:#2D2D30;border:1px solid #555558;color:#F0EDE8;padding:0.6rem 0.75rem;font-size:0.9rem;font-family:'Roboto',sans-serif">
+                <label class="form-label" style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px;font-family:'Roboto',sans-serif">Amount (override if different)</label>
+                <input type="number" id="rent-amount-input" step="0.01" min="0" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.6rem 0.75rem;font-size:0.9rem;font-family:'Roboto',sans-serif">
             </div>
             <div class="manual-form-group" style="margin-bottom:0.75rem">
-                <label class="form-label" style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:4px;font-family:'Roboto',sans-serif">Notes (optional)</label>
-                <input type="text" id="rent-notes" placeholder="e.g. partial payment, extra month" style="width:100%;background:#2D2D30;border:1px solid #555558;color:#F0EDE8;padding:0.6rem 0.75rem;font-size:0.9rem;font-family:'Roboto',sans-serif">
+                <label class="form-label" style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px;font-family:'Roboto',sans-serif">Notes (optional)</label>
+                <input type="text" id="rent-notes" placeholder="e.g. partial payment, extra month" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.6rem 0.75rem;font-size:0.9rem;font-family:'Roboto',sans-serif">
             </div>
             <div style="display:flex;gap:8px">
-                <button onclick="submitRentPayment('cash')" style="flex:1;padding:0.75rem;background:#137547;border:1px solid #137547;color:#fff;font-weight:600;font-size:0.9rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em">💵 Cash</button>
-                <button onclick="submitRentPayment('card')" style="flex:1;padding:0.75rem;background:#1a4b8c;border:1px solid #1a4b8c;color:#fff;font-weight:600;font-size:0.9rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em">💳 Card</button>
+                <button onclick="submitRentPayment('cash')" style="flex:1;padding:0.75rem;background:var(--success);border:1px solid var(--success);color:var(--white);font-weight:600;font-size:0.9rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em">💵 Cash</button>
+                <button onclick="submitRentPayment('card')" style="flex:1;padding:0.75rem;background:color-mix(in srgb, var(--info) 54%, var(--bg));border:1px solid color-mix(in srgb, var(--info) 54%, var(--bg));color:var(--white);font-weight:600;font-size:0.9rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em">💳 Card</button>
             </div>
         </div>
         <div id="rent-result-msg" style="display:none;padding:0.75rem;margin-top:0.75rem;text-align:center;font-size:0.9rem"></div>
@@ -1827,7 +1832,7 @@
         box.innerHTML = items.map(item => {
             const onSale = item.active_price < item.price;
             const priceHtml = onSale
-                ? `<span style="text-decoration:line-through;font-size:0.75rem;color:#6B7280;margin-right:4px">$${item.price.toFixed(2)}</span><span class="search-result-price on-sale">$${item.active_price.toFixed(2)}</span>`
+                ? `<span style="text-decoration:line-through;font-size:0.75rem;color:var(--text-muted);margin-right:4px">$${item.price.toFixed(2)}</span><span class="search-result-price on-sale">$${item.active_price.toFixed(2)}</span>`
                 : `<span class="search-result-price">$${item.active_price.toFixed(2)}</span>`;
             const meta = [item.category, item.booth_number ? `Booth ${item.booth_number}` : null, `Qty: ${item.quantity}`].filter(Boolean).join(' · ');
             return `<div class="search-result-item" onclick="addFromSearch(${item.id})">
@@ -2014,15 +2019,15 @@
                 const lineTotal = activePrice * quantity;
                 const isOnSale = activePrice < parseFloat(item.price);
                 const priceDisplay = isOnSale
-                    ? `<span style="text-decoration:line-through;color:#6B7280;font-size:0.75rem">$${parseFloat(item.price).toFixed(2)}</span><br><span class="item-sale-badge">$${activePrice.toFixed(2)}</span>`
+                    ? `<span style="text-decoration:line-through;color:var(--text-muted);font-size:0.75rem">$${parseFloat(item.price).toFixed(2)}</span><br><span class="item-sale-badge">$${activePrice.toFixed(2)}</span>`
                     : `$${activePrice.toFixed(2)}`;
 
-                const consignTag = item.is_consignment ? ' <span style="background:#C9A96E;color:#38383B;font-size:0.6rem;padding:1px 5px;border-radius:2px;font-weight:700;vertical-align:middle">C</span>' : '';
-                const taxExTag = item.is_tax_exempt ? ' <span style="background:#065F46;color:#6EE7B7;font-size:0.6rem;padding:1px 5px;border-radius:2px;font-weight:700;vertical-align:middle">TE</span>' : '';
+                const consignTag = item.is_consignment ? ' <span style="background:var(--gold);color:var(--bg);font-size:0.6rem;padding:1px 5px;border-radius:2px;font-weight:700;vertical-align:middle">C</span>' : '';
+                const taxExTag = item.is_tax_exempt ? ' <span style="background:var(--success);color:var(--success-light);font-size:0.6rem;padding:1px 5px;border-radius:2px;font-weight:700;vertical-align:middle">TE</span>' : '';
 
                 const disc = entry.calculatedDiscount || 0;
                 const discLabel = entry.discountType === 'percent' ? `−${entry.discountValue}%` : entry.discountType === 'dollar' ? `−$${(entry.discountValue||0).toFixed(2)}` : '';
-                const discLine = disc > 0 ? `<tr style="background:transparent"><td colspan="3" style="padding:0 0 0 0.5rem;border:none"><small style="color:#F59E0B">${discLabel} discount → −$${disc.toFixed(2)}</small></td><td class="price-cell" style="border:none;color:#F59E0B;font-size:0.8rem">$${(lineTotal - disc).toFixed(2)}</td><td style="border:none"></td></tr>` : '';
+                const discLine = disc > 0 ? `<tr style="background:transparent"><td colspan="3" style="padding:0 0 0 0.5rem;border:none"><small style="color:var(--warning)">${discLabel} discount → −$${disc.toFixed(2)}</small></td><td class="price-cell" style="border:none;color:var(--warning);font-size:0.8rem">$${(lineTotal - disc).toFixed(2)}</td><td style="border:none"></td></tr>` : '';
                 const discBtnLabel = disc > 0 ? '✏️' : '%';
                 return `<tr>
                     <td class="item-name-cell">
@@ -2041,7 +2046,7 @@
                     <td class="price-cell${isOnSale ? ' sale-price' : ''}">${priceDisplay}</td>
                     <td class="price-cell">$${lineTotal.toFixed(2)}</td>
                     <td>
-                        <button class="remove-btn" onclick="openItemDiscount(${idx})" title="Discount" style="background:#92400E;color:#FDE68A;font-size:0.65rem;padding:2px 5px;margin-bottom:2px">${discBtnLabel}</button>
+                        <button class="remove-btn" onclick="openItemDiscount(${idx})" title="Discount" style="background:color-mix(in srgb, var(--warning) 58%, var(--bg));color:color-mix(in srgb, var(--warning) 38%, var(--white));font-size:0.65rem;padding:2px 5px;margin-bottom:2px">${discBtnLabel}</button>
                         <button class="remove-btn" onclick="removeFromCart(${item.id})">✕</button>
                     </td>
                 </tr>${discLine}`;
@@ -2211,10 +2216,10 @@
     function setItemDiscType(t) { _itemDiscType = t; _updateItemDiscBtns(); }
 
     function _updateItemDiscBtns() {
-        document.getElementById('item-disc-dollar-btn').style.background = _itemDiscType === 'dollar' ? '#C9A96E' : 'var(--surface-2)';
-        document.getElementById('item-disc-dollar-btn').style.color = _itemDiscType === 'dollar' ? '#38383B' : 'var(--text)';
-        document.getElementById('item-disc-percent-btn').style.background = _itemDiscType === 'percent' ? '#C9A96E' : 'var(--surface-2)';
-        document.getElementById('item-disc-percent-btn').style.color = _itemDiscType === 'percent' ? '#38383B' : 'var(--text)';
+        document.getElementById('item-disc-dollar-btn').style.background = _itemDiscType === 'dollar' ? 'var(--gold)' : 'var(--surface-2)';
+        document.getElementById('item-disc-dollar-btn').style.color = _itemDiscType === 'dollar' ? 'var(--bg)' : 'var(--text)';
+        document.getElementById('item-disc-percent-btn').style.background = _itemDiscType === 'percent' ? 'var(--gold)' : 'var(--surface-2)';
+        document.getElementById('item-disc-percent-btn').style.color = _itemDiscType === 'percent' ? 'var(--bg)' : 'var(--text)';
     }
 
     function applyItemDiscount() {
@@ -2248,10 +2253,10 @@
     function setCartDiscType(t) { _cartDiscType = t; _updateCartDiscBtns(); }
 
     function _updateCartDiscBtns() {
-        document.getElementById('cart-disc-dollar-btn').style.background = _cartDiscType === 'dollar' ? '#C9A96E' : 'var(--surface-2)';
-        document.getElementById('cart-disc-dollar-btn').style.color = _cartDiscType === 'dollar' ? '#38383B' : 'var(--text)';
-        document.getElementById('cart-disc-percent-btn').style.background = _cartDiscType === 'percent' ? '#C9A96E' : 'var(--surface-2)';
-        document.getElementById('cart-disc-percent-btn').style.color = _cartDiscType === 'percent' ? '#38383B' : 'var(--text)';
+        document.getElementById('cart-disc-dollar-btn').style.background = _cartDiscType === 'dollar' ? 'var(--gold)' : 'var(--surface-2)';
+        document.getElementById('cart-disc-dollar-btn').style.color = _cartDiscType === 'dollar' ? 'var(--bg)' : 'var(--text)';
+        document.getElementById('cart-disc-percent-btn').style.background = _cartDiscType === 'percent' ? 'var(--gold)' : 'var(--surface-2)';
+        document.getElementById('cart-disc-percent-btn').style.color = _cartDiscType === 'percent' ? 'var(--bg)' : 'var(--text)';
     }
 
     function applyCartDiscount() {
@@ -2291,7 +2296,7 @@
             </div>`;
             if (li.discount_amount && parseFloat(li.discount_amount) > 0) {
                 const dLabel = li.discount_type === 'percent' ? `${parseFloat(li.discount_value)}% off` : `$${parseFloat(li.discount_value).toFixed(2)} off`;
-                lines += `<div class="receipt-line" style="color:#F59E0B;font-size:0.85em">
+                lines += `<div class="receipt-line" style="color:var(--warning);font-size:0.85em">
                     <span class="left">&nbsp;&nbsp;Discount (${dLabel})</span>
                     <span class="right">-$${parseFloat(li.discount_amount).toFixed(2)}</span>
                 </div>`;
@@ -2372,7 +2377,7 @@
                 <span class="left">Subtotal</span>
                 <span class="right">$${parseFloat(sale.subtotal).toFixed(2)}</span>
             </div>
-            ${sale.discount_amount && parseFloat(sale.discount_amount) > 0 ? `<div class="receipt-line" style="color:#F59E0B">
+            ${sale.discount_amount && parseFloat(sale.discount_amount) > 0 ? `<div class="receipt-line" style="color:var(--warning)">
                 <span class="left">Cart Discount (${sale.discount_type === 'percent' ? parseFloat(sale.discount_value) + '%' : '$' + parseFloat(sale.discount_value).toFixed(2)})</span>
                 <span class="right">-$${parseFloat(sale.discount_amount).toFixed(2)}</span>
             </div>` : ''}
@@ -2401,7 +2406,7 @@
             document.getElementById('receipt-modal-title').textContent = '🚫 Sale Voided';
             document.getElementById('void-from-receipt-btn').style.display = 'none';
             var voidHtml = '<div style="text-align:center;margin:6px 0"><div class="void-badge">VOIDED</div>';
-            if (sale.void_reason) voidHtml += '<div style="color:#F87171;font-size:0.75rem;margin-top:2px">' + escHtml(sale.void_reason) + '</div>';
+            if (sale.void_reason) voidHtml += '<div style="color:var(--danger);font-size:0.75rem;margin-top:2px">' + escHtml(sale.void_reason) + '</div>';
             voidHtml += '</div>';
             var hdr = document.getElementById('receipt-content').querySelector('.receipt-header');
             if (hdr) hdr.insertAdjacentHTML('afterend', voidHtml);
@@ -2470,8 +2475,8 @@ body {
     font-size: 11px;
     width: 72mm;
     padding: 3mm 3.5mm;
-    color: #1a1a1a;
-    background: #fff;
+    color: var(--text);
+    background: var(--white);
     overflow: hidden;
     line-height: 1.35;
     -webkit-font-smoothing: antialiased;
@@ -2487,22 +2492,22 @@ body {
 }
 .store-addr {
     font-size: 8.5px;
-    color: #555;
+    color: var(--border);
     letter-spacing: 0.5px;
 }
-.rule { border: none; border-top: 1px solid #333; margin: 2.5mm 0; }
-.rule-light { border: none; border-top: 1px solid #ccc; margin: 2mm 0; }
+.rule { border: none; border-top: 1px solid var(--text); margin: 2.5mm 0; }
+.rule-light { border: none; border-top: 1px solid var(--border); margin: 2mm 0; }
 .meta-block {
     font-size: 10px;
-    color: #333;
+    color: var(--text);
     padding: 1mm 0 1.5mm;
 }
 .meta-block div { margin: 1px 0; }
-.meta-label { color: #777; font-size: 9px; }
+.meta-label { color: var(--text-muted); font-size: 9px; }
 table { width: 100%; border-collapse: collapse; }
 .items-table td { padding: 2px 0; vertical-align: top; }
 .item-name { font-size: 11px; font-weight: 500; overflow-wrap: anywhere; word-break: break-word; }
-.item-meta { font-size: 8.5px; color: #777; font-weight: 400; margin-top: 0.5px; }
+.item-meta { font-size: 8.5px; color: var(--text-muted); font-weight: 400; margin-top: 0.5px; }
 .item-price { text-align: right; white-space: nowrap; font-size: 11px; font-weight: 500; padding-left: 6px; }
 .items-table { table-layout: fixed; }
 .items-table td:first-child { width: 75%; }
@@ -2513,8 +2518,8 @@ table { width: 100%; border-collapse: collapse; }
     font-size: 15px;
     font-weight: 700;
     padding: 3px 0 2px;
-    border-top: 2px solid #333;
-    border-bottom: 2px solid #333;
+    border-top: 2px solid var(--text);
+    border-bottom: 2px solid var(--text);
 }
 .total-line .val { text-align: right; }
 .payment-line td { font-size: 10.5px; padding: 2px 0; }
@@ -2523,10 +2528,10 @@ table { width: 100%; border-collapse: collapse; }
     text-align: center;
     padding-top: 3mm;
     font-size: 10px;
-    color: #333;
+    color: var(--text);
 }
 .footer-brand { font-weight: 700; font-size: 11px; }
-.footer-url { font-size: 8px; color: #888; letter-spacing: 0.5px; margin-top: 2px; }
+.footer-url { font-size: 8px; color: var(--text-muted); letter-spacing: 0.5px; margin-top: 2px; }
 .cut-spacer { height: 8mm; }
 </style></head>
 <body>
@@ -2632,7 +2637,7 @@ table { width: 100%; border-collapse: collapse; }
     function updateReceiptVoidState(sale) {
         var voidBadgeHtml = '<div class="void-badge">VOIDED</div>';
         if (sale.void_reason) {
-            voidBadgeHtml += '<div style="color:#F87171;font-size:0.75rem;margin-top:2px">' + escHtml(sale.void_reason) + '</div>';
+            voidBadgeHtml += '<div style="color:var(--danger);font-size:0.75rem;margin-top:2px">' + escHtml(sale.void_reason) + '</div>';
         }
         var receiptContent = document.getElementById('receipt-content');
         if (receiptContent && !receiptContent.querySelector('.void-badge')) {
@@ -2789,19 +2794,19 @@ table { width: 100%; border-collapse: collapse; }
     function openResumeModal() {
         const list = document.getElementById('held-orders-list');
         if (heldOrders.length === 0) {
-            list.innerHTML = '<p style="text-align:center;color:#999;padding:2rem">No held orders</p>';
+            list.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem">No held orders</p>';
         } else {
             list.innerHTML = heldOrders.map((h, i) => {
                 const names = h.items.map(c => c.item.name).slice(0, 3).join(', ');
                 const more = h.items.length > 3 ? ` +${h.items.length - 3} more` : '';
-                return `<div style="background:#2D2D30;padding:0.75rem;margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center">
+                return `<div style="background:var(--surface-2);padding:0.75rem;margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center">
                     <div>
-                        <div style="font-weight:600;color:#F0EDE8">${h.itemCount} item(s) · ${h.time}</div>
-                        <div style="font-size:0.8rem;color:#A8A6A1;margin-top:2px">${names}${more}</div>
+                        <div style="font-weight:600;color:var(--text)">${h.itemCount} item(s) · ${h.time}</div>
+                        <div style="font-size:0.8rem;color:var(--text-light);margin-top:2px">${names}${more}</div>
                     </div>
                     <div style="display:flex;gap:6px">
-                        <button onclick="resumeOrder(${i})" style="background:#065F46;color:#6EE7B7;border:none;padding:0.4rem 0.8rem;cursor:pointer;font-size:0.8rem">Resume</button>
-                        <button onclick="deleteHeldOrder(${i})" style="background:#7F1D1D;color:#FCA5A5;border:none;padding:0.4rem 0.6rem;cursor:pointer;font-size:0.8rem">✕</button>
+                        <button onclick="resumeOrder(${i})" style="background:var(--success);color:var(--success-light);border:none;padding:0.4rem 0.8rem;cursor:pointer;font-size:0.8rem">Resume</button>
+                        <button onclick="deleteHeldOrder(${i})" style="background:var(--danger-dark);color:color-mix(in srgb, var(--danger) 42%, var(--white));border:none;padding:0.4rem 0.6rem;cursor:pointer;font-size:0.8rem">✕</button>
                     </div>
                 </div>`;
             }).join('');
@@ -2843,9 +2848,9 @@ table { width: 100%; border-collapse: collapse; }
         document.getElementById('gc-check-panel').style.display = tab === 'check' ? '' : 'none';
         document.getElementById('gc-load-panel').style.display = tab === 'load' ? '' : 'none';
         document.getElementById('gc-activate-panel').style.display = tab === 'activate' ? '' : 'none';
-        document.getElementById('gc-tab-check').style.background = tab === 'check' ? '' : '#555';
-        document.getElementById('gc-tab-load').style.background = tab === 'load' ? '' : '#555';
-        document.getElementById('gc-tab-activate').style.background = tab === 'activate' ? '' : '#555';
+        document.getElementById('gc-tab-check').style.background = tab === 'check' ? '' : 'var(--border)';
+        document.getElementById('gc-tab-load').style.background = tab === 'load' ? '' : 'var(--border)';
+        document.getElementById('gc-tab-activate').style.background = tab === 'activate' ? '' : 'var(--border)';
         if (tab === 'check') setTimeout(function() { document.getElementById('gc-check-barcode').focus(); }, 50);
         if (tab === 'load') setTimeout(function() { document.getElementById('gc-load-barcode').focus(); }, 50);
         if (tab === 'activate') setTimeout(function() { document.getElementById('gc-activate-barcode').focus(); }, 50);
@@ -2854,34 +2859,34 @@ table { width: 100%; border-collapse: collapse; }
     async function checkGcBalance() {
         var bc = document.getElementById('gc-check-barcode').value.replace(/\D/g, '').trim();
         var result = document.getElementById('gc-check-result');
-        if (!bc) { result.innerHTML = '<p style="color:#F87171;text-align:center">Please scan or enter a barcode</p>'; return; }
-        result.innerHTML = '<p style="text-align:center;color:#999">Checking...</p>';
+        if (!bc) { result.innerHTML = '<p style="color:var(--danger);text-align:center">Please scan or enter a barcode</p>'; return; }
+        result.innerHTML = '<p style="text-align:center;color:var(--text-muted)">Checking...</p>';
         try {
             var data = await apiGet('/api/v1/pos/gift-cards/' + encodeURIComponent(bc) + '/history');
             var card = data.card;
-            var html = '<div style="background:#2D2D30;padding:1rem;margin-bottom:0.75rem;text-align:center">'
-                + '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:#A8A6A1;margin-bottom:4px">Gift Card Balance</div>'
-                + '<div style="font-size:2rem;font-weight:700;color:#C9A96E">$' + parseFloat(card.balance).toFixed(2) + '</div>'
-                + '<div style="font-size:0.75rem;color:#A8A6A1;margin-top:4px">Barcode: ' + escHtml(card.barcode) + '</div>'
-                + '<div style="font-size:0.7rem;color:' + (card.is_active ? '#6EE7B7' : '#F87171') + ';margin-top:2px">' + (card.is_active ? 'Active' : 'Deactivated') + '</div>'
+            var html = '<div style="background:var(--surface-2);padding:1rem;margin-bottom:0.75rem;text-align:center">'
+                + '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:4px">Gift Card Balance</div>'
+                + '<div style="font-size:2rem;font-weight:700;color:var(--gold)">$' + parseFloat(card.balance).toFixed(2) + '</div>'
+                + '<div style="font-size:0.75rem;color:var(--text-light);margin-top:4px">Barcode: ' + escHtml(card.barcode) + '</div>'
+                + '<div style="font-size:0.7rem;color:' + (card.is_active ? 'var(--success-light)' : 'var(--danger)') + ';margin-top:2px">' + (card.is_active ? 'Active' : 'Deactivated') + '</div>'
                 + '</div>';
             if (data.transactions && data.transactions.length) {
-                html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:#A8A6A1;margin-bottom:6px">Transaction History</div>';
+                html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:6px">Transaction History</div>';
                 html += data.transactions.slice(0, 10).map(function(t) {
                     var d = new Date(t.created_at);
                     var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                     var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                    var color = t.type === 'load' ? '#6EE7B7' : '#F87171';
+                    var color = t.type === 'load' ? 'var(--success-light)' : 'var(--danger)';
                     var sign = t.type === 'load' ? '+' : '-';
-                    return '<div style="display:flex;justify-content:space-between;padding:4px 6px;background:#2D2D30;margin-bottom:2px;font-size:0.82rem">'
-                        + '<span style="color:#A8A6A1">' + escHtml(dateStr + ' ' + timeStr + (t.notes ? ' · ' + t.notes : '')) + '</span>'
+                    return '<div style="display:flex;justify-content:space-between;padding:4px 6px;background:var(--surface-2);margin-bottom:2px;font-size:0.82rem">'
+                        + '<span style="color:var(--text-light)">' + escHtml(dateStr + ' ' + timeStr + (t.notes ? ' · ' + t.notes : '')) + '</span>'
                         + '<span style="color:' + color + ';font-weight:600">' + sign + '$' + parseFloat(t.amount).toFixed(2) + '</span>'
                         + '</div>';
                 }).join('');
             }
             result.innerHTML = html;
         } catch (err) {
-            result.innerHTML = '<p style="color:#F87171;text-align:center">' + (err.message || 'Gift card not found') + '</p>';
+            result.innerHTML = '<p style="color:var(--danger);text-align:center">' + (err.message || 'Gift card not found') + '</p>';
         }
     }
 
@@ -2897,12 +2902,12 @@ table { width: 100%; border-collapse: collapse; }
         btn.disabled = true; btn.textContent = 'Loading...';
         try {
             var card = await apiPost('/api/v1/pos/gift-cards/' + encodeURIComponent(bc) + '/load', { amount: amount, notes: notes || null });
-            errEl.style.color = '#6EE7B7';
+            errEl.style.color = 'var(--success-light)';
             errEl.textContent = 'Loaded $' + amount.toFixed(2) + ' — New balance: $' + parseFloat(card.balance).toFixed(2);
             document.getElementById('gc-load-amount').value = '';
             document.getElementById('gc-load-notes').value = '';
         } catch (err) {
-            errEl.style.color = '#F87171';
+            errEl.style.color = 'var(--danger)';
             errEl.textContent = err.message || 'Failed to load card';
         } finally {
             btn.disabled = false; btn.textContent = 'Load Card';
@@ -2920,13 +2925,13 @@ table { width: 100%; border-collapse: collapse; }
         btn.disabled = true; btn.textContent = 'Activating...';
         try {
             var card = await apiPost('/api/v1/pos/gift-cards/activate', { barcode: bc, initial_balance: amount, notes: notes || null });
-            errEl.style.color = '#6EE7B7';
+            errEl.style.color = 'var(--success-light)';
             errEl.textContent = 'Card activated with $' + parseFloat(card.balance).toFixed(2) + ' balance';
             document.getElementById('gc-activate-barcode').value = '';
             document.getElementById('gc-activate-amount').value = '';
             document.getElementById('gc-activate-notes').value = '';
         } catch (err) {
-            errEl.style.color = '#F87171';
+            errEl.style.color = 'var(--danger)';
             errEl.textContent = err.message || 'Failed to activate card';
         } finally {
             btn.disabled = false; btn.textContent = 'Activate Card';
@@ -2971,10 +2976,10 @@ table { width: 100%; border-collapse: collapse; }
                     var totals = calcTotals();
                     var sufficient = parseFloat(card.balance) >= totals.total;
                     document.getElementById('gc-pay-balance').innerHTML =
-                        '<div style="text-align:center;padding:6px;background:#2D2D30">'
-                        + '<span style="color:#A8A6A1;font-size:0.8rem">Card Balance: </span>'
-                        + '<span style="font-size:1.1rem;font-weight:700;color:' + (sufficient ? '#6EE7B7' : '#F87171') + '">$' + parseFloat(card.balance).toFixed(2) + '</span>'
-                        + (sufficient ? '' : '<div style="color:#F87171;font-size:0.75rem;margin-top:2px">Insufficient balance</div>')
+                        '<div style="text-align:center;padding:6px;background:var(--surface-2)">'
+                        + '<span style="color:var(--text-light);font-size:0.8rem">Card Balance: </span>'
+                        + '<span style="font-size:1.1rem;font-weight:700;color:' + (sufficient ? 'var(--success-light)' : 'var(--danger)') + '">$' + parseFloat(card.balance).toFixed(2) + '</span>'
+                        + (sufficient ? '' : '<div style="color:var(--danger);font-size:0.75rem;margin-top:2px">Insufficient balance</div>')
                         + '</div>';
                     document.getElementById('gc-pay-error').textContent = '';
                 } catch (err) {
@@ -3050,26 +3055,26 @@ table { width: 100%; border-collapse: collapse; }
         var remaining = splitGetRemaining();
         document.getElementById('split-total-display').textContent = '$' + total.toFixed(2);
         document.getElementById('split-remaining-display').textContent = '$' + remaining.toFixed(2);
-        document.getElementById('split-remaining-display').style.color = remaining <= 0 ? '#34D399' : '#F59E0B';
+        document.getElementById('split-remaining-display').style.color = remaining <= 0 ? 'var(--success-light)' : 'var(--warning)';
 
         var listEl = document.getElementById('split-applied-list');
         if (splitPayments.length === 0) {
-            listEl.innerHTML = '<div style="text-align:center;color:#666;font-size:0.8rem;padding:0.5rem">No payments added yet</div>';
+            listEl.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:0.8rem;padding:0.5rem">No payments added yet</div>';
         } else {
             var html = '';
             for (var i = 0; i < splitPayments.length; i++) {
                 var p = splitPayments[i];
-                var color = p.type === 'gc' ? '#C4B5FD' : p.type === 'cash' ? '#86EFAC' : '#60A5FA';
+                var color = p.type === 'gc' ? 'color-mix(in srgb, var(--pos-payment-gift) 48%, var(--white))' : p.type === 'cash' ? 'var(--success-light)' : 'var(--info)';
                 var icon = p.type === 'gc' ? '🎁' : p.type === 'cash' ? '💵' : '💳';
                 var label = p.type === 'gc' ? 'Gift Card' : p.type === 'cash' ? 'Cash' : 'Card';
                 var extra = '';
                 if (p.type === 'cash' && p.tendered > p.amount) {
-                    extra = ' <span style="color:#A8A6A1;font-size:0.75rem">(tendered $' + p.tendered.toFixed(2) + ', change $' + (p.tendered - p.amount).toFixed(2) + ')</span>';
+                    extra = ' <span style="color:var(--text-light);font-size:0.75rem">(tendered $' + p.tendered.toFixed(2) + ', change $' + (p.tendered - p.amount).toFixed(2) + ')</span>';
                 }
-                html += '<div style="display:flex;justify-content:space-between;align-items:center;background:#2D2D30;padding:0.4rem 0.6rem;margin-bottom:3px;font-size:0.85rem">';
+                html += '<div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface-2);padding:0.4rem 0.6rem;margin-bottom:3px;font-size:0.85rem">';
                 html += '<span style="color:' + color + '">' + icon + ' ' + escHtml(label) + extra + '</span>';
-                html += '<span style="display:flex;align-items:center;gap:8px"><span style="color:#F0EDE8;font-weight:700">$' + p.amount.toFixed(2) + '</span>';
-                html += '<button onclick="splitRemovePayment(' + i + ')" style="background:none;border:none;color:#F87171;cursor:pointer;font-size:0.75rem">✕</button></span>';
+                html += '<span style="display:flex;align-items:center;gap:8px"><span style="color:var(--text);font-weight:700">$' + p.amount.toFixed(2) + '</span>';
+                html += '<button onclick="splitRemovePayment(' + i + ')" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:0.75rem">✕</button></span>';
                 html += '</div>';
             }
             listEl.innerHTML = html;
@@ -3135,13 +3140,13 @@ table { width: 100%; border-collapse: collapse; }
     async function splitApplyGiftCard() {
         var bc = document.getElementById('split-gc-barcode').value.trim();
         var infoEl = document.getElementById('split-gc-info');
-        if (!bc) { infoEl.innerHTML = '<span style="color:#F87171">Scan or enter a gift card barcode</span>'; return; }
-        infoEl.innerHTML = '<span style="color:#A8A6A1">Checking...</span>';
+        if (!bc) { infoEl.innerHTML = '<span style="color:var(--danger)">Scan or enter a gift card barcode</span>'; return; }
+        infoEl.innerHTML = '<span style="color:var(--text-light)">Checking...</span>';
         try {
             var gc = await apiGet('/api/v1/pos/gift-cards/' + encodeURIComponent(bc) + '/balance');
             var balance = parseFloat(gc.balance);
             if (balance <= 0) {
-                infoEl.innerHTML = '<span style="color:#F87171">Gift card has $0.00 balance</span>';
+                infoEl.innerHTML = '<span style="color:var(--danger)">Gift card has $0.00 balance</span>';
                 return;
             }
             var remaining = splitGetRemaining();
@@ -3154,13 +3159,13 @@ table { width: 100%; border-collapse: collapse; }
             }
             applyAmount = Math.round(applyAmount * 100) / 100;
             if (applyAmount <= 0) {
-                infoEl.innerHTML = '<span style="color:#F87171">Nothing to apply</span>';
+                infoEl.innerHTML = '<span style="color:var(--danger)">Nothing to apply</span>';
                 return;
             }
             splitPayments.push({ type: 'gc', amount: applyAmount, barcode: bc, gcBalance: balance });
             splitRefreshUI();
         } catch (err) {
-            infoEl.innerHTML = '<span style="color:#F87171">' + escHtml(err.message || 'Card not found') + '</span>';
+            infoEl.innerHTML = '<span style="color:var(--danger)">' + escHtml(err.message || 'Card not found') + '</span>';
         }
     }
 
@@ -3283,7 +3288,7 @@ table { width: 100%; border-collapse: collapse; }
         document.getElementById('receipt-search-input').value = '';
         document.getElementById('receipt-date-from').value = '';
         document.getElementById('receipt-date-to').value = '';
-        document.getElementById('receipt-search-results').innerHTML = '<p style="text-align:center;color:#999;padding:2rem">Enter a sale number or select a date range</p>';
+        document.getElementById('receipt-search-results').innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem">Enter a sale number or select a date range</p>';
         document.getElementById('receipt-modal-lookup').classList.remove('hidden');
         setTimeout(() => document.getElementById('receipt-search-input').focus(), 100);
     }
@@ -3313,15 +3318,15 @@ table { width: 100%; border-collapse: collapse; }
     async function searchReceiptById() {
         var q = document.getElementById('receipt-search-input').value.trim();
         var results = document.getElementById('receipt-search-results');
-        if (!q) { results.innerHTML = '<p style="color:#F87171;text-align:center">Please enter a sale number</p>'; return; }
-        results.innerHTML = '<p style="text-align:center;color:#999">Searching...</p>';
+        if (!q) { results.innerHTML = '<p style="color:var(--danger);text-align:center">Please enter a sale number</p>'; return; }
+        results.innerHTML = '<p style="text-align:center;color:var(--text-muted)">Searching...</p>';
         try {
             var saleNum = parseInt(q);
-            if (isNaN(saleNum)) { results.innerHTML = '<p style="color:#F87171;text-align:center">Please enter a valid sale number</p>'; return; }
+            if (isNaN(saleNum)) { results.innerHTML = '<p style="color:var(--danger);text-align:center">Please enter a valid sale number</p>'; return; }
             var sale = await apiGet('/api/v1/sales/' + saleNum);
             renderReceiptResults([sale]);
         } catch (err) {
-            results.innerHTML = '<p style="color:#F87171;text-align:center">' + (err.message || 'Not found') + '</p>';
+            results.innerHTML = '<p style="color:var(--danger);text-align:center">' + (err.message || 'Not found') + '</p>';
         }
     }
 
@@ -3329,10 +3334,10 @@ table { width: 100%; border-collapse: collapse; }
         var dateFrom = document.getElementById('receipt-date-from').value;
         var dateTo = document.getElementById('receipt-date-to').value;
         var results = document.getElementById('receipt-search-results');
-        if (!dateFrom && !dateTo) { results.innerHTML = '<p style="color:#F87171;text-align:center">Please select at least one date</p>'; return; }
+        if (!dateFrom && !dateTo) { results.innerHTML = '<p style="color:var(--danger);text-align:center">Please select at least one date</p>'; return; }
         if (!dateTo) dateTo = dateFrom;
         if (!dateFrom) dateFrom = dateTo;
-        results.innerHTML = '<p style="text-align:center;color:#999">Searching...</p>';
+        results.innerHTML = '<p style="text-align:center;color:var(--text-muted)">Searching...</p>';
         try {
             var url = '/api/v1/sales/?date_from=' + encodeURIComponent(dateFrom) + '&date_to=' + encodeURIComponent(dateTo) + '&limit=500';
             var sales = await apiGet(url);
@@ -3344,22 +3349,22 @@ table { width: 100%; border-collapse: collapse; }
             }
             renderReceiptResults(sales, rangeLabel);
         } catch (err) {
-            results.innerHTML = '<p style="color:#F87171;text-align:center">' + (err.message || 'Search failed') + '</p>';
+            results.innerHTML = '<p style="color:var(--danger);text-align:center">' + (err.message || 'Search failed') + '</p>';
         }
     }
 
     function renderReceiptResults(sales, rangeLabel) {
         var results = document.getElementById('receipt-search-results');
         if (!sales || sales.length === 0) {
-            results.innerHTML = '<p style="text-align:center;color:#999;padding:1rem">No receipts found</p>';
+            results.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:1rem">No receipts found</p>';
             return;
         }
         var header = '';
         if (rangeLabel) {
             var totalAmt = sales.filter(function(s){ return !s.is_voided; }).reduce(function(sum,s){ return sum + parseFloat(s.total); }, 0);
-            header = '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.75rem;background:#333;margin-bottom:6px;font-size:0.8rem">'
-                + '<span style="color:#A8A6A1">' + rangeLabel + ' · ' + sales.length + ' receipt(s)</span>'
-                + '<span style="color:#C9A96E;font-weight:700">Total: $' + totalAmt.toFixed(2) + '</span>'
+            header = '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.75rem;background:var(--text);margin-bottom:6px;font-size:0.8rem">'
+                + '<span style="color:var(--text-light)">' + rangeLabel + ' · ' + sales.length + ' receipt(s)</span>'
+                + '<span style="color:var(--gold);font-weight:700">Total: $' + totalAmt.toFixed(2) + '</span>'
                 + '</div>';
         }
         results.innerHTML = header + sales.slice(0, 200).map(function(s) {
@@ -3367,13 +3372,13 @@ table { width: 100%; border-collapse: collapse; }
             var dateStr = (d.getMonth()+1) + '/' + d.getDate() + '/' + d.getFullYear();
             var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
             var itemCount = (s.line_items || []).reduce(function(sum, li){ return sum + li.quantity; }, 0);
-            var voidTag = s.is_voided ? ' · <span style="color:#F87171;font-weight:700">VOIDED</span>' : '';
-            return '<div onclick="viewReceiptDetail(' + s.id + ')" style="background:#2D2D30;padding:0.65rem 0.75rem;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center' + (s.is_voided ? ';opacity:0.6' : '') + '">'
+            var voidTag = s.is_voided ? ' · <span style="color:var(--danger);font-weight:700">VOIDED</span>' : '';
+            return '<div onclick="viewReceiptDetail(' + s.id + ')" style="background:var(--surface-2);padding:0.65rem 0.75rem;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center' + (s.is_voided ? ';opacity:0.6' : '') + '">'
                 + '<div>'
-                + '<div style="font-weight:600;color:#F0EDE8">Sale #' + s.id + voidTag + '</div>'
-                + '<div style="font-size:0.8rem;color:#A8A6A1">' + dateStr + ' ' + timeStr + ' · ' + itemCount + ' item(s) · ' + ({'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[s.payment_method] || (s.payment_method||'').toUpperCase()) + '</div>'
+                + '<div style="font-weight:600;color:var(--text)">Sale #' + s.id + voidTag + '</div>'
+                + '<div style="font-size:0.8rem;color:var(--text-light)">' + dateStr + ' ' + timeStr + ' · ' + itemCount + ' item(s) · ' + ({'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[s.payment_method] || (s.payment_method||'').toUpperCase()) + '</div>'
                 + '</div>'
-                + '<div style="font-weight:700;color:' + (s.is_voided ? '#F87171' : '#C9A96E') + ';font-size:1.05rem">' + (s.is_voided ? '-' : '') + '$' + parseFloat(s.total).toFixed(2) + '</div>'
+                + '<div style="font-weight:700;color:' + (s.is_voided ? 'var(--danger)' : 'var(--gold)') + ';font-size:1.05rem">' + (s.is_voided ? '-' : '') + '$' + parseFloat(s.total).toFixed(2) + '</div>'
                 + '</div>';
         }).join('');
     }
@@ -3457,7 +3462,7 @@ table { width: 100%; border-collapse: collapse; }
             if (sale.is_voided) {
                 document.getElementById('void-from-detail-btn').style.display = 'none';
                 var voidHtml = '<div style="text-align:center;margin:6px 0"><div class="void-badge">VOIDED</div>';
-                if (sale.void_reason) voidHtml += '<div style="color:#F87171;font-size:0.75rem;margin-top:2px">' + escHtml(sale.void_reason) + '</div>';
+                if (sale.void_reason) voidHtml += '<div style="color:var(--danger);font-size:0.75rem;margin-top:2px">' + escHtml(sale.void_reason) + '</div>';
                 voidHtml += '</div>';
                 var dHdr = document.getElementById('receipt-detail-content').querySelector('.receipt-header');
                 if (dHdr) dHdr.insertAdjacentHTML('afterend', voidHtml);
@@ -3484,15 +3489,15 @@ table { width: 100%; border-collapse: collapse; }
 
     async function loadOnlineOrders(statusFilter) {
         const list = document.getElementById('online-orders-list');
-        list.innerHTML = '<p style="text-align:center;color:#999">Loading...</p>';
+        list.innerHTML = '<p style="text-align:center;color:var(--text-muted)">Loading...</p>';
 
         document.querySelectorAll('#online-orders-modal button[id^="filter-"]').forEach(b => {
-            b.style.background = '#374151'; b.style.color = '#D1D5DB';
+            b.style.background = 'var(--text-light)'; b.style.color = 'var(--border)';
         });
         const activeBtn = document.getElementById(`filter-${statusFilter || 'all'}`);
         if (activeBtn) {
-            if (statusFilter === 'ready') { activeBtn.style.background = '#1E3A5F'; activeBtn.style.color = '#93C5FD'; }
-            else { activeBtn.style.background = '#92400E'; activeBtn.style.color = '#FDE68A'; }
+            if (statusFilter === 'ready') { activeBtn.style.background = 'color-mix(in srgb, var(--info) 42%, var(--bg))'; activeBtn.style.color = 'color-mix(in srgb, var(--info) 48%, var(--white))'; }
+            else { activeBtn.style.background = 'color-mix(in srgb, var(--warning) 58%, var(--bg))'; activeBtn.style.color = 'color-mix(in srgb, var(--warning) 38%, var(--white))'; }
         }
 
         try {
@@ -3503,41 +3508,41 @@ table { width: 100%; border-collapse: collapse; }
                 orders = orders.filter(o => o.status === statusFilter);
             }
             if (orders.length === 0) {
-                list.innerHTML = '<p style="text-align:center;color:#999;padding:2rem">No orders found</p>';
+                list.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem">No orders found</p>';
                 return;
             }
             list.innerHTML = orders.map(o => {
                 const d = new Date(o.date || o.created_at);
                 const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                const statusColor = o.status === 'pending' ? '#FDE68A' : o.status === 'ready' ? '#93C5FD' : o.status === 'completed' ? '#6EE7B7' : '#D1D5DB';
-                const statusBg = o.status === 'pending' ? '#92400E' : o.status === 'ready' ? '#1E3A5F' : o.status === 'completed' ? '#065F46' : '#374151';
+                const statusColor = o.status === 'pending' ? 'color-mix(in srgb, var(--warning) 38%, var(--white))' : o.status === 'ready' ? 'color-mix(in srgb, var(--info) 48%, var(--white))' : o.status === 'completed' ? 'var(--success-light)' : 'var(--border)';
+                const statusBg = o.status === 'pending' ? 'color-mix(in srgb, var(--warning) 58%, var(--bg))' : o.status === 'ready' ? 'color-mix(in srgb, var(--info) 42%, var(--bg))' : o.status === 'completed' ? 'var(--success)' : 'var(--text-light)';
                 var actionBtns = '';
                 if (o.status === 'pending') {
-                    actionBtns = `<button onclick="markReady(${o.id})" style="background:#1E3A5F;color:#93C5FD;border:none;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.75rem;margin-top:4px" id="ready-btn-${o.id}">Notify Ready</button>`
-                        + ` <button onclick="markPickedUp(${o.id})" style="background:#065F46;color:#6EE7B7;border:none;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.75rem;margin-top:4px">Picked Up</button>`;
+                    actionBtns = `<button onclick="markReady(${o.id})" style="background:color-mix(in srgb, var(--info) 42%, var(--bg));color:color-mix(in srgb, var(--info) 48%, var(--white));border:none;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.75rem;margin-top:4px" id="ready-btn-${o.id}">Notify Ready</button>`
+                        + ` <button onclick="markPickedUp(${o.id})" style="background:var(--success);color:var(--success-light);border:none;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.75rem;margin-top:4px">Picked Up</button>`;
                 } else if (o.status === 'ready') {
-                    actionBtns = `<button onclick="markPickedUp(${o.id})" style="background:#065F46;color:#6EE7B7;border:none;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.75rem;margin-top:4px">Mark Picked Up</button>`;
+                    actionBtns = `<button onclick="markPickedUp(${o.id})" style="background:var(--success);color:var(--success-light);border:none;padding:0.3rem 0.7rem;cursor:pointer;font-size:0.75rem;margin-top:4px">Mark Picked Up</button>`;
                 }
-                var emailLine = o.customer_email ? `<div style="font-size:0.7rem;color:#6B7280;margin-top:1px">${escHtml(o.customer_email)}</div>` : '';
-                return `<div style="background:#2D2D30;padding:0.75rem;margin-bottom:6px">
+                var emailLine = o.customer_email ? `<div style="font-size:0.7rem;color:var(--text-muted);margin-top:1px">${escHtml(o.customer_email)}</div>` : '';
+                return `<div style="background:var(--surface-2);padding:0.75rem;margin-bottom:6px">
                     <div style="display:flex;justify-content:space-between;align-items:start">
                         <div>
-                            <div style="font-weight:600;color:#F0EDE8">${escHtml(o.item_name || 'Item #' + o.item_id)}</div>
-                            <div style="font-size:0.8rem;color:#A8A6A1;margin-top:2px">${escHtml(o.customer_name || 'Unknown')} · ${escHtml(o.customer_phone || '')}</div>
+                            <div style="font-weight:600;color:var(--text)">${escHtml(o.item_name || 'Item #' + o.item_id)}</div>
+                            <div style="font-size:0.8rem;color:var(--text-light);margin-top:2px">${escHtml(o.customer_name || 'Unknown')} · ${escHtml(o.customer_phone || '')}</div>
                             ${emailLine}
-                            <div style="font-size:0.75rem;color:#6B7280;margin-top:2px">${dateStr} ${timeStr}</div>
+                            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${dateStr} ${timeStr}</div>
                             ${actionBtns}
                         </div>
                         <div style="text-align:right">
-                            <div style="font-weight:700;color:#C9A96E">$${parseFloat(o.amount_paid || 0).toFixed(2)}</div>
+                            <div style="font-weight:700;color:var(--gold)">$${parseFloat(o.amount_paid || 0).toFixed(2)}</div>
                             <span style="background:${statusBg};color:${statusColor};padding:2px 8px;font-size:0.7rem;font-weight:600;text-transform:uppercase;display:inline-block;margin-top:4px">${o.status}</span>
                         </div>
                     </div>
                 </div>`;
             }).join('');
         } catch (err) {
-            list.innerHTML = `<p style="color:#F87171;text-align:center">${err.message || 'Failed to load orders'}</p>`;
+            list.innerHTML = `<p style="color:var(--danger);text-align:center">${err.message || 'Failed to load orders'}</p>`;
         }
     }
 
@@ -3642,14 +3647,14 @@ table { width: 100%; border-collapse: collapse; }
 
             const bkdn = document.getElementById('eod-cashier-breakdown');
             if (eodData.cashier_breakdown && eodData.cashier_breakdown.length > 0) {
-                let html = '<div style="font-size:0.7rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-family:\'Roboto\',sans-serif">Cashier Breakdown</div>';
+                let html = '<div style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-family:\'Roboto\',sans-serif">Cashier Breakdown</div>';
                 eodData.cashier_breakdown.forEach(cb => {
-                    html += `<div style="background:#2D2D30;padding:8px 12px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
+                    html += `<div style="background:var(--surface-2);padding:8px 12px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
                         <div>
-                            <div style="font-weight:600;color:#F0EDE8;font-size:0.9rem">${escHtml(cb.name)}</div>
-                            <div style="font-size:0.75rem;color:#A8A6A1">${cb.transactions} txn · Cash: $${cb.cash_total.toFixed(2)} · Card: $${cb.card_total.toFixed(2)}</div>
+                            <div style="font-weight:600;color:var(--text);font-size:0.9rem">${escHtml(cb.name)}</div>
+                            <div style="font-size:0.75rem;color:var(--text-light)">${cb.transactions} txn · Cash: $${cb.cash_total.toFixed(2)} · Card: $${cb.card_total.toFixed(2)}</div>
                         </div>
-                        <div style="font-family:'EB Garamond',serif;font-size:1.1rem;font-weight:500;color:#C9A96E">$${cb.total.toFixed(2)}</div>
+                        <div style="font-family:'EB Garamond',serif;font-size:1.1rem;font-weight:500;color:var(--gold)">$${cb.total.toFixed(2)}</div>
                     </div>`;
                 });
                 bkdn.innerHTML = html;
@@ -3691,15 +3696,15 @@ table { width: 100%; border-collapse: collapse; }
 
         if (variance > 0) {
             varEl.textContent = '+$' + variance.toFixed(2);
-            varEl.style.color = '#7BC4A0';
+            varEl.style.color = 'var(--success-light)';
             noteEl.textContent = 'Over by $' + variance.toFixed(2);
         } else if (variance < 0) {
             varEl.textContent = '-$' + Math.abs(variance).toFixed(2);
-            varEl.style.color = '#c87070';
+            varEl.style.color = 'color-mix(in srgb, var(--danger) 72%, var(--surface))';
             noteEl.textContent = 'Short by $' + Math.abs(variance).toFixed(2);
         } else {
             varEl.textContent = '$0.00';
-            varEl.style.color = '#7BC4A0';
+            varEl.style.color = 'var(--success-light)';
             noteEl.textContent = 'Cash drawer matches expected amount';
         }
     }
@@ -3772,14 +3777,14 @@ table { width: 100%; border-collapse: collapse; }
         try {
             const resp = await apiFetch('POST', '/api/v1/pos/end-of-day/submit', payload);
             statusEl.style.display = 'block';
-            statusEl.style.background = '#065F46';
-            statusEl.style.color = '#6EE7B7';
+            statusEl.style.background = 'var(--success)';
+            statusEl.style.color = 'var(--success-light)';
             statusEl.textContent = resp.detail || 'Report submitted successfully!';
             btn.textContent = 'Submitted ✓';
         } catch (err) {
             statusEl.style.display = 'block';
-            statusEl.style.background = '#7F1D1D';
-            statusEl.style.color = '#FCA5A5';
+            statusEl.style.background = 'var(--danger-dark)';
+            statusEl.style.color = 'color-mix(in srgb, var(--danger) 42%, var(--white))';
             statusEl.textContent = err.message || 'Failed to submit report';
             btn.disabled = false;
             btn.textContent = 'Submit & Close Day';
@@ -3801,28 +3806,28 @@ table { width: 100%; border-collapse: collapse; }
 
         let voidedSection = '';
         if (eodData.voided && eodData.voided.count > 0) {
-            voidedSection = `<div class="summary-line" style="color:#c33"><strong>Voided:</strong> ${eodData.voided.count} sale(s) — $${eodData.voided.total.toFixed(2)}</div>`;
+            voidedSection = `<div class="summary-line" style="color:var(--danger)"><strong>Voided:</strong> ${eodData.voided.count} sale(s) — $${eodData.voided.total.toFixed(2)}</div>`;
         }
 
         const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>End of Day Report</title>
 <style>
 @page { margin: 10mm; size: letter; }
-body { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; color: #000; max-width: 600px; margin: 0 auto; }
+body { font-family: "Segoe UI", Arial, sans-serif; font-size: 12px; color: black; max-width: 600px; margin: 0 auto; }
 h1 { font-size: 18px; text-align: center; margin-bottom: 4px; }
-.sub { text-align: center; font-size: 11px; color: #555; margin-bottom: 16px; }
+.sub { text-align: center; font-size: 11px; color: var(--border); margin-bottom: 16px; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-.box { border: 1px solid #ccc; padding: 8px; text-align: center; }
-.box .label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: #666; }
+.box { border: 1px solid var(--border); padding: 8px; text-align: center; }
+.box .label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
 .box .val { font-size: 20px; font-weight: 700; margin-top: 2px; }
 .grid4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-hr { border: none; border-top: 1px solid #ccc; margin: 10px 0; }
+hr { border: none; border-top: 1px solid var(--border); margin: 10px 0; }
 table { width: 100%; border-collapse: collapse; }
-th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #666; padding: 4px 0; border-bottom: 1px solid #ccc; }
+th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); padding: 4px 0; border-bottom: 1px solid var(--border); }
 td { padding: 4px 0; font-size: 12px; }
-.section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #333; margin: 14px 0 6px; }
+.section-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text); margin: 14px 0 6px; }
 .summary-line { padding: 4px 0; font-size: 12px; }
-.deposit-box { border: 2px solid #000; padding: 10px; text-align: center; margin: 12px 0; }
-.deposit-box .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #666; }
+.deposit-box { border: 2px solid black; padding: 10px; text-align: center; margin: 12px 0; }
+.deposit-box .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); }
 .deposit-box .val { font-size: 24px; font-weight: 700; margin-top: 4px; }
 </style></head><body>
 <h1>Bowenstreet Market</h1>
@@ -3833,10 +3838,10 @@ td { padding: 4px 0; font-size: 12px; }
 </div>
 <div class="section-title">Sales by Payment Method</div>
 <div class="grid4">
-    <div class="box"><div class="label">Cash</div><div class="val" style="font-size:16px">$${eodData.cash.total.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.cash.count} sales</div></div>
-    <div class="box"><div class="label">Credit/Debit Card</div><div class="val" style="font-size:16px">$${eodData.card.total.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.card.count} sales</div></div>
-    <div class="box"><div class="label">Gift Card</div><div class="val" style="font-size:16px">$${eodData.gift_card.total.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.gift_card.count} sales</div></div>
-    <div class="box"><div class="label">Tax Collected</div><div class="val" style="font-size:16px">$${eodData.total_tax.toFixed(2)}</div><div style="font-size:10px;color:#666">${eodData.items_sold} items</div></div>
+    <div class="box"><div class="label">Cash</div><div class="val" style="font-size:16px">$${eodData.cash.total.toFixed(2)}</div><div style="font-size:10px;color:var(--text-muted)">${eodData.cash.count} sales</div></div>
+    <div class="box"><div class="label">Credit/Debit Card</div><div class="val" style="font-size:16px">$${eodData.card.total.toFixed(2)}</div><div style="font-size:10px;color:var(--text-muted)">${eodData.card.count} sales</div></div>
+    <div class="box"><div class="label">Gift Card</div><div class="val" style="font-size:16px">$${eodData.gift_card.total.toFixed(2)}</div><div style="font-size:10px;color:var(--text-muted)">${eodData.gift_card.count} sales</div></div>
+    <div class="box"><div class="label">Tax Collected</div><div class="val" style="font-size:16px">$${eodData.total_tax.toFixed(2)}</div><div style="font-size:10px;color:var(--text-muted)">${eodData.items_sold} items</div></div>
 </div>
 ${voidedSection}
 <hr>
@@ -3849,8 +3854,8 @@ ${voidedSection}
 <div class="deposit-box"><div class="label">Cash Deposit (Leave $${eodData.starting_balance.toFixed(2)} in drawer)</div><div class="val">${deposit}</div></div>
 <hr>
 ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead><tr><th>Cashier</th><th style="text-align:right">Txns</th><th style="text-align:right">Cash</th><th style="text-align:right">Card</th><th style="text-align:right">Total</th></tr></thead><tbody>${cashierRows}</tbody></table>` : ''}
-<div style="text-align:center;margin-top:20px;font-size:10px;color:#999">Generated ${new Date().toLocaleString()}</div>
-<div style="margin-top:30px;border-top:1px solid #ccc;padding-top:10px">
+<div style="text-align:center;margin-top:20px;font-size:10px;color:var(--text-muted)">Generated ${new Date().toLocaleString()}</div>
+<div style="margin-top:30px;border-top:1px solid var(--border);padding-top:10px">
     <div style="display:flex;justify-content:space-between;margin-bottom:20px">
         <div style="font-size:11px"><strong>Prepared by:</strong> ___________________________</div>
         <div style="font-size:11px"><strong>Date:</strong> _______________</div>
@@ -3913,11 +3918,11 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
             document.getElementById('img-search-status').style.display = 'none';
 
             if (data.description) {
-                document.getElementById('img-search-results').innerHTML = `<div style="background:#2D2D30;padding:8px 12px;margin-bottom:8px;font-size:0.8rem;color:#A8A6A1;font-style:italic">${escHtml(data.description)}</div>`;
+                document.getElementById('img-search-results').innerHTML = `<div style="background:var(--surface-2);padding:8px 12px;margin-bottom:8px;font-size:0.8rem;color:var(--text-light);font-style:italic">${escHtml(data.description)}</div>`;
             }
 
             if (!data.matches || data.matches.length === 0) {
-                document.getElementById('img-search-results').innerHTML += '<div style="text-align:center;color:#A8A6A1;padding:1rem;font-style:italic;font-family:\'EB Garamond\',serif">No matching items found</div>';
+                document.getElementById('img-search-results').innerHTML += '<div style="text-align:center;color:var(--text-light);padding:1rem;font-style:italic;font-family:\'EB Garamond\',serif">No matching items found</div>';
                 return;
             }
 
@@ -3925,13 +3930,13 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
             data.matches.forEach(item => {
                 const imgSrc = `/api/v1/items/${item.id}/image`;
                 const meta = [item.category, item.booth_number ? 'Booth ' + item.booth_number : null].filter(Boolean).join(' · ');
-                html += `<div onclick="addImageSearchResult(${item.id})" style="display:flex;gap:10px;align-items:center;background:#2D2D30;padding:8px;margin-bottom:4px;cursor:pointer;transition:background 0.12s" onmouseover="this.style.background='#3a3a3d'" onmouseout="this.style.background='#2D2D30'">
-                    <img src="${imgSrc}" style="width:56px;height:56px;object-fit:cover;border:1px solid #555558;flex-shrink:0" onerror="this.style.display='none'">
+                html += `<div onclick="addImageSearchResult(${item.id})" style="display:flex;gap:10px;align-items:center;background:var(--surface-2);padding:8px;margin-bottom:4px;cursor:pointer;transition:background 0.12s" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='var(--surface-2)'">
+                    <img src="${imgSrc}" style="width:56px;height:56px;object-fit:cover;border:1px solid var(--border);flex-shrink:0" onerror="this.style.display='none'">
                     <div style="flex:1;min-width:0">
-                        <div style="font-family:'EB Garamond',serif;font-size:0.95rem;color:#F0EDE8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(item.name)}</div>
-                        <div style="font-size:0.72rem;color:#A8A6A1">${meta}</div>
+                        <div style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(item.name)}</div>
+                        <div style="font-size:0.72rem;color:var(--text-light)">${meta}</div>
                     </div>
-                    <div style="font-family:'EB Garamond',serif;font-size:1.05rem;color:#C9A96E;font-weight:500;white-space:nowrap">$${item.active_price.toFixed(2)}</div>
+                    <div style="font-family:'EB Garamond',serif;font-size:1.05rem;color:var(--gold);font-weight:500;white-space:nowrap">$${item.active_price.toFixed(2)}</div>
                 </div>`;
             });
             document.getElementById('img-search-results').innerHTML += html;
@@ -3939,7 +3944,7 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
             window._imageSearchItems = data.matches;
         } catch (err) {
             document.getElementById('img-search-status').style.display = 'none';
-            document.getElementById('img-search-results').innerHTML = `<div style="color:#c87070;text-align:center;padding:1rem">${escHtml(err.message)}</div>`;
+            document.getElementById('img-search-results').innerHTML = `<div style="color:color-mix(in srgb, var(--danger) 72%, var(--surface));text-align:center;padding:1rem">${escHtml(err.message)}</div>`;
         }
     }
 
@@ -3964,32 +3969,32 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
         _selectedRentVendor = null;
 
         var listEl = document.getElementById('rent-vendor-list');
-        listEl.innerHTML = '<div style="text-align:center;padding:1.5rem;color:#A8A6A1">Loading vendors...</div>';
+        listEl.innerHTML = '<div style="text-align:center;padding:1.5rem;color:var(--text-light)">Loading vendors...</div>';
 
         try {
             var data = await apiGet('/api/v1/pos/rent/vendors');
             _rentVendors = data;
             renderRentVendors(data);
         } catch (e) {
-            listEl.innerHTML = '<div style="text-align:center;padding:1rem;color:#c87070">Failed to load vendors</div>';
+            listEl.innerHTML = '<div style="text-align:center;padding:1rem;color:color-mix(in srgb, var(--danger) 72%, var(--surface))">Failed to load vendors</div>';
         }
     }
 
     function renderRentVendors(vendors) {
         var listEl = document.getElementById('rent-vendor-list');
         if (!vendors.length) {
-            listEl.innerHTML = '<div style="text-align:center;padding:1rem;color:#A8A6A1;font-style:italic">No vendors found</div>';
+            listEl.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text-light);font-style:italic">No vendors found</div>';
             return;
         }
         var html = '';
         vendors.forEach(function(v) {
             var paidBadge = v.paid_this_month
-                ? '<span style="background:#065F46;color:#6EE7B7;font-size:0.65rem;padding:2px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:0.06em">Paid</span>'
+                ? '<span style="background:var(--success);color:var(--success-light);font-size:0.65rem;padding:2px 6px;margin-left:6px;text-transform:uppercase;letter-spacing:0.06em">Paid</span>'
                 : '';
-            html += '<div onclick="selectRentVendor(' + v.id + ')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;cursor:pointer;border-bottom:1px solid #3a3a3d;transition:background 0.12s" onmouseover="this.style.background=\'#3a3a3d\'" onmouseout="this.style.background=\'transparent\'">'
-                + '<div><span style="color:#F0EDE8;font-size:0.9rem">' + escHtml(v.name) + '</span>' + paidBadge
-                + '<div style="font-size:0.75rem;color:#A8A6A1">Booth ' + escHtml(v.booth_number || '—') + '</div></div>'
-                + '<div style="color:#C9A96E;font-weight:600;font-size:0.95rem">$' + v.monthly_rent.toFixed(2) + '</div>'
+            html += '<div onclick="selectRentVendor(' + v.id + ')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--surface-2);transition:background 0.12s" onmouseover="this.style.background=\'var(--surface-2)\'" onmouseout="this.style.background=\'transparent\'">'
+                + '<div><span style="color:var(--text);font-size:0.9rem">' + escHtml(v.name) + '</span>' + paidBadge
+                + '<div style="font-size:0.75rem;color:var(--text-light)">Booth ' + escHtml(v.booth_number || '—') + '</div></div>'
+                + '<div style="color:var(--gold);font-weight:600;font-size:0.95rem">$' + v.monthly_rent.toFixed(2) + '</div>'
                 + '</div>';
         });
         listEl.innerHTML = html;
@@ -4034,8 +4039,8 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
             });
 
             msgEl.style.display = 'block';
-            msgEl.style.background = '#065F46';
-            msgEl.style.color = '#6EE7B7';
+            msgEl.style.background = 'var(--success)';
+            msgEl.style.color = 'var(--success-light)';
             msgEl.textContent = resp.message || 'Payment recorded';
 
             if (resp.payment_url) {
@@ -4050,8 +4055,8 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
 
         } catch (e) {
             msgEl.style.display = 'block';
-            msgEl.style.background = '#7F1D1D';
-            msgEl.style.color = '#FCA5A5';
+            msgEl.style.background = 'var(--danger-dark)';
+            msgEl.style.color = 'color-mix(in srgb, var(--danger) 42%, var(--white))';
             msgEl.textContent = e.message || 'Payment failed';
         }
     }
