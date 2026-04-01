@@ -128,6 +128,17 @@ async def verify_vendor_inventory(
     except UnicodeDecodeError:
         text = raw.decode("latin-1")
 
+    # Normalize line endings and find the real header row
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    lines = text.split("\n")
+    header_idx = 0
+    for i, line in enumerate(lines[:10]):
+        if "SKU" in line and ("Product ID" in line or "Name" in line):
+            header_idx = i
+            break
+    if header_idx > 0:
+        text = "\n".join(lines[header_idx:])
+
     reader = csv.DictReader(io.StringIO(text))
     if not reader.fieldnames:
         raise HTTPException(status_code=400, detail="CSV has no headers")
@@ -135,7 +146,10 @@ async def verify_vendor_inventory(
     headers_lower = {h.strip().lower(): h.strip() for h in reader.fieldnames}
 
     if "sku" not in headers_lower:
-        raise HTTPException(status_code=400, detail="CSV must have a 'SKU' column")
+        raise HTTPException(
+            status_code=400,
+            detail=f"CSV must have a 'SKU' column. Found: {', '.join(reader.fieldnames[:10])}"
+        )
 
     # Load existing Ricochet-imported items for this vendor (by barcode)
     existing_result = await db.execute(
@@ -318,9 +332,16 @@ async def verify_bulk_inventory(
     except UnicodeDecodeError:
         text = raw.decode("latin-1")
 
+    # Normalize line endings and find the real header row
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
     lines = text.split("\n")
-    if lines and not lines[0].strip().startswith("Product ID"):
-        text = "\n".join(lines[1:])
+    header_idx = 0
+    for i, line in enumerate(lines[:10]):
+        if "SKU" in line and "Product ID" in line:
+            header_idx = i
+            break
+    if header_idx > 0:
+        text = "\n".join(lines[header_idx:])
 
     reader = csv.DictReader(io.StringIO(text))
     if not reader.fieldnames:
@@ -328,7 +349,10 @@ async def verify_bulk_inventory(
 
     headers_lower = {h.strip().lower(): h.strip() for h in reader.fieldnames}
     if "sku" not in headers_lower:
-        raise HTTPException(status_code=400, detail="CSV must have a 'SKU' column")
+        raise HTTPException(
+            status_code=400,
+            detail=f"CSV must have a 'SKU' column. Found: {', '.join(reader.fieldnames[:10])}"
+        )
 
     vendor_result = await db.execute(select(Vendor))
     all_vendors = vendor_result.scalars().all()
