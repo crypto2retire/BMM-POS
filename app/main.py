@@ -297,6 +297,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"BMM-POS: CRITICAL — consignment cleanup failed: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
 
+    # ── Default payout_method to 'check' for vendors without one ──
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(text("""
+                UPDATE vendors SET payout_method = 'check'
+                WHERE payout_method IS NULL OR payout_method = ''
+            """))
+            await session.commit()
+            count = result.rowcount
+            if count > 0:
+                print(f"BMM-POS: Set payout_method to 'check' for {count} vendors", file=sys.stderr, flush=True)
+    except Exception as e:
+        print(f"BMM-POS: payout_method default note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
     # ── Ensure every vendor has a vendor_balances row ──
     try:
         async with AsyncSessionLocal() as session:

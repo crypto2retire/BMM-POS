@@ -13,7 +13,7 @@ class VendorCreate(BaseModel):
     is_vendor: bool = False
     monthly_rent: Decimal = Decimal("200.00")
     commission_rate: Decimal = Decimal("0.10")
-    payout_method: Optional[str] = None
+    payout_method: Optional[str] = "check"
     zelle_handle: Optional[str] = None
     notes: Optional[str] = None
 

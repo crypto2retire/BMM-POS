@@ -17,7 +17,7 @@ class Vendor(Base):
     rent_due_day: Mapped[int] = mapped_column(Integer, default=1)
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(20), default="vendor")
-    payout_method: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    payout_method: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="check")
     zelle_handle: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="active")
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default="now()", nullable=False)
