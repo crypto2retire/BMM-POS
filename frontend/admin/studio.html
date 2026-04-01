@@ -33,7 +33,7 @@
             background: var(--border); border: 1px solid var(--border);
         }
         .cal-day-header {
-            background: var(--bg-dark); padding: 0.5rem; text-align: center;
+            background: var(--charcoal-deep); padding: 0.5rem; text-align: center;
             font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.12em;
             color: var(--text-light); font-family: 'Roboto', sans-serif;
         }
@@ -41,38 +41,38 @@
             background: var(--surface); min-height: 100px; padding: 0.4rem;
             position: relative; cursor: pointer; transition: background 0.15s;
         }
-        .cal-day:hover { background: rgba(201,169,110,0.08); }
-        .cal-day.other-month { background: var(--bg-dark); opacity: 0.4; }
+        .cal-day:hover { background: var(--gold-glow); }
+        .cal-day.other-month { background: var(--charcoal-deep); opacity: 0.4; }
         .cal-day.today { border: 2px solid var(--gold); }
         .cal-day-num {
             font-size: 0.75rem; color: var(--text-light); margin-bottom: 0.25rem;
             font-weight: 500;
         }
         .cal-event {
-            font-size: 0.65rem; background: rgba(201,169,110,0.18);
+            font-size: 0.65rem; background: color-mix(in srgb, var(--gold) 18%, transparent);
             border-left: 2px solid var(--gold); padding: 2px 4px; margin-bottom: 2px;
             color: var(--text); cursor: pointer; overflow: hidden;
             text-overflow: ellipsis; white-space: nowrap; transition: background 0.15s;
         }
-        .cal-event:hover { background: rgba(201,169,110,0.35); }
+        .cal-event:hover { background: color-mix(in srgb, var(--gold) 35%, transparent); }
         .cal-event.cancelled {
-            border-left-color: #C06060; background: rgba(192,96,96,0.12);
+            border-left-color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent);
             text-decoration: line-through; opacity: 0.6;
         }
         .cal-event.full {
-            border-left-color: #F59E0B; background: rgba(245,158,11,0.12);
+            border-left-color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, transparent);
         }
 
         .add-class-btn {
-            background: var(--gold); color: var(--bg-dark); border: none;
+            background: var(--gold); color: var(--charcoal-deep); border: none;
             padding: 0.5rem 1.25rem; font-size: 0.72rem; letter-spacing: 0.1em;
             text-transform: uppercase; cursor: pointer; font-family: 'Roboto', sans-serif;
             font-weight: 500; transition: background 0.2s;
         }
-        .add-class-btn:hover { background: #dfc08a; }
+        .add-class-btn:hover { background: var(--gold-light); }
 
         .class-modal-overlay {
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.65);
+            display: none; position: fixed; inset: 0; background: color-mix(in srgb, black 65%, transparent);
             z-index: 300; align-items: center; justify-content: center;
         }
         .class-modal-overlay.open { display: flex; }
@@ -116,11 +116,11 @@
         }
         .btn-cancel { background: var(--bg); color: var(--text-light); border: 1px solid var(--border) !important; }
         .btn-cancel:hover { border-color: var(--text-light) !important; }
-        .btn-save { background: var(--gold); color: var(--bg-dark); }
-        .btn-save:hover { background: #dfc08a; }
-        .btn-delete { background: #C06060; color: #fff; }
-        .btn-delete:hover { background: #d06060; }
-        #form-error { color: #F87171; font-size: 0.8rem; min-height: 18px; margin-top: 0.5rem; }
+        .btn-save { background: var(--gold); color: var(--charcoal-deep); }
+        .btn-save:hover { background: var(--gold-light); }
+        .btn-delete { background: var(--danger); color: var(--white); }
+        .btn-delete:hover { background: color-mix(in srgb, var(--danger) 85%, var(--white)); }
+        #form-error { color: var(--danger); font-size: 0.8rem; min-height: 18px; margin-top: 0.5rem; }
 
         .stats-row {
             display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;
@@ -154,10 +154,10 @@
             font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.1em;
             padding: 0.2rem 0.6rem; font-weight: 500;
         }
-        .badge-open { background: rgba(34,197,94,0.15); color: #22C55E; }
-        .badge-full { background: rgba(245,158,11,0.15); color: #F59E0B; }
-        .badge-cancelled { background: rgba(192,96,96,0.15); color: #C06060; }
-        .badge-past { background: rgba(168,166,161,0.15); color: var(--text-light); }
+        .badge-open { background: color-mix(in srgb, var(--success-light) 15%, transparent); color: var(--success-light); }
+        .badge-full { background: color-mix(in srgb, var(--warning) 15%, transparent); color: var(--warning); }
+        .badge-cancelled { background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); }
+        .badge-past { background: color-mix(in srgb, var(--text-light) 15%, transparent); color: var(--text-light); }
         .li-action {
             background: none; border: 1px solid var(--border); color: var(--text-light);
             padding: 0.3rem 0.7rem; font-size: 0.65rem; cursor: pointer;
@@ -173,7 +173,7 @@
             padding: 0.4rem 0.9rem; font-size: 0.7rem; cursor: pointer;
             font-family: 'Roboto', sans-serif; transition: all 0.15s;
         }
-        .view-toggle button.active { background: var(--gold); color: var(--bg-dark); }
+        .view-toggle button.active { background: var(--gold); color: var(--charcoal-deep); }
 
         @media (max-width: 768px) {
             .calendar-grid { font-size: 0.7rem; }
@@ -320,7 +320,7 @@
             <label>Class Image</label>
             <div id="image-preview-area" style="display:none;margin-bottom:0.5rem;position:relative">
                 <img id="image-preview" style="max-width:100%;max-height:180px;display:block;border:1px solid var(--border)">
-                <button type="button" onclick="removeImage()" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.7);color:#fff;border:none;width:24px;height:24px;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center">&times;</button>
+                <button type="button" onclick="removeImage()" style="position:absolute;top:4px;right:4px;background:color-mix(in srgb, black 70%, transparent);color:var(--white);border:none;width:24px;height:24px;cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center">&times;</button>
             </div>
             <input type="file" id="f-image" accept="image/*" capture="environment" style="font-size:0.8rem">
         </div>

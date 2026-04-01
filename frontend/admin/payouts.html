@@ -53,9 +53,9 @@
             align-items: center;
         }
         .process-btn {
-            background: rgba(123,196,160,0.12);
-            color: #7BC4A0;
-            border: 1px solid rgba(123,196,160,0.3);
+            background: color-mix(in srgb, var(--success-light) 12%, transparent);
+            color: var(--success-light);
+            border: 1px solid color-mix(in srgb, var(--success-light) 30%, transparent);
             padding: 0.6rem 1.5rem;
             font-size: 0.8rem;
             cursor: pointer;
@@ -64,13 +64,13 @@
             letter-spacing: 0.08em;
             transition: background 0.15s, border-color 0.15s;
         }
-        .process-btn:hover { background: rgba(123,196,160,0.22); border-color: rgba(123,196,160,0.5); }
+        .process-btn:hover { background: color-mix(in srgb, var(--success-light) 22%, transparent); border-color: color-mix(in srgb, var(--success-light) 50%, transparent); }
         .process-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .reminder-btn {
-            background: rgba(232,192,112,0.12);
-            color: #e8c070;
-            border: 1px solid rgba(232,192,112,0.3);
+            background: color-mix(in srgb, var(--warning) 12%, transparent);
+            color: var(--warning);
+            border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
             padding: 0.6rem 1.5rem;
             font-size: 0.8rem;
             cursor: pointer;
@@ -79,7 +79,16 @@
             letter-spacing: 0.08em;
             transition: background 0.15s, border-color 0.15s;
         }
-        .reminder-btn:hover { background: rgba(232,192,112,0.22); border-color: rgba(232,192,112,0.5); }
+        .reminder-btn:hover { background: color-mix(in srgb, var(--warning) 22%, transparent); border-color: color-mix(in srgb, var(--warning) 50%, transparent); }
+        .reminder-btn.reminder-btn--green {
+            background: color-mix(in srgb, var(--success) 40%, var(--bg));
+            border-color: color-mix(in srgb, var(--success) 55%, var(--border));
+            color: var(--success-light);
+        }
+        .reminder-btn.reminder-btn--green:hover {
+            background: color-mix(in srgb, var(--success) 50%, var(--bg));
+            border-color: color-mix(in srgb, var(--success) 65%, var(--border));
+        }
         .reminder-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
         .already-processed-badge {
@@ -89,9 +98,9 @@
             font-weight: 500;
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            background: rgba(123,196,160,0.1);
-            color: #7BC4A0;
-            border: 1px solid rgba(123,196,160,0.25);
+            background: color-mix(in srgb, var(--success-light) 10%, transparent);
+            color: var(--success-light);
+            border: 1px solid color-mix(in srgb, var(--success-light) 25%, transparent);
             font-family: 'Roboto', sans-serif;
         }
 
@@ -102,9 +111,9 @@
             font-weight: 500;
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            background: rgba(200,112,112,0.1);
-            color: #c87070;
-            border: 1px solid rgba(200,112,112,0.25);
+            background: color-mix(in srgb, var(--danger) 10%, transparent);
+            color: var(--danger);
+            border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
             font-family: 'Roboto', sans-serif;
         }
         .rent-paid-badge {
@@ -114,9 +123,9 @@
             font-weight: 500;
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            background: rgba(123,196,160,0.1);
-            color: #7BC4A0;
-            border: 1px solid rgba(123,196,160,0.25);
+            background: color-mix(in srgb, var(--success-light) 10%, transparent);
+            color: var(--success-light);
+            border: 1px solid color-mix(in srgb, var(--success-light) 25%, transparent);
             font-family: 'Roboto', sans-serif;
         }
 
@@ -124,7 +133,7 @@
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.55);
+            background: color-mix(in srgb, black 55%, transparent);
             z-index: 950;
             animation: fadeIn 0.2s;
         }
@@ -164,16 +173,16 @@
             font-size: 0.82rem;
         }
         .confirm-go {
-            background: #7BC4A0;
-            border: 1px solid #7BC4A0;
-            color: #1a1a1a;
+            background: var(--success-light);
+            border: 1px solid var(--success-light);
+            color: var(--charcoal-deep);
             padding: 0.5rem 1.25rem;
             cursor: pointer;
             font-family: 'Roboto', sans-serif;
             font-size: 0.82rem;
             font-weight: 600;
         }
-        .confirm-go:hover { background: #6ab890; }
+        .confirm-go:hover { background: color-mix(in srgb, var(--success-light) 85%, var(--text)); }
 
         .payout-cards-mobile { display: none; flex-direction: column; gap: 0.75rem; }
         .payout-mob-card {
@@ -189,8 +198,8 @@
         }
         .payout-mob-name { font-family: 'EB Garamond', serif; font-size: 1.05rem; font-weight: 500; }
         .payout-mob-booth { font-size: 0.75rem; color: var(--text-light); margin-top: 2px; }
-        .payout-mob-net { font-family: 'EB Garamond', serif; font-size: 1.15rem; font-weight: 600; color: #7BC4A0; text-align: right; }
-        .payout-mob-row { display: flex; justify-content: space-between; font-size: 0.82rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.04); }
+        .payout-mob-net { font-family: 'EB Garamond', serif; font-size: 1.15rem; font-weight: 600; color: var(--success-light); text-align: right; }
+        .payout-mob-row { display: flex; justify-content: space-between; font-size: 0.82rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
         .payout-mob-label { color: var(--text-light); }
 
         @media (max-width: 767px) {
@@ -253,7 +262,7 @@
     <div class="page-header">
         <h1 class="page-title">Vendor Payouts</h1>
         <p class="page-subtitle">Process monthly payouts with automatic rent deduction</p>
-        <span id="period-label" style="color:#A8A6A1;font-size:0.95rem;"></span>
+        <span id="period-label" style="color:var(--text-light);font-size:0.95rem;"></span>
     </div>
 
     <div class="payout-stats">
@@ -263,15 +272,15 @@
         </div>
         <div class="payout-stat-card">
             <div class="payout-stat-title">Rent Deducted</div>
-            <div class="payout-stat-value" style="color:#c87070" id="stat-rent">&mdash;</div>
+            <div class="payout-stat-value" style="color:var(--danger)" id="stat-rent">&mdash;</div>
         </div>
         <div class="payout-stat-card">
             <div class="payout-stat-title">Net Payouts</div>
-            <div class="payout-stat-value" style="color:#7BC4A0" id="stat-net">&mdash;</div>
+            <div class="payout-stat-value" style="color:var(--success-light)" id="stat-net">&mdash;</div>
         </div>
         <div class="payout-stat-card">
             <div class="payout-stat-title">Shortfalls</div>
-            <div class="payout-stat-value" style="color:#e8c070" id="stat-shortfalls">&mdash;</div>
+            <div class="payout-stat-value" style="color:var(--warning)" id="stat-shortfalls">&mdash;</div>
         </div>
     </div>
 
@@ -280,7 +289,7 @@
     <div class="action-bar">
         <button class="process-btn" id="process-btn" onclick="confirmProcess()">Process Payouts</button>
         <button class="reminder-btn" id="reminder-btn" onclick="sendReminders()">Send Rent Reminders</button>
-        <button class="reminder-btn" id="weekly-btn" onclick="sendWeeklyReports()" style="background:#2a5a3a;border-color:#3a7a4a">Send Weekly Reports</button>
+        <button class="reminder-btn reminder-btn--green" id="weekly-btn" onclick="sendWeeklyReports()">Send Weekly Reports</button>
         <span id="processed-badge" style="display:none"></span>
     </div>
 
@@ -364,8 +373,8 @@
                 + '<td><strong>' + esc(v.name) + '</strong></td>'
                 + '<td>' + esc(v.booth_number) + '</td>'
                 + '<td>$' + v.gross_sales.toFixed(2) + '</td>'
-                + '<td>' + (v.rent_already_paid ? '<s style="color:var(--text-light)">$' + v.monthly_rent.toFixed(2) + '</s> <small style="color:#7BC4A0">paid</small>' : '$' + v.rent_to_deduct.toFixed(2)) + '</td>'
-                + '<td style="font-weight:600;color:#7BC4A0">$' + v.net_payout.toFixed(2) + '</td>'
+                + '<td>' + (v.rent_already_paid ? '<s style="color:var(--text-light)">$' + v.monthly_rent.toFixed(2) + '</s> <small style="color:var(--success-light)">paid</small>' : '$' + v.rent_to_deduct.toFixed(2)) + '</td>'
+                + '<td style="font-weight:600;color:var(--success-light)">$' + v.net_payout.toFixed(2) + '</td>'
                 + '<td>' + statusHtml(v) + '</td>'
                 + '</tr>';
         }).join('');

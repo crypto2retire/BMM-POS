@@ -25,10 +25,10 @@
         .report-row .sub { font-size: 0.72rem; color: var(--text-light); }
         .report-row .val { font-family: 'EB Garamond', serif; font-size: 1.1rem; text-align: right; }
         .report-row .val-label { font-size: 0.6rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.08em; text-align: right; }
-        .val-green { color: #7BC4A0; }
+        .val-green { color: var(--success-light); }
         .val-gold { color: var(--gold); }
-        .val-blue { color: #6495ed; }
-        .val-red { color: #F87171; }
+        .val-blue { color: var(--info); }
+        .val-red { color: var(--danger); }
 
         .detail-view { display: none; }
         .detail-view.active { display: block; }
@@ -147,9 +147,9 @@
             </div>
         </div>
 
-        <div id="d-voided-row" style="display:none;background:var(--bg);padding:0.5rem 0.75rem;margin-bottom:1rem;border:1px solid #7F1D1D">
-            <span style="color:#F87171;font-weight:600;font-size:0.85rem">Voided: </span>
-            <span style="color:#F87171" id="d-voided"></span>
+        <div id="d-voided-row" style="display:none;background:var(--bg);padding:0.5rem 0.75rem;margin-bottom:1rem;border:1px solid var(--danger-dark)">
+            <span style="color:var(--danger);font-weight:600;font-size:0.85rem">Voided: </span>
+            <span style="color:var(--danger)" id="d-voided"></span>
         </div>
 
         <h3 style="font-family:'EB Garamond',serif;font-size:1.1rem;margin:1.25rem 0 0.5rem">Cash Drawer</h3>

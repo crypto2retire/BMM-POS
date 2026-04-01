@@ -45,7 +45,7 @@
         .period-tab:last-child { border-left: none; }
         .period-tab.active {
             background: var(--gold);
-            color: #1a1a1d;
+            color: var(--charcoal-deep);
             border-color: var(--gold);
         }
         .period-tab:hover:not(.active) { border-color: var(--warm-border); color: var(--text); }
@@ -119,7 +119,7 @@
         .chart-bar {
             width: 100%;
             max-width: 28px;
-            background: linear-gradient(180deg, var(--gold), rgba(201,169,110,0.4));
+            background: linear-gradient(180deg, var(--gold), color-mix(in srgb, var(--gold) 40%, transparent));
             min-height: 2px;
             transition: height 0.4s ease;
         }
@@ -163,9 +163,9 @@
             padding: 0.5rem;
             font-size: 0.88rem;
             color: var(--text);
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+            border-bottom: 1px solid var(--border);
         }
-        .vendor-rank-table tr:hover td { background: rgba(201,169,110,0.04); }
+        .vendor-rank-table tr:hover td { background: var(--gold-glow); }
 
         .payment-pills {
             display: flex;
@@ -232,7 +232,7 @@
             gap: 1.5rem;
             margin-top: 0.75rem;
             padding-top: 0.75rem;
-            border-top: 1px solid rgba(255,255,255,0.06);
+            border-top: 1px solid var(--border);
             font-size: 0.85rem;
             color: var(--text);
         }
@@ -361,11 +361,11 @@
 
     <div class="section" id="online-orders-section">
         <div class="section-header">
-            <h2 class="section-title">Online Orders <span id="pending-orders-badge" style="display:none;background:#EF4444;color:#fff;font-size:0.7rem;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle">0 new</span></h2>
+            <h2 class="section-title">Online Orders <span id="pending-orders-badge" style="display:none;background:var(--danger);color:var(--white);font-size:0.7rem;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle">0 new</span></h2>
         </div>
         <div class="card">
             <div style="display:flex;gap:8px;margin-bottom:1rem;padding:0.75rem">
-                <button onclick="loadAdminOrders('pending')" class="btn btn-sm" id="admin-filter-pending" style="background:#92400E;color:#FDE68A">Pending</button>
+                <button onclick="loadAdminOrders('pending')" class="btn btn-sm" id="admin-filter-pending" style="background:color-mix(in srgb, var(--warning) 55%, var(--bg));color:var(--charcoal-deep)">Pending</button>
                 <button onclick="loadAdminOrders('ready')" class="btn btn-sm" id="admin-filter-ready">Ready</button>
                 <button onclick="loadAdminOrders('completed')" class="btn btn-sm" id="admin-filter-completed">Completed</button>
                 <button onclick="loadAdminOrders('')" class="btn btn-sm" id="admin-filter-all">All</button>
@@ -401,7 +401,7 @@
                 </table>
             </div>
             <div class="vendor-cards-mobile" id="employee-cards" style="display:none">
-                <div style="color:#A8A6A1;padding:1rem;text-align:center">Loading...</div>
+                <div style="color:var(--text-light);padding:1rem;text-align:center">Loading...</div>
             </div>
         </div>
     </div>
@@ -420,7 +420,7 @@
                     <div style="display:flex;gap:6px;align-items:center">
                         <input type="file" id="vendor-csv" accept=".csv" style="font-size:0.8rem;color:var(--text-light);max-width:200px">
                         <button class="btn btn-primary btn-sm" onclick="uploadVendors()" id="upload-vendors-btn">Upload Vendors</button>
-                        <a href="#" onclick="downloadVendorTemplate(event)" style="font-size:0.75rem;color:var(--accent)">Template</a>
+                        <a href="#" onclick="downloadVendorTemplate(event)" style="font-size:0.75rem;color:var(--gold)">Template</a>
                     </div>
                 </div>
                 <div>
@@ -429,14 +429,14 @@
                     <div style="display:flex;gap:6px;align-items:center">
                         <input type="file" id="inventory-csv" accept=".csv" style="font-size:0.8rem;color:var(--text-light);max-width:200px">
                         <button class="btn btn-primary btn-sm" onclick="uploadInventory()" id="upload-inventory-btn">Upload Inventory</button>
-                        <a href="#" onclick="downloadInventoryTemplate(event)" style="font-size:0.75rem;color:var(--accent)">Template</a>
+                        <a href="#" onclick="downloadInventoryTemplate(event)" style="font-size:0.75rem;color:var(--gold)">Template</a>
                     </div>
                 </div>
             </div>
             <div id="import-results" style="margin-top:0.75rem;max-height:300px;overflow-y:auto"></div>
             <div style="margin-top:0.75rem;border-top:1px solid var(--border);padding-top:0.75rem;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-                <button class="btn btn-sm" onclick="clearTestData()" style="background:#991B1B;color:#FCA5A5;font-size:0.75rem">Clear Test Data (no sales)</button>
-                <button class="btn btn-sm" onclick="resetAllData()" style="background:#7F1D1D;color:#FCA5A5;font-size:0.75rem;border:1px solid #DC2626">Reset Everything &amp; Start Fresh</button>
+                <button class="btn btn-sm" onclick="clearTestData()" style="background:var(--danger-dark);color:color-mix(in srgb, var(--danger) 70%, var(--white));font-size:0.75rem">Clear Test Data (no sales)</button>
+                <button class="btn btn-sm" onclick="resetAllData()" style="background:color-mix(in srgb, var(--danger) 35%, var(--bg));color:color-mix(in srgb, var(--danger) 75%, var(--white));font-size:0.75rem;border:1px solid var(--danger)">Reset Everything &amp; Start Fresh</button>
                 <span style="font-size:0.7rem;color:var(--text-light)">Reset clears ALL vendors, items, sales, gift cards, etc. Only admin/cashier accounts and settings are kept.</span>
             </div>
         </div>
@@ -470,14 +470,14 @@
                 </table>
             </div>
             <div class="vendor-cards-mobile" id="vendor-cards">
-                <div style="color:#A8A6A1;padding:1rem;text-align:center">Loading vendors&hellip;</div>
+                <div style="color:var(--text-light);padding:1rem;text-align:center">Loading vendors&hellip;</div>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Add Employee Modal -->
-<div class="modal-overlay" id="add-employee-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:1000;align-items:center;justify-content:center;padding:1rem">
+<div class="modal-overlay" id="add-employee-modal" style="display:none;position:fixed;inset:0;background:color-mix(in srgb, black 78%, transparent);z-index:1000;align-items:center;justify-content:center;padding:1rem">
     <div style="background:var(--surface);border:1px solid var(--warm-border);padding:1.75rem;width:100%;max-width:420px;color:var(--text)">
         <h2 style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:500;margin-bottom:1.25rem;color:var(--gold);font-style:italic">Add Employee</h2>
         <div style="margin-bottom:0.75rem">
@@ -503,15 +503,15 @@
                 <option value="admin">Admin</option>
             </select>
         </div>
-        <div id="emp-error" style="color:#F87171;font-size:0.8rem;min-height:20px;margin-bottom:4px"></div>
+        <div id="emp-error" style="color:var(--danger);font-size:0.8rem;min-height:20px;margin-bottom:4px"></div>
         <div style="display:flex;gap:0.5rem">
-            <button onclick="closeAddEmployee()" style="flex:1;padding:0.7rem;background:var(--surface-2,#4e4e54);color:var(--text-light);border:1px solid var(--border);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Cancel</button>
-            <button onclick="submitAddEmployee()" id="emp-submit-btn" style="flex:1;padding:0.7rem;background:#147a54;color:#fff;border:none;cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Add Employee</button>
+            <button onclick="closeAddEmployee()" style="flex:1;padding:0.7rem;background:var(--surface-2);color:var(--text-light);border:1px solid var(--border);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Cancel</button>
+            <button onclick="submitAddEmployee()" id="emp-submit-btn" style="flex:1;padding:0.7rem;background:var(--success);color:var(--white);border:none;cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Add Employee</button>
         </div>
     </div>
 </div>
 
-<div class="modal-overlay" id="adjust-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:1000;align-items:center;justify-content:center;padding:1rem">
+<div class="modal-overlay" id="adjust-modal" style="display:none;position:fixed;inset:0;background:color-mix(in srgb, black 78%, transparent);z-index:1000;align-items:center;justify-content:center;padding:1rem">
     <div style="background:var(--surface);border:1px solid var(--warm-border);padding:1.75rem;width:100%;max-width:420px;color:var(--text)">
         <h2 style="font-family:'EB Garamond',serif;font-size:1.4rem;font-weight:500;margin-bottom:0.25rem;color:var(--gold);font-style:italic">Adjust Balance</h2>
         <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem"><span id="adj-vendor-name"></span> &mdash; Current: <strong id="adj-current-bal"></strong></p>
@@ -531,13 +531,13 @@
             <textarea id="adj-reason" rows="2" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box;resize:vertical;font-family:'Roboto',sans-serif" placeholder="e.g. Rent deduction, payout correction, cash advance"></textarea>
         </div>
         <div style="display:flex;gap:0.5rem">
-            <button onclick="closeAdjustModal()" style="flex:1;padding:0.7rem;background:var(--surface-2,#4e4e54);color:var(--text-light);border:1px solid var(--border);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Cancel</button>
-            <button onclick="submitAdjustment()" id="adj-submit-btn" style="flex:1;padding:0.7rem;background:#147a54;color:#fff;border:none;cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Submit Adjustment</button>
+            <button onclick="closeAdjustModal()" style="flex:1;padding:0.7rem;background:var(--surface-2);color:var(--text-light);border:1px solid var(--border);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Cancel</button>
+            <button onclick="submitAdjustment()" id="adj-submit-btn" style="flex:1;padding:0.7rem;background:var(--success);color:var(--white);border:none;cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Submit Adjustment</button>
         </div>
     </div>
 </div>
 
-<div class="modal-overlay" id="history-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.78);z-index:1000;align-items:center;justify-content:center;padding:1rem">
+<div class="modal-overlay" id="history-modal" style="display:none;position:fixed;inset:0;background:color-mix(in srgb, black 78%, transparent);z-index:1000;align-items:center;justify-content:center;padding:1rem">
     <div style="background:var(--surface);border:1px solid var(--warm-border);padding:1.75rem;width:100%;max-width:640px;color:var(--text);max-height:80vh;display:flex;flex-direction:column">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
             <h2 style="font-family:'EB Garamond',serif;font-size:1.3rem;font-weight:500;color:var(--gold);font-style:italic">Balance History &mdash; <span id="hist-vendor-name"></span></h2>
@@ -702,14 +702,14 @@
                         + '<td>' + (v.monthly_rent ? fmt(parseFloat(v.monthly_rent)) : '-') + '</td>'
                         + '<td><strong>' + fmt(parseFloat(v.current_balance || 0)) + '</strong></td>'
                         + '<td>' + statusBadge(v.status) + '</td><td>' + roleBadge(v.role) + '</td>'
-                        + '<td><button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px;background:var(--gold);color:#1a1a1d" onclick="openAdjustModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\',' + parseFloat(v.current_balance || 0) + ')">Adjust</button>'
+                        + '<td><button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px;background:var(--gold);color:var(--charcoal-deep)" onclick="openAdjustModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\',' + parseFloat(v.current_balance || 0) + ')">Adjust</button>'
                         + ' <button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px" onclick="openHistoryModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\')">History</button></td></tr>';
                 }).join('');
             }
 
             var cards = document.getElementById('vendor-cards');
             if (!vendors.length) {
-                cards.innerHTML = '<div style="color:#A8A6A1;padding:1rem;text-align:center">No vendors found.</div>';
+                cards.innerHTML = '<div style="color:var(--text-light);padding:1rem;text-align:center">No vendors found.</div>';
             } else {
                 cards.innerHTML = vendors.map(function(v) {
                     return '<div class="vendor-card" onclick="toggleCardDetail(' + v.id + ')">'
@@ -724,7 +724,7 @@
                         + '<span><label>Monthly Rent</label>' + (v.monthly_rent ? fmt(parseFloat(v.monthly_rent)) : '-') + '</span>'
                         + '<span><label>Role</label>' + v.role + '</span>'
                         + '<span><label>Payout</label>' + (v.payout_method || '-') + '</span>'
-                        + '<div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px;background:var(--gold);color:#1a1a1d" onclick="event.stopPropagation();openAdjustModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\',' + parseFloat(v.current_balance || 0) + ')">Adjust Balance</button>'
+                        + '<div style="display:flex;gap:6px;margin-top:8px"><button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px;background:var(--gold);color:var(--charcoal-deep)" onclick="event.stopPropagation();openAdjustModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\',' + parseFloat(v.current_balance || 0) + ')">Adjust Balance</button>'
                         + '<button class="btn btn-sm" style="font-size:0.7rem;padding:3px 8px" onclick="event.stopPropagation();openHistoryModal(' + v.id + ',\'' + escapeHtml(v.name).replace(/'/g, "\\'") + '\')">History</button></div></div></div>';
                 }).join('');
             }
@@ -763,8 +763,8 @@
         });
         var activeBtn = document.getElementById('admin-filter-' + (statusFilter || 'all'));
         if (activeBtn) {
-            if (statusFilter === 'ready') { activeBtn.style.background = '#1E3A5F'; activeBtn.style.color = '#93C5FD'; }
-            else { activeBtn.style.background = '#92400E'; activeBtn.style.color = '#FDE68A'; }
+            if (statusFilter === 'ready') { activeBtn.style.background = 'color-mix(in srgb, var(--info) 50%, var(--bg))'; activeBtn.style.color = 'var(--text)'; }
+            else { activeBtn.style.background = 'color-mix(in srgb, var(--warning) 55%, var(--bg))'; activeBtn.style.color = 'var(--charcoal-deep)'; }
         }
 
         try {
@@ -784,21 +784,21 @@
             }
 
             if (!orders.length) {
-                list.innerHTML = '<div style="color:#A8A6A1;padding:1rem;text-align:center">No orders found</div>';
+                list.innerHTML = '<div style="color:var(--text-light);padding:1rem;text-align:center">No orders found</div>';
                 return;
             }
             list.innerHTML = orders.map(function(o) {
                 var d = new Date(o.date || o.created_at);
                 var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
                 var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                var statusColor = o.status === 'pending' ? '#FDE68A' : o.status === 'ready' ? '#93C5FD' : '#6EE7B7';
-                var statusBg = o.status === 'pending' ? '#92400E' : o.status === 'ready' ? '#1E3A5F' : '#065F46';
+                var statusColor = o.status === 'pending' ? 'var(--charcoal-deep)' : o.status === 'ready' ? 'var(--text)' : 'var(--success-light)';
+                var statusBg = o.status === 'pending' ? 'color-mix(in srgb, var(--warning) 55%, var(--bg))' : o.status === 'ready' ? 'color-mix(in srgb, var(--info) 50%, var(--bg))' : 'color-mix(in srgb, var(--success) 45%, var(--bg))';
                 var actionBtns = '';
                 if (o.status === 'pending') {
-                    actionBtns = '<button onclick="markAdminReady(' + o.id + ')" class="btn btn-sm" id="admin-ready-btn-' + o.id + '" style="background:#1E3A5F;color:#93C5FD;margin-top:4px;font-size:0.75rem;margin-right:4px">Notify Ready</button>'
-                        + '<button onclick="markAdminPickup(' + o.id + ')" class="btn btn-sm" style="background:#065F46;color:#6EE7B7;margin-top:4px;font-size:0.75rem">Picked Up</button>';
+                    actionBtns = '<button onclick="markAdminReady(' + o.id + ')" class="btn btn-sm" id="admin-ready-btn-' + o.id + '" style="background:color-mix(in srgb, var(--info) 50%, var(--bg));color:var(--text);margin-top:4px;font-size:0.75rem;margin-right:4px">Notify Ready</button>'
+                        + '<button onclick="markAdminPickup(' + o.id + ')" class="btn btn-sm" style="background:color-mix(in srgb, var(--success) 45%, var(--bg));color:var(--success-light);margin-top:4px;font-size:0.75rem">Picked Up</button>';
                 } else if (o.status === 'ready') {
-                    actionBtns = '<button onclick="markAdminPickup(' + o.id + ')" class="btn btn-sm" style="background:#065F46;color:#6EE7B7;margin-top:4px;font-size:0.75rem">Mark Picked Up</button>';
+                    actionBtns = '<button onclick="markAdminPickup(' + o.id + ')" class="btn btn-sm" style="background:color-mix(in srgb, var(--success) 45%, var(--bg));color:var(--success-light);margin-top:4px;font-size:0.75rem">Mark Picked Up</button>';
                 }
                 var emailLine = o.customer_email ? '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:1px">' + o.customer_email.replace(/</g, '&lt;') + '</div>' : '';
                 return '<div style="background:var(--surface);border:1px solid var(--border);padding:0.75rem;margin-bottom:6px;display:flex;justify-content:space-between;align-items:start">'
@@ -814,7 +814,7 @@
                     + '</div></div>';
             }).join('');
         } catch (e) {
-            list.innerHTML = '<div style="color:#F87171;padding:1rem;text-align:center">' + (e.message || 'Failed to load orders') + '</div>';
+            list.innerHTML = '<div style="color:var(--danger);padding:1rem;text-align:center">' + (e.message || 'Failed to load orders') + '</div>';
         }
     }
 
@@ -851,7 +851,7 @@
 
             if (!employees.length) {
                 tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No employees found.</td></tr>';
-                if (cards) cards.innerHTML = '<div style="color:#A8A6A1;padding:1rem;text-align:center">No employees</div>';
+                if (cards) cards.innerHTML = '<div style="color:var(--text-light);padding:1rem;text-align:center">No employees</div>';
                 return;
             }
 
@@ -875,7 +875,7 @@
                 }).join('');
             }
         } catch (e) {
-            document.getElementById('employees-table-body').innerHTML = '<tr><td colspan="5" style="color:#F87171">' + (e.message || 'Failed to load') + '</td></tr>';
+            document.getElementById('employees-table-body').innerHTML = '<tr><td colspan="5" style="color:var(--danger)">' + (e.message || 'Failed to load') + '</td></tr>';
         }
     }
 
@@ -965,7 +965,7 @@
         var fileInput = document.getElementById('vendor-csv');
         var btn = document.getElementById('upload-vendors-btn');
         var results = document.getElementById('import-results');
-        if (!fileInput.files.length) { results.innerHTML = '<p style="color:#F87171">Please select a CSV file</p>'; return; }
+        if (!fileInput.files.length) { results.innerHTML = '<p style="color:var(--danger)">Please select a CSV file</p>'; return; }
         btn.disabled = true; btn.textContent = 'Uploading...';
         results.innerHTML = '<p style="color:var(--text-light)">Processing...</p>';
         try {
@@ -979,7 +979,7 @@
             });
             var data = await resp.json();
             if (!resp.ok) throw new Error(data.detail || 'Upload failed');
-            var html = '<div style="padding:0.75rem;background:var(--surface);margin-bottom:0.5rem"><strong style="color:var(--accent)">' + escapeHtml(data.summary) + '</strong></div>';
+            var html = '<div style="padding:0.75rem;background:var(--surface);margin-bottom:0.5rem"><strong style="color:var(--gold)">' + escapeHtml(data.summary) + '</strong></div>';
             if (data.created.length) {
                 html += '<div style="font-size:0.75rem;color:var(--text-light);margin-bottom:4px">Created:</div>';
                 data.created.forEach(function(c) {
@@ -987,22 +987,22 @@
                 });
             }
             if (data.skipped.length) {
-                html += '<div style="font-size:0.75rem;color:#FBBF24;margin-top:6px;margin-bottom:4px">Skipped:</div>';
+                html += '<div style="font-size:0.75rem;color:var(--warning);margin-top:6px;margin-bottom:4px">Skipped:</div>';
                 data.skipped.forEach(function(s) {
-                    html += '<div style="font-size:0.8rem;padding:3px 6px;color:#FBBF24">Row ' + s.row + ': ' + escapeHtml(s.reason) + (s.name ? ' (' + escapeHtml(s.name) + ')' : '') + '</div>';
+                    html += '<div style="font-size:0.8rem;padding:3px 6px;color:var(--warning)">Row ' + s.row + ': ' + escapeHtml(s.reason) + (s.name ? ' (' + escapeHtml(s.name) + ')' : '') + '</div>';
                 });
             }
             if (data.errors.length) {
-                html += '<div style="font-size:0.75rem;color:#F87171;margin-top:6px;margin-bottom:4px">Errors:</div>';
+                html += '<div style="font-size:0.75rem;color:var(--danger);margin-top:6px;margin-bottom:4px">Errors:</div>';
                 data.errors.forEach(function(e) {
-                    html += '<div style="font-size:0.8rem;padding:3px 6px;color:#F87171">Row ' + e.row + ': ' + escapeHtml(e.error) + '</div>';
+                    html += '<div style="font-size:0.8rem;padding:3px 6px;color:var(--danger)">Row ' + e.row + ': ' + escapeHtml(e.error) + '</div>';
                 });
             }
             results.innerHTML = html;
             fileInput.value = '';
             loadVendors();
         } catch (err) {
-            results.innerHTML = '<p style="color:#F87171">' + escapeHtml(err.message) + '</p>';
+            results.innerHTML = '<p style="color:var(--danger)">' + escapeHtml(err.message) + '</p>';
         } finally {
             btn.disabled = false; btn.textContent = 'Upload Vendors';
         }
@@ -1012,7 +1012,7 @@
         var fileInput = document.getElementById('inventory-csv');
         var btn = document.getElementById('upload-inventory-btn');
         var results = document.getElementById('import-results');
-        if (!fileInput.files.length) { results.innerHTML = '<p style="color:#F87171">Please select a CSV file</p>'; return; }
+        if (!fileInput.files.length) { results.innerHTML = '<p style="color:var(--danger)">Please select a CSV file</p>'; return; }
         btn.disabled = true; btn.textContent = 'Uploading...';
         results.innerHTML = '<p style="color:var(--text-light)">Processing...</p>';
         try {
@@ -1026,7 +1026,7 @@
             });
             var data = await resp.json();
             if (!resp.ok) throw new Error(data.detail || 'Upload failed');
-            var html = '<div style="padding:0.75rem;background:var(--surface);margin-bottom:0.5rem"><strong style="color:var(--accent)">' + escapeHtml(data.summary) + '</strong></div>';
+            var html = '<div style="padding:0.75rem;background:var(--surface);margin-bottom:0.5rem"><strong style="color:var(--gold)">' + escapeHtml(data.summary) + '</strong></div>';
             if (data.created.length) {
                 html += '<div style="font-size:0.75rem;color:var(--text-light);margin-bottom:4px">Created (' + data.created.length + ' items):</div>';
                 data.created.slice(0, 50).forEach(function(c) {
@@ -1035,22 +1035,22 @@
                 if (data.created.length > 50) html += '<div style="font-size:0.75rem;color:var(--text-light);padding:3px 6px">... and ' + (data.created.length - 50) + ' more</div>';
             }
             if (data.skipped.length) {
-                html += '<div style="font-size:0.75rem;color:#FBBF24;margin-top:6px;margin-bottom:4px">Skipped:</div>';
+                html += '<div style="font-size:0.75rem;color:var(--warning);margin-top:6px;margin-bottom:4px">Skipped:</div>';
                 data.skipped.forEach(function(s) {
-                    html += '<div style="font-size:0.8rem;padding:3px 6px;color:#FBBF24">Row ' + s.row + ': ' + escapeHtml(s.reason) + '</div>';
+                    html += '<div style="font-size:0.8rem;padding:3px 6px;color:var(--warning)">Row ' + s.row + ': ' + escapeHtml(s.reason) + '</div>';
                 });
             }
             if (data.errors.length) {
-                html += '<div style="font-size:0.75rem;color:#F87171;margin-top:6px;margin-bottom:4px">Errors:</div>';
+                html += '<div style="font-size:0.75rem;color:var(--danger);margin-top:6px;margin-bottom:4px">Errors:</div>';
                 data.errors.slice(0, 20).forEach(function(e) {
-                    html += '<div style="font-size:0.8rem;padding:3px 6px;color:#F87171">Row ' + e.row + ' (' + escapeHtml(e.name || '') + '): ' + escapeHtml(e.error) + '</div>';
+                    html += '<div style="font-size:0.8rem;padding:3px 6px;color:var(--danger)">Row ' + e.row + ' (' + escapeHtml(e.name || '') + '): ' + escapeHtml(e.error) + '</div>';
                 });
-                if (data.errors.length > 20) html += '<div style="font-size:0.75rem;color:#F87171;padding:3px 6px">... and ' + (data.errors.length - 20) + ' more errors</div>';
+                if (data.errors.length > 20) html += '<div style="font-size:0.75rem;color:var(--danger);padding:3px 6px">... and ' + (data.errors.length - 20) + ' more errors</div>';
             }
             results.innerHTML = html;
             fileInput.value = '';
         } catch (err) {
-            results.innerHTML = '<p style="color:#F87171">' + escapeHtml(err.message) + '</p>';
+            results.innerHTML = '<p style="color:var(--danger)">' + escapeHtml(err.message) + '</p>';
         } finally {
             btn.disabled = false; btn.textContent = 'Upload Inventory';
         }
@@ -1071,10 +1071,10 @@
             });
             var data = await resp.json();
             if (!resp.ok) throw new Error(data.detail || 'Failed to reset data');
-            results.innerHTML = '<div style="padding:0.75rem;background:var(--surface);color:var(--accent)">' + escapeHtml(data.message) + '</div>';
+            results.innerHTML = '<div style="padding:0.75rem;background:var(--surface);color:var(--gold)">' + escapeHtml(data.message) + '</div>';
             loadVendors();
         } catch (err) {
-            results.innerHTML = '<p style="color:#F87171">' + escapeHtml(err.message) + '</p>';
+            results.innerHTML = '<p style="color:var(--danger)">' + escapeHtml(err.message) + '</p>';
         }
     }
 
@@ -1090,10 +1090,10 @@
             });
             var data = await resp.json();
             if (!resp.ok) throw new Error(data.detail || 'Failed to clear data');
-            results.innerHTML = '<div style="padding:0.75rem;background:var(--surface);color:var(--accent)">' + escapeHtml(data.message) + '</div>';
+            results.innerHTML = '<div style="padding:0.75rem;background:var(--surface);color:var(--gold)">' + escapeHtml(data.message) + '</div>';
             loadVendors();
         } catch (err) {
-            results.innerHTML = '<p style="color:#F87171">' + escapeHtml(err.message) + '</p>';
+            results.innerHTML = '<p style="color:var(--danger)">' + escapeHtml(err.message) + '</p>';
         }
     }
 
@@ -1160,7 +1160,7 @@
             }
             document.getElementById('hist-body').innerHTML = data.map(function(a) {
                 var d = new Date(a.created_at);
-                var typeClass = a.adjustment_type === 'credit' ? 'color:#4ADE80' : 'color:#F87171';
+                var typeClass = a.adjustment_type === 'credit' ? 'color:var(--success-light)' : 'color:var(--danger)';
                 return '<tr>'
                     + '<td style="font-size:0.78rem">' + d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + '</td>'
                     + '<td style="' + typeClass + ';font-weight:600;font-size:0.78rem;text-transform:uppercase">' + a.adjustment_type + '</td>'
@@ -1170,7 +1170,7 @@
                     + '</tr>';
             }).join('');
         } catch (err) {
-            document.getElementById('hist-body').innerHTML = '<tr><td colspan="5" style="color:#F87171">' + escapeHtml(err.message) + '</td></tr>';
+            document.getElementById('hist-body').innerHTML = '<tr><td colspan="5" style="color:var(--danger)">' + escapeHtml(err.message) + '</td></tr>';
         }
     }
     function closeHistoryModal() {

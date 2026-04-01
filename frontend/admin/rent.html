@@ -67,9 +67,9 @@
             border: 1px solid transparent;
             font-family: 'Roboto', sans-serif;
         }
-        .status-current { background: rgba(123,196,160,0.1); color: #7BC4A0; border-color: rgba(123,196,160,0.25); }
-        .status-due     { background: rgba(232,192,112,0.1); color: #e8c070; border-color: rgba(232,192,112,0.25); }
-        .status-overdue { background: rgba(200,112,112,0.1); color: #c87070; border-color: rgba(200,112,112,0.25); }
+        .status-current { background: color-mix(in srgb, var(--success-light) 10%, transparent); color: var(--success-light); border-color: color-mix(in srgb, var(--success-light) 25%, transparent); }
+        .status-due     { background: color-mix(in srgb, var(--warning) 10%, transparent); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 25%, transparent); }
+        .status-overdue { background: color-mix(in srgb, var(--danger) 10%, transparent); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 25%, transparent); }
 
         .flag-icon { font-size: 1rem; }
         .flag-btn {
@@ -84,7 +84,7 @@
             font-family: 'Roboto', sans-serif;
         }
         .flag-btn:hover { border-color: var(--text-light); color: var(--text); }
-        .flag-btn.flagged { border-color: #c87070; color: #c87070; }
+        .flag-btn.flagged { border-color: var(--danger); color: var(--danger); }
 
         .search-bar {
             display: flex;
@@ -104,7 +104,7 @@
             transition: border-color 0.15s;
         }
         .search-bar input::placeholder { color: var(--text-light); opacity: 0.6; }
-        .search-bar input:focus { outline: none; border-color: var(--gold-dim); box-shadow: 0 0 0 2px rgba(201,169,110,0.12); }
+        .search-bar input:focus { outline: none; border-color: var(--gold-dim); box-shadow: 0 0 0 2px var(--gold-glow); }
 
         .vendor-name-cell { display: flex; align-items: center; gap: 0.5rem; }
         .vendor-name-link {
@@ -116,13 +116,13 @@
         .vendor-name-link:hover { border-bottom-color: var(--gold); }
 
         tr.rent-row { cursor: pointer; transition: background 0.15s; }
-        tr.rent-row:hover { background: rgba(201,169,110,0.06); }
+        tr.rent-row:hover { background: var(--gold-glow); }
         tr.rent-row td { cursor: pointer; }
 
         .record-pay-btn {
-            background: rgba(123,196,160,0.12);
-            color: #7BC4A0;
-            border: 1px solid rgba(123,196,160,0.3);
+            background: color-mix(in srgb, var(--success-light) 12%, transparent);
+            color: var(--success-light);
+            border: 1px solid color-mix(in srgb, var(--success-light) 30%, transparent);
             padding: 8px 14px;
             font-size: 0.78rem;
             min-height: 40px;
@@ -132,13 +132,13 @@
             letter-spacing: 0.06em;
             transition: background 0.15s, border-color 0.15s;
         }
-        .record-pay-btn:hover { background: rgba(123,196,160,0.22); border-color: rgba(123,196,160,0.5); }
+        .record-pay-btn:hover { background: color-mix(in srgb, var(--success-light) 22%, transparent); border-color: color-mix(in srgb, var(--success-light) 50%, transparent); }
 
         .pay-modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.55);
+            background: color-mix(in srgb, black 55%, transparent);
             z-index: 950;
             animation: fadeIn 0.2s;
         }
@@ -194,18 +194,18 @@
             color: var(--text-light);
         }
         .pay-confirm-btn {
-            background: #7BC4A0;
-            border: 1px solid #7BC4A0;
-            color: #1a1a1a;
+            background: var(--success-light);
+            border: 1px solid var(--success-light);
+            color: var(--charcoal-deep);
             font-weight: 600;
         }
-        .pay-confirm-btn:hover { background: #6ab890; }
+        .pay-confirm-btn:hover { background: color-mix(in srgb, var(--success-light) 85%, var(--text)); }
 
         .detail-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.55);
+            background: color-mix(in srgb, black 55%, transparent);
             z-index: 900;
             animation: fadeIn 0.2s;
         }
@@ -291,7 +291,7 @@
             justify-content: space-between;
             align-items: center;
             padding: 0.65rem 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+            border-bottom: 1px solid var(--border);
         }
         .payment-item:last-child { border-bottom: none; }
         .payment-period {
@@ -308,7 +308,7 @@
             font-family: 'EB Garamond', Georgia, serif;
             font-size: 1.15rem;
             font-weight: 500;
-            color: #7BC4A0;
+            color: var(--success-light);
         }
         .payment-badge {
             display: inline-block;
@@ -321,8 +321,8 @@
             font-family: 'Roboto', sans-serif;
             margin-left: 0.5rem;
         }
-        .payment-badge.paid { background: rgba(123,196,160,0.1); color: #7BC4A0; border-color: rgba(123,196,160,0.25); }
-        .payment-badge.pending { background: rgba(232,192,112,0.1); color: #e8c070; border-color: rgba(232,192,112,0.25); }
+        .payment-badge.paid { background: color-mix(in srgb, var(--success-light) 10%, transparent); color: var(--success-light); border-color: color-mix(in srgb, var(--success-light) 25%, transparent); }
+        .payment-badge.pending { background: color-mix(in srgb, var(--warning) 10%, transparent); color: var(--warning); border-color: color-mix(in srgb, var(--warning) 25%, transparent); }
         .no-payments {
             text-align: center;
             color: var(--text-light);
@@ -350,7 +350,7 @@
         .rent-mob-sub { font-size: 0.75rem; color: var(--text-light); margin-top: 2px; }
         .rent-mob-right { text-align: right; flex-shrink: 0; }
         .rent-mob-row { display: flex; justify-content: space-between; font-size: 0.82rem; margin-top: 0.4rem; }
-        .rent-mob-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.04); }
+        .rent-mob-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
 
         @media (max-width: 767px) {
             .rent-stat-value { font-size: 1.9rem; }
@@ -412,7 +412,7 @@
     <div class="page-header">
         <h1 class="page-title">Rent Status</h1>
         <p class="page-subtitle">Track monthly rent collection and vendor payment status</p>
-        <span id="month-label" style="color:#A8A6A1;font-size:0.95rem;"></span>
+        <span id="month-label" style="color:var(--text-light);font-size:0.95rem;"></span>
     </div>
 
     <div class="rent-stats">
@@ -422,15 +422,15 @@
         </div>
         <div class="rent-stat-card">
             <div class="rent-stat-title">Current</div>
-            <div class="rent-stat-value" style="color:#4ade80" id="stat-current">&mdash;</div>
+            <div class="rent-stat-value" style="color:var(--success-light)" id="stat-current">&mdash;</div>
         </div>
         <div class="rent-stat-card">
             <div class="rent-stat-title">Due</div>
-            <div class="rent-stat-value" style="color:#facc15" id="stat-due">&mdash;</div>
+            <div class="rent-stat-value" style="color:var(--warning)" id="stat-due">&mdash;</div>
         </div>
         <div class="rent-stat-card">
             <div class="rent-stat-title">Overdue</div>
-            <div class="rent-stat-value" style="color:#f87171" id="stat-overdue">&mdash;</div>
+            <div class="rent-stat-value" style="color:var(--danger)" id="stat-overdue">&mdash;</div>
         </div>
     </div>
 
@@ -496,7 +496,7 @@
             <option value="card">Card (Terminal)</option>
             <option value="other">Other</option>
         </select>
-        <div id="card-info" style="display:none;background:rgba(201,169,110,0.08);border:1px solid rgba(201,169,110,0.2);padding:0.75rem;margin:0.5rem 0;font-size:0.82rem;color:var(--text-light);">
+        <div id="card-info" style="display:none;background:var(--gold-glow);border:1px solid var(--warm-border);padding:0.75rem;margin:0.5rem 0;font-size:0.82rem;color:var(--text-light);">
             Payment will be sent to the GoDaddy/Poynt terminal. Have the vendor present their card on the terminal.
         </div>
         <label>Period</label>
@@ -906,9 +906,9 @@
             document.getElementById('terminal-status').style.display = 'none';
             document.getElementById('terminal-title').textContent = 'Payment Approved';
             document.getElementById('terminal-result').style.display = 'block';
-            document.getElementById('terminal-result').style.background = 'rgba(123,196,160,0.1)';
-            document.getElementById('terminal-result').style.color = '#7BC4A0';
-            document.getElementById('terminal-result').style.border = '1px solid rgba(123,196,160,0.3)';
+            document.getElementById('terminal-result').style.background = 'color-mix(in srgb, var(--success-light) 10%, transparent)';
+            document.getElementById('terminal-result').style.color = 'var(--success-light)';
+            document.getElementById('terminal-result').style.border = '1px solid color-mix(in srgb, var(--success-light) 30%, transparent)';
             document.getElementById('terminal-result').textContent = result.message;
             document.getElementById('terminal-cancel-btn').textContent = 'Close';
 
@@ -925,9 +925,9 @@
         document.getElementById('terminal-status').style.display = 'none';
         document.getElementById('terminal-title').textContent = 'Payment Failed';
         document.getElementById('terminal-result').style.display = 'block';
-        document.getElementById('terminal-result').style.background = 'rgba(200,112,112,0.1)';
-        document.getElementById('terminal-result').style.color = '#c87070';
-        document.getElementById('terminal-result').style.border = '1px solid rgba(200,112,112,0.3)';
+        document.getElementById('terminal-result').style.background = 'color-mix(in srgb, var(--danger) 10%, transparent)';
+        document.getElementById('terminal-result').style.color = 'var(--danger)';
+        document.getElementById('terminal-result').style.border = '1px solid color-mix(in srgb, var(--danger) 30%, transparent)';
         document.getElementById('terminal-result').textContent = msg;
         document.getElementById('terminal-cancel-btn').textContent = 'Close';
     }

@@ -46,7 +46,7 @@
             margin-bottom: 1.25rem;
         }
         .settings-section-header {
-            background: rgba(201,169,110,0.08);
+            background: var(--gold-glow);
             border-bottom: 1px solid var(--border);
             padding: 0.65rem 1.25rem;
             font-size: 0.68rem;
@@ -63,7 +63,7 @@
             align-items: center;
             justify-content: space-between;
             padding: 0.75rem 0;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+            border-bottom: 1px solid var(--border);
         }
         .setting-row:last-child { border-bottom: none; }
         .setting-label {
@@ -92,7 +92,7 @@
             position: absolute;
             cursor: pointer;
             inset: 0;
-            background: #555;
+            background: var(--border);
             border-radius: 12px;
             transition: background 0.2s;
         }
@@ -103,12 +103,12 @@
             height: 18px;
             left: 3px;
             bottom: 3px;
-            background: #fff;
+            background: var(--white);
             border-radius: 50%;
             transition: transform 0.2s;
         }
         .toggle-switch input:checked + .toggle-slider {
-            background: #4ade80;
+            background: var(--success-light);
         }
         .toggle-switch input:checked + .toggle-slider::before {
             transform: translateX(20px);
@@ -151,7 +151,7 @@
         .form-group select:focus {
             outline: none;
             border-color: var(--gold-dim);
-            box-shadow: 0 0 0 2px rgba(201,169,110,0.12);
+            box-shadow: 0 0 0 2px var(--gold-glow);
         }
         .form-group small {
             font-size: 0.7rem;
@@ -170,7 +170,7 @@
         }
         .save-bar .btn-save {
             background: var(--gold);
-            color: #1a1a1a;
+            color: var(--charcoal-deep);
             border: none;
             padding: 0.6rem 2rem;
             font-size: 0.82rem;
@@ -181,7 +181,7 @@
             letter-spacing: 0.06em;
             transition: background 0.15s;
         }
-        .save-bar .btn-save:hover { background: #b8963f; }
+        .save-bar .btn-save:hover { background: var(--gold-dim); }
         .save-bar .btn-reset {
             background: none;
             border: 1px solid var(--border);
@@ -209,7 +209,7 @@
             color: var(--text-light);
             padding: 0.6rem 0.5rem;
             text-align: center;
-            background: rgba(201,169,110,0.06);
+            background: var(--gold-glow);
             border-bottom: 1px solid var(--border);
             font-family: 'Roboto', sans-serif;
         }
@@ -219,7 +219,7 @@
         }
         .role-grid-row > div {
             padding: 0.6rem 0.5rem;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+            border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -710,7 +710,7 @@
         <div class="settings-section">
             <div class="settings-section-header">Email Templates</div>
             <div class="settings-section-body">
-                <p style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.75rem">Customize the subject line and message for each email type. Leave blank to use the default text. Use <code style="background:rgba(201,169,110,0.12);padding:1px 5px;font-size:0.78rem">{variable_name}</code> placeholders for dynamic values.</p>
+                <p style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.75rem">Customize the subject line and message for each email type. Leave blank to use the default text. Use <code style="background:var(--gold-glow);padding:1px 5px;font-size:0.78rem">{variable_name}</code> placeholders for dynamic values.</p>
                 <div class="form-group" style="margin-bottom:1rem">
                     <label>Email Template</label>
                     <select id="tpl-selector" onchange="selectTemplate()" style="max-width:320px">
@@ -768,7 +768,7 @@
                     <input type="hidden" id="s-email_tpl_order_ready_pickup_closing">
                 </div>
                 <div id="tpl-editor" style="display:none">
-                    <div id="tpl-variables" style="font-size:0.72rem;color:var(--text-light);margin-bottom:1rem;padding:0.5rem 0.75rem;background:rgba(201,169,110,0.06);border:1px solid rgba(201,169,110,0.12)"></div>
+                    <div id="tpl-variables" style="font-size:0.72rem;color:var(--text-light);margin-bottom:1rem;padding:0.5rem 0.75rem;background:var(--gold-glow);border:1px solid var(--warm-border)"></div>
                     <div class="form-group" style="margin-bottom:0.75rem">
                         <label>Subject Line</label>
                         <input type="text" id="tpl-subject" placeholder="Default subject">
@@ -1091,10 +1091,10 @@
         var statusEl = document.getElementById('save-status');
         try {
             await apiPost('/api/v1/admin/settings', data);
-            statusEl.innerHTML = '<span style="color:#4ade80">Settings saved successfully</span>';
+            statusEl.innerHTML = '<span style="color:var(--success-light)">Settings saved successfully</span>';
             setTimeout(function() { statusEl.innerHTML = ''; }, 4000);
         } catch (e) {
-            statusEl.innerHTML = '<span style="color:#f87171">' + (e.message || 'Failed to save') + '</span>';
+            statusEl.innerHTML = '<span style="color:var(--danger)">' + (e.message || 'Failed to save') + '</span>';
         }
     }
 
@@ -1106,13 +1106,13 @@
             var data = await apiGet('/api/v1/notifications/connected-email');
             var el = document.getElementById('connected-email-status');
             if (data.connected && data.email) {
-                el.innerHTML = '<span style="display:inline-block;width:10px;height:10px;background:#4ade80;border-radius:50%;flex-shrink:0"></span>'
+                el.innerHTML = '<span style="display:inline-block;width:10px;height:10px;background:var(--success-light);border-radius:50%;flex-shrink:0"></span>'
                     + '<span style="font-size:0.9rem;color:var(--text)"><strong>Connected</strong> &mdash; sending from <span style="color:var(--gold)">' + escHtml(data.email) + '</span></span>';
             } else if (data.connected) {
-                el.innerHTML = '<span style="display:inline-block;width:10px;height:10px;background:#fbbf24;border-radius:50%;flex-shrink:0"></span>'
+                el.innerHTML = '<span style="display:inline-block;width:10px;height:10px;background:var(--warning);border-radius:50%;flex-shrink:0"></span>'
                     + '<span style="font-size:0.9rem;color:var(--text)"><strong>Connected</strong> &mdash; Gmail account linked (address not available)</span>';
             } else {
-                el.innerHTML = '<span style="display:inline-block;width:10px;height:10px;background:#f87171;border-radius:50%;flex-shrink:0"></span>'
+                el.innerHTML = '<span style="display:inline-block;width:10px;height:10px;background:var(--danger);border-radius:50%;flex-shrink:0"></span>'
                     + '<span style="font-size:0.9rem;color:var(--text)"><strong>Not connected</strong> &mdash; Gmail integration needs to be configured</span>';
             }
         } catch (e) {
@@ -1148,7 +1148,7 @@
         var tpl = emailTemplateDefaults[key];
 
         var varsHtml = '<strong style="color:var(--gold)">Available variables:</strong> ';
-        varsHtml += tpl.variables.map(function(v) { return '<code style="background:rgba(201,169,110,0.12);padding:1px 5px;font-size:0.72rem">{' + v + '}</code>'; }).join(' ');
+        varsHtml += tpl.variables.map(function(v) { return '<code style="background:var(--gold-glow);padding:1px 5px;font-size:0.72rem">{' + v + '}</code>'; }).join(' ');
         document.getElementById('tpl-variables').innerHTML = varsHtml;
 
         var subjectEl = document.getElementById('tpl-subject');
@@ -1195,10 +1195,10 @@
             if (bodH) bodH.value = data['email_tpl_' + currentTplKey + '_body'];
             if (cloH) cloH.value = data['email_tpl_' + currentTplKey + '_closing'];
 
-            statusEl.innerHTML = '<span style="color:#4ade80">Template saved</span>';
+            statusEl.innerHTML = '<span style="color:var(--success-light)">Template saved</span>';
             setTimeout(function() { statusEl.innerHTML = ''; }, 4000);
         } catch (e) {
-            statusEl.innerHTML = '<span style="color:#f87171">' + (e.message || 'Failed to save') + '</span>';
+            statusEl.innerHTML = '<span style="color:var(--danger)">' + (e.message || 'Failed to save') + '</span>';
         }
     }
 
@@ -1225,9 +1225,9 @@
             var body = {};
             if (toEmail) body.to_email = toEmail;
             var result = await apiPost('/api/v1/notifications/test-email', body);
-            statusEl.innerHTML = '<span style="color:#4ade80">' + (result.message || 'Test email sent successfully!') + '</span>';
+            statusEl.innerHTML = '<span style="color:var(--success-light)">' + (result.message || 'Test email sent successfully!') + '</span>';
         } catch (e) {
-            statusEl.innerHTML = '<span style="color:#f87171">Failed: ' + (e.message || 'Could not send test email') + '</span>';
+            statusEl.innerHTML = '<span style="color:var(--danger)">Failed: ' + (e.message || 'Could not send test email') + '</span>';
         } finally {
             btn.disabled = false;
             btn.textContent = 'Send Test Email';
@@ -1252,14 +1252,14 @@
         if (!darkBtn || !lightBtn) return;
         if (theme === 'dark') {
             darkBtn.style.background = 'var(--gold)';
-            darkBtn.style.color = '#1a1a1d';
+            darkBtn.style.color = 'var(--charcoal-deep)';
             darkBtn.style.borderColor = 'var(--gold)';
             lightBtn.style.background = 'var(--surface-2)';
             lightBtn.style.color = 'var(--text-light)';
             lightBtn.style.borderColor = 'var(--border)';
         } else {
             lightBtn.style.background = 'var(--gold)';
-            lightBtn.style.color = '#1a1a1d';
+            lightBtn.style.color = 'var(--charcoal-deep)';
             lightBtn.style.borderColor = 'var(--gold)';
             darkBtn.style.background = 'var(--surface-2)';
             darkBtn.style.color = 'var(--text-light)';

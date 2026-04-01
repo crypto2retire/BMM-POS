@@ -68,9 +68,9 @@
             padding: 0.6rem 0.75rem;
             font-size: 0.9rem;
             color: var(--text);
-            border-bottom: 1px solid rgba(255,255,255,0.04);
+            border-bottom: 1px solid var(--border);
         }
-        .report-table tr:hover td { background: rgba(201,169,110,0.04); }
+        .report-table tr:hover td { background: var(--gold-glow); }
 
         .empty-msg {
             color: var(--text-light);
@@ -225,7 +225,7 @@
             renderSummary(type, data);
             renderTable(type, data);
         } catch (e) {
-            content.innerHTML = '<p style="color:#F87171;text-align:center;padding:2rem">' + (e.message || 'Failed to load report') + '</p>';
+            content.innerHTML = '<p style="color:var(--danger);text-align:center;padding:2rem">' + (e.message || 'Failed to load report') + '</p>';
             summary.innerHTML = '';
         }
     }

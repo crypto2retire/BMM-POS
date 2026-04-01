@@ -50,7 +50,7 @@
             transition: border-color 0.15s;
         }
         .search-bar input::placeholder { color: var(--text-light); opacity: 0.6; }
-        .search-bar input:focus { outline: none; border-color: var(--gold-dim); box-shadow: 0 0 0 2px rgba(201,169,110,0.12); }
+        .search-bar input:focus { outline: none; border-color: var(--gold-dim); box-shadow: 0 0 0 2px var(--gold-glow); }
 
         /* ── Pagination bar ──────────────────────────────── */
         .pagination-bar { display:flex; align-items:center; justify-content:space-between; margin-top:1rem; font-size:0.78rem; color:var(--text-light); }
@@ -63,7 +63,7 @@
         .pagination-bar button:disabled { opacity:0.3; cursor:default; }
 
         /* ── Vendor grid table ────────────────────────────── */
-        .vendor-flag { color: #f87171; margin-right: 4px; font-size: 0.85rem; }
+        .vendor-flag { color: var(--danger); margin-right: 4px; font-size: 0.85rem; }
         .role-badge {
             display: inline-block;
             padding: 4px 10px;
@@ -74,9 +74,9 @@
             border: 1px solid transparent;
             font-family: 'Roboto', sans-serif;
         }
-        .role-admin   { background: rgba(100,149,237,0.12); color: #6495ed; border-color: rgba(100,149,237,0.25); }
-        .role-cashier  { background: rgba(201,169,110,0.12); color: var(--gold); border-color: rgba(201,169,110,0.25); }
-        .role-vendor   { background: rgba(168,166,161,0.1); color: var(--text-light); border-color: rgba(168,166,161,0.2); }
+        .role-admin   { background: color-mix(in srgb, var(--info) 12%, transparent); color: var(--info); border-color: color-mix(in srgb, var(--info) 25%, transparent); }
+        .role-cashier  { background: var(--gold-glow); color: var(--gold); border-color: var(--warm-border); }
+        .role-vendor   { background: color-mix(in srgb, var(--text-light) 10%, transparent); color: var(--text-light); border-color: color-mix(in srgb, var(--text-light) 20%, transparent); }
 
         .table-actions { display: flex; gap: 0.35rem; flex-wrap: wrap; }
 
@@ -114,7 +114,7 @@
         .vendor-card-detail {
             margin-top: 0.75rem;
             padding-top: 0.75rem;
-            border-top: 1px solid rgba(255,255,255,0.06);
+            border-top: 1px solid var(--border);
             font-size: 0.85rem;
             color: var(--text);
         }
@@ -145,7 +145,7 @@
             margin-bottom: 1.25rem;
             transition: color 0.2s;
         }
-        .detail-back:hover { color: #dbc18a; }
+        .detail-back:hover { color: var(--gold-light); }
 
         .detail-header {
             display: flex;
@@ -209,7 +209,7 @@
             font-family: 'Roboto', sans-serif;
             transition: border-color 0.15s;
         }
-        .edit-form .form-control:focus { outline: none; border-color: var(--gold-dim); box-shadow: 0 0 0 2px rgba(201,169,110,0.12); }
+        .edit-form .form-control:focus { outline: none; border-color: var(--gold-dim); box-shadow: 0 0 0 2px var(--gold-glow); }
         .edit-form select.form-control { appearance: auto; }
         .edit-form textarea.form-control { min-height: 80px; resize: vertical; }
         .edit-form .form-full { grid-column: 1 / -1; }
@@ -329,7 +329,7 @@
                 </table>
             </div>
             <div class="vendor-cards" id="vendor-cards">
-                <div style="color:#A8A6A1;padding:1rem;text-align:center">Loading vendors&hellip;</div>
+                <div style="color:var(--text-light);padding:1rem;text-align:center">Loading vendors&hellip;</div>
             </div>
             <div id="vendor-pagination" class="pagination-bar"></div>
         </div>
@@ -662,7 +662,7 @@
 
         if (vendors.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No vendors found.</td></tr>';
-            cards.innerHTML = '<div style="color:#A8A6A1;padding:1rem;text-align:center">No vendors found.</div>';
+            cards.innerHTML = '<div style="color:var(--text-light);padding:1rem;text-align:center">No vendors found.</div>';
             if (pagDiv) pagDiv.innerHTML = '';
             return;
         }

@@ -27,10 +27,10 @@
         }
         .search-bar .form-control:focus {
             border-color: var(--gold-dim);
-            box-shadow: 0 0 0 2px rgba(201,169,110,0.12);
+            box-shadow: 0 0 0 2px var(--gold-glow);
         }
         .vendor-row { cursor: pointer; }
-        .vendor-row:hover td { background: rgba(201,169,110,0.04) !important; }
+        .vendor-row:hover td { background: var(--gold-glow) !important; }
         .vendor-expand { display:none; background: var(--surface-2); }
         .vendor-expand.open { display:table-row; }
         .expand-inner { padding: 1rem 1.5rem; }
@@ -42,7 +42,7 @@
         .expand-panel.active { display:block; }
         .mini-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
         .mini-table th { padding:0.4rem 0.5rem; text-align:left; color:var(--text-light); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; border-bottom:1px solid var(--border); }
-        .mini-table td { padding:0.4rem 0.5rem; border-bottom:1px solid rgba(255,255,255,0.05); }
+        .mini-table td { padding:0.4rem 0.5rem; border-bottom:1px solid var(--border); }
         .mini-table tr:last-child td { border-bottom:none; }
         .expand-arrow { display:inline-block; transition:transform 0.2s; color: var(--gold-dim); }
         .expand-arrow.open { transform:rotate(90deg); }
@@ -66,7 +66,7 @@
         .vendor-mob-name { font-family: 'EB Garamond', serif; font-size: 1.1rem; font-weight: 500; }
         .vendor-mob-meta { font-size: 0.78rem; color: var(--text-light); margin-top: 4px; }
         .vendor-mob-right { text-align: right; flex-shrink: 0; }
-        .vendor-mob-detail { display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.06); }
+        .vendor-mob-detail { display: none; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
         .vendor-mob-detail.open { display: block; }
 
         @media (max-width: 767px) {
