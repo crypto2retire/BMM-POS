@@ -869,3 +869,133 @@ async def reset_data(
         "message": f"All data cleared. {vendor_count} system accounts preserved (admin/cashier).",
         "preserved_accounts": admin_ids,
     }
+
+
+# ─── Rent & Payouts combined transaction ledger ───────────────────────────
+@router.get("/rent-payout-ledger")
+async def rent_payout_ledger(
+    db: AsyncSession = Depends(get_db),
+    _: Vendor = Depends(require_cashier_or_admin),
+):
+    """
+    Returns a combined list of all rent payments and payouts,
+    plus summary stats and per-vendor balance cards.
+    """
+    from sqlalchemy.orm import selectinload
+
+    today = date.today()
+    current_period = date(today.year, today.month, 1)
+
+    # ── Rent payments (all time) ──
+    rent_result = await db.execute(
+        select(RentPayment)
+        .options(selectinload(RentPayment.vendor))
+        .order_by(RentPayment.processed_at.desc())
+    )
+    rent_payments = rent_result.scalars().all()
+
+    # ── Payouts (all time) ──
+    payout_result = await db.execute(
+        select(Payout)
+        .options(selectinload(Payout.vendor))
+        .order_by(Payout.created_at.desc())
+    )
+    payouts = payout_result.scalars().all()
+
+    # ── Active vendors with rent ──
+    vendors_result = await db.execute(
+        select(Vendor).where(Vendor.status == "active", Vendor.monthly_rent > 0)
+    )
+    active_rent_vendors = vendors_result.scalars().all()
+
+    # ── All vendor balances ──
+    bal_result = await db.execute(select(VendorBalance))
+    balances = {b.vendor_id: float(b.balance) for b in bal_result.scalars().all()}
+
+    # ── All active vendors for balance cards ──
+    all_vendors_result = await db.execute(
+        select(Vendor).where(Vendor.status == "active").order_by(Vendor.name)
+    )
+    all_vendors = all_vendors_result.scalars().all()
+
+    # ── Build combined transactions list ──
+    transactions = []
+
+    for rp in rent_payments:
+        transactions.append({
+            "type": "rent",
+            "date": rp.processed_at.isoformat() if rp.processed_at else None,
+            "vendor_name": rp.vendor.name if rp.vendor else "Unknown",
+            "vendor_id": rp.vendor_id,
+            "amount": float(rp.amount),
+            "method": rp.method or "",
+            "period": rp.period_month.strftime("%Y-%m") if rp.period_month else "",
+            "status": rp.status,
+            "notes": rp.notes or "",
+        })
+
+    for p in payouts:
+        transactions.append({
+            "type": "payout",
+            "date": p.created_at.isoformat() if p.created_at else None,
+            "vendor_name": p.vendor.name if p.vendor else "Unknown",
+            "vendor_id": p.vendor_id,
+            "amount": float(p.net_payout),
+            "method": p.payout_method or "check",
+            "period": p.period_month.strftime("%Y-%m") if p.period_month else "",
+            "status": p.status,
+            "notes": p.notes or "",
+        })
+
+    # Sort by date descending
+    transactions.sort(key=lambda t: t["date"] or "", reverse=True)
+
+    # ── Summary stats ──
+    # Current month rent
+    current_month_paid_ids = set()
+    rent_collected_this_month = 0.0
+    for rp in rent_payments:
+        if rp.period_month and rp.period_month >= current_period and rp.status == "paid":
+            rent_collected_this_month += float(rp.amount)
+            current_month_paid_ids.add(rp.vendor_id)
+
+    total_rent_owed = sum(float(v.monthly_rent) for v in active_rent_vendors)
+    rent_outstanding = sum(
+        float(v.monthly_rent) for v in active_rent_vendors
+        if v.id not in current_month_paid_ids
+    )
+
+    # Payouts
+    total_payouts_processed = sum(
+        float(p.net_payout) for p in payouts if p.status in ("paid", "completed")
+    )
+    total_payouts_pending = sum(
+        float(p.net_payout) for p in payouts if p.status == "pending"
+    )
+
+    # Total vendor balances
+    total_balances = sum(balances.get(v.id, 0.0) for v in all_vendors)
+
+    # ── Per-vendor balance cards ──
+    vendor_cards = []
+    for v in all_vendors:
+        vendor_cards.append({
+            "id": v.id,
+            "name": v.name,
+            "booth_number": v.booth_number or "—",
+            "balance": balances.get(v.id, 0.0),
+        })
+
+    return {
+        "summary": {
+            "total_rent_owed": round(total_rent_owed, 2),
+            "rent_collected_this_month": round(rent_collected_this_month, 2),
+            "rent_outstanding": round(rent_outstanding, 2),
+            "total_payouts_processed": round(total_payouts_processed, 2),
+            "total_payouts_pending": round(total_payouts_pending, 2),
+            "total_vendor_balances": round(total_balances, 2),
+            "month_label": today.strftime("%B %Y"),
+        },
+        "vendor_cards": vendor_cards,
+        "transactions": transactions,
+    }
