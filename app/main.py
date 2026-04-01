@@ -73,6 +73,14 @@ async def lifespan(app: FastAPI):
                 "notes TEXT"
             ))
             await session.execute(text(
+                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
+                "theme_preference VARCHAR(10) NOT NULL DEFAULT 'dark'"
+            ))
+            await session.execute(text(
+                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
+                "font_size_preference VARCHAR(10) NOT NULL DEFAULT 'medium'"
+            ))
+            await session.execute(text(
                 "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
                 "image_path VARCHAR(500)"
             ))

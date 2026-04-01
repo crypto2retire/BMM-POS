@@ -30,6 +30,8 @@ class Vendor(Base):
     pdf_label_size: Mapped[str] = mapped_column(String(30), default="2.25x1.25", nullable=False)
     assistant_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    theme_preference: Mapped[str] = mapped_column(String(10), default="dark", nullable=False, server_default="dark")
+    font_size_preference: Mapped[str] = mapped_column(String(10), default="medium", nullable=False, server_default="medium")
 
     items = relationship("Item", back_populates="vendor")
     sales = relationship("Sale", back_populates="cashier", foreign_keys="[Sale.cashier_id]")

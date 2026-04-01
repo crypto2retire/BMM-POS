@@ -143,7 +143,44 @@ async def get_me(current_user: Vendor = Depends(get_current_user)):
         "booth_number": current_user.booth_number,
         "is_vendor": getattr(current_user, 'is_vendor', False),
         "assistant_name": getattr(current_user, 'assistant_name', None),
+        "theme_preference": current_user.theme_preference,
+        "font_size_preference": current_user.font_size_preference,
     }
+
+
+class DisplayPreferencesUpdate(BaseModel):
+    theme_preference: Optional[str] = None
+    font_size_preference: Optional[str] = None
+
+
+@router.put("/me/preferences")
+async def update_preferences(
+    prefs: DisplayPreferencesUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    """Update the current user's display preferences."""
+    valid_themes = {"dark", "light"}
+    valid_font_sizes = {"small", "medium", "large"}
+
+    if prefs.theme_preference is not None:
+        if prefs.theme_preference not in valid_themes:
+            raise HTTPException(status_code=400, detail=f"Invalid theme. Must be one of: {valid_themes}")
+        current_user.theme_preference = prefs.theme_preference
+
+    if prefs.font_size_preference is not None:
+        if prefs.font_size_preference not in valid_font_sizes:
+            raise HTTPException(status_code=400, detail=f"Invalid font size. Must be one of: {valid_font_sizes}")
+        current_user.font_size_preference = prefs.font_size_preference
+
+    await db.commit()
+
+    return {
+        "theme_preference": current_user.theme_preference,
+        "font_size_preference": current_user.font_size_preference,
+        "detail": "Preferences updated.",
+    }
+
 
 @router.post("/refresh")
 async def refresh_token(current_user: Vendor = Depends(get_current_user)):
