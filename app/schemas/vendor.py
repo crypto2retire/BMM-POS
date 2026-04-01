@@ -63,6 +63,7 @@ class VendorResponse(BaseModel):
     theme_preference: Optional[str] = "dark"
     font_size_preference: Optional[str] = "medium"
     created_at: datetime
+    current_balance: Optional[Decimal] = Decimal("0.00")
 
     class Config:
         from_attributes = True

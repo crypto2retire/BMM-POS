@@ -22,7 +22,17 @@ async def list_vendors(
     current_user: Vendor = Depends(require_role("admin"))
 ):
     result = await db.execute(select(Vendor).order_by(Vendor.name))
-    return result.scalars().all()
+    vendors = result.scalars().all()
+
+    bal_result = await db.execute(
+        select(VendorBalance.vendor_id, VendorBalance.balance)
+    )
+    balance_map = {row.vendor_id: row.balance for row in bal_result.all()}
+
+    for v in vendors:
+        v.current_balance = balance_map.get(v.id, Decimal("0.00"))
+
+    return vendors
 
 @router.post("/", response_model=VendorResponse, status_code=201)
 async def create_vendor(
@@ -68,6 +78,13 @@ async def get_vendor(
     vendor = result.scalar_one_or_none()
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
+
+    bal_result = await db.execute(
+        select(VendorBalance.balance).where(VendorBalance.vendor_id == vendor_id)
+    )
+    bal = bal_result.scalar_one_or_none()
+    vendor.current_balance = bal if bal is not None else Decimal("0.00")
+
     return vendor
 
 @router.put("/{vendor_id}", response_model=VendorResponse)

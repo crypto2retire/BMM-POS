@@ -297,6 +297,23 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"BMM-POS: CRITICAL — consignment cleanup failed: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
 
+    # ── Ensure every vendor has a vendor_balances row ──
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(text("""
+                INSERT INTO vendor_balances (vendor_id, balance)
+                SELECT v.id, 0.00
+                FROM vendors v
+                LEFT JOIN vendor_balances vb ON vb.vendor_id = v.id
+                WHERE vb.id IS NULL
+            """))
+            await session.commit()
+            count = result.rowcount
+            if count > 0:
+                print(f"BMM-POS: Created missing vendor_balances rows for {count} vendors", file=sys.stderr, flush=True)
+    except Exception as e:
+        print(f"BMM-POS: vendor_balances backfill note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
     # Verify connectivity
     try:
         async with AsyncSessionLocal() as session:
