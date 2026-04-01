@@ -839,8 +839,22 @@
             <img src="/static/images/logo.webp" alt="Bowenstreet Market" style="height:38px;width:auto;">
             <span class="label">POS Terminal</span>
         </div>
-        <div class="pos-navbar-right">
+        <div class="pos-navbar-right" style="position:relative">
             <span id="cashier-name">Loading...</span>
+            <button onclick="toggleDisplayPrefs()" style="background:none; border:none; color:var(--text-light); font-size:1.1rem; cursor:pointer; padding:0.5rem; min-height:44px; min-width:44px" title="Display Settings">&#9881;</button>
+            <div id="display-prefs-dropdown" style="display:none; position:absolute; right:1rem; top:60px; background:var(--surface); border:1px solid var(--border); padding:1rem; z-index:100; min-width:220px; box-shadow:var(--shadow-md)">
+                <div style="font-size:0.72rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; font-family:'Roboto',sans-serif">Theme</div>
+                <div style="display:flex; gap:0; margin-bottom:0.75rem">
+                    <button id="theme-dark-btn" onclick="setThemePref('dark')" style="flex:1; padding:0.4rem 0.5rem; font-size:0.78rem; font-family:'Roboto',sans-serif; cursor:pointer; border:1px solid var(--border); min-height:40px; background:var(--surface-2); color:var(--text-light)">&#9790; Dark</button>
+                    <button id="theme-light-btn" onclick="setThemePref('light')" style="flex:1; padding:0.4rem 0.5rem; font-size:0.78rem; font-family:'Roboto',sans-serif; cursor:pointer; border:1px solid var(--border); border-left:none; min-height:40px; background:var(--surface-2); color:var(--text-light)">&#9788; Light</button>
+                </div>
+                <div style="font-size:0.72rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.3rem; font-family:'Roboto',sans-serif">Font Size</div>
+                <select id="font-size-select" onchange="setFontPref(this.value)" style="width:100%; padding:0.4rem 0.5rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:0.82rem; font-family:'Roboto',sans-serif; min-height:40px">
+                    <option value="small">Small</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="large">Large</option>
+                </select>
+            </div>
             <button class="nav-link" onclick="openOnlineOrdersPanel()" style="position:relative">Orders <span id="orders-badge" style="display:none;position:absolute;top:-4px;right:-8px;background:#EF4444;color:#fff;font-size:10px;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 4px">0</span></button>
             <button class="nav-link" onclick="openGiftCardModal()">Gift Cards</button>
             <button class="nav-link" onclick="openReceiptLookup()">Receipts</button>
@@ -1555,6 +1569,65 @@
     let cartDiscountValue = 0;
     const TAX_RATE = 0.05;
 
+    // ── Display preferences (POS) ─────────────────────────────────────────────
+    function toggleDisplayPrefs() {
+        var dd = document.getElementById('display-prefs-dropdown');
+        dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    }
+
+    document.addEventListener('click', function(e) {
+        var dd = document.getElementById('display-prefs-dropdown');
+        if (dd && dd.style.display !== 'none' && !e.target.closest('#display-prefs-dropdown') && !e.target.closest('[onclick*="toggleDisplayPrefs"]')) {
+            dd.style.display = 'none';
+        }
+    });
+
+    function setThemePref(theme) {
+        bmmSetTheme(theme).then(function() {
+            updateThemeButtons(theme);
+        });
+    }
+
+    function setFontPref(size) {
+        bmmSetFontSize(size);
+    }
+
+    function updateThemeButtons(theme) {
+        var darkBtn = document.getElementById('theme-dark-btn');
+        var lightBtn = document.getElementById('theme-light-btn');
+        if (!darkBtn || !lightBtn) return;
+        if (theme === 'dark') {
+            darkBtn.style.background = 'var(--gold)';
+            darkBtn.style.color = '#1a1a1d';
+            darkBtn.style.borderColor = 'var(--gold)';
+            lightBtn.style.background = 'var(--surface-2)';
+            lightBtn.style.color = 'var(--text-light)';
+            lightBtn.style.borderColor = 'var(--border)';
+        } else {
+            lightBtn.style.background = 'var(--gold)';
+            lightBtn.style.color = '#1a1a1d';
+            lightBtn.style.borderColor = 'var(--gold)';
+            darkBtn.style.background = 'var(--surface-2)';
+            darkBtn.style.color = 'var(--text-light)';
+            darkBtn.style.borderColor = 'var(--border)';
+        }
+    }
+
+    function loadDisplayPrefs() {
+        var token = sessionStorage.getItem('bmm_token');
+        if (!token) return;
+        fetch('/api/v1/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var theme = data.theme_preference || 'dark';
+                var fontSize = data.font_size_preference || 'medium';
+                updateThemeButtons(theme);
+                var sel = document.getElementById('font-size-select');
+                if (sel) sel.value = fontSize;
+            })
+            .catch(function() {});
+    }
+
     // ─── Init ─────────────────────────────────────────────────────────────────
     function init() {
         const token = sessionStorage.getItem('bmm_token');
@@ -1569,6 +1642,7 @@
         if (payload.role === 'admin') {
             document.getElementById('admin-link').style.display = 'inline';
         }
+        loadDisplayPrefs();
         document.getElementById('barcode-input').focus();
         document.getElementById('barcode-input').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') { e.preventDefault(); addByBarcode(); }

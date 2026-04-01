@@ -300,6 +300,34 @@
         <p class="page-subtitle" style="font-family:'EB Garamond',Georgia,serif;font-style:italic;font-size:0.95rem;color:var(--text-light);margin-top:0.25rem">Configure store parameters, features, and access controls</p>
     </div>
 
+    <div style="background:var(--surface); border:1px solid var(--border); padding:1.25rem; margin-bottom:1.25rem">
+        <h3 style="font-family:'EB Garamond',Georgia,serif; font-size:1.15rem; font-weight:500; color:var(--text); margin-bottom:1rem">
+            Display Settings
+            <span style="font-size:0.72rem; color:var(--text-light); font-family:'Roboto',sans-serif; font-weight:400; margin-left:0.5rem">(personal)</span>
+        </h3>
+        <div style="display:flex; gap:1.5rem; flex-wrap:wrap; align-items:flex-start">
+            <div>
+                <label style="font-size:0.72rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.1em; display:block; margin-bottom:0.3rem; font-family:'Roboto',sans-serif">Theme</label>
+                <div style="display:flex; gap:0">
+                    <button id="theme-dark-btn" onclick="setThemePref('dark')" style="padding:0.5rem 1rem; font-size:0.82rem; font-family:'Roboto',sans-serif; cursor:pointer; border:1px solid var(--border); min-height:44px; transition:all 0.15s; background:var(--surface-2); color:var(--text-light)">
+                        &#9790; Dark
+                    </button>
+                    <button id="theme-light-btn" onclick="setThemePref('light')" style="padding:0.5rem 1rem; font-size:0.82rem; font-family:'Roboto',sans-serif; cursor:pointer; border:1px solid var(--border); border-left:none; min-height:44px; transition:all 0.15s; background:var(--surface-2); color:var(--text-light)">
+                        &#9788; Light
+                    </button>
+                </div>
+            </div>
+            <div>
+                <label style="font-size:0.72rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.1em; display:block; margin-bottom:0.3rem; font-family:'Roboto',sans-serif">Font Size</label>
+                <select id="font-size-select" onchange="setFontPref(this.value)" style="padding:0.5rem 0.75rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:0.82rem; font-family:'Roboto',sans-serif; min-height:44px">
+                    <option value="small">Small</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="large">Large</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
     <div class="settings-tabs" id="settings-tabs">
         <button class="settings-tab active" data-tab="store" onclick="switchTab('store')">Store Details</button>
         <button class="settings-tab" data-tab="tax" onclick="switchTab('tax')">Taxes &amp; Policies</button>
@@ -1207,9 +1235,57 @@
         }
     }
 
+    // ── Display preferences ───────────────────────
+    function setThemePref(theme) {
+        bmmSetTheme(theme).then(function() {
+            updateThemeButtons(theme);
+        });
+    }
+
+    function setFontPref(size) {
+        bmmSetFontSize(size);
+    }
+
+    function updateThemeButtons(theme) {
+        var darkBtn = document.getElementById('theme-dark-btn');
+        var lightBtn = document.getElementById('theme-light-btn');
+        if (!darkBtn || !lightBtn) return;
+        if (theme === 'dark') {
+            darkBtn.style.background = 'var(--gold)';
+            darkBtn.style.color = '#1a1a1d';
+            darkBtn.style.borderColor = 'var(--gold)';
+            lightBtn.style.background = 'var(--surface-2)';
+            lightBtn.style.color = 'var(--text-light)';
+            lightBtn.style.borderColor = 'var(--border)';
+        } else {
+            lightBtn.style.background = 'var(--gold)';
+            lightBtn.style.color = '#1a1a1d';
+            lightBtn.style.borderColor = 'var(--gold)';
+            darkBtn.style.background = 'var(--surface-2)';
+            darkBtn.style.color = 'var(--text-light)';
+            darkBtn.style.borderColor = 'var(--border)';
+        }
+    }
+
+    function loadDisplayPrefs() {
+        var token = sessionStorage.getItem('bmm_token');
+        if (!token) return;
+        fetch('/api/v1/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var theme = data.theme_preference || 'dark';
+                var fontSize = data.font_size_preference || 'medium';
+                updateThemeButtons(theme);
+                var sel = document.getElementById('font-size-select');
+                if (sel) sel.value = fontSize;
+            })
+            .catch(function() {});
+    }
+
     loadSettings();
     loadConnectedEmail();
     loadEmailTemplates();
+    loadDisplayPrefs();
 </script>
 <script src="/static/js/change-password.js"></script>
 </body>
