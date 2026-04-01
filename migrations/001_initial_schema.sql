@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS vendors (
     rent_due_day INTEGER NOT NULL DEFAULT 27,
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(20) NOT NULL DEFAULT 'vendor',
-    payout_method VARCHAR(20) DEFAULT 'zelle',
+    payout_method VARCHAR(20) DEFAULT 'check',
     zelle_handle VARCHAR(255),
     status VARCHAR(20) NOT NULL DEFAULT 'active',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

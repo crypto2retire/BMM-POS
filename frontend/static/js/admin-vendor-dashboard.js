@@ -235,7 +235,7 @@
             shortHtml +
             '<p style="margin:0.75rem 0 0;font-size:0.8rem">Method: ' +
             esc(v.payout_method) +
-            (v.zelle_handle ? '<br>Zelle: ' + esc(v.zelle_handle) : '') +
+            '' +
             '</p>' +
             '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem">' +
             '<button type="button" class="btn btn-sm" style="background:var(--gold);color:var(--charcoal-deep)" onclick="event.stopPropagation();window.openAdjustFromHub(' +
@@ -515,7 +515,7 @@
         set('edit-v-rent', v.monthly_rent);
         set('edit-v-comm', v.commission_rate);
         set('edit-v-payout', v.payout_method === '—' ? '' : v.payout_method);
-        set('edit-v-zelle', v.zelle_handle);
+        // zelle removed
         set('edit-v-status', v.status || 'active');
         set('edit-v-notes', v.notes);
         window.onEditPayoutChange();
@@ -524,9 +524,7 @@
     };
 
     window.onEditPayoutChange = function () {
-        var m = (document.getElementById('edit-v-payout') || {}).value;
-        var z = document.getElementById('edit-zelle-wrap');
-        if (z) z.style.display = m === 'zelle' ? 'block' : 'none';
+        // payout method is always check — no conditional UI needed
     };
 
     window.closeEditModalHub = function () {
@@ -545,7 +543,7 @@
             monthly_rent: parseFloat((document.getElementById('edit-v-rent') || {}).value) || 0,
             commission_rate: parseFloat((document.getElementById('edit-v-comm') || {}).value) || 0,
             payout_method: (document.getElementById('edit-v-payout') || {}).value || null,
-            zelle_handle: (document.getElementById('edit-v-zelle') || {}).value.trim() || null,
+            zelle_handle: null,
             status: (document.getElementById('edit-v-status') || {}).value,
             notes: (document.getElementById('edit-v-notes') || {}).value.trim() || null,
         };

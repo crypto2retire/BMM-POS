@@ -153,7 +153,7 @@ When setting a sale price, remind vendors: sale prices activate and deactivate a
 
 PAYOUT INFO:
 - Rent is deducted from balance on the 27th of each month
-- Payouts are processed on the 1st of each month via Zelle
+- Payouts are processed on the 1st of each month via check
 - Balance shown on dashboard is their current earnings minus any deductions
 
 WRITING DESCRIPTIONS:

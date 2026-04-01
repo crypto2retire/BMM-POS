@@ -325,7 +325,7 @@ async def record_rent_payment(
         raise HTTPException(status_code=404, detail="Vendor not found.")
 
     method = body.get("method", "cash")
-    if method not in ("cash", "check", "square", "zelle", "card", "other"):
+    if method not in ("cash", "check", "card"):
         raise HTTPException(status_code=400, detail="Invalid payment method.")
 
     amount = body.get("amount")

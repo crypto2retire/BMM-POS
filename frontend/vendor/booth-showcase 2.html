@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booth Showcase — BMM-POS</title>
+    <meta name="description" content="Manage your booth showcase — add photos, videos, and a description to highlight your booth to customers.">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+    <style>
+        .showcase-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .showcase-card h3 {
+            font-family: 'EB Garamond', serif;
+            font-style: italic;
+            font-size: 1.1rem;
+            color: var(--text);
+            margin-bottom: 0.75rem;
+        }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label {
+            display: block;
+            font-size: 0.78rem;
+            color: var(--text-light);
+            margin-bottom: 0.35rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+        .form-group input[type="text"],
+        .form-group textarea {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.55rem 0.7rem;
+            font-size: 0.85rem;
+            font-family: 'Roboto', sans-serif;
+        }
+        .form-group textarea { min-height: 120px; resize: vertical; }
+        .photo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        .photo-item {
+            position: relative;
+            aspect-ratio: 1;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        .photo-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .photo-item .delete-photo {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(0,0,0,0.7);
+            color: #FCA5A5;
+            border: none;
+            width: 24px;
+            height: 24px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .video-preview {
+            max-width: 400px;
+            margin-bottom: 0.75rem;
+        }
+        .video-preview video {
+            width: 100%;
+            border: 1px solid var(--border);
+        }
+        .ai-btn {
+            background: transparent;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            transition: all 0.2s;
+        }
+        .ai-btn:hover { background: var(--accent); color: var(--bg); }
+        .ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .publish-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+        .publish-toggle .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .publish-toggle .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .publish-toggle .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #555;
+            transition: 0.3s;
+            border-radius: 24px;
+        }
+        .publish-toggle .slider:before {
+            content: "";
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        .publish-toggle input:checked + .slider { background: var(--accent); }
+        .publish-toggle input:checked + .slider:before { transform: translateX(20px); }
+        .stale-banner {
+            background: rgba(201,169,110,0.12);
+            border: 1px solid rgba(201,169,110,0.3);
+            color: var(--accent);
+            padding: 0.75rem 1rem;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .booth-number-badge {
+            display: inline-block;
+            background: var(--accent);
+            color: var(--bg);
+            font-size: 0.85rem;
+            font-weight: 500;
+            padding: 0.3rem 0.75rem;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.5rem;
+        }
+        .upload-area {
+            border: 2px dashed var(--border);
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .upload-area:hover { border-color: var(--accent); }
+        .upload-area p {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 0.5rem;
+        }
+        .char-count {
+            font-size: 0.7rem;
+            color: var(--text-light);
+            text-align: right;
+            margin-top: 0.2rem;
+        }
+        .status-msg {
+            padding: 0.6rem 0.8rem;
+            font-size: 0.8rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .status-msg.success { display: block; background: rgba(72,133,89,0.15); color: #6EE7B7; border: 1px solid rgba(72,133,89,0.3); }
+        .status-msg.error { display: block; background: rgba(153,27,27,0.15); color: #FCA5A5; border: 1px solid rgba(153,27,27,0.3); }
+    </style>
+</head>
+<body class="has-bottom-nav">
+<nav class="navbar" style="background:#1e1e20;">
+    <a href="/vendor/dashboard.html" class="navbar-brand">
+        <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
+    </a>
+    <div class="navbar-user">
+        <span id="vendor-name">Loading...</span>
+        <button class="nav-hamburger" id="hamburger-btn" onclick="toggleNav()" aria-label="Menu">☰</button>
+        <nav class="navbar-nav" id="main-nav">
+            <a href="/vendor/dashboard.html">Dashboard</a>
+            <a href="/vendor/items.html">My Items</a>
+            <a href="/vendor/booth-showcase.html" class="active">My Booth</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
+        </nav>
+    </div>
+</nav>
+
+<div class="main-content">
+    <div id="alert-container"></div>
+    <div id="stale-banner" class="stale-banner" style="display:none">
+        <span>&#9888;</span>
+        <span>Your booth photos are over 60 days old. Fresh photos help attract customers — consider updating them!</span>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+        <h1 style="font-family:'EB Garamond',serif;font-style:italic;font-size:1.5rem;color:var(--text)">My Booth Showcase</h1>
+        <div id="booth-badge" class="booth-number-badge" style="display:none"></div>
+    </div>
+
+    <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1.25rem;line-height:1.6">
+        Showcase your booth to customers browsing our website. Add photos or a short video of your booth,
+        write a description of what you offer, and publish it for the world to see.
+    </p>
+
+    <div id="status-msg" class="status-msg"></div>
+
+    <div class="publish-toggle">
+        <label class="toggle-switch">
+            <input type="checkbox" id="publish-toggle" onchange="togglePublish(this.checked)">
+            <span class="slider"></span>
+        </label>
+        <div>
+            <div style="font-size:0.85rem;color:var(--text)" id="publish-label">Not Published</div>
+            <div style="font-size:0.72rem;color:var(--text-light)">When published, your booth will appear on the public Booths page</div>
+        </div>
+    </div>
+
+    <div class="showcase-card">
+        <h3>Booth Details</h3>
+        <div class="form-group">
+            <label for="booth-title">Booth Name (optional — your vendor name is used if left blank)</label>
+            <input type="text" id="booth-title" placeholder="e.g. Grandma's Treasures, The Vintage Nook..." maxlength="200">
+        </div>
+        <div class="form-group">
+            <label for="booth-desc">Description</label>
+            <textarea id="booth-desc" placeholder="Tell customers about your booth, what you sell, and what makes it special..." maxlength="2000"></textarea>
+            <div class="char-count"><span id="desc-count">0</span> / 2000</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px">
+            <label style="font-size:0.7rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap">Tone</label>
+            <select id="ai-tone-booth" style="background:var(--bg); border:1px solid var(--border); color:var(--text); padding:4px 8px; font-size:0.78rem; font-family:'Roboto',sans-serif">
+                <option value="warm">Warm</option>
+                <option value="professional">Professional</option>
+                <option value="casual">Casual</option>
+                <option value="playful">Playful</option>
+                <option value="rustic">Rustic</option>
+                <option value="elegant">Elegant</option>
+            </select>
+        </div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+            <button class="ai-btn" id="ai-btn" onclick="aiWriteBooth('write')">&#10024; Write for Me</button>
+            <button class="ai-btn" id="ai-improve-booth-btn" onclick="aiWriteBooth('improve')" style="display:none">&#10024; Improve My Text</button>
+            <button class="btn btn-primary btn-sm" onclick="saveDetails()">Save Details</button>
+        </div>
+        <span id="ai-booth-status" style="font-size:0.75rem; color:var(--text-light); margin-top:6px; display:block"></span>
+    </div>
+
+    <div class="showcase-card">
+        <h3>Booth Photos</h3>
+        <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+            Add at least one photo of your booth. Show off your displays, products, and personality! (Max 8 photos, 5MB each)
+        </p>
+        <div id="photo-grid" class="photo-grid"></div>
+        <div class="upload-area" id="photo-upload-area" onclick="document.getElementById('photo-input').click()">
+            <p>Click to add photos or drag and drop</p>
+            <span style="font-size:0.72rem;color:var(--text-light)">JPG, PNG, GIF, or WebP — up to 5MB each</span>
+        </div>
+        <input type="file" id="photo-input" accept="image/*" multiple style="display:none" onchange="uploadPhotos(this.files)">
+    </div>
+
+    <div class="showcase-card">
+        <h3>Booth Video (Optional)</h3>
+        <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+            Add a short video tour of your booth. Keep it under 30 seconds for the best experience. (Max 50MB)
+        </p>
+        <div id="video-preview" class="video-preview" style="display:none"></div>
+        <div style="display:flex;gap:0.5rem">
+            <div class="upload-area" style="flex:1" onclick="document.getElementById('video-input').click()">
+                <p>Click to upload a video</p>
+                <span style="font-size:0.72rem;color:var(--text-light)">MP4, MOV, or WebM — up to 50MB</span>
+            </div>
+            <button class="btn btn-sm" id="remove-video-btn" onclick="removeVideo()" style="background:#991B1B;color:#FCA5A5;display:none;align-self:flex-start">Remove Video</button>
+        </div>
+        <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/webm" style="display:none" onchange="uploadVideo(this.files[0])">
+    </div>
+
+    <div id="landing-section" style="display:none">
+        <div style="margin:1.5rem 0 0.5rem;display:flex;align-items:center;gap:0.5rem">
+            <h2 style="font-family:'EB Garamond',serif;font-style:italic;font-size:1.3rem;color:var(--text)">Vendor Landing Page</h2>
+            <span style="background:var(--accent);color:var(--bg);font-size:0.6rem;font-weight:500;padding:0.15rem 0.45rem;letter-spacing:0.1em;text-transform:uppercase">$10/mo Add-On</span>
+        </div>
+        <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1.25rem;line-height:1.6">
+            Your own page on the Bowenstreet Market website. Share your link to grow your brand, get found on search engines, and connect with customers directly.
+        </p>
+
+        <div id="landing-disabled-msg" style="display:none;background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.3);color:var(--accent);padding:1rem;font-size:0.82rem;margin-bottom:1rem">
+            Your landing page is not yet activated. Contact the market office to get started for $10/month.
+        </div>
+
+        <div id="landing-editor" style="display:none">
+            <div class="showcase-card">
+                <h3>Your Page URL</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Choose a custom URL for your landing page. This is the link you can share on social media, business cards, etc.
+                </p>
+                <div style="display:flex;align-items:center;gap:0;margin-bottom:0.5rem">
+                    <span style="background:var(--bg);border:1px solid var(--border);border-right:none;padding:0.55rem 0.5rem;font-size:0.8rem;color:var(--text-light);white-space:nowrap">bowenstreetmm.com/v/</span>
+                    <input type="text" id="landing-slug" placeholder="your-booth-name" maxlength="100" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.85rem;font-family:'Roboto',sans-serif">
+                </div>
+                <div style="display:flex;gap:0.5rem;align-items:center">
+                    <button class="btn btn-primary btn-sm" onclick="saveSlug()">Save URL</button>
+                    <span id="slug-status" style="font-size:0.75rem;color:var(--text-light)"></span>
+                </div>
+                <div id="landing-link-box" style="display:none;margin-top:0.75rem;background:rgba(72,133,89,0.1);border:1px solid rgba(72,133,89,0.25);padding:0.6rem 0.8rem">
+                    <div style="font-size:0.72rem;color:var(--text-light);margin-bottom:0.3rem">YOUR PAGE LINK</div>
+                    <div style="display:flex;align-items:center;gap:0.5rem">
+                        <a id="landing-link" href="#" target="_blank" style="font-size:0.85rem;color:#6EE7B7;word-break:break-all"></a>
+                        <button onclick="copyLandingLink()" style="background:transparent;border:1px solid rgba(110,231,183,0.3);color:#6EE7B7;padding:0.2rem 0.5rem;font-size:0.7rem;cursor:pointer">Copy</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="showcase-card">
+                <h3>About Your Business</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Tell your story in more detail. This is your chance to connect with customers and share what makes you unique.
+                </p>
+                <div class="form-group">
+                    <textarea id="landing-about" placeholder="Share your story — how you got started, what inspires your work, why customers love your booth..." maxlength="5000" style="min-height:180px"></textarea>
+                    <div class="char-count"><span id="about-count">0</span> / 5000</div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px">
+                    <label style="font-size:0.7rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap">Tone</label>
+                    <select id="ai-tone-about" style="background:var(--bg); border:1px solid var(--border); color:var(--text); padding:4px 8px; font-size:0.78rem; font-family:'Roboto',sans-serif">
+                        <option value="warm">Warm</option>
+                        <option value="professional">Professional</option>
+                        <option value="casual">Casual</option>
+                        <option value="playful">Playful</option>
+                        <option value="rustic">Rustic</option>
+                        <option value="elegant">Elegant</option>
+                    </select>
+                </div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                    <button class="ai-btn" id="ai-about-btn" onclick="aiWriteAbout('write')">&#10024; Write for Me</button>
+                    <button class="ai-btn" id="ai-improve-about-btn" onclick="aiWriteAbout('improve')" style="display:none">&#10024; Improve My Text</button>
+                    <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save</button>
+                </div>
+                <span id="ai-about-status" style="font-size:0.75rem; color:var(--text-light); margin-top:6px; display:block"></span>
+            </div>
+
+            <div class="showcase-card">
+                <h3>Contact Information</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Add your contact details so customers can reach you directly. All fields are optional — only share what you are comfortable with.
+                </p>
+                <div class="form-group">
+                    <label for="landing-email">Email Address</label>
+                    <input type="text" id="landing-email" placeholder="you@example.com" maxlength="200">
+                </div>
+                <div class="form-group">
+                    <label for="landing-phone">Phone Number</label>
+                    <input type="text" id="landing-phone" placeholder="(920) 555-0123" maxlength="50">
+                </div>
+                <div class="form-group">
+                    <label for="landing-website">Website</label>
+                    <input type="text" id="landing-website" placeholder="https://www.yoursite.com" maxlength="300">
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save Contact Info</button>
+            </div>
+
+            <div class="showcase-card">
+                <h3>Social Media</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Link your social accounts so customers can follow you. Your socials will be displayed alongside the market's socials on your landing page.
+                </p>
+                <div class="form-group">
+                    <label for="landing-facebook">Facebook URL</label>
+                    <input type="text" id="landing-facebook" placeholder="https://facebook.com/yourbusiness" maxlength="300">
+                </div>
+                <div class="form-group">
+                    <label for="landing-instagram">Instagram URL</label>
+                    <input type="text" id="landing-instagram" placeholder="https://instagram.com/yourbusiness" maxlength="300">
+                </div>
+                <div class="form-group">
+                    <label for="landing-tiktok">TikTok URL</label>
+                    <input type="text" id="landing-tiktok" placeholder="https://tiktok.com/@yourbusiness" maxlength="300">
+                </div>
+                <div class="form-group">
+                    <label for="landing-twitter">X (Twitter) URL</label>
+                    <input type="text" id="landing-twitter" placeholder="https://x.com/yourbusiness" maxlength="300">
+                </div>
+                <div class="form-group">
+                    <label for="landing-etsy">Etsy Shop URL</label>
+                    <input type="text" id="landing-etsy" placeholder="https://etsy.com/shop/yourbusiness" maxlength="300">
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save Socials</button>
+            </div>
+
+            <div class="showcase-card">
+                <h3>SEO Settings</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Help search engines find your page. These will appear in Google search results.
+                </p>
+                <div class="form-group">
+                    <label for="landing-meta-title">Page Title (shown in search results and browser tab)</label>
+                    <input type="text" id="landing-meta-title" placeholder="e.g. Grandma's Treasures — Handcrafted Quilts at Bowenstreet Market" maxlength="200">
+                </div>
+                <div class="form-group">
+                    <label for="landing-meta-desc">Page Description (shown below the title in search results)</label>
+                    <textarea id="landing-meta-desc" placeholder="A short summary (120-160 characters) of what you sell and why people should visit..." maxlength="500" style="min-height:60px"></textarea>
+                    <div class="char-count"><span id="meta-desc-count">0</span> / 500</div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save SEO</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<nav class="mobile-bottom-nav">
+    <a href="/vendor/dashboard.html">
+        <span class="nav-icon">&#127968;</span>
+        <span>Home</span>
+    </a>
+    <a href="/vendor/items.html">
+        <span class="nav-icon">&#127991;&#65039;</span>
+        <span>Items</span>
+    </a>
+    <a href="/vendor/booth-showcase.html" class="active">
+        <span class="nav-icon">&#127978;</span>
+        <span>My Booth</span>
+    </a>
+    <button onclick="handleLogout()">
+        <span class="nav-icon">&#128682;</span>
+        <span>Logout</span>
+    </button>
+</nav>
+
+<script src="/static/js/api.js"></script>
+<script>
+var showcase = null;
+
+function escHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+function showStatus(msg, type) {
+    var el = document.getElementById('status-msg');
+    el.textContent = msg;
+    el.className = 'status-msg ' + type;
+    setTimeout(function() { el.className = 'status-msg'; }, 4000);
+}
+
+async function loadShowcase() {
+    try {
+        var token = sessionStorage.getItem('bmm_token');
+        if (!token) { window.location.href = '/vendor/login.html'; return; }
+
+        var decoded = JSON.parse(atob(token.split('.')[1]));
+        document.getElementById('vendor-name').textContent = decoded.name || 'Vendor';
+        if (decoded.booth_number) {
+            var badge = document.getElementById('booth-badge');
+            badge.textContent = 'Booth ' + escHtml(decoded.booth_number);
+            badge.style.display = 'inline-block';
+        }
+
+        var resp = await fetch('/api/v1/booth-showcase/mine', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!resp.ok) throw new Error('Failed to load showcase');
+        showcase = await resp.json();
+
+        document.getElementById('booth-title').value = showcase.title || '';
+        document.getElementById('booth-desc').value = showcase.description || '';
+        updateCharCount();
+
+        document.getElementById('publish-toggle').checked = showcase.is_published;
+        document.getElementById('publish-label').textContent = showcase.is_published ? 'Published' : 'Not Published';
+
+        if (showcase.photos_stale) {
+            document.getElementById('stale-banner').style.display = 'flex';
+        }
+
+        renderPhotos();
+        renderVideo();
+        renderLandingSection();
+        updateBoothImproveBtn();
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+}
+
+function renderPhotos() {
+    var grid = document.getElementById('photo-grid');
+    var photos = (showcase && showcase.photo_urls) || [];
+    if (photos.length === 0) {
+        grid.innerHTML = '<p style="font-size:0.78rem;color:var(--text-light);grid-column:1/-1">No photos yet</p>';
+        return;
+    }
+    grid.innerHTML = photos.map(function(url) {
+        return '<div class="photo-item">' +
+            '<img src="' + escHtml(url) + '" alt="Booth photo" loading="lazy">' +
+            '<button class="delete-photo" onclick="deletePhoto(\'' + escHtml(url) + '\')" title="Remove">&times;</button>' +
+            '</div>';
+    }).join('');
+}
+
+function renderVideo() {
+    var container = document.getElementById('video-preview');
+    var removeBtn = document.getElementById('remove-video-btn');
+    if (showcase && showcase.video_url) {
+        container.innerHTML = '<video src="' + escHtml(showcase.video_url) + '" controls preload="metadata"></video>';
+        container.style.display = 'block';
+        removeBtn.style.display = 'block';
+    } else {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        removeBtn.style.display = 'none';
+    }
+}
+
+function updateCharCount() {
+    var count = (document.getElementById('booth-desc').value || '').length;
+    document.getElementById('desc-count').textContent = count;
+}
+
+async function saveDetails() {
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: document.getElementById('booth-title').value.trim(),
+                description: document.getElementById('booth-desc').value.trim()
+            })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Failed to save');
+        showcase = data;
+        showStatus('Details saved!', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+}
+
+async function togglePublish(checked) {
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_published: checked })
+        });
+        var data = await resp.json();
+        if (!resp.ok) {
+            document.getElementById('publish-toggle').checked = !checked;
+            throw new Error(data.detail || 'Failed to update');
+        }
+        showcase = data;
+        document.getElementById('publish-label').textContent = checked ? 'Published' : 'Not Published';
+        showStatus(checked ? 'Your booth is now visible to customers!' : 'Booth showcase hidden from public view.', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+}
+
+async function uploadPhotos(files) {
+    var token = sessionStorage.getItem('bmm_token');
+    for (var i = 0; i < files.length; i++) {
+        var form = new FormData();
+        form.append('file', files[i]);
+        try {
+            var resp = await fetch('/api/v1/booth-showcase/mine/photo', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token },
+                body: form
+            });
+            var data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || 'Upload failed');
+            showcase = data;
+        } catch (err) {
+            showStatus(err.message, 'error');
+            break;
+        }
+    }
+    renderPhotos();
+    document.getElementById('photo-input').value = '';
+    if (showcase && showcase.photo_urls && showcase.photo_urls.length > 0) {
+        showStatus('Photos uploaded!', 'success');
+        document.getElementById('stale-banner').style.display = 'none';
+    }
+}
+
+async function deletePhoto(url) {
+    if (!confirm('Remove this photo?')) return;
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine/photo', {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ photo_url: url })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Failed to remove');
+        showcase = data;
+        renderPhotos();
+        document.getElementById('publish-toggle').checked = showcase.is_published;
+        document.getElementById('publish-label').textContent = showcase.is_published ? 'Published' : 'Not Published';
+        showStatus('Photo removed.', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+}
+
+async function uploadVideo(file) {
+    if (!file) return;
+    var token = sessionStorage.getItem('bmm_token');
+    showStatus('Uploading video...', 'success');
+    var form = new FormData();
+    form.append('file', file);
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine/video', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token },
+            body: form
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Upload failed');
+        showcase = data;
+        renderVideo();
+        showStatus('Video uploaded!', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+    document.getElementById('video-input').value = '';
+}
+
+async function removeVideo() {
+    if (!confirm('Remove the video?')) return;
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine/video', {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Failed to remove');
+        showcase = data;
+        renderVideo();
+        showStatus('Video removed.', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+}
+
+function updateBoothImproveBtn() {
+    var desc = (document.getElementById('booth-desc').value || '').trim();
+    var btn = document.getElementById('ai-improve-booth-btn');
+    if (btn) btn.style.display = desc.length > 10 ? 'inline-block' : 'none';
+}
+document.getElementById('booth-desc').addEventListener('input', function() {
+    updateCharCount();
+    updateBoothImproveBtn();
+});
+
+function updateAboutImproveBtn() {
+    var about = (document.getElementById('landing-about').value || '').trim();
+    var btn = document.getElementById('ai-improve-about-btn');
+    if (btn) btn.style.display = about.length > 10 ? 'inline-block' : 'none';
+}
+document.getElementById('landing-about').addEventListener('input', function() {
+    updateAboutCount();
+    updateAboutImproveBtn();
+});
+
+async function aiWriteBooth(action) {
+    var btn = document.getElementById('ai-btn');
+    var improveBtn = document.getElementById('ai-improve-booth-btn');
+    var statusEl = document.getElementById('ai-booth-status');
+    var tone = document.getElementById('ai-tone-booth').value;
+    var existingContent = document.getElementById('booth-desc').value.trim();
+    btn.disabled = true;
+    if (improveBtn) improveBtn.disabled = true;
+    statusEl.textContent = action === 'improve' ? 'Improving your description...' : 'Writing description...';
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/ai/write', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({
+                content_type: 'booth_description',
+                tone: tone,
+                action: action,
+                existing_content: action === 'improve' ? existingContent : null
+            })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'AI failed');
+        document.getElementById('booth-desc').value = data.content;
+        updateCharCount();
+        updateBoothImproveBtn();
+        statusEl.textContent = action === 'improve' ? 'Description improved! Review and edit, then Save.' : 'Description written! Review and edit, then Save.';
+        setTimeout(function() { statusEl.textContent = ''; }, 6000);
+    } catch (err) {
+        statusEl.textContent = err.message;
+        setTimeout(function() { statusEl.textContent = ''; }, 4000);
+    } finally {
+        btn.disabled = false;
+        if (improveBtn) improveBtn.disabled = false;
+    }
+}
+
+function renderLandingSection() {
+    var section = document.getElementById('landing-section');
+    section.style.display = 'block';
+
+    if (!showcase.landing_page_enabled) {
+        document.getElementById('landing-disabled-msg').style.display = 'block';
+        document.getElementById('landing-editor').style.display = 'none';
+        return;
+    }
+
+    document.getElementById('landing-disabled-msg').style.display = 'none';
+    document.getElementById('landing-editor').style.display = 'block';
+
+    document.getElementById('landing-slug').value = showcase.landing_slug || '';
+    document.getElementById('landing-about').value = showcase.landing_about || '';
+    document.getElementById('landing-email').value = showcase.landing_contact_email || '';
+    document.getElementById('landing-phone').value = showcase.landing_contact_phone || '';
+    document.getElementById('landing-website').value = showcase.landing_website || '';
+    document.getElementById('landing-facebook').value = showcase.landing_facebook || '';
+    document.getElementById('landing-instagram').value = showcase.landing_instagram || '';
+    document.getElementById('landing-tiktok').value = showcase.landing_tiktok || '';
+    document.getElementById('landing-twitter').value = showcase.landing_twitter || '';
+    document.getElementById('landing-etsy').value = showcase.landing_etsy || '';
+    document.getElementById('landing-meta-title').value = showcase.landing_meta_title || '';
+    document.getElementById('landing-meta-desc').value = showcase.landing_meta_desc || '';
+    updateAboutCount();
+    updateMetaDescCount();
+    updateLandingLink();
+    updateAboutImproveBtn();
+}
+
+function updateAboutCount() {
+    var el = document.getElementById('about-count');
+    if (el) el.textContent = (document.getElementById('landing-about').value || '').length;
+}
+
+function updateMetaDescCount() {
+    var el = document.getElementById('meta-desc-count');
+    if (el) el.textContent = (document.getElementById('landing-meta-desc').value || '').length;
+}
+
+document.getElementById('landing-meta-desc').addEventListener('input', updateMetaDescCount);
+
+function updateLandingLink() {
+    var slug = showcase.landing_slug;
+    var box = document.getElementById('landing-link-box');
+    if (slug) {
+        var url = window.location.origin + '/v/' + slug;
+        var link = document.getElementById('landing-link');
+        link.href = url;
+        link.textContent = 'bowenstreetmm.com/v/' + slug;
+        box.style.display = 'block';
+    } else {
+        box.style.display = 'none';
+    }
+}
+
+function copyLandingLink() {
+    var slug = showcase.landing_slug;
+    if (!slug) return;
+    var url = 'https://www.bowenstreetmm.com/v/' + slug;
+    navigator.clipboard.writeText(url).then(function() {
+        showStatus('Link copied to clipboard!', 'success');
+    });
+}
+
+async function saveSlug() {
+    var token = sessionStorage.getItem('bmm_token');
+    var slug = document.getElementById('landing-slug').value.trim().toLowerCase();
+    if (!slug) { showStatus('Please enter a URL slug.', 'error'); return; }
+    var statusEl = document.getElementById('slug-status');
+    statusEl.textContent = 'Saving...';
+    statusEl.style.color = 'var(--text-light)';
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine/landing-slug', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: slug })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Failed to save URL');
+        showcase = data;
+        document.getElementById('landing-slug').value = showcase.landing_slug || '';
+        updateLandingLink();
+        statusEl.textContent = 'Saved!';
+        statusEl.style.color = '#6EE7B7';
+        showStatus('Your page URL has been saved!', 'success');
+    } catch (err) {
+        statusEl.textContent = err.message;
+        statusEl.style.color = '#FCA5A5';
+        showStatus(err.message, 'error');
+    }
+}
+
+async function saveLandingDetails() {
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                landing_about: document.getElementById('landing-about').value.trim(),
+                landing_contact_email: document.getElementById('landing-email').value.trim(),
+                landing_contact_phone: document.getElementById('landing-phone').value.trim(),
+                landing_website: document.getElementById('landing-website').value.trim(),
+                landing_facebook: document.getElementById('landing-facebook').value.trim(),
+                landing_instagram: document.getElementById('landing-instagram').value.trim(),
+                landing_tiktok: document.getElementById('landing-tiktok').value.trim(),
+                landing_twitter: document.getElementById('landing-twitter').value.trim(),
+                landing_etsy: document.getElementById('landing-etsy').value.trim(),
+                landing_meta_title: document.getElementById('landing-meta-title').value.trim(),
+                landing_meta_desc: document.getElementById('landing-meta-desc').value.trim()
+            })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Failed to save');
+        showcase = data;
+        showStatus('Landing page details saved!', 'success');
+    } catch (err) {
+        showStatus(err.message, 'error');
+    }
+}
+
+async function aiWriteAbout(action) {
+    var btn = document.getElementById('ai-about-btn');
+    var improveBtn = document.getElementById('ai-improve-about-btn');
+    var statusEl = document.getElementById('ai-about-status');
+    var tone = document.getElementById('ai-tone-about').value;
+    var existingContent = document.getElementById('landing-about').value.trim();
+    btn.disabled = true;
+    if (improveBtn) improveBtn.disabled = true;
+    statusEl.textContent = action === 'improve' ? 'Improving your about section...' : 'Writing about section...';
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/ai/write', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({
+                content_type: 'landing_about',
+                tone: tone,
+                action: action,
+                existing_content: action === 'improve' ? existingContent : null
+            })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'AI failed');
+        document.getElementById('landing-about').value = data.content;
+        updateAboutCount();
+        updateAboutImproveBtn();
+        statusEl.textContent = action === 'improve' ? 'About section improved! Review and edit, then Save.' : 'About section written! Review and edit, then Save.';
+        setTimeout(function() { statusEl.textContent = ''; }, 6000);
+    } catch (err) {
+        statusEl.textContent = err.message;
+        setTimeout(function() { statusEl.textContent = ''; }, 4000);
+    } finally {
+        btn.disabled = false;
+        if (improveBtn) improveBtn.disabled = false;
+    }
+}
+
+loadShowcase();
+</script>
+</body>
+</html>

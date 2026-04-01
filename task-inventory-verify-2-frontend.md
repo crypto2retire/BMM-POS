@@ -1,0 +1,1244 @@
+# Task: Inventory Verification System — Part 2: Frontend
+
+Create the admin/cashier inventory verification page. This page lets admins upload per-vendor Ricochet CSV exports, view verification progress, review new items, and manage the archive/delete workflow. **Cashiers can access the Review Queue and view status. Only admins can upload, archive, or delete.**
+
+**Prerequisite:** Part 1 (backend) must be deployed first.
+
+---
+
+## Step 1: Create the page file
+
+Create a new file: `frontend/admin/inventory-verify.html`
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Verification — BMM-POS</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+    <style>
+        .page-subtitle {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-style: italic;
+            font-size: 0.95rem;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-top: 0.25rem;
+            letter-spacing: 0.01em;
+        }
+
+        /* ── Summary cards ─────────────────────────────── */
+        .verify-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .sum-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            transition: border-color 0.25s;
+        }
+        .sum-card:hover { border-color: var(--warm-border); }
+        .sum-label {
+            font-size: 0.6rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-family: 'Roboto', sans-serif;
+        }
+        .sum-value {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 2rem;
+            font-weight: 500;
+            color: var(--gold);
+            margin-top: 0.4rem;
+            line-height: 1;
+        }
+        .sum-value.white { color: var(--text); }
+        .sum-value.green { color: var(--success, #4ade80); }
+        .sum-value.red { color: #f87171; }
+        .sum-value.amber { color: #fbbf24; }
+
+        /* ── Tabs ──────────────────────────────────────── */
+        .verify-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.25rem;
+        }
+        .verify-tab {
+            padding: 0.5rem 1.25rem;
+            font-size: 0.82rem;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 500;
+            color: var(--text-light);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            min-height: 44px;
+        }
+        .verify-tab + .verify-tab { border-left: none; }
+        .verify-tab.active {
+            background: var(--gold);
+            color: #1a1a1d;
+            border-color: var(--gold);
+        }
+        .verify-tab:hover:not(.active) { border-color: var(--warm-border); color: var(--text); }
+        .verify-tab .tab-badge {
+            display: inline-block;
+            background: rgba(251,191,36,0.25);
+            color: #fbbf24;
+            font-size: 0.65rem;
+            padding: 1px 5px;
+            margin-left: 4px;
+            font-weight: 700;
+        }
+        .verify-tab.active .tab-badge {
+            background: rgba(26,26,29,0.2);
+            color: #1a1a1d;
+        }
+
+        /* ── Upload section ─────────────────────────────── */
+        .upload-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            margin-bottom: 1.25rem;
+        }
+        .upload-section h3 {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 1.15rem;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+        .upload-row {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+        .upload-row label {
+            font-size: 0.72rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-family: 'Roboto', sans-serif;
+            display: block;
+            margin-bottom: 0.3rem;
+        }
+        .upload-row select, .upload-row input[type="file"] {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.55rem 0.85rem;
+            font-size: 0.875rem;
+            font-family: 'Roboto', sans-serif;
+            min-height: 44px;
+        }
+        .upload-row select { min-width: 220px; }
+        .upload-row select:focus, .upload-row input:focus {
+            outline: none;
+            border-color: var(--gold-dim);
+            box-shadow: 0 0 0 2px rgba(201,169,110,0.12);
+        }
+
+        /* ── Results panel ──────────────────────────────── */
+        .upload-result {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+            display: none;
+        }
+        .upload-result.visible { display: block; }
+        .result-stats {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.75rem;
+        }
+        .result-stat {
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.85rem;
+        }
+        .result-stat strong {
+            color: var(--gold);
+            font-size: 1.1rem;
+        }
+        .result-detail-list {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 0.5rem;
+        }
+        .result-detail-list div {
+            padding: 0.25rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* ── Tables ─────────────────────────────────────── */
+        .vendor-table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .verify-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .verify-table th {
+            text-align: left;
+            padding: 0.6rem 0.75rem;
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--gold);
+            border-bottom: 2px solid var(--warm-border);
+            font-family: 'Roboto', sans-serif;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .verify-table td {
+            padding: 0.55rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-light);
+            word-break: break-word;
+        }
+        .verify-table tr:hover td { background: rgba(201,169,110,0.04); }
+
+        .progress-bar-cell { min-width: 120px; }
+        .progress-bar-bg {
+            background: var(--surface-2);
+            height: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--gold);
+            transition: width 0.3s;
+        }
+        .progress-bar-fill.complete { background: var(--success, #4ade80); }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-family: 'Roboto', sans-serif;
+        }
+        .status-complete { background: rgba(74,222,128,0.12); color: #4ade80; border: 1px solid rgba(74,222,128,0.25); }
+        .status-partial  { background: rgba(201,169,110,0.12); color: var(--gold); border: 1px solid rgba(201,169,110,0.25); }
+        .status-none     { background: rgba(248,113,113,0.12); color: #f87171; border: 1px solid rgba(248,113,113,0.25); }
+
+        /* ── Buttons ────────────────────────────────────── */
+        .btn-sm {
+            padding: 0.35rem 0.65rem;
+            font-size: 0.72rem;
+            font-family: 'Roboto', sans-serif;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--text-light);
+            transition: all 0.15s;
+            min-height: 36px;
+        }
+        .btn-sm:hover { border-color: var(--gold-dim); color: var(--gold); }
+        .btn-sm.approve { color: #4ade80; border-color: rgba(74,222,128,0.3); }
+        .btn-sm.approve:hover { background: rgba(74,222,128,0.12); }
+        .btn-sm.reject { color: #f87171; border-color: rgba(248,113,113,0.3); }
+        .btn-sm.reject:hover { background: rgba(248,113,113,0.12); }
+
+        .action-bar {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+            flex-wrap: wrap;
+        }
+        .btn-danger {
+            background: rgba(248,113,113,0.15);
+            border: 1px solid rgba(248,113,113,0.3);
+            color: #f87171;
+            padding: 0.5rem 1rem;
+            font-size: 0.82rem;
+            font-family: 'Roboto', sans-serif;
+            cursor: pointer;
+            transition: all 0.15s;
+            min-height: 44px;
+        }
+        .btn-danger:hover { background: rgba(248,113,113,0.25); }
+        .btn-warning {
+            background: rgba(251,191,36,0.12);
+            border: 1px solid rgba(251,191,36,0.3);
+            color: #fbbf24;
+            padding: 0.5rem 1rem;
+            font-size: 0.82rem;
+            font-family: 'Roboto', sans-serif;
+            cursor: pointer;
+            transition: all 0.15s;
+            min-height: 44px;
+        }
+        .btn-warning:hover { background: rgba(251,191,36,0.2); }
+        .btn-success {
+            background: rgba(74,222,128,0.12);
+            border: 1px solid rgba(74,222,128,0.3);
+            color: #4ade80;
+            padding: 0.5rem 1rem;
+            font-size: 0.82rem;
+            font-family: 'Roboto', sans-serif;
+            cursor: pointer;
+            transition: all 0.15s;
+            min-height: 44px;
+        }
+        .btn-success:hover { background: rgba(74,222,128,0.2); }
+
+        /* ── Pending / Review sections ──────────────────── */
+        .panel-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+            margin-bottom: 1.25rem;
+        }
+        .panel-section h3 {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 1.15rem;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 1rem;
+        }
+
+        /* ── Review queue filter ────────────────────────── */
+        .review-toolbar {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .review-toolbar select {
+            padding: 0.4rem 0.6rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            font-size: 0.82rem;
+            font-family: 'Roboto', sans-serif;
+            min-height: 44px;
+        }
+
+        /* ── Pagination ────────────────────────────────── */
+        .pagination-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 1rem;
+            font-size: 0.78rem;
+            color: var(--text-light);
+        }
+        .pagination-bar button {
+            padding: 0.45rem 0.8rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            font-size: 0.78rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            transition: background 0.15s, color 0.15s;
+            min-height: 44px;
+        }
+        .pagination-bar button:hover:not(:disabled) { background: var(--gold-dim); color: var(--gold); }
+        .pagination-bar button:disabled { opacity: 0.3; cursor: default; }
+
+        /* ── Ornament ──────────────────────────────────── */
+        .ornament {
+            text-align: center;
+            color: var(--gold);
+            font-size: 0.7rem;
+            letter-spacing: 0.25em;
+            margin: 0.75rem 0 1.25rem;
+            opacity: 0.5;
+        }
+
+        .loading-msg {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-light);
+            font-style: italic;
+            font-family: 'EB Garamond', Georgia, serif;
+        }
+
+        .admin-only { display: none; }
+
+        /* ── Mobile ────────────────────────────────────── */
+        @media (max-width: 767px) {
+            .verify-summary { grid-template-columns: repeat(2, 1fr); }
+            .verify-tabs { flex-wrap: wrap; }
+            .verify-tab { flex: 1; min-width: 0; text-align: center; font-size: 0.7rem; padding: 0.5rem 0.25rem; }
+            .upload-row { flex-direction: column; align-items: stretch; }
+            .upload-row select { min-width: 0; width: 100%; }
+            .action-bar { flex-direction: column; }
+            .action-bar button { width: 100%; }
+            .review-toolbar { flex-direction: column; align-items: stretch; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <a href="/admin/index.html" class="navbar-brand">
+        <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
+        <span class="store-name">Admin</span>
+    </a>
+    <div class="navbar-user">
+        <span id="user-name">Administrator</span>
+        <nav class="navbar-nav">
+            <a href="/admin/index.html">Dashboard</a>
+            <a href="/admin/vendors.html">Vendors</a>
+            <a href="/admin/rent.html">Rent</a>
+            <a href="/vendor/items.html">Items</a>
+            <a href="/admin/inventory-verify.html" class="active">Verify</a>
+            <a href="/admin/studio.html">Studio</a>
+            <a href="/admin/reports.html">Reports</a>
+            <a href="/admin/eod-reports.html">EOD Reports</a>
+            <a href="/admin/payouts.html">Payouts</a>
+            <a href="/admin/settings.html">Settings</a>
+            <a href="/pos/index.html">POS Terminal</a>
+            <a href="#" onclick="handleLogout()">Logout</a>
+        </nav>
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
+    </div>
+</nav>
+
+<div class="mobile-nav-dropdown" id="mobile-nav">
+    <a href="/admin/index.html">Dashboard</a>
+    <a href="/admin/vendors.html">Vendors</a>
+    <a href="/admin/rent.html">Rent</a>
+    <a href="/vendor/items.html">Items</a>
+    <a href="/admin/inventory-verify.html" class="active">Verify</a>
+    <a href="/admin/studio.html">Studio</a>
+    <a href="/admin/reports.html">Reports</a>
+    <a href="/admin/eod-reports.html">EOD Reports</a>
+    <a href="/admin/payouts.html">Payouts</a>
+    <a href="/admin/settings.html">Settings</a>
+    <a href="/pos/index.html">POS Terminal</a>
+    <a href="#" onclick="handleLogout()">Logout</a>
+</div>
+
+<div class="main-content">
+    <div id="alert-container"></div>
+
+    <h1 class="page-title" style="font-family:'EB Garamond',Georgia,serif; font-size:1.75rem; font-weight:500; color:var(--text); margin-bottom:0">
+        Inventory Verification
+    </h1>
+    <p class="page-subtitle">Verify Ricochet-imported inventory — BMM-POS native items are not affected</p>
+    <div class="ornament">&#9830; &nbsp; &#9830; &nbsp; &#9830;</div>
+
+    <!-- Summary cards -->
+    <div class="verify-summary" id="summary-cards">
+        <div class="sum-card">
+            <div class="sum-label">Total Vendors</div>
+            <div class="sum-value white" id="sum-vendors">—</div>
+        </div>
+        <div class="sum-card">
+            <div class="sum-label">Completed</div>
+            <div class="sum-value green" id="sum-completed">—</div>
+        </div>
+        <div class="sum-card">
+            <div class="sum-label">Ricochet Items</div>
+            <div class="sum-value white" id="sum-items">—</div>
+        </div>
+        <div class="sum-card">
+            <div class="sum-label">Verified</div>
+            <div class="sum-value" id="sum-verified">—</div>
+        </div>
+        <div class="sum-card">
+            <div class="sum-label">Unverified</div>
+            <div class="sum-value red" id="sum-unverified">—</div>
+        </div>
+        <div class="sum-card">
+            <div class="sum-label">Needs Review</div>
+            <div class="sum-value amber" id="sum-review">—</div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="verify-tabs">
+        <button class="verify-tab admin-only active" onclick="switchTab('upload', this)">Upload</button>
+        <button class="verify-tab admin-only" onclick="switchTab('progress', this)">Progress</button>
+        <button class="verify-tab" onclick="switchTab('review', this)">Review Queue <span class="tab-badge" id="review-badge" style="display:none">0</span></button>
+        <button class="verify-tab admin-only" onclick="switchTab('archive', this)">Archive</button>
+    </div>
+
+    <!-- TAB 1: Upload (admin only) -->
+    <div id="tab-upload" class="tab-panel admin-only">
+        <div class="upload-section">
+            <h3>Upload Ricochet CSV</h3>
+            <div class="upload-row">
+                <div>
+                    <label for="vendor-select">Vendor</label>
+                    <select id="vendor-select">
+                        <option value="">— Select a vendor —</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="csv-file">CSV File</label>
+                    <input type="file" id="csv-file" accept=".csv">
+                </div>
+                <div>
+                    <button class="btn btn-primary" onclick="uploadCSV()" id="upload-btn" style="min-height:44px">
+                        Upload &amp; Verify
+                    </button>
+                </div>
+            </div>
+            <p style="font-size:0.75rem; color:var(--text-light); margin-top:0.75rem; opacity:0.7">
+                Export the "Products" list from Ricochet for one vendor at a time. Matched items are marked as verified. Items in the CSV but NOT in BMM-POS are added to the <strong>Review Queue</strong> for approval before going active.
+            </p>
+        </div>
+
+        <!-- Upload result -->
+        <div class="upload-result" id="upload-result">
+            <h3 style="font-family:'EB Garamond',Georgia,serif; font-size:1.05rem; color:var(--text); margin-bottom:0.75rem">
+                Upload Results — <span id="result-vendor-name"></span>
+            </h3>
+            <div class="result-stats">
+                <div class="result-stat">Verified: <strong id="result-verified">0</strong></div>
+                <div class="result-stat">Needs Review: <strong id="result-added" style="color:#fbbf24">0</strong></div>
+                <div class="result-stat">Skipped: <strong id="result-skipped">0</strong></div>
+                <div class="result-stat">Errors: <strong id="result-errors" style="color:#f87171">0</strong></div>
+            </div>
+            <div id="result-details" class="result-detail-list"></div>
+        </div>
+    </div>
+
+    <!-- TAB 2: Progress (admin only) -->
+    <div id="tab-progress" class="tab-panel admin-only" style="display:none">
+        <div style="display:flex; gap:0.75rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center">
+            <input type="text" id="progress-search" placeholder="Filter vendors&hellip;" oninput="filterProgress()" style="flex:1; max-width:340px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); padding:0.55rem 0.85rem; font-size:0.875rem; font-family:'Roboto',sans-serif; min-height:44px">
+            <select id="progress-filter" onchange="filterProgress()" style="padding:0.4rem 0.6rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text-light); font-size:0.78rem; font-family:'Roboto',sans-serif; min-height:44px">
+                <option value="all">All Vendors</option>
+                <option value="complete">Completed Only</option>
+                <option value="partial">In Progress</option>
+                <option value="none">Not Started</option>
+            </select>
+        </div>
+        <div class="vendor-table-wrap">
+            <table class="verify-table">
+                <thead>
+                    <tr>
+                        <th>Vendor</th>
+                        <th>Booth</th>
+                        <th>Ricochet Items</th>
+                        <th>Verified</th>
+                        <th>Unverified</th>
+                        <th>Progress</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="progress-tbody">
+                    <tr><td colspan="8" class="loading-msg">Loading…</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB 3: Review Queue (admin + cashier) -->
+    <div id="tab-review" class="tab-panel" style="display:none">
+        <div class="panel-section">
+            <h3>Items Needing Review</h3>
+            <p style="font-size:0.78rem; color:var(--text-light); margin-bottom:1rem; opacity:0.8">
+                These items were found in a Ricochet CSV but did not match any existing BMM-POS item. Review and approve to add them to active inventory, or reject to remove them.
+            </p>
+            <div class="review-toolbar">
+                <select id="review-vendor-filter" onchange="loadReviewQueue()">
+                    <option value="">All Vendors</option>
+                </select>
+                <button class="btn-success" onclick="approveAllVendor()" id="approve-all-btn" style="display:none">
+                    &#10003; Approve All for This Vendor
+                </button>
+                <button class="btn-danger" onclick="rejectAllVendor()" id="reject-all-btn" style="display:none">
+                    &#10006; Reject All for This Vendor
+                </button>
+            </div>
+            <div class="vendor-table-wrap">
+                <table class="verify-table" id="review-table" style="display:none">
+                    <thead>
+                        <tr>
+                            <th>Vendor</th>
+                            <th>SKU</th>
+                            <th>Barcode</th>
+                            <th>Name</th>
+                            <th>Price</th>
+                            <th>Qty</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="review-tbody"></tbody>
+                </table>
+            </div>
+            <p id="review-empty" style="color:var(--text-light); font-size:0.85rem; display:none">No items pending review.</p>
+            <div class="pagination-bar" id="review-pagination" style="display:none">
+                <div>
+                    <button onclick="reviewPage(1)">First</button>
+                    <button onclick="reviewPage(reviewState.page - 1)">Prev</button>
+                </div>
+                <span id="review-page-info">Page 1 of 1</span>
+                <div>
+                    <button onclick="reviewPage(reviewState.page + 1)">Next</button>
+                    <button onclick="reviewPage(reviewState.totalPages)">Last</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: Archive & Delete (admin only) -->
+    <div id="tab-archive" class="tab-panel admin-only" style="display:none">
+        <div class="action-bar">
+            <button class="btn-warning" onclick="archiveUnverified()">
+                &#9888; Archive All Unverified Ricochet Items
+            </button>
+            <button class="btn-danger" onclick="permanentDelete()">
+                &#10006; Permanently Delete Archived Items
+            </button>
+        </div>
+
+        <div class="panel-section">
+            <h3>Items Pending Deletion</h3>
+            <p id="pending-empty" style="color:var(--text-light); font-size:0.85rem">Loading…</p>
+            <div class="vendor-table-wrap">
+                <table class="verify-table" id="pending-table" style="display:none">
+                    <thead>
+                        <tr>
+                            <th>Vendor</th>
+                            <th>Booth</th>
+                            <th>Pending Items</th>
+                            <th>Earliest Expiry</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pending-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = '/api/v1';
+const token = sessionStorage.getItem('bmm_token');
+if (!token) window.location.href = '/vendor/login.html';
+
+const headers = { 'Authorization': 'Bearer ' + token };
+const jsonHeaders = { ...headers, 'Content-Type': 'application/json' };
+
+let allVendorStatus = [];
+let userRole = null;
+let reviewState = { page: 1, totalPages: 1 };
+
+// ── Helpers ────────────────────────────────────────
+function showAlert(msg, type) {
+    const c = document.getElementById('alert-container');
+    const cls = type === 'error' ? 'alert-error' : type === 'success' ? 'alert-success' : 'alert-info';
+    c.innerHTML = '<div class="alert ' + cls + '" style="padding:0.75rem 1rem; margin-bottom:1rem; border:1px solid var(--border); font-size:0.85rem">' + msg + '</div>';
+    setTimeout(function() { c.innerHTML = ''; }, 8000);
+}
+
+function toggleMobileNav() {
+    document.getElementById('mobile-nav').classList.toggle('open');
+}
+
+function handleLogout() {
+    sessionStorage.removeItem('bmm_token');
+    window.location.href = '/vendor/login.html';
+}
+
+function esc(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+// ── Detect user role and show/hide admin features ──
+async function detectRole() {
+    try {
+        var res = await fetch(API + '/auth/me', { headers: headers });
+        if (!res.ok) { window.location.href = '/vendor/login.html'; return; }
+        var data = await res.json();
+        userRole = data.role;
+        document.getElementById('user-name').textContent = data.name || data.email;
+
+        if (userRole === 'admin') {
+            // Show all admin-only elements
+            document.querySelectorAll('.admin-only').forEach(function(el) {
+                el.style.display = '';
+            });
+        } else {
+            // Cashier: default to review tab
+            switchTab('review', document.querySelector('.verify-tab:not(.admin-only)'));
+        }
+    } catch (e) {
+        window.location.href = '/vendor/login.html';
+    }
+}
+
+// ── Tab switching ──────────────────────────────────
+function switchTab(name, btn) {
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.style.display = 'none'; });
+    document.querySelectorAll('.verify-tab').forEach(function(t) { t.classList.remove('active'); });
+
+    document.getElementById('tab-' + name).style.display = 'block';
+    if (btn) btn.classList.add('active');
+
+    if (name === 'progress') loadStatus();
+    if (name === 'archive') loadPending();
+    if (name === 'review') loadReviewQueue();
+}
+
+// ── Load summary + status ──────────────────────────
+async function loadStatus() {
+    try {
+        var res = await fetch(API + '/inventory-verify/status', { headers: headers });
+        if (!res.ok) throw new Error('Failed to load status');
+        var data = await res.json();
+
+        allVendorStatus = data.vendors;
+        var s = data.summary;
+
+        document.getElementById('sum-vendors').textContent = s.total_vendors;
+        document.getElementById('sum-completed').textContent = s.completed_vendors;
+        document.getElementById('sum-items').textContent = s.total_items.toLocaleString();
+        document.getElementById('sum-verified').textContent = s.verified_items.toLocaleString();
+        document.getElementById('sum-unverified').textContent = s.unverified_items.toLocaleString();
+        document.getElementById('sum-review').textContent = (s.pending_review || 0).toLocaleString();
+
+        // Update review badge
+        var badge = document.getElementById('review-badge');
+        if (s.pending_review > 0) {
+            badge.textContent = s.pending_review;
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+
+        renderProgress(allVendorStatus);
+    } catch (e) {
+        showAlert('Error loading verification status: ' + e.message, 'error');
+    }
+}
+
+function renderProgress(vendors) {
+    var tbody = document.getElementById('progress-tbody');
+    if (!vendors.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-light)">No vendors with Ricochet-imported items</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = vendors.map(function(v) {
+        var pct = v.total_items > 0 ? Math.round((v.verified_items / v.total_items) * 100) : 0;
+        var statusCls = 'status-none';
+        var statusText = 'Not Started';
+        if (v.is_complete) { statusCls = 'status-complete'; statusText = 'Complete'; }
+        else if (v.verified_items > 0) { statusCls = 'status-partial'; statusText = 'In Progress'; }
+
+        return '<tr>' +
+            '<td style="color:var(--text); font-weight:500">' + esc(v.name) + '</td>' +
+            '<td>' + esc(v.booth_number || '—') + '</td>' +
+            '<td>' + v.total_items + '</td>' +
+            '<td>' + v.verified_items + '</td>' +
+            '<td>' + v.unverified_items + '</td>' +
+            '<td class="progress-bar-cell">' +
+                '<div style="display:flex; align-items:center; gap:0.5rem">' +
+                    '<div class="progress-bar-bg" style="flex:1">' +
+                        '<div class="progress-bar-fill ' + (v.is_complete ? 'complete' : '') + '" style="width:' + pct + '%"></div>' +
+                    '</div>' +
+                    '<span style="font-size:0.72rem; min-width:32px">' + pct + '%</span>' +
+                '</div>' +
+            '</td>' +
+            '<td><span class="status-badge ' + statusCls + '">' + statusText + '</span></td>' +
+            '<td>' +
+                '<button class="btn-sm" onclick="resetVendor(' + v.id + ', \'' + esc(v.name).replace(/'/g, "\\'") + '\')" title="Reset verification">Reset</button>' +
+            '</td>' +
+        '</tr>';
+    }).join('');
+}
+
+function filterProgress() {
+    var q = document.getElementById('progress-search').value.trim().toLowerCase();
+    var filter = document.getElementById('progress-filter').value;
+
+    var filtered = allVendorStatus;
+
+    if (filter === 'complete') filtered = filtered.filter(function(v) { return v.is_complete; });
+    else if (filter === 'partial') filtered = filtered.filter(function(v) { return v.verified_items > 0 && !v.is_complete; });
+    else if (filter === 'none') filtered = filtered.filter(function(v) { return v.verified_items === 0; });
+
+    if (q) {
+        filtered = filtered.filter(function(v) {
+            return v.name.toLowerCase().includes(q) ||
+                (v.booth_number && v.booth_number.toLowerCase().includes(q));
+        });
+    }
+
+    renderProgress(filtered);
+}
+
+// ── Load vendor dropdown ───────────────────────────
+async function loadVendors() {
+    try {
+        var res = await fetch(API + '/vendors/', { headers: headers });
+        if (!res.ok) throw new Error('Failed to load vendors');
+        var vendors = await res.json();
+        var select = document.getElementById('vendor-select');
+        var reviewSelect = document.getElementById('review-vendor-filter');
+
+        vendors
+            .filter(function(v) { return v.role === 'vendor' && v.status === 'active'; })
+            .sort(function(a, b) { return a.name.localeCompare(b.name); })
+            .forEach(function(v) {
+                var opt = document.createElement('option');
+                opt.value = v.id;
+                opt.textContent = v.name + (v.booth_number ? ' (' + v.booth_number + ')' : '');
+                select.appendChild(opt);
+
+                var opt2 = opt.cloneNode(true);
+                reviewSelect.appendChild(opt2);
+            });
+    } catch (e) {
+        showAlert('Error loading vendors: ' + e.message, 'error');
+    }
+}
+
+// ── Upload CSV ─────────────────────────────────────
+async function uploadCSV() {
+    var vendorId = document.getElementById('vendor-select').value;
+    var fileInput = document.getElementById('csv-file');
+
+    if (!vendorId) { showAlert('Please select a vendor', 'error'); return; }
+    if (!fileInput.files.length) { showAlert('Please select a CSV file', 'error'); return; }
+
+    var btn = document.getElementById('upload-btn');
+    btn.disabled = true;
+    btn.textContent = 'Uploading…';
+
+    var formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+
+    try {
+        var res = await fetch(API + '/inventory-verify/upload/' + vendorId, {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token },
+            body: formData,
+        });
+
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Upload failed');
+
+        // Show results
+        var panel = document.getElementById('upload-result');
+        panel.classList.add('visible');
+        document.getElementById('result-vendor-name').textContent = data.vendor_name;
+        document.getElementById('result-verified').textContent = data.verified;
+        document.getElementById('result-added').textContent = data.added;
+        document.getElementById('result-skipped').textContent = data.skipped;
+        document.getElementById('result-errors').textContent = data.errors;
+
+        // Details
+        var detailsDiv = document.getElementById('result-details');
+        var html = '';
+        if (data.added > 0) {
+            html += '<div style="margin-bottom:0.5rem; color:#fbbf24; font-weight:500">' + data.added + ' items added to Review Queue — switch to the Review tab to approve or reject.</div>';
+        }
+        if (data.skipped_details && data.skipped_details.length) {
+            html += '<div style="margin-bottom:0.5rem; color:var(--gold); font-weight:500">Skipped:</div>';
+            data.skipped_details.forEach(function(s) {
+                html += '<div>Row ' + s.row + ': ' + esc(s.reason) + (s.name ? ' — ' + esc(s.name) : '') + (s.barcode ? ' (' + esc(s.barcode) + ')' : '') + '</div>';
+            });
+        }
+        if (data.error_details && data.error_details.length) {
+            html += '<div style="margin-top:0.5rem; color:#f87171; font-weight:500">Errors:</div>';
+            data.error_details.forEach(function(e) {
+                html += '<div>Row ' + e.row + ': ' + esc(e.error) + ' — ' + esc(e.name) + ' (' + esc(e.barcode) + ')</div>';
+            });
+        }
+        detailsDiv.innerHTML = html;
+
+        showAlert('Verified ' + data.verified + ' items, ' + data.added + ' sent to review for ' + data.vendor_name, 'success');
+        loadStatus();
+        fileInput.value = '';
+
+    } catch (e) {
+        showAlert('Upload error: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Upload & Verify';
+    }
+}
+
+// ── Reset vendor verification ──────────────────────
+async function resetVendor(vendorId, vendorName) {
+    if (!confirm('Reset verification for "' + vendorName + '"? All Ricochet items will be marked as unverified.')) return;
+
+    try {
+        var res = await fetch(API + '/inventory-verify/reset/' + vendorId, { method: 'POST', headers: headers });
+        if (!res.ok) throw new Error('Reset failed');
+        showAlert('Verification reset for ' + vendorName, 'success');
+        loadStatus();
+    } catch (e) {
+        showAlert('Error: ' + e.message, 'error');
+    }
+}
+
+// ── Review Queue ───────────────────────────────────
+async function loadReviewQueue() {
+    var vendorId = document.getElementById('review-vendor-filter').value;
+    var url = API + '/inventory-verify/review-queue?page=' + reviewState.page + '&per_page=50';
+    if (vendorId) url += '&vendor_id=' + vendorId;
+
+    try {
+        var res = await fetch(url, { headers: headers });
+        if (!res.ok) throw new Error('Failed to load review queue');
+        var data = await res.json();
+
+        reviewState.totalPages = data.total_pages;
+
+        var emptyMsg = document.getElementById('review-empty');
+        var table = document.getElementById('review-table');
+        var tbody = document.getElementById('review-tbody');
+        var pagination = document.getElementById('review-pagination');
+        var approveAllBtn = document.getElementById('approve-all-btn');
+        var rejectAllBtn = document.getElementById('reject-all-btn');
+
+        // Show/hide approve/reject all buttons based on vendor filter
+        if (vendorId && data.total > 0) {
+            approveAllBtn.style.display = '';
+            rejectAllBtn.style.display = '';
+        } else {
+            approveAllBtn.style.display = 'none';
+            rejectAllBtn.style.display = 'none';
+        }
+
+        if (!data.items.length) {
+            emptyMsg.style.display = 'block';
+            emptyMsg.textContent = 'No items pending review.';
+            table.style.display = 'none';
+            pagination.style.display = 'none';
+            return;
+        }
+
+        emptyMsg.style.display = 'none';
+        table.style.display = 'table';
+
+        tbody.innerHTML = data.items.map(function(i) {
+            return '<tr>' +
+                '<td style="color:var(--text)">' + esc(i.vendor_name) + '</td>' +
+                '<td style="font-size:0.72rem">' + esc(i.sku) + '</td>' +
+                '<td style="font-size:0.72rem; font-family:monospace">' + esc(i.barcode) + '</td>' +
+                '<td>' + esc(i.name) + '</td>' +
+                '<td>$' + i.price.toFixed(2) + '</td>' +
+                '<td>' + i.quantity + '</td>' +
+                '<td style="white-space:nowrap">' +
+                    '<button class="btn-sm approve" onclick="approveItem(' + i.id + ', this)" title="Approve">&#10003;</button> ' +
+                    '<button class="btn-sm reject" onclick="rejectItem(' + i.id + ', this)" title="Reject">&#10006;</button>' +
+                '</td>' +
+            '</tr>';
+        }).join('');
+
+        // Pagination
+        if (data.total_pages > 1) {
+            pagination.style.display = 'flex';
+            document.getElementById('review-page-info').textContent = 'Page ' + data.page + ' of ' + data.total_pages + ' (' + data.total + ' items)';
+        } else {
+            pagination.style.display = data.total > 0 ? 'flex' : 'none';
+            document.getElementById('review-page-info').textContent = data.total + ' items';
+        }
+
+    } catch (e) {
+        showAlert('Error loading review queue: ' + e.message, 'error');
+    }
+}
+
+function reviewPage(p) {
+    if (p < 1 || p > reviewState.totalPages) return;
+    reviewState.page = p;
+    loadReviewQueue();
+}
+
+async function approveItem(itemId, btn) {
+    btn.disabled = true;
+    try {
+        var res = await fetch(API + '/inventory-verify/review/approve', {
+            method: 'POST',
+            headers: jsonHeaders,
+            body: JSON.stringify([itemId]),
+        });
+        if (!res.ok) throw new Error('Approve failed');
+        btn.closest('tr').remove();
+        loadStatus();
+    } catch (e) {
+        showAlert('Error: ' + e.message, 'error');
+        btn.disabled = false;
+    }
+}
+
+async function rejectItem(itemId, btn) {
+    btn.disabled = true;
+    try {
+        var res = await fetch(API + '/inventory-verify/review/reject', {
+            method: 'POST',
+            headers: jsonHeaders,
+            body: JSON.stringify([itemId]),
+        });
+        if (!res.ok) throw new Error('Reject failed');
+        btn.closest('tr').remove();
+        loadStatus();
+    } catch (e) {
+        showAlert('Error: ' + e.message, 'error');
+        btn.disabled = false;
+    }
+}
+
+async function approveAllVendor() {
+    var vendorId = document.getElementById('review-vendor-filter').value;
+    if (!vendorId) return;
+    var vendorName = document.getElementById('review-vendor-filter').selectedOptions[0].textContent;
+    if (!confirm('Approve ALL pending review items for ' + vendorName + '?')) return;
+
+    try {
+        var res = await fetch(API + '/inventory-verify/review/approve?approve_all_vendor=' + vendorId, {
+            method: 'POST',
+            headers: jsonHeaders,
+            body: JSON.stringify([]),
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Approve failed');
+        showAlert('Approved ' + data.approved + ' items for ' + vendorName, 'success');
+        loadReviewQueue();
+        loadStatus();
+    } catch (e) {
+        showAlert('Error: ' + e.message, 'error');
+    }
+}
+
+async function rejectAllVendor() {
+    var vendorId = document.getElementById('review-vendor-filter').value;
+    if (!vendorId) return;
+    var vendorName = document.getElementById('review-vendor-filter').selectedOptions[0].textContent;
+    if (!confirm('REJECT and DELETE all pending review items for ' + vendorName + '? This cannot be undone.')) return;
+
+    try {
+        var res = await fetch(API + '/inventory-verify/review/reject?reject_all_vendor=' + vendorId, {
+            method: 'POST',
+            headers: jsonHeaders,
+            body: JSON.stringify([]),
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Reject failed');
+        showAlert('Rejected ' + data.rejected + ' items for ' + vendorName, 'success');
+        loadReviewQueue();
+        loadStatus();
+    } catch (e) {
+        showAlert('Error: ' + e.message, 'error');
+    }
+}
+
+// ── Archive unverified ─────────────────────────────
+async function archiveUnverified() {
+    if (!confirm('Archive ALL unverified Ricochet-imported items across ALL vendors?\n\nBMM-POS native items will NOT be affected.\nArchived items will be held for 30 days before permanent deletion.')) return;
+
+    try {
+        var res = await fetch(API + '/inventory-verify/archive-unverified', { method: 'POST', headers: headers });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Archive failed');
+        showAlert('Archived ' + data.archived + ' unverified Ricochet items. Expires: ' + new Date(data.expires_at).toLocaleDateString(), 'success');
+        loadStatus();
+        loadPending();
+    } catch (e) {
+        showAlert('Error: ' + e.message, 'error');
+    }
+}
+
+// ── Load pending delete ────────────────────────────
+async function loadPending() {
+    try {
+        var res = await fetch(API + '/inventory-verify/pending-delete', { headers: headers });
+        if (!res.ok) throw new Error('Failed to load pending items');
+        var data = await res.json();
+
+        var emptyMsg = document.getElementById('pending-empty');
+        var table = document.getElementById('pending-table');
+        var tbody = document.getElementById('pending-tbody');
+
+        if (!data.vendors.length) {
+            emptyMsg.textContent = 'No items pending deletion.';
+            emptyMsg.style.display = 'block';
+            table.style.display = 'none';
+            return;
+        }
+
+        emptyMsg.style.display = 'none';
+        table.style.display = 'table';
+
+        tbody.innerHTML = data.vendors.map(function(v) {
+            var expiry = v.earliest_expiry ? new Date(v.earliest_expiry).toLocaleDateString() : '—';
+            return '<tr>' +
+                '<td style="color:var(--text); font-weight:500">' + esc(v.vendor_name) + '</td>' +
+                '<td>' + esc(v.booth_number || '—') + '</td>' +
+                '<td>' + v.pending_count + '</td>' +
+                '<td>' + expiry + '</td>' +
+                '<td>' +
+                    '<button class="btn-sm" onclick="restoreVendor(' + v.vendor_id + ', \'' + esc(v.vendor_name).replace(/'/g, "\\'") + '\')" style="color:var(--success, #4ade80)">Restore</button>' +
+                '</td>' +
+            '</tr>';
+        }).join('');
+
+        var totalRow = '<tr style="border-top:2px solid var(--warm-border)">' +
+            '<td colspan="2" style="font-weight:600; color:var(--text)">Total</td>' +
+            '<td style="font-weight:600; color:var(--gold)">' + data.total_pending + '</td>' +
+            '<td colspan="2"></td>' +
+        '</tr>';
+        tbody.innerHTML += totalRow;
+
+    } catch (e) {
+        showAlert('Error loading pending items: ' + e.message, 'error');
+    }
+}
+
+// ── Restore vendor items ───────────────────────────
+async function restoreVendor(vendorId, vendorName) {
+    if (!confirm('Restore all pending-delete items for "' + vendorName + '" back to active?')) return;
+
+    try {
+        var res = await fetch(API + '/inventory-verify/restore-vendor/' + vendorId, { method: 'POST', headers: headers });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Restore failed');
+        showAlert('Restored ' + data.restored + ' items for ' + vendorName, 'success');
+        loadPending();
+        loadStatus();
+    } catch (e) {
+        showAlert('Error: ' + e.message, 'error');
+    }
+}
+
+// ── Permanent delete ───────────────────────────────
+async function permanentDelete() {
+    if (!confirm('PERMANENTLY DELETE all archived items?\n\nThis cannot be undone!')) return;
+    if (!confirm('Are you absolutely sure? This will permanently remove all pending-delete items from the database.')) return;
+
+    try {
+        var res = await fetch(API + '/inventory-verify/permanent-delete', { method: 'POST', headers: headers });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Delete failed');
+        showAlert('Permanently deleted ' + data.deleted + ' items.', 'success');
+        loadPending();
+        loadStatus();
+    } catch (e) {
+        showAlert('Error: ' + e.message, 'error');
+    }
+}
+
+// ── Init ───────────────────────────────────────────
+detectRole().then(function() {
+    loadVendors();
+    loadStatus();
+});
+</script>
+
+</body>
+</html>
+```
+
+---
+
+## Step 2: Add nav link to other admin pages
+
+Add the "Verify" link to the navbar and mobile nav on all other admin pages. The link should appear between "Items" and "Studio":
+
+```html
+<a href="/admin/inventory-verify.html">Verify</a>
+```
+
+Files to update (add the link in both the `<nav class="navbar-nav">` and the `<div class="mobile-nav-dropdown">`):
+
+- `frontend/admin/index.html`
+- `frontend/admin/vendors.html`
+- `frontend/admin/rent.html`
+- `frontend/admin/reports.html`
+- `frontend/admin/eod-reports.html`
+- `frontend/admin/payouts.html`
+- `frontend/admin/settings.html`
+- `frontend/admin/studio.html`
+
+In each file, find these two lines (they appear in both the desktop nav and mobile nav):
+
+```html
+            <a href="/vendor/items.html">Items</a>
+            <a href="/admin/studio.html">Studio</a>
+```
+
+And add the Verify link between them:
+
+```html
+            <a href="/vendor/items.html">Items</a>
+            <a href="/admin/inventory-verify.html">Verify</a>
+            <a href="/admin/studio.html">Studio</a>
+```
+
+Do this for BOTH the desktop `navbar-nav` and the `mobile-nav-dropdown` in each file.
+
+Also add the link to the POS pages so cashiers can access it:
+
+- `frontend/pos/index.html`
+- `frontend/pos/register.html`
+
+In these files, add a nav link to the verification page in whatever format matches the existing nav structure.
+
+---
+
+## Step 3: Verify the /api/v1/auth/me endpoint exists
+
+The frontend calls `/api/v1/auth/me` to detect the user's role. Make sure this endpoint exists in `app/routers/auth.py`. If it doesn't exist, add it:
+
+```python
+@router.get("/me")
+async def get_current_user_info(current_user: Vendor = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "role": current_user.role,
+    }
+```
+
+---
+
+## Summary
+
+**New file:** `frontend/admin/inventory-verify.html` — inventory verification page
+
+**Four tabs:**
+1. **Upload & Verify** (admin only) — vendor dropdown + CSV upload with results
+2. **Vendor Progress** (admin only) — table with progress bars, search, filter, reset
+3. **Review Queue** (admin + cashier) — approve/reject new items from CSV, per-item or bulk per-vendor
+4. **Archive & Delete** (admin only) — archive unverified, permanent delete, restore
+
+**Key behaviors:**
+- Page auto-detects role via `/api/v1/auth/me` — cashiers only see the Review Queue tab
+- Only Ricochet-imported items shown in counts (BMM-POS native items excluded)
+- Review badge shows pending count on the tab
+- Approve/Reject All buttons appear when filtering by vendor
+- Double-confirm on all destructive actions
+- Mobile responsive with 44px touch targets
+- Nav link added to all admin pages + POS pages
+
+Commit and push when done.

@@ -543,7 +543,7 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
                 <div>
                     <h3 style="font-size:0.85rem;color:var(--text);margin-bottom:0.5rem">Import Vendors</h3>
-                    <p style="font-size:0.75rem;color:var(--text-light);margin-bottom:0.6rem">CSV with columns: name, email, phone, booth_number, monthly_rent, commission_rate, payout_method, zelle_handle</p>
+                    <p style="font-size:0.75rem;color:var(--text-light);margin-bottom:0.6rem">CSV with columns: name, email, phone, booth_number, monthly_rent, commission_rate, payout_method</p>
                     <div style="display:flex;gap:6px;align-items:center">
                         <input type="file" id="vendor-csv" accept=".csv" style="font-size:0.8rem;color:var(--text-light);max-width:200px">
                         <button class="btn btn-primary btn-sm" onclick="uploadVendors()" id="upload-vendors-btn">Upload Vendors</button>
@@ -668,9 +668,7 @@
             <select id="rent-pay-method" onchange="window.onRentPayMethodChange()" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box">
                 <option value="cash">Cash</option>
                 <option value="check">Check</option>
-                <option value="zelle">Zelle</option>
                 <option value="card">Card (terminal)</option>
-                <option value="other">Other</option>
             </select>
         </div>
         <div id="rent-card-info" style="display:none;background:var(--gold-glow);border:1px solid var(--warm-border);padding:0.75rem;margin-bottom:0.75rem;font-size:0.82rem;color:var(--text-light)">
@@ -743,10 +741,7 @@
             <div>
                 <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Payout method</label>
                 <select id="edit-v-payout" onchange="window.onEditPayoutChange()" class="form-control" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.65rem">
-                    <option value="zelle">Zelle</option>
                     <option value="check">Check</option>
-                    <option value="cash">Cash</option>
-                    <option value="other">Other</option>
                 </select>
             </div>
             <div>
@@ -758,10 +753,7 @@
                 </select>
             </div>
         </div>
-        <div id="edit-zelle-wrap" style="margin-bottom:0.75rem">
-            <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Zelle handle</label>
-            <input type="text" id="edit-v-zelle" placeholder="Phone or email" class="form-control" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.65rem">
-        </div>
+        <!-- zelle removed -->
         <div style="margin-bottom:1rem">
             <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Notes</label>
             <textarea id="edit-v-notes" rows="2" class="form-control" style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.65rem;resize:vertical;font-family:'Roboto',sans-serif;font-size:0.85rem"></textarea>
@@ -1124,8 +1116,8 @@
 
     function downloadVendorTemplate(e) {
         e.preventDefault();
-        var csv = 'name,email,phone,booth_number,monthly_rent,commission_rate,payout_method,zelle_handle\n';
-        csv += 'Jane Smith,jane@example.com,920-555-1234,A1,200.00,0.10,zelle,jane@example.com\n';
+        var csv = 'name,email,phone,booth_number,monthly_rent,commission_rate,payout_method\n';
+        csv += 'Jane Smith,jane@example.com,920-555-1234,A1,200.00,0.10,check\n';
         var blob = new Blob([csv], {type:'text/csv'});
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);

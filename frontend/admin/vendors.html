@@ -422,7 +422,7 @@
                     <div class="form-group">
                         <label class="form-label">Payout Method</label>
                         <select class="form-control" id="e-payout">
-                            <option value="zelle">Zelle</option>
+                            <option value="check">Check</option>
                             <option value="check">Check</option>
                             <option value="cash">Cash</option>
                         </select>
@@ -504,7 +504,7 @@
                     <div class="form-group">
                         <label class="form-label">Payout Method</label>
                         <select class="form-control" id="a-payout">
-                            <option value="zelle">Zelle</option>
+                            <option value="check">Check</option>
                             <option value="check">Check</option>
                             <option value="cash">Cash</option>
                         </select>
@@ -819,7 +819,7 @@
         document.getElementById('e-role').value = v.role || 'vendor';
         document.getElementById('e-is-vendor').checked = !!v.is_vendor;
         document.getElementById('e-status').value = v.status || 'active';
-        document.getElementById('e-payout').value = v.payout_method || 'zelle';
+        document.getElementById('e-payout').value = v.payout_method || 'check';
         document.getElementById('e-zelle').value = v.zelle_handle || '';
         document.getElementById('e-notes').value = v.notes || '';
 
@@ -996,7 +996,7 @@
         document.getElementById('a-booth').value = '';
         document.getElementById('a-rent').value = '0';
         document.getElementById('a-role').value = 'vendor';
-        document.getElementById('a-payout').value = 'zelle';
+        document.getElementById('a-payout').value = 'check';
         document.getElementById('a-zelle').value = '';
         document.getElementById('add-modal-overlay').classList.remove('hidden');
         setTimeout(() => document.getElementById('a-name').focus(), 100);

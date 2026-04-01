@@ -39,7 +39,7 @@ EMAIL_TEMPLATE_DEFAULTS = {
         "subject": "Rent Due: ${amount} — {due_date}",
         "greeting": "Hello {vendor_name},",
         "body": "This is a friendly reminder that your booth rent is coming due.",
-        "closing": "You can pay by cash, check, Zelle, or Square at the front desk. Thank you!",
+        "closing": "You can pay by cash, check, or card at the front desk. Thank you!",
         "variables": ["vendor_name", "amount", "due_date", "booth"],
     },
     "rent_overdue_15day": {
@@ -47,7 +47,7 @@ EMAIL_TEMPLATE_DEFAULTS = {
         "subject": "Rent Past Due: ${amount} — {period}",
         "greeting": "Hello {vendor_name},",
         "body": "This is a reminder that your booth rent for {period} is now 15 days past due.",
-        "closing": "Please arrange payment at your earliest convenience. You can pay by cash, check, Zelle, or Square at the front desk.\n\nIf you have already made this payment, please disregard this notice and contact the front desk so we can update your account.",
+        "closing": "Please arrange payment at your earliest convenience. You can pay by cash, check, or card at the front desk.\n\nIf you have already made this payment, please disregard this notice and contact the front desk so we can update your account.",
         "variables": ["vendor_name", "amount", "booth", "period"],
     },
     "rent_overdue_27day": {
@@ -63,7 +63,7 @@ EMAIL_TEMPLATE_DEFAULTS = {
         "subject": "Rent Balance Due: ${shortfall} — {period}",
         "greeting": "Hello {vendor_name},",
         "body": "Your sales for {period} were not enough to cover your booth rent. The remaining balance is due.",
-        "closing": "Please arrange payment for the remaining balance at the front desk by cash, check, Zelle, or Square.",
+        "closing": "Please arrange payment for the remaining balance at the front desk by cash, check, or card.",
         "variables": ["vendor_name", "gross_sales", "rent_amount", "shortfall", "booth", "period"],
     },
     "vendor_welcome": {
