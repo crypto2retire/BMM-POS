@@ -24,6 +24,7 @@ async def list_vendors(
     result = await db.execute(select(Vendor).order_by(Vendor.name))
     vendors = result.scalars().all()
 
+    # Fetch all balances in one query
     bal_result = await db.execute(
         select(VendorBalance.vendor_id, VendorBalance.balance)
     )
