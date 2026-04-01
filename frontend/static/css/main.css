@@ -125,19 +125,23 @@
 
 /* Light theme navbar */
 [data-theme="light"] .navbar {
-    background: #FFFFFF;
+    background: #FFFFFF !important;
     color: var(--text);
     border-bottom: 2px solid var(--gold);
     box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+[data-theme="light"] .navbar-logo {
+    filter: brightness(0.15) contrast(1.2);
 }
 [data-theme="light"] .navbar-brand {
     color: var(--text);
 }
 [data-theme="light"] .navbar-brand .store-name {
-    opacity: 0.55;
+    color: var(--text-light);
+    opacity: 0.75;
 }
 [data-theme="light"] .navbar-nav a {
-    color: rgba(26,24,21,0.55);
+    color: var(--text-light);
 }
 [data-theme="light"] .navbar-nav a:hover {
     color: var(--text);
