@@ -3,7 +3,7 @@ import io
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, update, delete
 from app.database import get_db
@@ -557,7 +557,7 @@ async def get_review_queue(
 
 @router.post("/review/approve")
 async def approve_review_items(
-    item_ids: list[int] = [],
+    item_ids: list[int] = Body(default=[]),
     approve_all_vendor: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_role("admin", "cashier")),
@@ -610,7 +610,7 @@ async def approve_review_items(
 
 @router.post("/review/reject")
 async def reject_review_items(
-    item_ids: list[int] = [],
+    item_ids: list[int] = Body(default=[]),
     reject_all_vendor: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_role("admin", "cashier")),
