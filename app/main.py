@@ -16,6 +16,7 @@ try:
     from app.database import AsyncSessionLocal, engine, Base
     print("BMM-POS: importing routers...", file=sys.stderr, flush=True)
     from app.routers import auth, vendors, items, sales, pos, assistant, storefront, storefront_assistant, rent, admin, reports, settings, studio, bulk_import, notifications, booth_showcase, data_sync, ai_writer
+    from app.routers.inventory_verify import router as inventory_verify_router
     print("BMM-POS: all imports OK", file=sys.stderr, flush=True)
 except Exception as _import_err:
     print(f"BMM-POS FATAL IMPORT ERROR: {type(_import_err).__name__}: {_import_err}", file=sys.stderr, flush=True)
@@ -86,6 +87,23 @@ async def lifespan(app: FastAPI):
             await session.execute(text(
                 "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
                 "label_printed BOOLEAN NOT NULL DEFAULT false"
+            ))
+            await session.execute(text(
+                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
+                "verified_at TIMESTAMPTZ"
+            ))
+            await session.execute(text(
+                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
+                "archive_expires_at TIMESTAMPTZ"
+            ))
+            await session.execute(text(
+                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
+                "import_source VARCHAR(50)"
+            ))
+            # Backfill: tag existing items with barcodes as Ricochet imports (one-time)
+            await session.execute(text(
+                "UPDATE items SET import_source = 'ricochet' "
+                "WHERE import_source IS NULL AND barcode IS NOT NULL"
             ))
             await session.execute(text(
                 "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS "
@@ -406,6 +424,7 @@ app.include_router(reports.router, prefix="/api/v1")
 app.include_router(settings.router, prefix="/api/v1")
 app.include_router(studio.router, prefix="/api/v1")
 app.include_router(bulk_import.router, prefix="/api/v1")
+app.include_router(inventory_verify_router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(booth_showcase.router, prefix="/api/v1")
 app.include_router(data_sync.router, prefix="/api/v1")

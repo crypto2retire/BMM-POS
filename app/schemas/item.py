@@ -74,6 +74,9 @@ class ItemResponse(BaseModel):
     created_at: datetime
     booth_number: Optional[str] = None
     label_printed: Optional[bool] = False
+    verified_at: Optional[datetime] = None
+    archive_expires_at: Optional[datetime] = None
+    import_source: Optional[str] = None
 
     class Config:
         from_attributes = True

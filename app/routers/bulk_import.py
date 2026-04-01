@@ -384,6 +384,7 @@ async def bulk_import_inventory(
                     consignment_rate=consignment_rate,
                     status="active",
                     label_printed=True,
+                    import_source="ricochet" if is_ricochet else None,
                 )
                 db.add(item)
 
