@@ -1,11 +1,12 @@
 import csv
 import io
+import logging
 from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, update, delete
+from sqlalchemy import select, func, and_, or_, update, delete, text as sql_text
 from app.database import get_db
 from app.models.item import Item
 from app.models.vendor import Vendor
@@ -313,11 +314,9 @@ async def verify_bulk_inventory(
     """
     Upload a single Ricochet CSV containing ALL vendors' items.
     Uses the 'Consignor' column to match items to vendors by name.
-    - Items matching an existing barcode for the correct vendor → verified
-    - Items matching a barcode for a DIFFERENT vendor → flagged as error
-    - Items not in BMM-POS → created as pending_review under matched vendor
-    - Items with no/unmatched Consignor → grouped in skipped
     """
+    logger = logging.getLogger(__name__)
+
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Please upload a CSV file")
 
@@ -351,35 +350,47 @@ async def verify_bulk_inventory(
             detail=f"CSV must have a 'SKU' column. Found: {', '.join(reader.fieldnames[:10])}"
         )
 
-    vendor_result = await db.execute(select(Vendor))
-    all_vendors = vendor_result.scalars().all()
+    logger.info("Bulk verify: CSV parsed, loading vendor data...")
+
+    vendor_result = await db.execute(select(Vendor.id, Vendor.name, Vendor.booth_number))
     vendor_by_name = {}
-    for v in all_vendors:
-        if v.name:
-            vendor_by_name[v.name.strip().lower()] = v
-        if v.booth_number:
-            vendor_by_name[v.booth_number.strip().lower()] = v
+    for row in vendor_result.all():
+        if row.name:
+            vendor_by_name[row.name.strip().lower()] = {"id": row.id, "name": row.name}
+        if row.booth_number:
+            vendor_by_name[row.booth_number.strip().lower()] = {"id": row.id, "name": row.name}
 
-    existing_result = await db.execute(select(Item).where(Item.status.in_(["active", "pending_review"])))
+    logger.info("Bulk verify: %s vendor name mappings loaded", len(vendor_by_name))
+
+    item_rows = await db.execute(
+        sql_text(
+            "SELECT id, barcode, vendor_id FROM items WHERE barcode IS NOT NULL AND status IN ('active', 'pending_review')"
+        )
+    )
     existing_by_barcode = {}
-    for item in existing_result.scalars().all():
-        if item.barcode:
-            existing_by_barcode[item.barcode] = item
+    for r in item_rows.all():
+        existing_by_barcode[r[1]] = {"id": r[0], "vendor_id": r[2]}
 
-    all_skus = set()
-    sku_result = await db.execute(select(Item.sku))
-    for (s,) in sku_result.all():
-        if s:
-            all_skus.add(s)
+    logger.info("Bulk verify: %s existing barcodes loaded", len(existing_by_barcode))
+
+    sku_rows = await db.execute(sql_text("SELECT sku FROM items WHERE sku IS NOT NULL"))
+    all_skus = {r[0] for r in sku_rows.all() if r[0]}
 
     sku_seqs = {}
 
-    async def get_next_sku(vid):
+    def next_sku_sync(vid):
         if vid not in sku_seqs:
-            seq_result = await db.execute(
-                select(func.count(Item.id)).where(Item.vendor_id == vid)
-            )
-            sku_seqs[vid] = (seq_result.scalar() or 0) + 1
+            prefix = f"BSM-{vid:04d}-"
+            max_seq = 0
+            for s in all_skus:
+                if s.startswith(prefix):
+                    try:
+                        seq_num = int(s[len(prefix) :])
+                        if seq_num > max_seq:
+                            max_seq = seq_num
+                    except ValueError:
+                        pass
+            sku_seqs[vid] = max_seq + 1
         while True:
             sku = f"BSM-{vid:04d}-{sku_seqs[vid]:06d}"
             if sku not in all_skus:
@@ -397,122 +408,181 @@ async def verify_bulk_inventory(
     unmatched_vendors = {}
     rows_processed = 0
 
-    for row_num, row in enumerate(reader, start=2):
-        rows_processed += 1
-        clean_row = {k.strip().lower(): _clean(v) for k, v in row.items()}
+    verify_ids = []
+    verify_updates = []
+    new_items = []
+    BATCH_SIZE = 500
 
-        barcode_raw = (clean_row.get("sku") or "").strip().strip("'").strip()
-        if not barcode_raw:
-            skipped.append({"row": row_num, "reason": "Empty SKU"})
-            continue
+    async def flush_batch():
+        nonlocal verify_ids, verify_updates, new_items
+        if verify_ids:
+            await db.execute(update(Item).where(Item.id.in_(verify_ids)).values(verified_at=now))
+        for item_id, new_price, new_qty in verify_updates:
+            vals = {}
+            if new_price is not None:
+                vals["price"] = new_price
+            if new_qty is not None:
+                vals["quantity"] = new_qty
+            if vals:
+                await db.execute(update(Item).where(Item.id == item_id).values(**vals))
+        pending_new = list(new_items)
+        for item in new_items:
+            db.add(item)
+        await db.flush()
+        for item in pending_new:
+            if item.barcode is not None:
+                existing_by_barcode[item.barcode] = {"id": item.id, "vendor_id": item.vendor_id}
+        verify_ids = []
+        verify_updates = []
+        new_items = []
 
-        name = clean_row.get("name") or ""
-        if not name:
-            skipped.append({"row": row_num, "barcode": barcode_raw, "reason": "Empty name"})
-            continue
+    logger.info("Bulk verify: starting row processing...")
 
-        consignor = (clean_row.get("consignor") or "").strip()
-        if not consignor:
-            skipped.append({"row": row_num, "barcode": barcode_raw, "name": name, "reason": "No vendor (Consignor empty)"})
-            continue
+    try:
+        for row_num, row in enumerate(reader, start=2):
+            rows_processed += 1
+            clean_row = {k.strip().lower(): _clean(v) for k, v in row.items()}
 
-        vendor = vendor_by_name.get(consignor.lower())
-        if not vendor:
-            if consignor.lower() not in unmatched_vendors:
-                unmatched_vendors[consignor.lower()] = {"name": consignor, "count": 0}
-            unmatched_vendors[consignor.lower()]["count"] += 1
-            skipped.append({"row": row_num, "barcode": barcode_raw, "name": name, "reason": f"Vendor not found: '{consignor}'"})
-            continue
+            barcode_raw = (clean_row.get("sku") or "").strip().strip("'").strip()
+            if not barcode_raw:
+                skipped.append({"row": row_num, "reason": "Empty SKU"})
+                continue
 
-        vid = vendor.id
-        if vid not in vendor_stats:
-            vendor_stats[vid] = {"name": vendor.name, "verified": 0, "added": 0, "errors": 0}
+            name = clean_row.get("name") or ""
+            if not name:
+                skipped.append({"row": row_num, "barcode": barcode_raw, "reason": "Empty name"})
+                continue
 
-        if barcode_raw in existing_by_barcode:
-            existing_item = existing_by_barcode[barcode_raw]
-            if existing_item.vendor_id == vid:
-                existing_item.verified_at = now
-                price_str = (clean_row.get("agreed price") or "").replace("$", "").replace(",", "")
-                if price_str:
+            consignor = (clean_row.get("consignor") or "").strip()
+            if not consignor:
+                skipped.append({"row": row_num, "barcode": barcode_raw, "name": name, "reason": "No vendor (Consignor empty)"})
+                continue
+
+            vendor_info = vendor_by_name.get(consignor.lower())
+            if not vendor_info:
+                if consignor.lower() not in unmatched_vendors:
+                    unmatched_vendors[consignor.lower()] = {"name": consignor, "count": 0}
+                unmatched_vendors[consignor.lower()]["count"] += 1
+                skipped.append({"row": row_num, "barcode": barcode_raw, "name": name, "reason": f"Vendor not found: '{consignor}'"})
+                continue
+
+            vid = vendor_info["id"]
+            vname = vendor_info["name"]
+            if vid not in vendor_stats:
+                vendor_stats[vid] = {"name": vname, "verified": 0, "added": 0, "errors": 0}
+
+            if barcode_raw in existing_by_barcode:
+                existing = existing_by_barcode[barcode_raw]
+                if existing["id"] is None:
+                    skipped.append({"row": row_num, "barcode": barcode_raw, "name": name, "reason": "Duplicate barcode in CSV (pending insert)"})
+                    continue
+                if existing["vendor_id"] == vid:
+                    item_id = existing["id"]
+                    verify_ids.append(item_id)
+
+                    new_price = None
+                    new_qty = None
+                    price_str = (clean_row.get("agreed price") or "").replace("$", "").replace(",", "")
+                    if price_str:
+                        try:
+                            new_price = Decimal(price_str)
+                            if new_price <= 0:
+                                new_price = None
+                        except (InvalidOperation, ValueError):
+                            new_price = None
                     try:
-                        new_price = Decimal(price_str)
-                        if new_price > 0 and new_price != existing_item.price:
-                            existing_item.price = new_price
-                    except (InvalidOperation, ValueError):
+                        q = int(clean_row.get("quantity") or "1")
+                        if q > 0:
+                            new_qty = q
+                    except ValueError:
                         pass
+                    if new_price is not None or new_qty is not None:
+                        verify_updates.append((item_id, new_price, new_qty))
+
+                    verified_count += 1
+                    vendor_stats[vid]["verified"] += 1
+                else:
+                    errors.append({
+                        "row": row_num,
+                        "barcode": barcode_raw,
+                        "name": name,
+                        "consignor": consignor,
+                        "error": f"Barcode belongs to vendor {existing['vendor_id']}, not {vid}",
+                    })
+                    vendor_stats[vid]["errors"] += 1
+                    continue
+            else:
+                price_str = (clean_row.get("agreed price") or "0").replace("$", "").replace(",", "")
+                try:
+                    price = Decimal(price_str)
+                    if price <= 0:
+                        raise ValueError()
+                except (InvalidOperation, ValueError):
+                    skipped.append({"row": row_num, "name": name, "reason": f"Invalid price: {price_str}"})
+                    continue
+
                 try:
                     qty = int(clean_row.get("quantity") or "1")
-                    if qty > 0:
-                        existing_item.quantity = qty
+                    if qty <= 0:
+                        qty = 1
                 except ValueError:
-                    pass
-                verified_count += 1
-                vendor_stats[vid]["verified"] += 1
-            else:
-                errors.append({
-                    "row": row_num,
-                    "barcode": barcode_raw,
-                    "name": name,
-                    "consignor": consignor,
-                    "error": f"Barcode belongs to vendor {existing_item.vendor_id}, not {vid}",
-                })
-                vendor_stats[vid]["errors"] += 1
-                continue
-        else:
-            price_str = (clean_row.get("agreed price") or "0").replace("$", "").replace(",", "")
-            try:
-                price = Decimal(price_str)
-                if price <= 0:
-                    raise ValueError()
-            except (InvalidOperation, ValueError):
-                skipped.append({"row": row_num, "name": name, "reason": f"Invalid price: {price_str}"})
-                continue
-
-            try:
-                qty = int(clean_row.get("quantity") or "1")
-                if qty <= 0:
                     qty = 1
-            except ValueError:
-                qty = 1
 
-            category = clean_row.get("category") or None
-            description = clean_row.get("short description") or None
+                category = clean_row.get("category") or None
+                description = clean_row.get("short description") or None
 
-            tax_rate_str = (clean_row.get("tax rate") or "").replace("%", "").strip()
-            is_tax_exempt = False
-            if tax_rate_str:
-                try:
-                    is_tax_exempt = Decimal(tax_rate_str) == 0
-                except (InvalidOperation, ValueError):
-                    pass
+                tax_rate_str = (clean_row.get("tax rate") or "").replace("%", "").strip()
+                is_tax_exempt = False
+                if tax_rate_str:
+                    try:
+                        is_tax_exempt = Decimal(tax_rate_str) == 0
+                    except (InvalidOperation, ValueError):
+                        pass
 
-            sku = await get_next_sku(vid)
+                sku = next_sku_sync(vid)
 
-            new_item = Item(
-                vendor_id=vid,
-                sku=sku,
-                barcode=barcode_raw,
-                name=name,
-                price=price,
-                quantity=qty,
-                category=category,
-                description=description,
-                status="pending_review",
-                is_tax_exempt=is_tax_exempt,
-                is_consignment=False,
-                consignment_rate=None,
-                verified_at=now,
-                import_source="ricochet",
-            )
-            db.add(new_item)
-            existing_by_barcode[barcode_raw] = new_item
-            added_count += 1
-            vendor_stats[vid]["added"] += 1
+                new_item = Item(
+                    vendor_id=vid,
+                    sku=sku,
+                    barcode=barcode_raw,
+                    name=name,
+                    price=price,
+                    quantity=qty,
+                    category=category,
+                    description=description,
+                    status="pending_review",
+                    is_tax_exempt=is_tax_exempt,
+                    is_consignment=False,
+                    consignment_rate=None,
+                    verified_at=now,
+                    import_source="ricochet",
+                )
+                new_items.append(new_item)
+                existing_by_barcode[barcode_raw] = {"id": None, "vendor_id": vid}
+                added_count += 1
+                vendor_stats[vid]["added"] += 1
 
-        if rows_processed % 500 == 0:
-            await db.flush()
+            if rows_processed % BATCH_SIZE == 0:
+                await flush_batch()
+                logger.info("Bulk verify: processed %s rows...", rows_processed)
 
-    await db.commit()
+        await flush_batch()
+        await db.commit()
+        logger.info(
+            "Bulk verify: DONE — %s verified, %s added, %s skipped, %s errors",
+            verified_count,
+            added_count,
+            len(skipped),
+            len(errors),
+        )
+
+    except Exception as e:
+        logger.error("Bulk verify FAILED at row %s: %s: %s", rows_processed, type(e).__name__, e)
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=f"Processing failed at row {rows_processed}: {str(e)}") from e
 
     return {
         "total_rows_processed": rows_processed,
