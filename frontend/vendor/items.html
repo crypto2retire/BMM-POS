@@ -19,9 +19,9 @@
         .label-btn-wrap { position:relative; display:inline-flex; }
         .ldd {
             display:none; position:absolute; top:100%; right:0;
-            background:var(--surface); border:1px solid rgba(201,169,110,0.15);
+            background:var(--surface); border:1px solid var(--warm-border);
             z-index:200; min-width:140px;
-            box-shadow:0 8px 20px rgba(0,0,0,0.4);
+            box-shadow:var(--shadow-md);
         }
         .ldd button {
             display:block; width:100%; text-align:left;
@@ -30,7 +30,7 @@
             min-height:40px; font-family:'Roboto',sans-serif;
             letter-spacing:0.04em; transition:background 0.12s;
         }
-        .ldd button:hover { background:rgba(201,169,110,0.06); color:var(--gold); }
+        .ldd button:hover { background:var(--gold-glow); color:var(--gold); }
         .label-btn-main { border-right:1px solid var(--border) !important; }
         .label-btn-toggle { padding:0.3rem 0.5rem !important; min-width:44px; min-height:44px; }
 
@@ -42,7 +42,7 @@
         .item-card-photos { display:flex; gap:4px; padding:0 1rem 1rem; }
         .item-card-photos img {
             width:48px; height:48px; object-fit:cover; cursor:pointer;
-            border:1px solid rgba(255,255,255,0.04); transition:border-color 0.2s;
+            border:1px solid var(--border); transition:border-color 0.2s;
         }
         .item-card-photos img:hover { border-color:var(--warm-border); }
         .item-card-photos .add-photo-btn {
@@ -67,7 +67,7 @@
         .status-toggle input { opacity:0; width:0; height:0; }
         .status-toggle .slider {
             position:absolute; cursor:pointer; inset:0;
-            background:rgba(255,255,255,0.08); border:1px solid var(--border);
+            background:var(--surface-2); border:1px solid var(--border);
             transition:background 0.25s, border-color 0.25s;
         }
         .status-toggle .slider:before {
@@ -76,7 +76,7 @@
             transition:transform 0.25s, background 0.25s;
         }
         .status-toggle input:checked + .slider {
-            background:rgba(201,169,110,0.25); border-color:var(--gold-dim);
+            background:color-mix(in srgb, var(--gold) 25%, var(--surface-2)); border-color:var(--gold-dim);
         }
         .status-toggle input:checked + .slider:before {
             transform:translateX(18px); background:var(--gold);
@@ -95,7 +95,7 @@
             transition:background 0.15s, color 0.15s, border-color 0.15s;
         }
         .status-filter-bar button.active {
-            background:rgba(201,169,110,0.15); color:var(--gold); border-color:var(--gold-dim);
+            background:var(--gold-glow); color:var(--gold); border-color:var(--gold-dim);
         }
         .status-filter-bar button:hover:not(.active) {
             border-color:var(--gold-dim); color:var(--text);
@@ -103,8 +103,8 @@
 
         .ai-btn {
             background: transparent;
-            border: 1px solid var(--accent);
-            color: var(--accent);
+            border: 1px solid var(--gold);
+            color: var(--gold);
             padding: 0.35rem 0.7rem;
             font-size: 0.75rem;
             cursor: pointer;
@@ -112,7 +112,7 @@
             transition: all 0.2s;
             font-family: 'Roboto', sans-serif;
         }
-        .ai-btn:hover { background: var(--accent); color: var(--bg); }
+        .ai-btn:hover { background: var(--gold); color: var(--bg); }
         .ai-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         @media (max-width: 767px) {
@@ -142,17 +142,17 @@
             transition:background 0.15s, color 0.15s, border-color 0.15s;
             font-family:'Roboto',sans-serif; letter-spacing:0.06em;
         }
-        #ai-describe-btn:hover { background:rgba(201,169,110,0.08); border-color:var(--gold-dim); color:var(--gold); }
+        #ai-describe-btn:hover { background:var(--gold-glow); border-color:var(--gold-dim); color:var(--gold); }
         #ai-describe-btn:disabled { opacity:0.45; cursor:default; }
 
         #ai-suggestion-panel {
-            background:rgba(201,169,110,0.04); border:1px solid rgba(201,169,110,0.18);
+            background:var(--gold-glow); border:1px solid var(--warm-border);
             border-left:3px solid var(--gold-dim);
             padding:12px; margin-bottom:14px; font-size:0.85rem;
         }
         .ai-sugg-row {
             display:flex; align-items:flex-start; gap:8px;
-            padding:6px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-size:0.82rem;
+            padding:6px 0; border-bottom:1px solid var(--border); font-size:0.82rem;
         }
         .ai-sugg-row:last-child { border-bottom:none; }
         .ai-sugg-label {
@@ -167,7 +167,7 @@
             transition:background 0.15s, border-color 0.15s, color 0.15s;
             font-family:'Roboto',sans-serif; letter-spacing:0.06em;
         }
-        .ai-use-btn:hover { border-color:var(--gold-dim); color:var(--gold); background:rgba(201,169,110,0.06); }
+        .ai-use-btn:hover { border-color:var(--gold-dim); color:var(--gold); background:var(--gold-glow); }
 
         /* ── Mini chat ──────────────────────────────────────── */
         #mini-chat-section { border:1px solid var(--border); margin-bottom:12px; }
@@ -192,9 +192,9 @@
         }
         .mc-msg-assistant {
             align-self:flex-start;
-            background:rgba(201,169,110,0.06); color:var(--text);
+            background:var(--gold-glow); color:var(--text);
             padding:5px 10px; max-width:90%; line-height:1.4;
-            border:1px solid rgba(201,169,110,0.15);
+            border:1px solid var(--warm-border);
         }
         #mini-chat-input {
             flex:1; background:var(--surface); border:1px solid var(--border);
@@ -225,7 +225,7 @@
         .items-list-table th:hover { color:var(--gold); }
         .items-list-table th .sort-arrow { font-size:0.6rem; margin-left:4px; opacity:0.5; }
         .items-list-table th.sorted .sort-arrow { opacity:1; color:var(--gold); }
-        .items-list-table td { padding:0.35rem 0.6rem; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:middle; }
+        .items-list-table td { padding:0.35rem 0.6rem; border-bottom:1px solid var(--border); vertical-align:middle; }
         .items-list-table td img { width:40px; height:40px; object-fit:cover; display:block; }
         .items-list-table .sku-cell { font-family:'JetBrains Mono',monospace; font-size:0.72rem; color:var(--text-light); }
         .items-list-table .actions-cell { white-space:nowrap; display:flex; gap:4px; }
@@ -263,17 +263,30 @@
         .batch-more-menu {
             display: none; position: absolute; top: 100%; left: 0; z-index: 50;
             background: var(--surface); border: 1px solid var(--warm-border);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4); min-width: 200px; margin-top: 4px;
+            box-shadow: var(--shadow-md); min-width: 200px; margin-top: 4px;
         }
         .batch-more-menu.open { display: block; }
         .batch-more-menu button {
             display: block; width: 100%; text-align: left; padding: 0.7rem 1rem;
-            background: none; border: none; border-bottom: 1px solid rgba(201,169,110,0.1);
+            background: none; border: none; border-bottom: 1px solid var(--border);
             color: var(--text-light); font-size: 0.82rem; cursor: pointer;
             font-family: 'Roboto', sans-serif;
         }
         .batch-more-menu button:last-child { border-bottom: none; }
-        .batch-more-menu button:hover { background: rgba(201,169,110,0.08); color: var(--gold); }
+        .batch-more-menu button:hover { background: var(--gold-glow); color: var(--gold); }
+
+        .item-needs-label-chip {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            background: var(--gold-dim);
+            color: var(--gold-light);
+            border-radius: 3px;
+            font-weight: 600;
+        }
+        .item-needs-label-chip--compact {
+            font-size: 0.6rem;
+            padding: 1px 4px;
+        }
 
         @media (min-width: 768px) {
             .batch-mobile-only { display: none !important; }
@@ -329,8 +342,8 @@
         <button class="btn btn-primary batch-desktop-only" id="batch-print-btn" onclick="printSelectedLabels()" style="font-size:0.75rem; padding:0.4rem 1rem">Print Selected Labels</button>
         <button class="btn btn-outline batch-desktop-only" onclick="selectUnprinted()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select Unprinted</button>
         <button class="btn btn-outline batch-desktop-only" onclick="toggleSelectAll()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select All</button>
-        <button class="btn btn-primary batch-desktop-only" onclick="openBulkSaleModal()" style="font-size:0.75rem; padding:0.4rem 1rem; background:#C9A96E; border-color:#C9A96E; color:#38383B">Apply Sale</button>
-        <button class="btn btn-outline batch-desktop-only" onclick="bulkClearSale()" style="font-size:0.72rem; padding:0.35rem 0.8rem; color:#F59E0B; border-color:rgba(245,158,11,0.3)">Clear Sale</button>
+        <button class="btn btn-primary batch-desktop-only" onclick="openBulkSaleModal()" style="font-size:0.75rem; padding:0.4rem 1rem; background:var(--gold); border-color:var(--gold); color:#1a1a1d">Apply Sale</button>
+        <button class="btn btn-outline batch-desktop-only" onclick="bulkClearSale()" style="font-size:0.72rem; padding:0.35rem 0.8rem; color:var(--warning); border-color:color-mix(in srgb, var(--warning) 35%, transparent)">Clear Sale</button>
         <button class="btn btn-secondary batch-desktop-only" onclick="clearSelection()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Clear</button>
 
         <!-- Mobile: primary actions + More dropdown -->
@@ -347,8 +360,8 @@
         </div>
     </div>
 
-    <div id="unprinted-banner" style="display:none; align-items:center; gap:0.75rem; margin-bottom:0.75rem; padding:0.6rem 1rem; background:#2D1F0E; border:1px solid #C9A96E; flex-wrap:wrap; cursor:pointer" onclick="selectUnprintedAndShow()">
-        <span style="font-size:0.85rem; color:#C9A96E; font-weight:700">🏷️ <span id="unprinted-count">0</span> items need labels</span>
+    <div id="unprinted-banner" style="display:none; align-items:center; gap:0.75rem; margin-bottom:0.75rem; padding:0.6rem 1rem; background:var(--surface-2); border:1px solid var(--gold); flex-wrap:wrap; cursor:pointer" onclick="selectUnprintedAndShow()">
+        <span style="font-size:0.85rem; color:var(--gold); font-weight:700">🏷️ <span id="unprinted-count">0</span> items need labels</span>
         <button class="btn btn-primary" style="font-size:0.72rem; padding:0.3rem 0.8rem; margin-left:auto">Select &amp; Print</button>
     </div>
 
@@ -486,7 +499,7 @@
                     </div>
                     <div style="margin-top:10px; padding-top:8px; border-top:1px solid var(--border); display:flex; gap:8px">
                         <button type="button" onclick="applyAllSuggestions()" id="ai-use-all-btn"
-                            style="background:#38383B;border:none;color:#fff;font-size:0.8rem;padding:6px 14px;cursor:pointer">Use all</button>
+                            style="background:var(--bg);border:none;color:var(--white);font-size:0.8rem;padding:6px 14px;cursor:pointer">Use all</button>
                         <button type="button" onclick="dismissSuggestions()"
                             style="background:none;border:1px solid var(--border);color:var(--text);font-size:0.8rem;padding:6px 14px;cursor:pointer">Dismiss</button>
                     </div>
@@ -598,7 +611,7 @@
                         <div id="mini-chat-messages"></div>
                         <div style="display:flex; gap:6px; padding:8px; border-top:1px solid var(--border); background:var(--surface-2); align-items:center">
                             <button type="button" id="mini-chat-photo-btn" title="Send a photo"
-                                style="background:#4e4e54;border:none;color:#fff;font-size:1rem;cursor:pointer;min-height:44px;min-width:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:0">
+                                style="background:var(--surface-2);border:none;color:var(--white);font-size:1rem;cursor:pointer;min-height:44px;min-width:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:0">
                                 📷
                                 <input type="file" accept="image/*" capture="environment" id="mini-chat-photo-input" style="display:none">
                             </button>
@@ -606,7 +619,7 @@
                                 placeholder="Ask about this item…"
                                 onkeydown="if(event.key==='Enter')sendMiniChat()">
                             <button type="button" onclick="sendMiniChat()"
-                                style="background:#A8A6A1;border:none;color:#fff;font-size:0.85rem;cursor:pointer;min-height:36px;min-width:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+                                style="background:var(--text-light);border:none;color:var(--white);font-size:0.85rem;cursor:pointer;min-height:36px;min-width:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
                                 ➤
                             </button>
                         </div>
@@ -631,7 +644,7 @@
                 <div class="form-group" id="consignment-rate-group" style="display:none">
                     <label>Consignment Rate (%)</label>
                     <input type="number" id="f-consignment-rate" min="0" max="100" step="0.01" placeholder="e.g. 40 for 40%">
-                    <small style="color:#999">Percentage the store keeps on each sale</small>
+                    <small style="color:var(--text-muted)">Percentage the store keeps on each sale</small>
                 </div>
             </form>
         </div>
@@ -698,7 +711,7 @@
         <div class="modal-footer">
             <button class="btn btn-secondary" onclick="closeBulkSaleModal()">Cancel</button>
             <button class="btn btn-primary" onclick="submitBulkSale()" id="bulk-sale-submit"
-                style="background:#C9A96E;border-color:#C9A96E;color:#38383B">Apply Sale</button>
+                style="background:var(--gold);border-color:var(--gold);color:#1a1a1d">Apply Sale</button>
         </div>
     </div>
 </div>
@@ -870,15 +883,17 @@
         } else {
             navHtml += ' <a href="/vendor/dashboard.html">Dashboard</a>';
         }
-        win.document.write('<!DOCTYPE html><html><head><title>Print Labels</title>'
+        var theme = document.documentElement.getAttribute('data-theme') || 'dark';
+        win.document.write('<!DOCTYPE html><html lang="en" data-theme="' + theme + '"><head><title>Print Labels</title>'
+            + '<link rel="stylesheet" href="/static/css/main.css">'
             + '<style>@page{size:2.25in 1.25in;margin:0}@media print{.toolbar{display:none!important}}'
-            + 'body{margin:0;background:#38383B;font-family:Roboto,sans-serif}'
-            + '.toolbar{display:flex;align-items:center;gap:12px;padding:8px 16px;background:#2A2A2D;border-bottom:1px solid #C9A96E}'
-            + '.toolbar a{color:#C9A96E;text-decoration:none;font-size:13px;padding:6px 14px;border:1px solid rgba(201,169,110,0.3);transition:background 0.15s}'
-            + '.toolbar a:hover{background:rgba(201,169,110,0.15)}'
-            + '.toolbar .close-btn{margin-left:auto;background:#C9A96E;color:#38383B;font-weight:700;border:none;padding:6px 18px;cursor:pointer;font-size:13px}'
-            + '.hint{color:#A8A6A1;text-align:center;padding:8px;font-size:12px}'
-            + '.hint b{color:#C9A96E}'
+            + 'body{margin:0;background:var(--bg);font-family:Roboto,sans-serif}'
+            + '.toolbar{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--gold)}'
+            + '.toolbar a{color:var(--gold);text-decoration:none;font-size:13px;padding:6px 14px;border:1px solid var(--warm-border);transition:background 0.15s}'
+            + '.toolbar a:hover{background:var(--gold-glow)}'
+            + '.toolbar .close-btn{margin-left:auto;background:var(--gold);color:#1a1a1d;font-weight:700;border:none;padding:6px 18px;cursor:pointer;font-size:13px}'
+            + '.hint{color:var(--text-light);text-align:center;padding:8px;font-size:12px}'
+            + '.hint b{color:var(--gold)}'
             + '</style></head><body>'
             + '<div class="toolbar">' + navHtml
             + '<button class="close-btn" onclick="window.close()">Close Window</button>'
@@ -1894,7 +1909,7 @@
                         <div class="item-card-name">${item.name}</div>
                         <div class="item-card-price">${priceHtml}</div>
                         <div class="item-card-meta">${item.category || '—'} &middot; Qty: ${item.quantity}${vendorMeta}</div>
-                        <div style="margin-top:4px">${statusBadge(item.status)} ${labelBadge(style)}${!item.label_printed ? ' <span style="font-size:0.65rem;padding:2px 6px;background:#5C3D00;color:#FFD580;border-radius:3px;font-weight:600">NEEDS LABEL</span>' : ''}</div>
+                        <div style="margin-top:4px">${statusBadge(item.status)} ${labelBadge(style)}${!item.label_printed ? ' <span class="item-needs-label-chip">NEEDS LABEL</span>' : ''}</div>
                     </div>
                 </div>
                 <div class="item-card-actions">
@@ -1914,9 +1929,9 @@
                             <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
                             <span class="slider"></span>
                         </label>
-                        <span style="font-size:0.65rem;color:${isActive ? '#6EE7B7' : 'var(--text-light)'};white-space:nowrap">${isActive ? 'For Sale' : 'Not For Sale'}</span>
+                        <span style="font-size:0.65rem;color:${isActive ? 'var(--success-light)' : 'var(--text-light)'};white-space:nowrap">${isActive ? 'For Sale' : 'Not For Sale'}</span>
                     </div>` : ''}
-                    ${item.status !== 'removed' ? `<button class="btn btn-outline" onclick="event.stopPropagation();deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.68rem;padding:0.25rem 0.5rem;color:#FCA5A5;border-color:rgba(252,165,165,0.3)" title="Delete item">Delete</button>` : '<span style="font-size:0.65rem;color:#FCA5A5;opacity:0.6">Deleted</span>'}
+                    ${item.status !== 'removed' ? `<button class="btn btn-outline" onclick="event.stopPropagation();deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.68rem;padding:0.25rem 0.5rem;color:var(--danger);border-color:color-mix(in srgb, var(--danger) 35%, transparent)" title="Delete item">Delete</button>` : '<span style="font-size:0.65rem;color:var(--danger);opacity:0.6">Deleted</span>'}
                 </div>
                 <div class="item-card-photos">
                     ${(item.photo_urls || []).slice(1).map(url =>
@@ -2003,7 +2018,7 @@
                 <td>${priceHtml}</td>
                 <td>${salePriceHtml}</td>
                 <td style="text-align:center">${item.quantity ?? 1}</td>
-                <td>${statusBadge(item.status)}${!item.label_printed ? ' <span style="font-size:0.6rem;padding:1px 4px;background:#5C3D00;color:#FFD580;border-radius:3px;font-weight:600">NEW</span>' : ''}</td>
+                <td>${statusBadge(item.status)}${!item.label_printed ? ' <span class="item-needs-label-chip item-needs-label-chip--compact">NEW</span>' : ''}</td>
                 <td><div class="actions-cell">
                     <button class="btn btn-outline" onclick="openModal(${itemJson})">Edit</button>
                     <button class="btn btn-secondary" onclick="printLabelAuto(${item.id}, '${style}')">Label</button>
@@ -2011,8 +2026,8 @@
                         <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
                         <span class="slider"></span>
                     </label>
-                    <span style="font-size:0.6rem;color:${isActive ? '#6EE7B7' : 'var(--text-light)'};min-width:50px">${isActive ? 'For Sale' : 'Not For Sale'}</span>` : ''}
-                    ${item.status !== 'removed' ? `<button class="btn btn-outline" onclick="deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:0.2rem 0.45rem;color:#FCA5A5;border-color:rgba(252,165,165,0.3)" title="Delete">&#x2716;</button>` : ''}
+                    <span style="font-size:0.6rem;color:${isActive ? 'var(--success-light)' : 'var(--text-light)'};min-width:50px">${isActive ? 'For Sale' : 'Not For Sale'}</span>` : ''}
+                    ${item.status !== 'removed' ? `<button class="btn btn-outline" onclick="deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:0.2rem 0.45rem;color:var(--danger);border-color:color-mix(in srgb, var(--danger) 35%, transparent)" title="Delete">&#x2716;</button>` : ''}
                 </div></td>
             </tr>`;
         });

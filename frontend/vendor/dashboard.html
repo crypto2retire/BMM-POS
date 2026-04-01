@@ -15,6 +15,16 @@
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
     <style>
+        .rent-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+        .rent-badge--paid { background: var(--success); color: var(--white); }
+        .rent-badge--pending { background: var(--warning); color: #1a1a1d; }
+        .rent-badge--unpaid { background: var(--danger); color: var(--white); }
         @media (max-width: 767px) {
             .rent-card-layout {
                 flex-direction: column !important;
@@ -27,7 +37,7 @@
 </head>
 <body class="has-bottom-nav">
 <script src="/static/js/theme-loader.js"></script>
-<nav class="navbar" style="background:#1e1e20;">
+<nav class="navbar" style="background:var(--bg);">
     <a href="/vendor/dashboard.html" class="navbar-brand">
         <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
     </a>
@@ -46,9 +56,9 @@
 
 <div class="main-content">
     <div id="alert-container"></div>
-    <div id="booth-stale-banner" style="display:none;background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.3);color:#C9A96E;padding:0.75rem 1rem;font-size:0.8rem;margin-bottom:1rem;display:none;align-items:center;gap:0.5rem">
+    <div id="booth-stale-banner" style="display:none;background:var(--gold-glow);border:1px solid var(--warm-border);color:var(--gold);padding:0.75rem 1rem;font-size:0.8rem;margin-bottom:1rem;display:none;align-items:center;gap:0.5rem">
         <span>&#9888;</span>
-        <span>Your booth photos are over 60 days old. <a href="/vendor/booth-showcase.html" style="color:#C9A96E;text-decoration:underline">Update them</a> to keep customers interested!</span>
+        <span>Your booth photos are over 60 days old. <a href="/vendor/booth-showcase.html" style="color:var(--gold);text-decoration:underline">Update them</a> to keep customers interested!</span>
     </div>
 
     <!-- Mobile CTA -->
@@ -93,20 +103,20 @@
         <div class="card" style="padding:1.25rem 1.5rem;">
             <div class="rent-card-layout" style="display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
                 <div>
-                    <div class="card-title" style="font-size:0.8rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Monthly Rent</div>
+                    <div class="card-title" style="font-size:0.8rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Monthly Rent</div>
                     <div class="card-value" id="rent-amount" style="font-size:1.5rem;font-weight:700;">—</div>
                 </div>
                 <div style="flex:1;min-width:0;">
-                    <div class="card-title" style="font-size:0.8rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Status for <span id="rent-current-month"></span></div>
+                    <div class="card-title" style="font-size:0.8rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Status for <span id="rent-current-month"></span></div>
                     <div id="rent-status-badge" style="font-size:0.9rem;">—</div>
                 </div>
                 <div>
                     <button class="btn btn-primary" id="pay-rent-btn" onclick="payRent()" style="font-size:0.95rem;padding:0.65rem 1.5rem;">Pay Rent Online</button>
-                    <div id="pay-rent-error" style="color:#C06060;font-size:0.85rem;margin-top:6px;display:none;"></div>
+                    <div id="pay-rent-error" style="color:var(--danger);font-size:0.85rem;margin-top:6px;display:none;"></div>
                 </div>
             </div>
-            <div id="rent-history-section" style="display:none;margin-top:1.25rem;border-top:1px solid rgba(201,169,110,0.15);padding-top:1rem;">
-                <div class="card-title" style="font-size:0.75rem;color:#A8A6A1;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Payment History</div>
+            <div id="rent-history-section" style="display:none;margin-top:1.25rem;border-top:1px solid var(--warm-border);padding-top:1rem;">
+                <div class="card-title" style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Payment History</div>
                 <div id="rent-history-list" style="font-size:0.85rem;"></div>
             </div>
         </div>
@@ -151,7 +161,7 @@
                 <button class="btn btn-primary btn-sm" onclick="saveAssistantName()">Save</button>
                 <button class="btn btn-outline btn-sm" onclick="resetAssistantName()">Reset to Default</button>
             </div>
-            <div id="assistant-name-status" style="font-size:0.78rem;color:var(--accent);margin-top:0.4rem;display:none;"></div>
+            <div id="assistant-name-status" style="font-size:0.78rem;color:var(--text-light);margin-top:0.4rem;display:none;"></div>
         </div>
     </div>
 
@@ -395,14 +405,14 @@
             var btn = document.getElementById('pay-rent-btn');
 
             if (data.paid_this_month) {
-                badge.innerHTML = '<span style="background:#065F46;color:#6EE7B7;padding:4px 12px;font-size:0.8rem;font-weight:600;letter-spacing:0.04em">PAID</span>';
+                badge.innerHTML = '<span class="rent-badge rent-badge--paid">PAID</span>';
                 btn.style.display = 'none';
             } else if (data.pending_this_month) {
-                badge.innerHTML = '<span style="background:#92400E;color:#FDE68A;padding:4px 12px;font-size:0.8rem;font-weight:600;letter-spacing:0.04em">PENDING</span>';
+                badge.innerHTML = '<span class="rent-badge rent-badge--pending">PENDING</span>';
                 btn.textContent = 'Payment Pending';
                 btn.disabled = true;
             } else {
-                badge.innerHTML = '<span style="background:#7F1D1D;color:#FCA5A5;padding:4px 12px;font-size:0.8rem;font-weight:600;letter-spacing:0.04em">UNPAID</span>';
+                badge.innerHTML = '<span class="rent-badge rent-badge--unpaid">UNPAID</span>';
                 btn.style.display = '';
             }
 
@@ -410,12 +420,12 @@
                 document.getElementById('rent-history-section').style.display = 'block';
                 var html = '';
                 data.history.forEach(function(p) {
-                    var statusColor = p.status === 'paid' ? '#6EE7B7' : (p.status === 'pending' ? '#FDE68A' : '#A8A6A1');
+                    var statusColor = p.status === 'paid' ? 'var(--success)' : (p.status === 'pending' ? 'var(--warning)' : 'var(--text-light)');
                     var methodLabel = p.method === 'square' ? 'Card' : (p.method === 'cash' ? 'Cash' : p.method);
-                    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">'
-                        + '<span style="color:#F0EDE8">' + escHtml(p.period) + '</span>'
-                        + '<span style="color:#A8A6A1;font-size:0.8rem">' + escHtml(methodLabel) + '</span>'
-                        + '<span style="color:#C9A96E;font-weight:600">$' + p.amount.toFixed(2) + '</span>'
+                    html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">'
+                        + '<span style="color:var(--text)">' + escHtml(p.period) + '</span>'
+                        + '<span style="color:var(--text-light);font-size:0.8rem">' + escHtml(methodLabel) + '</span>'
+                        + '<span style="color:var(--gold);font-weight:600">$' + p.amount.toFixed(2) + '</span>'
                         + '<span style="color:' + statusColor + ';font-size:0.8rem;text-transform:uppercase">' + escHtml(p.status) + '</span>'
                         + '</div>';
                 });
@@ -536,11 +546,11 @@
 
             var displayName = data.assistant_name || 'Bowenstreet Assistant';
             statusEl.textContent = 'Saved! Your assistant is now "' + displayName + '."';
-            statusEl.style.color = '#81c784';
+            statusEl.style.color = 'var(--success-light)';
             statusEl.style.display = 'block';
         } catch (e) {
             statusEl.textContent = e.message || 'Something went wrong.';
-            statusEl.style.color = '#e57373';
+            statusEl.style.color = 'var(--danger)';
             statusEl.style.display = 'block';
         }
     }
@@ -550,7 +560,7 @@
         if (!name) {
             var statusEl = document.getElementById('assistant-name-status');
             statusEl.textContent = 'Please enter a name or click "Reset to Default."';
-            statusEl.style.color = '#e57373';
+            statusEl.style.color = 'var(--danger)';
             statusEl.style.display = 'block';
             return;
         }
