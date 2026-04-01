@@ -320,6 +320,132 @@ async def reset_vendor_verification(
     return {"detail": f"Verification reset for vendor {vendor_id}"}
 
 
+@router.get("/unverified/{vendor_id}")
+async def list_unverified_items(
+    vendor_id: int,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=10, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_role("admin", "cashier")),
+):
+    """List active Ricochet items for a vendor that have NOT been verified."""
+    # Get vendor name
+    vendor_result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
+    vendor = vendor_result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    # Count total
+    count_result = await db.execute(
+        select(func.count(Item.id)).where(
+            Item.vendor_id == vendor_id,
+            Item.status == "active",
+            Item.verified_at.is_(None),
+            _ricochet_filter(),
+        )
+    )
+    total = count_result.scalar() or 0
+
+    # Get items
+    result = await db.execute(
+        select(Item)
+        .where(
+            Item.vendor_id == vendor_id,
+            Item.status == "active",
+            Item.verified_at.is_(None),
+            _ricochet_filter(),
+        )
+        .order_by(Item.name)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    items = result.scalars().all()
+
+    return {
+        "vendor_id": vendor_id,
+        "vendor_name": vendor.name,
+        "items": [
+            {
+                "id": i.id,
+                "sku": i.sku,
+                "barcode": i.barcode,
+                "name": i.name,
+                "price": float(i.price),
+                "quantity": i.quantity,
+                "category": i.category,
+                "created_at": i.created_at.isoformat() if i.created_at else None,
+            }
+            for i in items
+        ],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": (total + per_page - 1) // per_page if total > 0 else 1,
+    }
+
+
+@router.post("/archive-vendor/{vendor_id}")
+async def archive_vendor_unverified(
+    vendor_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_role("admin")),
+):
+    """Archive unverified Ricochet items for a single vendor. 30-day hold."""
+    expires = datetime.utcnow() + timedelta(days=30)
+
+    count_result = await db.execute(
+        select(func.count(Item.id)).where(
+            Item.vendor_id == vendor_id,
+            Item.status == "active",
+            Item.verified_at.is_(None),
+            _ricochet_filter(),
+        )
+    )
+    count = count_result.scalar() or 0
+
+    if count == 0:
+        return {"archived": 0, "detail": "No unverified items for this vendor."}
+
+    await db.execute(
+        update(Item)
+        .where(
+            Item.vendor_id == vendor_id,
+            Item.status == "active",
+            Item.verified_at.is_(None),
+            _ricochet_filter(),
+        )
+        .values(
+            status="pending_delete",
+            archive_expires_at=expires,
+        )
+    )
+    await db.commit()
+
+    return {
+        "archived": count,
+        "expires_at": expires.isoformat(),
+        "detail": f"Archived {count} unverified items. Held for 30 days.",
+    }
+
+
+@router.post("/verify-item/{item_id}")
+async def manually_verify_item(
+    item_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_role("admin", "cashier")),
+):
+    """Manually mark a single item as verified (keep it active)."""
+    result = await db.execute(select(Item).where(Item.id == item_id))
+    item = result.scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    item.verified_at = datetime.utcnow()
+    await db.commit()
+
+    return {"detail": f"Item '{item.name}' marked as verified."}
+
+
 # ── Archive unverified (admin only) ─────────────────────────
 
 @router.post("/archive-unverified")

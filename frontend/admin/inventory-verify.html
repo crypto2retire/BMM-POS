@@ -366,6 +366,63 @@
 
         .admin-only { display: none; }
 
+        /* ── Unverified modal ──────────────────────────── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.open {
+            display: flex;
+        }
+        .modal-box {
+            background: var(--bg);
+            border: 1px solid var(--warm-border);
+            width: calc(100% - 2rem);
+            max-width: 800px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        .modal-box h3 {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+        .modal-box .modal-sub {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            margin-bottom: 1rem;
+        }
+        .modal-close {
+            float: right;
+            background: none;
+            border: none;
+            color: var(--text-light);
+            font-size: 1.25rem;
+            cursor: pointer;
+            padding: 0.25rem 0.5rem;
+            min-height: 44px;
+            min-width: 44px;
+        }
+        .modal-close:hover { color: var(--text); }
+        .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 767px) {
+            .modal-box { padding: 1rem; }
+        }
+
         /* ── Mobile ────────────────────────────────────── */
         @media (max-width: 767px) {
             .verify-summary { grid-template-columns: repeat(2, 1fr); }
@@ -618,6 +675,47 @@
             </div>
         </div>
     </div>
+
+    <!-- Unverified items modal -->
+    <div class="modal-overlay" id="unverified-modal">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeUnverifiedModal()">&times;</button>
+            <h3>Unverified Items — <span id="unverified-vendor-name"></span></h3>
+            <p class="modal-sub">These Ricochet-imported items were NOT found in the vendor's CSV export. They are likely sold items.</p>
+            <div class="vendor-table-wrap">
+                <table class="verify-table" id="unverified-table">
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>Barcode</th>
+                            <th>Name</th>
+                            <th>Price</th>
+                            <th>Qty</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="unverified-tbody"></tbody>
+                </table>
+            </div>
+            <div class="pagination-bar" id="unverified-pagination" style="display:none">
+                <div>
+                    <button onclick="unverifiedPage(1)">First</button>
+                    <button onclick="unverifiedPage(unvState.page - 1)">Prev</button>
+                </div>
+                <span id="unverified-page-info">Page 1 of 1</span>
+                <div>
+                    <button onclick="unverifiedPage(unvState.page + 1)">Next</button>
+                    <button onclick="unverifiedPage(unvState.totalPages)">Last</button>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-warning" id="archive-vendor-btn" onclick="archiveVendorUnverified()">
+                    &#9888; Archive All Unverified for This Vendor
+                </button>
+                <button class="btn-sm" onclick="closeUnverifiedModal()">Close</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -752,7 +850,10 @@ function renderProgress(vendors) {
                 '</div>' +
             '</td>' +
             '<td><span class="status-badge ' + statusCls + '">' + statusText + '</span></td>' +
-            '<td>' +
+            '<td style="white-space:nowrap">' +
+                (v.unverified_items > 0
+                    ? '<button class="btn-sm" onclick="showUnverified(' + v.id + ', \'' + esc(v.name).replace(/'/g, "\\'") + '\')" title="View unverified items" style="color:#fbbf24; margin-right:4px">' + v.unverified_items + ' unverified</button> '
+                    : '') +
                 '<button class="btn-sm" onclick="resetVendor(' + v.id + ', \'' + esc(v.name).replace(/'/g, "\\'") + '\')" title="Reset verification">Reset</button>' +
             '</td>' +
         '</tr>';
@@ -1127,6 +1228,106 @@ async function permanentDelete() {
         if (!res.ok) throw new Error(data.detail || 'Delete failed');
         showAlert('Permanently deleted ' + data.deleted + ' items.', 'success');
         loadPending();
+        loadStatus();
+    } catch (e) {
+        showAlert('Error: ' + e.message, 'error');
+    }
+}
+
+// ── Unverified items modal ─────────────────────────
+var unvState = { vendorId: null, vendorName: '', page: 1, totalPages: 1 };
+
+async function showUnverified(vendorId, vendorName) {
+    unvState.vendorId = vendorId;
+    unvState.vendorName = vendorName;
+    unvState.page = 1;
+    document.getElementById('unverified-vendor-name').textContent = vendorName;
+    document.getElementById('unverified-modal').classList.add('open');
+    await loadUnverifiedItems();
+}
+
+function closeUnverifiedModal() {
+    document.getElementById('unverified-modal').classList.remove('open');
+}
+
+async function loadUnverifiedItems() {
+    var url = API + '/inventory-verify/unverified/' + unvState.vendorId + '?page=' + unvState.page + '&per_page=50';
+    try {
+        var res = await fetch(url, { headers: headers });
+        if (!res.ok) throw new Error('Failed to load unverified items');
+        var data = await res.json();
+
+        unvState.totalPages = data.total_pages;
+        var tbody = document.getElementById('unverified-tbody');
+
+        if (!data.items.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:1.5rem; color:var(--text-light)">No unverified items</td></tr>';
+            document.getElementById('unverified-pagination').style.display = 'none';
+            document.getElementById('archive-vendor-btn').style.display = 'none';
+            return;
+        }
+
+        document.getElementById('archive-vendor-btn').style.display = '';
+
+        tbody.innerHTML = data.items.map(function(i) {
+            return '<tr>' +
+                '<td style="font-size:0.72rem">' + esc(i.sku) + '</td>' +
+                '<td style="font-size:0.72rem; font-family:monospace">' + esc(i.barcode) + '</td>' +
+                '<td>' + esc(i.name) + '</td>' +
+                '<td>$' + i.price.toFixed(2) + '</td>' +
+                '<td>' + i.quantity + '</td>' +
+                '<td style="white-space:nowrap">' +
+                    '<button class="btn-sm approve" onclick="keepItem(' + i.id + ', this)" title="Keep (mark verified)">Keep</button> ' +
+                '</td>' +
+            '</tr>';
+        }).join('');
+
+        if (data.total_pages > 1) {
+            document.getElementById('unverified-pagination').style.display = 'flex';
+            document.getElementById('unverified-page-info').textContent = 'Page ' + data.page + ' of ' + data.total_pages + ' (' + data.total + ' items)';
+        } else {
+            document.getElementById('unverified-pagination').style.display = 'none';
+        }
+
+    } catch (e) {
+        showAlert('Error loading unverified items: ' + e.message, 'error');
+    }
+}
+
+function unverifiedPage(p) {
+    if (p < 1 || p > unvState.totalPages) return;
+    unvState.page = p;
+    loadUnverifiedItems();
+}
+
+async function keepItem(itemId, btn) {
+    btn.disabled = true;
+    try {
+        var res = await fetch(API + '/inventory-verify/verify-item/' + itemId, {
+            method: 'POST',
+            headers: headers,
+        });
+        if (!res.ok) throw new Error('Failed to verify item');
+        btn.closest('tr').remove();
+        loadStatus();
+    } catch (e) {
+        showAlert('Error: ' + e.message, 'error');
+        btn.disabled = false;
+    }
+}
+
+async function archiveVendorUnverified() {
+    if (!confirm('Archive all unverified items for "' + unvState.vendorName + '"?\n\nThey will be held for 30 days before permanent deletion.')) return;
+
+    try {
+        var res = await fetch(API + '/inventory-verify/archive-vendor/' + unvState.vendorId, {
+            method: 'POST',
+            headers: headers,
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Archive failed');
+        showAlert('Archived ' + data.archived + ' items for ' + unvState.vendorName, 'success');
+        closeUnverifiedModal();
         loadStatus();
     } catch (e) {
         showAlert('Error: ' + e.message, 'error');
