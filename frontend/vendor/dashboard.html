@@ -465,17 +465,17 @@
     }
 
     // ── Display preferences ───────────────────────
-    function setThemePref(theme) {
+    window.setThemePref = function(theme) {
         bmmSetTheme(theme).then(function() {
-            updateThemeButtons(theme);
+            window.updateThemeButtons(theme);
         });
-    }
+    };
 
-    function setFontPref(size) {
+    window.setFontPref = function(size) {
         bmmSetFontSize(size);
-    }
+    };
 
-    function updateThemeButtons(theme) {
+    window.updateThemeButtons = function(theme) {
         var darkBtn = document.getElementById('theme-dark-btn');
         var lightBtn = document.getElementById('theme-light-btn');
         if (theme === 'dark') {
@@ -493,10 +493,10 @@
             darkBtn.style.color = 'var(--text-light)';
             darkBtn.style.borderColor = 'var(--border)';
         }
-    }
+    };
 
     // Load current preferences on page load
-    function loadDisplayPrefs() {
+    window.loadDisplayPrefs = function() {
         var token = sessionStorage.getItem('bmm_token');
         if (!token) return;
         fetch('/api/v1/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
@@ -504,15 +504,15 @@
             .then(function(data) {
                 var theme = data.theme_preference || 'dark';
                 var fontSize = data.font_size_preference || 'medium';
-                updateThemeButtons(theme);
+                window.updateThemeButtons(theme);
                 document.getElementById('font-size-select').value = fontSize;
             })
             .catch(function() {});
-    }
+    };
 
     checkRentReturn();
     loadDashboard();
-    loadDisplayPrefs();
+    window.loadDisplayPrefs();
 </script>
 <script src="/static/js/change-password.js"></script>
 <script>
