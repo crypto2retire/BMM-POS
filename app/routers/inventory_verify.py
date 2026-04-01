@@ -128,12 +128,11 @@ async def verify_vendor_inventory(
     except UnicodeDecodeError:
         text = raw.decode("latin-1")
 
-    # Normalize line endings and find the real header row
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     lines = text.split("\n")
     header_idx = 0
     for i, line in enumerate(lines[:10]):
-        if "SKU" in line and ("Product ID" in line or "Name" in line):
+        if "SKU" in line and "Product ID" in line:
             header_idx = i
             break
     if header_idx > 0:
@@ -144,7 +143,6 @@ async def verify_vendor_inventory(
         raise HTTPException(status_code=400, detail="CSV has no headers")
 
     headers_lower = {h.strip().lower(): h.strip() for h in reader.fieldnames}
-
     if "sku" not in headers_lower:
         raise HTTPException(
             status_code=400,
@@ -332,7 +330,6 @@ async def verify_bulk_inventory(
     except UnicodeDecodeError:
         text = raw.decode("latin-1")
 
-    # Normalize line endings and find the real header row
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     lines = text.split("\n")
     header_idx = 0
