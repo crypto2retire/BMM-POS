@@ -91,6 +91,7 @@ def _item_to_pos_dict(item: Item) -> dict:
 @router.get("/search")
 async def pos_search(
     q: str = Query(..., min_length=1, description="Search term"),
+    limit: int = Query(20, ge=1, le=40, description="Maximum number of matches to return"),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
@@ -106,7 +107,7 @@ async def pos_search(
                 Item.sku.ilike(term),
             ),
         )
-        .limit(20)
+        .limit(limit)
     )
     result = await db.execute(query)
     items = result.scalars().all()

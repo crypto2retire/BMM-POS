@@ -691,7 +691,7 @@
 
     async function searchItems(q) {
         try {
-            return await apiGet(`/api/v1/items/?status=active&limit=40&q=${encodeURIComponent(q)}`);
+            return await apiGet(`/api/v1/pos/search?limit=40&q=${encodeURIComponent(q)}`);
         } catch (e) {
             return [];
         }
