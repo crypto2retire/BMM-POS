@@ -1182,7 +1182,7 @@
     }
 
     function isArchiveStatus(status) {
-        return status === 'sold' || status === 'removed';
+        return status === 'sold' || status === 'removed' || status === 'pending_delete';
     }
 
     function isSelectableItem(item) {
@@ -1905,6 +1905,17 @@
         }
     }
 
+    async function reactivateItem(id, name) {
+        if (!confirm('Reactivate "' + name + '" and return it to active inventory?')) return;
+        try {
+            await apiFetch('PATCH', '/api/v1/items/' + id + '/reactivate');
+            showAlert('alert-container', '"' + name + '" is active again.', 'success');
+            await loadItems();
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+        }
+    }
+
     async function deleteItem(id, name) {
         if (!confirm('Delete "' + name + '"? This item will be removed from your inventory.')) return;
         try {
@@ -2083,7 +2094,7 @@
 
     // ── Render items ───────────────────────────────────────────────────
     function statusBadge(s) {
-        const map = { active: 'badge-green', inactive: 'badge-gray', sold: 'badge-blue', removed: 'badge-red' };
+        const map = { active: 'badge-green', inactive: 'badge-gray', sold: 'badge-blue', removed: 'badge-red', pending_delete: 'badge-gray' };
         return `<span class="badge ${map[s] || 'badge-gray'}">${s}</span>`;
     }
 
@@ -2276,7 +2287,11 @@
                         </label>
                         <span style="font-size:0.65rem;color:${isActive ? 'var(--success-light)' : 'var(--text-light)'};white-space:nowrap">${isActive ? 'For Sale' : 'Not For Sale'}</span>
                     </div>` : ''}
-                    ${item.status !== 'removed' ? `<button class="btn btn-outline" onclick="event.stopPropagation();deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.68rem;padding:0.25rem 0.5rem;color:var(--danger);border-color:color-mix(in srgb, var(--danger) 35%, transparent)" title="Delete item">Delete</button>` : '<span style="font-size:0.65rem;color:var(--danger);opacity:0.6">Deleted</span>'}
+                    ${item.status === 'pending_delete'
+                        ? `<button class="btn btn-outline" onclick="event.stopPropagation();reactivateItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.68rem;padding:0.25rem 0.5rem">Reactivate</button>`
+                        : item.status !== 'removed'
+                            ? `<button class="btn btn-outline" onclick="event.stopPropagation();deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.68rem;padding:0.25rem 0.5rem;color:var(--danger);border-color:color-mix(in srgb, var(--danger) 35%, transparent)" title="Delete item">Delete</button>`
+                            : '<span style="font-size:0.65rem;color:var(--danger);opacity:0.6">Deleted</span>'}
                 </div>
                 <div class="item-card-photos">
                     ${(item.photo_urls || []).slice(1).map(url =>
@@ -2374,7 +2389,11 @@
                         <span class="slider"></span>
                     </label>
                     <span style="font-size:0.6rem;color:${isActive ? 'var(--success-light)' : 'var(--text-light)'};min-width:50px">${isActive ? 'For Sale' : 'Not For Sale'}</span>` : ''}
-                    ${item.status !== 'removed' ? `<button class="btn btn-outline" onclick="deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:0.2rem 0.45rem;color:var(--danger);border-color:color-mix(in srgb, var(--danger) 35%, transparent)" title="Delete">&#x2716;</button>` : ''}
+                    ${item.status === 'pending_delete'
+                        ? `<button class="btn btn-outline" onclick="reactivateItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:0.2rem 0.45rem" title="Reactivate">↺</button>`
+                        : item.status !== 'removed'
+                            ? `<button class="btn btn-outline" onclick="deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:0.2rem 0.45rem;color:var(--danger);border-color:color-mix(in srgb, var(--danger) 35%, transparent)" title="Delete">&#x2716;</button>`
+                            : ''}
                 </div></td>
             </tr>`;
         });
