@@ -37,6 +37,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
+def _admin_display_rent_balance(
+    rent_ledger: float,
+    monthly_rent: float,
+    current_month_rent_paid: bool,
+) -> float:
+    """
+    Admin UI rent column: ledger prepaid/owed plus, when this month's rent is not yet paid,
+    net the monthly obligation so vendors show negative rent (e.g. 0 - 227 = -227) instead of $0.
+    """
+    if monthly_rent > 0 and not current_month_rent_paid:
+        return round(rent_ledger - monthly_rent, 2)
+    return round(rent_ledger, 2)
+
+
 def _rent_status(today: date, last_payment: Optional[RentPayment]) -> str:
     if last_payment is None:
         return "overdue"
@@ -69,8 +83,8 @@ async def vendor_overview(
     balance_map = {}
     rent_balance_map = {}
     for row in bal_result.all():
-        balance_map[row.vendor_id] = float(row.balance or 0)
-        rent_balance_map[row.vendor_id] = float(row.rent_balance or 0)
+        balance_map[row.vendor_id] = float(row.balance) if row.balance is not None else 0.0
+        rent_balance_map[row.vendor_id] = float(row.rent_balance) if row.rent_balance is not None else 0.0
 
     rent_result = await db.execute(
         select(RentPayment).where(RentPayment.period_month == current_period)
@@ -117,10 +131,11 @@ async def vendor_overview(
     for v in vendors:
         sales_balance = balance_map.get(v.id, 0.0)
         rent_bal = rent_balance_map.get(v.id, 0.0)
-        combined_balance = round(sales_balance + rent_bal, 2)
         rent = float(v.monthly_rent or 0)
         rent_info = rent_map.get(v.id)
         rent_paid = rent_info is not None and rent_info["paid"]
+        rent_display = _admin_display_rent_balance(rent_bal, rent, rent_paid)
+        combined_balance = round(sales_balance + rent_display, 2)
         last_rent_date = last_rent_map.get(v.id)
         payout_info = payout_map.get(v.id)
 
@@ -157,7 +172,8 @@ async def vendor_overview(
             "monthly_rent": rent,
             "balance": combined_balance,
             "sales_balance": round(sales_balance, 2),
-            "rent_balance": round(rent_bal, 2),
+            "rent_balance": rent_display,
+            "rent_balance_ledger": round(rent_bal, 2),
             "combined_balance": combined_balance,
             "rent_status": rent_status,
             "rent_paid": rent_paid,
@@ -938,8 +954,14 @@ async def rent_payout_ledger(
     balances = {}
     rent_balances = {}
     for b in bal_result.scalars().all():
-        balances[b.vendor_id] = float(b.balance or 0)
-        rent_balances[b.vendor_id] = float(b.rent_balance or 0)
+        balances[b.vendor_id] = float(b.balance) if b.balance is not None else 0.0
+        rent_balances[b.vendor_id] = float(b.rent_balance) if b.rent_balance is not None else 0.0
+
+    paid_current_period = {
+        rp.vendor_id
+        for rp in rent_payments
+        if rp.period_month == current_period and rp.status == "paid"
+    }
 
     # ── All active vendors for balance cards ──
     all_vendors_result = await db.execute(
@@ -1002,9 +1024,14 @@ async def rent_payout_ledger(
         float(p.net_payout) for p in payouts if p.status == "pending"
     )
 
-    # Total vendor balances
+    # Total vendor balances (rent uses same admin display as vendor-overview)
     total_sales_balances = sum(balances.get(v.id, 0.0) for v in all_vendors)
-    total_rent_balances = sum(rent_balances.get(v.id, 0.0) for v in all_vendors)
+    total_rent_balances = 0.0
+    for v in all_vendors:
+        rb = rent_balances.get(v.id, 0.0)
+        rent = float(v.monthly_rent or 0)
+        total_rent_balances += _admin_display_rent_balance(rb, rent, v.id in paid_current_period)
+    total_rent_balances = round(total_rent_balances, 2)
     total_balances = round(total_sales_balances + total_rent_balances, 2)
 
     # ── Per-vendor balance cards ──
@@ -1012,13 +1039,17 @@ async def rent_payout_ledger(
     for v in all_vendors:
         sb = balances.get(v.id, 0.0)
         rb = rent_balances.get(v.id, 0.0)
+        rent = float(v.monthly_rent or 0)
+        rb_disp = _admin_display_rent_balance(rb, rent, v.id in paid_current_period)
+        combined = round(sb + rb_disp, 2)
         vendor_cards.append({
             "id": v.id,
             "name": v.name,
             "booth_number": v.booth_number or "—",
-            "balance": round(sb + rb, 2),
+            "balance": combined,
             "sales_balance": round(sb, 2),
-            "rent_balance": round(rb, 2),
+            "rent_balance": rb_disp,
+            "combined_balance": combined,
         })
 
     return {
