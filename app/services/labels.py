@@ -10,6 +10,8 @@ THERMAL_DPI = 203
 DOT = 72.0 / THERMAL_DPI
 
 LABEL_SIZES = {
+    "1.5x1":     {"name": "1\" x 1.5\" (DYMO 30347 / PDF Preview)", "w": 1.5, "h": 1.0},
+    "2.125x1":   {"name": "1\" x 2-1/8\" (DYMO 30336 / PDF Preview)", "w": 2.125, "h": 1.0},
     "2.25x1.25": {"name": "2.25\" x 1.25\" (Thermal/Standard)", "w": 2.25, "h": 1.25},
     "2.625x1":   {"name": "2-5/8\" x 1\" (Avery 5160/8160)", "w": 2.625, "h": 1.0},
     "4x2":       {"name": "4\" x 2\" (Avery 5163/Shipping)", "w": 4.0, "h": 2.0},
@@ -23,11 +25,34 @@ LABEL_SIZES = {
 }
 
 DEFAULT_LABEL_SIZE = "2.25x1.25"
+DYMO_TO_PDF_SIZE = {
+    "30347": "1.5x1",
+    "30336": "2.125x1",
+    "30252": "3.5x1.125",
+}
 
 
 def _get_label_dims(size_key):
     spec = LABEL_SIZES.get(size_key, LABEL_SIZES[DEFAULT_LABEL_SIZE])
     return spec["w"] * inch, spec["h"] * inch
+
+
+def resolve_pdf_label_size(
+    requested_size: str | None = None,
+    *,
+    label_preference: str | None = None,
+    dymo_size: str | None = None,
+    fallback_size: str | None = None,
+) -> str:
+    if requested_size in LABEL_SIZES:
+        return requested_size
+    if label_preference == "dymo":
+        mapped = DYMO_TO_PDF_SIZE.get(dymo_size or "30347")
+        if mapped in LABEL_SIZES:
+            return mapped
+    if fallback_size in LABEL_SIZES:
+        return fallback_size
+    return DEFAULT_LABEL_SIZE
 
 
 def _snap_down(val):

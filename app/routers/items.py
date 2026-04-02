@@ -19,7 +19,13 @@ from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse
 from app.routers.auth import get_current_user
 from app.routers.settings import role_feature_allowed, get_setting
 from app.services.barcode import generate_sku, generate_short_barcode
-from app.services.labels import generate_label_pdf, generate_label_sheet, generate_dymo_xml
+from app.services.labels import (
+    LABEL_SIZES,
+    generate_label_pdf,
+    generate_label_sheet,
+    generate_dymo_xml,
+    resolve_pdf_label_size,
+)
 from app.models.store_setting import StoreSetting
 
 PHOTO_UPLOAD_DIR = "frontend/static/images/items"
@@ -29,6 +35,22 @@ ALLOWED_IMAGE_TYPES = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_IMAGE_DIMENSION = 800
 
 router = APIRouter(prefix="/items", tags=["items"])
+
+
+async def _resolve_user_pdf_label_size(
+    db: AsyncSession,
+    user: Vendor,
+    requested_size: Optional[str] = None,
+) -> str:
+    dymo_size = None
+    if getattr(user, "label_preference", None) == "dymo":
+        dymo_size = await get_setting(db, "dymo_label_size") or "30347"
+    return resolve_pdf_label_size(
+        requested_size=requested_size,
+        label_preference=getattr(user, "label_preference", None),
+        dymo_size=dymo_size,
+        fallback_size=getattr(user, "pdf_label_size", None),
+    )
 
 
 def _parse_iso_date(value, field_name: str) -> date:
@@ -287,7 +309,7 @@ async def get_batch_labels(
         for _ in range(count):
             expanded.append(item)
 
-    label_size = data.get("label_size") or getattr(current_user, "pdf_label_size", None) or "2.25x1.25"
+    label_size = await _resolve_user_pdf_label_size(db, current_user, data.get("label_size"))
     pdf_bytes = generate_label_sheet(expanded, label_size=label_size)
 
     for item in items:
@@ -297,7 +319,11 @@ async def get_batch_labels(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": 'inline; filename="labels_batch.pdf"'},
+        headers={
+            "Content-Disposition": 'inline; filename="labels_batch.pdf"',
+            "X-Label-Size-Key": label_size,
+            "X-Label-Size-Name": LABEL_SIZES[label_size]["name"],
+        },
     )
 
 
@@ -324,7 +350,7 @@ async def get_item_label(
             detail="Label printing is disabled for your role in Settings → User Roles.",
         )
 
-    size = label_size or getattr(current_user, "pdf_label_size", None) or "2.25x1.25"
+    size = await _resolve_user_pdf_label_size(db, current_user, label_size)
     pdf_bytes = generate_label_pdf(item, label_size=size)
 
     item.label_printed = True
@@ -333,7 +359,11 @@ async def get_item_label(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'inline; filename="label_{item_id}.pdf"'},
+        headers={
+            "Content-Disposition": f'inline; filename="label_{item_id}.pdf"',
+            "X-Label-Size-Key": size,
+            "X-Label-Size-Name": LABEL_SIZES[size]["name"],
+        },
     )
 
 

@@ -1160,10 +1160,26 @@
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
     });
 
-    function openLabelPdf(blob) {
+    const LABEL_SIZE_META = {
+        '1.5x1': { display: '1 x 1.5 in', page: '1.5in 1in' },
+        '2.125x1': { display: '1 x 2-1/8 in', page: '2.125in 1in' },
+        '2.25x1.25': { display: '2.25 x 1.25 in', page: '2.25in 1.25in' },
+        '2.625x1': { display: '2-5/8 x 1 in', page: '2.625in 1in' },
+        '3.5x1.125': { display: '3.5 x 1-1/8 in', page: '3.5in 1.125in' },
+        '2x2': { display: '2 x 2 in', page: '2in 2in' },
+        '3x2': { display: '3 x 2 in', page: '3in 2in' },
+        '4x2': { display: '4 x 2 in', page: '4in 2in' },
+        '4x1.33': { display: '4 x 1-1/3 in', page: '4in 1.33in' },
+        '4x3.33': { display: '4 x 3-1/3 in', page: '4in 3.33in' }
+    };
+
+    function openLabelPdf(blob, labelSizeKey, labelSizeName) {
         var url = URL.createObjectURL(blob);
         var win = window.open('', '_blank');
         if (!win) { window.open(url, '_blank'); return; }
+        var labelMeta = LABEL_SIZE_META[labelSizeKey] || LABEL_SIZE_META[vendorLabelSize] || LABEL_SIZE_META['2.25x1.25'];
+        var displaySize = labelSizeName || labelMeta.display;
+        var pageSize = labelMeta.page;
         var payload = parseToken();
         var role = payload ? payload.role : 'vendor';
         var navHtml = '<a href="/vendor/items.html">Back to Items</a>';
@@ -1177,7 +1193,7 @@
         var theme = document.documentElement.getAttribute('data-theme') || 'dark';
         win.document.write('<!DOCTYPE html><html lang="en" data-theme="' + theme + '"><head><title>Print Labels</title>'
             + '<link rel="stylesheet" href="/static/css/main.css">'
-            + '<style>@page{size:2.25in 1.25in;margin:0}@media print{.toolbar{display:none!important}}'
+            + '<style>@page{size:' + pageSize + ';margin:0}@media print{.toolbar{display:none!important}}'
             + 'body{margin:0;background:var(--bg);font-family:Roboto,sans-serif}'
             + '.toolbar{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--gold)}'
             + '.toolbar a{color:var(--gold);text-decoration:none;font-size:13px;padding:6px 14px;border:1px solid var(--warm-border);transition:background 0.15s}'
@@ -1189,7 +1205,7 @@
             + '<div class="toolbar">' + navHtml
             + '<button class="close-btn" onclick="window.close()">Close Window</button>'
             + '</div>'
-            + '<div class="hint">Print settings: paper <b>2.25 x 1.25 in</b> &bull; scale <b>Actual Size / 100%</b> &bull; margins <b>None</b></div>'
+            + '<div class="hint">Print settings: paper <b>' + displaySize + '</b> &bull; scale <b>Actual Size / 100%</b> &bull; margins <b>None</b></div>'
             + '<embed src="' + url + '" type="application/pdf" width="100%" '
             + 'style="height:calc(100vh - 82px)">'
             + '</body></html>');
@@ -1201,13 +1217,14 @@
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
         const token = sessionStorage.getItem('bmm_token');
         try {
-            var sizeParam = vendorLabelSize ? '?label_size=' + encodeURIComponent(vendorLabelSize) : '';
+            var requestedSize = vendorLabelPref === 'dymo' ? '' : vendorLabelSize;
+            var sizeParam = requestedSize ? '?label_size=' + encodeURIComponent(requestedSize) : '';
             const res = await fetch(`/api/v1/items/${id}/label` + sizeParam, {
                 headers: { 'Authorization': 'Bearer ' + token }
             });
             if (!res.ok) throw new Error('Failed to generate label');
             const blob = await res.blob();
-            openLabelPdf(blob);
+            openLabelPdf(blob, res.headers.get('X-Label-Size-Key'), res.headers.get('X-Label-Size-Name'));
         } catch (e) {
             showAlert('alert-container', e.message || 'Label generation failed.', 'error');
         }
@@ -1394,17 +1411,21 @@
         btn.textContent = 'Generating…';
         var token = sessionStorage.getItem('bmm_token');
         try {
+            var payload = { items: entries };
+            if (vendorLabelPref !== 'dymo' && vendorLabelSize) {
+                payload.label_size = vendorLabelSize;
+            }
             var res = await fetch('/api/v1/items/labels/batch', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                body: JSON.stringify({ items: entries, label_size: vendorLabelSize }),
+                body: JSON.stringify(payload),
             });
             if (!res.ok) {
                 var err = await res.json().catch(function() { return { detail: 'Failed' }; });
                 throw new Error(err.detail || 'Label generation failed');
             }
             var blob = await res.blob();
-            openLabelPdf(blob);
+            openLabelPdf(blob, res.headers.get('X-Label-Size-Key'), res.headers.get('X-Label-Size-Name'));
             var totalLabels = entries.reduce(function(s, e) { return s + e.quantity; }, 0);
             showAlert('alert-container', totalLabels + ' label(s) generated for ' + entries.length + ' item(s).', 'success');
             closeLabelQtyModal();
