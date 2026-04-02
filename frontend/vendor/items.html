@@ -2318,7 +2318,7 @@
             const isOnSale = item.sale_price && item.sale_start && item.sale_end &&
                 item.sale_start <= today && today <= item.sale_end;
             const priceHtml = isOnSale
-                ? `<span class="price-original">$${parseFloat(item.price).toFixed(2)}</span> <span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>`
+                ? `<span class="price-original struck">$${parseFloat(item.price).toFixed(2)}</span> <span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>`
                 : `$${parseFloat(item.price).toFixed(2)}`;
 
             const photoHtml = getItemPhotoHtml(item);

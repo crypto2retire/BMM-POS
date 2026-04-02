@@ -6,7 +6,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, field_validator
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -20,6 +20,14 @@ router = APIRouter(prefix="/storefront", tags=["shop"])
 _rate_limit_store: dict = defaultdict(list)
 _RATE_LIMIT_WINDOW = 60
 _RATE_LIMIT_MAX = 10
+
+
+def _has_real_sale_price_expr():
+    return and_(
+        Item.sale_price.isnot(None),
+        Item.sale_price > 0,
+        Item.sale_price < Item.price,
+    )
 
 
 def _check_rate_limit(request: Request, max_requests: int = _RATE_LIMIT_MAX):
@@ -111,7 +119,7 @@ async def get_shop_items(
     if max_price is not None:
         query = query.where(Item.price <= max_price)
     if on_sale:
-        query = query.where(Item.sale_price.isnot(None))
+        query = query.where(_has_real_sale_price_expr())
 
     if sort == "price_asc":
         query = query.order_by(Item.price.asc())
@@ -144,7 +152,7 @@ async def get_shop_items(
             "name": row.name,
             "description": row.description,
             "price": float(row.price),
-            "sale_price": float(row.sale_price) if row.sale_price else None,
+            "sale_price": float(row.sale_price) if row.sale_price and row.sale_price < row.price else None,
             "category": row.category,
             "vendor_name": row.vendor_name,
             "booth_number": row.vendor_booth,
@@ -237,7 +245,7 @@ async def get_vendor_inventory(
             "name": row.name,
             "description": row.description,
             "price": float(row.price),
-            "sale_price": float(row.sale_price) if row.sale_price else None,
+            "sale_price": float(row.sale_price) if row.sale_price and row.sale_price < row.price else None,
             "category": row.category,
             "quantity": row.quantity,
             "image_path": row.image_path,

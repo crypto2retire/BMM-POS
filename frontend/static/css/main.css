@@ -867,9 +867,12 @@ tbody tr:nth-child(even):hover { background: rgba(201,168,76,0.04); }
 
 /* ── SALE PRICE ───────────────────────────────────────── */
 .price-original {
+    color: var(--text);
+    font-family: var(--font-body);
+}
+.price-original.struck {
     text-decoration: line-through;
     color: var(--text-muted);
-    font-family: var(--font-body);
 }
 .price-sale {
     color: var(--gold);

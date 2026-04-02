@@ -957,6 +957,7 @@
   let currentView   = 'grid';
   let activeFilters = new Set(['all']);
   let currentSort   = 'name-az';
+  const STOREFRONT_PAGE_SIZE = 100;
 
   // ── Load items ────────────────────────────────────────────────────
   async function loadTaxRate() {
@@ -969,6 +970,28 @@
     } catch (_) {}
   }
 
+  function hasActiveSale(item) {
+    const basePrice = parseFloat(item.price);
+    const salePrice = item.sale_price == null ? NaN : parseFloat(item.sale_price);
+    return Number.isFinite(basePrice)
+      && Number.isFinite(salePrice)
+      && salePrice > 0
+      && salePrice < basePrice;
+  }
+
+  async function fetchItemsPage(search, page) {
+    const params = new URLSearchParams();
+    params.set('page', page);
+    params.set('per_page', STOREFRONT_PAGE_SIZE);
+    if (search) params.set('search', search);
+    const res = await fetch(API_ITEMS + '?' + params.toString());
+    const raw = await res.json();
+    if (!res.ok) {
+      throw new Error(raw.detail || 'Unable to load storefront items.');
+    }
+    return Array.isArray(raw) ? { items: raw, total_pages: 1 } : raw;
+  }
+
   async function loadItems(search) {
     const grid   = document.getElementById('item-grid');
     const status = document.getElementById('status-text');
@@ -976,13 +999,15 @@
     grid.innerHTML = '<div class="state-msg"><span class="spinner"></span> Loading items\u2026</div>';
     status.textContent = '';
 
-    let url = API_ITEMS;
-    if (search) url += '?search=' + encodeURIComponent(search);
-
     try {
-      const res  = await fetch(url);
-      const raw = await res.json();
-      const data = Array.isArray(raw) ? raw : (raw.items || []);
+      const firstPage = await fetchItemsPage(search, 1);
+      const totalPages = Math.max(1, parseInt(firstPage.total_pages || 1, 10));
+      let data = firstPage.items || [];
+
+      for (let page = 2; page <= totalPages; page += 1) {
+        const nextPage = await fetchItemsPage(search, page);
+        data = data.concat(nextPage.items || []);
+      }
 
       if (data.length === 0) {
         allItems = [];
@@ -1005,9 +1030,9 @@
     // Apply filters
     if (!activeFilters.has('all')) {
       items = items.filter(function (item) {
-        const price = item.sale_price != null ? parseFloat(item.sale_price) : parseFloat(item.price);
+        const price = hasActiveSale(item) ? parseFloat(item.sale_price) : parseFloat(item.price);
         let pass = false;
-        if (activeFilters.has('sale') && item.sale_price != null) pass = true;
+        if (activeFilters.has('sale') && hasActiveSale(item)) pass = true;
         if (activeFilters.has('under25') && price < 25) pass = true;
         if (activeFilters.has('25to100') && price >= 25 && price <= 100) pass = true;
         if (activeFilters.has('over100') && price > 100) pass = true;
@@ -1024,8 +1049,8 @@
         case 'price-high': return parseFloat(b.price) - parseFloat(a.price);
         case 'newest':     return (b.id || 0) - (a.id || 0);
         case 'sale-first':
-          var aS = a.sale_price != null ? 0 : 1;
-          var bS = b.sale_price != null ? 0 : 1;
+          var aS = hasActiveSale(a) ? 0 : 1;
+          var bS = hasActiveSale(b) ? 0 : 1;
           return aS - bS || a.name.localeCompare(b.name);
         default: return 0;
       }
@@ -1062,7 +1087,7 @@
     card.setAttribute('itemtype', 'https://schema.org/Product');
 
     const isReserved = reservedIds.has(item.id);
-    const hasSale    = item.sale_price != null;
+    const hasSale    = hasActiveSale(item);
 
     const basePrice  = hasSale ? parseFloat(item.sale_price) : parseFloat(item.price);
     const totalPrice = basePrice * (1 + SHOP_TAX_RATE);
@@ -1122,7 +1147,7 @@
     row.className = 'item-list-row';
 
     const isReserved = reservedIds.has(item.id);
-    const hasSale    = item.sale_price != null;
+    const hasSale    = hasActiveSale(item);
     const basePrice  = hasSale ? parseFloat(item.sale_price) : parseFloat(item.price);
     const totalPrice = basePrice * (1 + SHOP_TAX_RATE);
 
@@ -1389,7 +1414,7 @@
 
   // ── Item Detail Modal ──────────────────────────────────────────────
   function openItemDetail(item) {
-    const hasSale = item.sale_price != null;
+    const hasSale = hasActiveSale(item);
     const basePrice = hasSale ? parseFloat(item.sale_price) : parseFloat(item.price);
     const totalPrice = basePrice * (1 + SHOP_TAX_RATE);
     const isReserved = reservedIds.has(item.id);

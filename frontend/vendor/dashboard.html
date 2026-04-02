@@ -516,7 +516,7 @@
         const today = new Date().toISOString().split("T")[0];
         if (item.sale_price && item.sale_start && item.sale_end &&
             item.sale_start <= today && today <= item.sale_end) {
-            return { isOnSale: true, display: `<span class="price-original">$${parseFloat(item.price).toFixed(2)}</span> <span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>` };
+            return { isOnSale: true, display: `<span class="price-original struck">$${parseFloat(item.price).toFixed(2)}</span> <span class="price-sale">$${parseFloat(item.sale_price).toFixed(2)}</span>` };
         }
         return { isOnSale: false, display: `$${parseFloat(item.price).toFixed(2)}` };
     }
