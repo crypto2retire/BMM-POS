@@ -41,6 +41,27 @@ def _startup_health_payload() -> dict:
     }
 
 
+async def _has_startup_marker(session, marker_key: str) -> bool:
+    result = await session.execute(
+        text("SELECT value FROM store_settings WHERE key = :key"),
+        {"key": marker_key},
+    )
+    return bool(result.scalar_one_or_none())
+
+
+async def _set_startup_marker(session, marker_key: str, description: str) -> None:
+    await session.execute(
+        text("""
+            INSERT INTO store_settings (key, value, description)
+            VALUES (:key, 'done', :description)
+            ON CONFLICT (key) DO UPDATE
+            SET value = EXCLUDED.value,
+                description = EXCLUDED.description
+        """),
+        {"key": marker_key, "description": description},
+    )
+
+
 try:
     print("BMM-POS: importing database...", file=sys.stderr, flush=True)
     from app.database import AsyncSessionLocal, engine, Base
@@ -146,11 +167,22 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
                 "import_source VARCHAR(50)"
             ))
-            # Backfill: tag existing items with barcodes as Ricochet imports (one-time)
-            await session.execute(text(
-                "UPDATE items SET import_source = 'ricochet' "
-                "WHERE import_source IS NULL AND barcode IS NOT NULL"
-            ))
+            import_source_marker = "startup_task_import_source_backfill_v1"
+            if not await _has_startup_marker(session, import_source_marker):
+                backfill_result = await session.execute(text(
+                    "UPDATE items SET import_source = 'ricochet' "
+                    "WHERE import_source IS NULL AND barcode IS NOT NULL"
+                ))
+                await _set_startup_marker(
+                    session,
+                    import_source_marker,
+                    "Applied one-time startup backfill for Ricochet import_source tags.",
+                )
+                print(
+                    f"BMM-POS: Ricochet import_source backfill marked complete ({backfill_result.rowcount} items)",
+                    file=sys.stderr,
+                    flush=True,
+                )
             await session.execute(text(
                 "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS "
                 "is_consignment BOOLEAN NOT NULL DEFAULT false"
@@ -318,37 +350,55 @@ async def lifespan(app: FastAPI):
         print(f"BMM-POS: column migration FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("column_migrations", e, critical=True)
 
-    # ── PRIORITY: Force-clear ALL consignment flags ──
+    # Historical cleanup: run once so deploys stop mutating inventory flags.
     try:
         async with AsyncSessionLocal() as session:
-            result = await session.execute(text("""
-                UPDATE items
-                SET is_consignment = false,
-                    consignment_rate = NULL
-                WHERE is_consignment = true OR consignment_rate IS NOT NULL
-            """))
-            await session.commit()
-            count = result.rowcount
-            if count > 0:
-                print(f"BMM-POS: CLEARED consignment flags on {count} items", file=sys.stderr, flush=True)
+            marker_key = "startup_task_consignment_cleanup_v1"
+            if await _has_startup_marker(session, marker_key):
+                print("BMM-POS: consignment cleanup already applied", file=sys.stderr, flush=True)
             else:
-                print("BMM-POS: consignment check OK — no items flagged", file=sys.stderr, flush=True)
+                result = await session.execute(text("""
+                    UPDATE items
+                    SET is_consignment = false,
+                        consignment_rate = NULL
+                    WHERE is_consignment = true OR consignment_rate IS NOT NULL
+                """))
+                await _set_startup_marker(
+                    session,
+                    marker_key,
+                    "Applied one-time startup cleanup to clear legacy consignment flags.",
+                )
+                await session.commit()
+                count = result.rowcount
+                if count > 0:
+                    print(f"BMM-POS: CLEARED consignment flags on {count} items", file=sys.stderr, flush=True)
+                else:
+                    print("BMM-POS: consignment check OK — no items flagged", file=sys.stderr, flush=True)
             _record_startup_ok("consignment_cleanup")
     except Exception as e:
         print(f"BMM-POS: CRITICAL — consignment cleanup failed: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("consignment_cleanup", e)
 
-    # ── Force ALL vendors to payout_method = 'check' ──
+    # Historical defaulting: run once so startup does not overwrite payout choices.
     try:
         async with AsyncSessionLocal() as session:
-            result = await session.execute(text("""
-                UPDATE vendors SET payout_method = 'check'
-                WHERE payout_method IS NULL OR payout_method != 'check'
-            """))
-            await session.commit()
-            count = result.rowcount
-            if count > 0:
-                print(f"BMM-POS: Set payout_method to 'check' for {count} vendors", file=sys.stderr, flush=True)
+            marker_key = "startup_task_vendor_payout_method_default_v1"
+            if await _has_startup_marker(session, marker_key):
+                print("BMM-POS: vendor payout_method default already applied", file=sys.stderr, flush=True)
+            else:
+                result = await session.execute(text("""
+                    UPDATE vendors SET payout_method = 'check'
+                    WHERE payout_method IS NULL OR payout_method != 'check'
+                """))
+                await _set_startup_marker(
+                    session,
+                    marker_key,
+                    "Applied one-time startup default for vendor payout_method values.",
+                )
+                await session.commit()
+                count = result.rowcount
+                if count > 0:
+                    print(f"BMM-POS: Set payout_method to 'check' for {count} vendors", file=sys.stderr, flush=True)
             _record_startup_ok("vendor_payout_method_default")
     except Exception as e:
         print(f"BMM-POS: payout_method default note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
@@ -387,31 +437,39 @@ async def lifespan(app: FastAPI):
         print(f"BMM-POS: vendor_balances backfill note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("vendor_balances_backfill", e)
 
-    # ── Migrate existing rent payments to rent_balance (one-time) ──
-    # Credits rent_balance for any rent_payment where rent_balance hasn't been credited yet
+    # Historical migration: run once so deploys stop re-touching vendor balances.
     try:
         async with AsyncSessionLocal() as session:
-            result = await session.execute(text("""
-                UPDATE vendor_balances vb
-                SET rent_balance = rent_balance + sub.total_paid
-                FROM (
-                    SELECT rp.vendor_id, SUM(rp.amount) as total_paid
-                    FROM rent_payments rp
-                    WHERE rp.status = 'paid'
-                      AND rp.method != 'balance'
-                      AND rp.processed_at >= CURRENT_DATE
-                      AND NOT EXISTS (
-                          SELECT 1 FROM vendor_balances vb2
-                          WHERE vb2.vendor_id = rp.vendor_id AND vb2.rent_balance != 0
-                      )
-                    GROUP BY rp.vendor_id
-                ) sub
-                WHERE vb.vendor_id = sub.vendor_id
-            """))
-            await session.commit()
-            count = result.rowcount
-            if count > 0:
-                print(f"BMM-POS: Migrated rent payments to rent_balance for {count} vendors", file=sys.stderr, flush=True)
+            marker_key = "startup_task_rent_balance_migration_v1"
+            if await _has_startup_marker(session, marker_key):
+                print("BMM-POS: rent_balance migration already applied", file=sys.stderr, flush=True)
+            else:
+                result = await session.execute(text("""
+                    UPDATE vendor_balances vb
+                    SET rent_balance = rent_balance + sub.total_paid
+                    FROM (
+                        SELECT rp.vendor_id, SUM(rp.amount) as total_paid
+                        FROM rent_payments rp
+                        WHERE rp.status = 'paid'
+                          AND rp.method != 'balance'
+                          AND rp.processed_at >= CURRENT_DATE
+                          AND NOT EXISTS (
+                              SELECT 1 FROM vendor_balances vb2
+                              WHERE vb2.vendor_id = rp.vendor_id AND vb2.rent_balance != 0
+                          )
+                        GROUP BY rp.vendor_id
+                    ) sub
+                    WHERE vb.vendor_id = sub.vendor_id
+                """))
+                await _set_startup_marker(
+                    session,
+                    marker_key,
+                    "Applied one-time startup migration for rent_balance credits from paid rent payments.",
+                )
+                await session.commit()
+                count = result.rowcount
+                if count > 0:
+                    print(f"BMM-POS: Migrated rent payments to rent_balance for {count} vendors", file=sys.stderr, flush=True)
             _record_startup_ok("rent_balance_migration")
     except Exception as e:
         print(f"BMM-POS: rent_balance migration note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
@@ -430,7 +488,6 @@ async def lifespan(app: FastAPI):
     # Auto-seed essential accounts if database is empty
     try:
         from app.models.vendor import Vendor
-        from sqlalchemy import select as sa_select
         import bcrypt
         import secrets as _secrets
 
@@ -475,43 +532,27 @@ async def lifespan(app: FastAPI):
         ]
 
         async with AsyncSessionLocal() as session:
-            added = 0
-            updated = 0
-            for acct in seed_accounts:
-                pw = acct.pop("password")
-                result = await session.execute(
-                    sa_select(Vendor).where(Vendor.email == acct["email"])
+            vendor_count_result = await session.execute(text("SELECT COUNT(*) FROM vendors"))
+            vendor_count = int(vendor_count_result.scalar() or 0)
+
+            if vendor_count > 0:
+                print(
+                    f"BMM-POS: auto-seed skipped — {vendor_count} existing vendors detected",
+                    file=sys.stderr,
+                    flush=True,
                 )
-                existing = result.scalar_one_or_none()
-                if existing:
-                    changed = False
-                    if existing.role != acct.get("role"):
-                        existing.role = acct["role"]
-                        changed = True
-                    if existing.is_vendor != acct.get("is_vendor"):
-                        existing.is_vendor = acct["is_vendor"]
-                        changed = True
-                    if existing.booth_number != acct.get("booth_number"):
-                        existing.booth_number = acct["booth_number"]
-                        changed = True
-                    if changed:
-                        updated += 1
-                else:
+                _record_startup_ok("auto_seed_accounts")
+            else:
+                added = 0
+                for acct in seed_accounts:
+                    pw = acct.pop("password")
                     session.add(Vendor(**acct, password_hash=make_hash(pw)))
                     added += 1
-            if added or updated:
-                await session.commit()
-            msg_parts = []
-            if added:
-                msg_parts.append(f"seeded {added} new")
-            if updated:
-                msg_parts.append(f"re-hashed {updated} passwords")
-            if msg_parts:
-                print(f"BMM-POS: {', '.join(msg_parts)}", file=sys.stderr, flush=True)
-            else:
-                total = await session.execute(text("SELECT COUNT(*) FROM vendors"))
-                print(f"BMM-POS: {total.scalar()} vendors OK", file=sys.stderr, flush=True)
-            _record_startup_ok("auto_seed_accounts")
+
+                if added:
+                    await session.commit()
+                    print(f"BMM-POS: seeded {added} default vendor accounts", file=sys.stderr, flush=True)
+                _record_startup_ok("auto_seed_accounts")
     except Exception as e:
         print(f"BMM-POS: auto-seed FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("auto_seed_accounts", e)
