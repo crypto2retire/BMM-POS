@@ -11,7 +11,7 @@ from app.models.sale import Sale, SaleItem
 from app.models.item import Item
 from app.models.vendor import Vendor, VendorBalance
 from app.schemas.sale import SaleCreate, SaleResponse, SaleItemResponse
-from app.routers.auth import get_current_user
+from app.routers.auth import get_current_user, require_cashier_or_admin
 from app.config import settings
 from app.routers.settings import get_tax_rate
 from app.timezone import STORE_TZ as _STORE_TZ
@@ -106,7 +106,7 @@ def sale_to_response(sale: Sale) -> SaleResponse:
 async def create_sale(
     data: SaleCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_cashier_or_admin),
 ):
     if not data.items:
         raise HTTPException(status_code=400, detail="Cart is empty")

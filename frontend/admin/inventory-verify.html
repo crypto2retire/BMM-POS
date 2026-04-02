@@ -811,6 +811,10 @@ async function detectRole() {
         if (!res.ok) { window.location.href = '/vendor/login.html'; return; }
         var data = await res.json();
         userRole = data.role;
+        if (userRole === 'vendor') {
+            window.location.href = '/vendor/dashboard.html';
+            return;
+        }
         document.getElementById('user-name').textContent = data.name || data.email;
 
         if (userRole === 'admin') {
