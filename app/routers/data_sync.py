@@ -1,5 +1,5 @@
 import logging
-import os, re, asyncio
+import os, re, asyncio, json, random
 from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional, List
@@ -209,6 +209,12 @@ SCRAPED_IMAGES_DIR = os.path.join(
     "frontend", "static", "uploads", "items"
 )
 
+CACHE_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "tmp"
+)
+RICO_CACHE_FILE = os.path.join(CACHE_DIR, "ricochet_product_cache.json")
+
 
 @router.post("/store-images-to-db")
 async def store_images_to_db(
@@ -406,6 +412,53 @@ _scrape_status = {"running": False, "matched": 0, "skipped": 0, "errors": 0, "to
 
 _product_cache: list = []
 
+RICO_TIMEOUT = httpx.Timeout(45.0, connect=20.0)
+RICO_MIN_DELAY = float(os.environ.get("RICO_SCRAPE_MIN_DELAY", "1.1"))
+RICO_MAX_DELAY = float(os.environ.get("RICO_SCRAPE_MAX_DELAY", "1.9"))
+RICO_RETRY_DELAYS = (3, 8, 20)
+
+
+def _ensure_cache_dir() -> None:
+    os.makedirs(CACHE_DIR, exist_ok=True)
+
+
+def _save_product_cache() -> None:
+    _ensure_cache_dir()
+    with open(RICO_CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(_product_cache, f)
+
+
+def _load_product_cache() -> int:
+    global _product_cache
+    if not os.path.exists(RICO_CACHE_FILE):
+        return 0
+    with open(RICO_CACHE_FILE, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    if isinstance(data, list):
+        _product_cache = data
+        return len(_product_cache)
+    return 0
+
+
+async def _rico_pause(multiplier: float = 1.0) -> None:
+    await asyncio.sleep(random.uniform(RICO_MIN_DELAY, RICO_MAX_DELAY) * multiplier)
+
+
+async def _rico_get(client: httpx.AsyncClient, url: str):
+    last_error = None
+    for attempt, retry_delay in enumerate((0,) + RICO_RETRY_DELAYS):
+        if retry_delay:
+            await asyncio.sleep(retry_delay)
+        try:
+            resp = await client.get(url)
+            if resp.status_code in (429, 500, 502, 503, 504):
+                last_error = f"HTTP {resp.status_code}"
+                continue
+            return resp
+        except Exception as exc:
+            last_error = str(exc)
+    raise RuntimeError(f"Ricochet request failed for {url}: {last_error}")
+
 
 async def _scrape_and_store_images():
     from app.database import AsyncSessionLocal
@@ -414,7 +467,7 @@ async def _scrape_and_store_images():
 
     _scrape_status.update(running=True, matched=0, skipped=0, errors=0, total_products=0, done=False, message="Collecting product URLs...")
 
-    async with httpx.AsyncClient(headers=RICO_HEADERS, timeout=30, follow_redirects=True) as client:
+    async with httpx.AsyncClient(headers=RICO_HEADERS, timeout=RICO_TIMEOUT, follow_redirects=True) as client:
         product_urls = set()
         s3_pat = re.compile(r"ricoconsign-assets\.s3\.")
         sku_pat = re.compile(r"rico\.sku\s*=\s*'([^']+)'")
@@ -424,7 +477,7 @@ async def _scrape_and_store_images():
             while True:
                 url = f"{RICO_BASE}/store/category/{quote(cat)}" if page == 1 else f"{RICO_BASE}/nextpage?page={page}&category={quote(cat)}"
                 try:
-                    resp = await client.get(url)
+                    resp = await _rico_get(client, url)
                     if resp.status_code != 200:
                         break
                     soup = BeautifulSoup(resp.text, "html.parser")
@@ -442,7 +495,7 @@ async def _scrape_and_store_images():
                     if new == 0:
                         break
                     page += 1
-                    await asyncio.sleep(0.3)
+                    await _rico_pause()
                 except Exception:
                     break
 
@@ -453,7 +506,7 @@ async def _scrape_and_store_images():
 
         for i, prod_url in enumerate(product_urls):
             try:
-                resp = await client.get(prod_url)
+                resp = await _rico_get(client, prod_url)
                 if resp.status_code != 200:
                     _scrape_status["errors"] += 1
                     continue
@@ -481,14 +534,14 @@ async def _scrape_and_store_images():
                     _scrape_status["skipped"] += 1
                     continue
 
-                img_resp = await client.get(image_urls[0])
+                img_resp = await _rico_get(client, image_urls[0])
                 if img_resp.status_code != 200:
                     _scrape_status["errors"] += 1
                     continue
                 image_data = img_resp.content
                 if len(image_data) == LOGO_SIZE:
                     if len(image_urls) > 1:
-                        img_resp = await client.get(image_urls[1])
+                        img_resp = await _rico_get(client, image_urls[1])
                         if img_resp.status_code != 200 or len(img_resp.content) == LOGO_SIZE:
                             _scrape_status["skipped"] += 1
                             continue
@@ -531,7 +584,7 @@ async def _scrape_and_store_images():
 
                 if i % 10 == 0:
                     _scrape_status["message"] = f"Processing {i+1}/{len(product_urls)}... Matched: {_scrape_status['matched']}"
-                await asyncio.sleep(0.3)
+                await _rico_pause()
 
             except Exception as e:
                 _scrape_status["errors"] += 1
@@ -571,19 +624,24 @@ async def _collect_ricochet_products():
     from urllib.parse import quote
 
     _product_cache.clear()
+    try:
+        if os.path.exists(RICO_CACHE_FILE):
+            os.remove(RICO_CACHE_FILE)
+    except OSError:
+        pass
     _collect_status.update(running=True, done=False, message="Collecting product URLs...", count=0)
     s3_pat = re.compile(r"ricoconsign-assets\.s3\.")
     sku_pat = re.compile(r"rico\.sku\s*=\s*'([^']+)'")
 
     try:
-        async with httpx.AsyncClient(headers=RICO_HEADERS, timeout=30, follow_redirects=True) as client:
+        async with httpx.AsyncClient(headers=RICO_HEADERS, timeout=RICO_TIMEOUT, follow_redirects=True) as client:
             product_urls = set()
             for cat in RICO_CATEGORIES:
                 page = 1
                 while True:
                     url = f"{RICO_BASE}/store/category/{quote(cat)}" if page == 1 else f"{RICO_BASE}/nextpage?page={page}&category={quote(cat)}"
                     try:
-                        resp = await client.get(url)
+                        resp = await _rico_get(client, url)
                         if resp.status_code != 200:
                             break
                         soup = BeautifulSoup(resp.text, "html.parser")
@@ -601,7 +659,7 @@ async def _collect_ricochet_products():
                         if new == 0:
                             break
                         page += 1
-                        await asyncio.sleep(0.2)
+                        await _rico_pause()
                     except Exception:
                         break
 
@@ -609,7 +667,7 @@ async def _collect_ricochet_products():
 
             for i, prod_url in enumerate(product_urls):
                 try:
-                    resp = await client.get(prod_url)
+                    resp = await _rico_get(client, prod_url)
                     if resp.status_code != 200:
                         continue
                     soup = BeautifulSoup(resp.text, "html.parser")
@@ -629,14 +687,17 @@ async def _collect_ricochet_products():
                     if not image_urls:
                         continue
                     _product_cache.append({"sku": sku, "image_urls": image_urls})
+                    if len(_product_cache) % 25 == 0:
+                        _save_product_cache()
                     if i % 20 == 0:
                         _collect_status["message"] = f"Scraped {i+1}/{len(product_urls)}... cached {len(_product_cache)}"
-                    await asyncio.sleep(0.2)
+                    await _rico_pause()
                 except Exception:
                     continue
     except Exception as e:
         _collect_status["message"] = f"Error: {e}"
 
+    _save_product_cache()
     _collect_status.update(running=False, done=True, count=len(_product_cache), message=f"Done! Cached {len(_product_cache)} products with images")
 
 
@@ -657,7 +718,8 @@ async def scrape_rico_collect(
 async def scrape_rico_status_endpoint(password: str = Query(...)):
     if password != SYNC_SECRET:
         raise HTTPException(status_code=403, detail="Invalid password")
-    return {**_collect_status, "cached_products": len(_product_cache)}
+    cached = len(_product_cache) or _load_product_cache()
+    return {**_collect_status, "cached_products": cached}
 
 
 @router.post("/scrape-rico-store")
@@ -670,7 +732,9 @@ async def scrape_rico_store(
     if password != SYNC_SECRET:
         raise HTTPException(status_code=403, detail="Invalid password")
     if not _product_cache:
-        return {"detail": "No product cache. Call /scrape-rico-collect first.", "matched": 0}
+        loaded = _load_product_cache()
+        if not loaded:
+            return {"detail": "No product cache. Call /scrape-rico-collect first.", "matched": 0}
 
     batch = _product_cache[batch_offset:batch_offset + batch_size]
     if not batch:
@@ -681,7 +745,7 @@ async def scrape_rico_store(
     skipped = 0
     errors = 0
 
-    async with httpx.AsyncClient(headers=RICO_HEADERS, timeout=30, follow_redirects=True) as client:
+    async with httpx.AsyncClient(headers=RICO_HEADERS, timeout=RICO_TIMEOUT, follow_redirects=True) as client:
         for prod in batch:
             sku = prod["sku"]
             image_urls = prod["image_urls"]
@@ -694,13 +758,13 @@ async def scrape_rico_store(
                     skipped += 1
                     continue
 
-                img_resp = await client.get(image_urls[0])
+                img_resp = await _rico_get(client, image_urls[0])
                 if img_resp.status_code != 200:
                     errors += 1
                     continue
                 image_data = img_resp.content
                 if len(image_data) == LOGO_SIZE and len(image_urls) > 1:
-                    img_resp = await client.get(image_urls[1])
+                    img_resp = await _rico_get(client, image_urls[1])
                     if img_resp.status_code != 200 or len(img_resp.content) == LOGO_SIZE:
                         skipped += 1
                         continue
@@ -723,8 +787,9 @@ async def scrape_rico_store(
                     db.add(ItemImage(item_id=item.id, image_data=image_data, content_type=content_type))
 
                 item.image_path = f"/api/v1/items/{item.id}/image"
+                item.photo_urls = image_urls
                 matched += 1
-                await asyncio.sleep(0.1)
+                await _rico_pause(0.75)
             except Exception as e:
                 errors += 1
                 logger.error(f"Store error for sku {sku}: {e}")
