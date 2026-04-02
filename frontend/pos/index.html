@@ -1847,9 +1847,19 @@
                 const vendors = await apiGet('/api/v1/vendors/');
                 const sel = document.getElementById('manual-vendor');
                 sel.innerHTML = '<option value="">— Select vendor —</option>';
-                vendors.filter(v => v.role === 'vendor' || v.is_vendor || v.booth_number).forEach(v => {
-                    sel.innerHTML += `<option value="${v.id}">${v.name} (${v.booth_number || 'No Booth'})</option>`;
-                });
+                vendors
+                    .filter(v => (v.status || 'active') === 'active' && (v.role === 'vendor' || v.is_vendor))
+                    .sort(function(a, b) {
+                        const boothA = (a.booth_number || '').toLowerCase();
+                        const boothB = (b.booth_number || '').toLowerCase();
+                        if (boothA && boothB && boothA !== boothB) return boothA.localeCompare(boothB, undefined, { numeric: true });
+                        return (a.name || '').localeCompare(b.name || '');
+                    })
+                    .forEach(v => {
+                        const booth = v.booth_number ? `Booth ${v.booth_number}` : 'No Booth';
+                        const type = v.role === 'vendor' ? 'Vendor' : 'Staff Booth';
+                        sel.innerHTML += `<option value="${v.id}">${v.name} — ${booth} (${type})</option>`;
+                    });
                 manualVendorsLoaded = true;
             } catch (e) {
                 document.getElementById('manual-error').textContent = 'Could not load vendors';

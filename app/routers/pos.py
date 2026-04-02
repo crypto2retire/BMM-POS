@@ -189,6 +189,10 @@ async def pos_manual_item(
     vendor = result.scalar_one_or_none()
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
+    if vendor.status != "active":
+        raise HTTPException(status_code=400, detail="Manual items can only be created for active vendors")
+    if vendor.role != "vendor" and not bool(getattr(vendor, "is_vendor", False)):
+        raise HTTPException(status_code=400, detail="Manual items can only be created for vendor accounts")
 
     import uuid
     barcode = f"MAN-{uuid.uuid4().hex[:8].upper()}"
