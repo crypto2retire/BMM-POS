@@ -797,9 +797,32 @@
 
     /* ── Detail / Edit view ──────────────────────────────── */
 
+    async function fetchVendorById(id) {
+        const vendor = await apiGet(`/api/v1/vendors/${id}`);
+        if (!vendor) return null;
+        const existingIndex = allVendors.findIndex(x => x.id === id);
+        if (existingIndex >= 0) {
+            allVendors[existingIndex] = { ...allVendors[existingIndex], ...vendor };
+        } else {
+            allVendors.push(vendor);
+        }
+        return vendor;
+    }
+
     async function editVendor(id) {
-        const v = allVendors.find(x => x.id === id);
-        if (!v) return;
+        let v = allVendors.find(x => x.id === id);
+        if (!v) {
+            try {
+                v = await fetchVendorById(id);
+            } catch (err) {
+                showAlert('alert-container', err.message || 'Unable to load that vendor.', 'error');
+                return;
+            }
+        }
+        if (!v) {
+            showAlert('alert-container', 'Unable to load that vendor.', 'error');
+            return;
+        }
         editingVendor = v;
 
         document.getElementById('detail-name').textContent = v.name;
@@ -1109,9 +1132,10 @@
             const vendors = await apiGet('/api/v1/vendors/');
             allVendors = (vendors || []).filter(v => v.role === 'vendor' || v.is_vendor || v.booth_number);
         } catch (err) {
-            allVendors = [];
             showAlert('alert-container', err.message, 'error');
-            renderVendorLoadFailure(err.message || 'Failed to load vendors.');
+            if (!allVendors.length) {
+                renderVendorLoadFailure(err.message || 'Failed to load vendors.');
+            }
         }
     }
 
@@ -1140,11 +1164,22 @@
         if (vid) {
             const id = parseInt(vid, 10);
             if (!isNaN(id)) {
-                const v = allVendors.find(x => x.id === id);
-                if (v) await editVendor(id);
+                document.getElementById('search-input').value = '';
+                document.getElementById('vendor-status-filter').value = 'all';
+                renderGrid(getFilteredVendors());
+                await editVendor(id);
             }
         }
     }
+
+    window.addEventListener('pageshow', function() {
+        const searchInput = document.getElementById('search-input');
+        if (!searchInput) return;
+        if (searchInput.value && searchInput.value.indexOf('@') !== -1) {
+            searchInput.value = '';
+            renderGrid(getFilteredVendors());
+        }
+    });
 
     init();
 </script>
