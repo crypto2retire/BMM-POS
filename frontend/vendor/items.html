@@ -334,10 +334,47 @@
             color: var(--text-light);
             margin-bottom: 0.85rem;
         }
+        .sale-tools-summary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            margin-bottom: 0.85rem;
+            padding: 0.38rem 0.65rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            font-size: 0.78rem;
+            color: var(--text);
+        }
         .sale-tools-actions {
             display: flex;
             gap: 0.6rem;
             flex-wrap: wrap;
+        }
+        .sale-tools-actions .btn:disabled {
+            opacity: 0.45;
+            cursor: default;
+        }
+        .sale-quick-discounts {
+            display: flex;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+        .sale-quick-discounts button {
+            min-height: 36px;
+            padding: 0.35rem 0.75rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            cursor: pointer;
+            font: 600 0.72rem/1 'Roboto', sans-serif;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .sale-quick-discounts button:hover {
+            border-color: var(--gold-dim);
+            color: var(--gold);
+            background: var(--gold-glow);
         }
 
         @media (min-width: 768px) {
@@ -460,19 +497,15 @@
         <!-- Desktop: all buttons visible -->
         <button class="btn btn-primary batch-desktop-only" id="batch-print-btn" onclick="printSelectedLabels()" style="font-size:0.75rem; padding:0.4rem 1rem">Print Selected Labels</button>
         <button class="btn btn-outline batch-desktop-only" onclick="selectUnprinted()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select Unprinted</button>
-        <button class="btn btn-outline batch-desktop-only" onclick="toggleSelectAll()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select All</button>
-        <button class="btn btn-primary batch-desktop-only" onclick="openBulkSaleModal()" style="font-size:0.75rem; padding:0.4rem 1rem; background:var(--gold); border-color:var(--gold); color:#1a1a1d">Apply Sale</button>
-        <button class="btn btn-outline batch-desktop-only" onclick="bulkClearSale()" style="font-size:0.72rem; padding:0.35rem 0.8rem; color:var(--warning); border-color:color-mix(in srgb, var(--warning) 35%, transparent)">Clear Sale</button>
-        <button class="btn btn-secondary batch-desktop-only" onclick="clearSelection()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Clear</button>
+        <button class="btn btn-outline batch-desktop-only" onclick="toggleSelectAll()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select All Matching</button>
+        <button class="btn btn-secondary batch-desktop-only" onclick="clearSelection()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Clear Selection</button>
 
         <!-- Mobile: primary actions + More dropdown -->
         <button class="btn btn-primary batch-mobile-only" onclick="printSelectedLabels()" style="font-size:0.78rem; padding:0.5rem 1rem">Print Labels</button>
-        <button class="btn btn-outline batch-mobile-only" onclick="toggleSelectAll()" style="font-size:0.78rem; padding:0.5rem 0.8rem">Select All</button>
+        <button class="btn btn-outline batch-mobile-only" onclick="toggleSelectAll()" style="font-size:0.78rem; padding:0.5rem 0.8rem">Select All Matching</button>
         <div class="batch-more-wrap batch-mobile-only">
             <button type="button" class="batch-more-btn" id="batch-more-btn" onclick="toggleBatchMenu(event)" aria-haspopup="menu" aria-expanded="false">More &#x25BE;</button>
             <div class="batch-more-menu" id="batch-more-menu">
-                <button type="button" onclick="openBulkSaleModal(); closeBatchMenu()">Apply Sale</button>
-                <button type="button" onclick="bulkClearSale(); closeBatchMenu()">Clear Sale</button>
                 <button type="button" onclick="selectUnprinted(); closeBatchMenu()">Select Unprinted</button>
                 <button type="button" onclick="clearSelection(); closeBatchMenu()">Clear Selection</button>
             </div>
@@ -549,11 +582,13 @@
 
     <div class="sale-tools-panel">
         <div class="sale-tools-title">Booth Sale Tools</div>
-        <div class="sale-tools-copy">Use your current search and status filter, then apply or clear sale pricing for all visible items at once.</div>
+        <div class="sale-tools-copy">1. Select all matching items or hand-pick the ones you want. 2. Enter the discount amount and sale dates. 3. Apply or clear the sale in one step.</div>
+        <div class="sale-tools-summary"><strong id="sale-tools-selected-count">0</strong> item(s) selected</div>
         <div class="sale-tools-actions">
-            <button class="btn btn-outline" type="button" onclick="selectVisibleItems()">Select Visible Items</button>
-            <button class="btn btn-primary" type="button" onclick="openBulkSaleForVisible()" style="background:var(--gold);border-color:var(--gold);color:#1a1a1d">Apply Sale To Visible</button>
-            <button class="btn btn-outline" type="button" onclick="clearSaleForVisible()" style="color:var(--warning);border-color:color-mix(in srgb, var(--warning) 35%, transparent)">Clear Sale From Visible</button>
+            <button class="btn btn-outline" type="button" onclick="toggleSelectAll()">Select All Matching</button>
+            <button class="btn btn-primary" type="button" id="sale-tools-apply-btn" onclick="openBulkSaleModal()" style="background:var(--gold);border-color:var(--gold);color:#1a1a1d" disabled>Set Discount &amp; Dates</button>
+            <button class="btn btn-outline" type="button" id="sale-tools-clear-btn" onclick="bulkClearSale()" style="color:var(--warning);border-color:color-mix(in srgb, var(--warning) 35%, transparent)" disabled>Clear Sale From Selected</button>
+            <button class="btn btn-secondary" type="button" onclick="clearSelection()">Clear Selection</button>
         </div>
     </div>
 
@@ -827,21 +862,27 @@
 <div class="modal-overlay hidden" id="bulk-sale-modal">
     <div class="modal" style="max-width:400px">
         <div class="modal-header">
-            <h3 class="modal-title">Apply Sale to Selected Items</h3>
+            <h3 class="modal-title">Set Sale Details</h3>
             <button type="button" class="modal-close" onclick="closeBulkSaleModal()" aria-label="Close bulk sale dialog">✕</button>
         </div>
         <div class="modal-body">
             <div id="bulk-sale-alert"></div>
             <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem">
-                <strong id="bulk-sale-count">0</strong> items selected — each item's sale price will be calculated from its regular price.
+                <strong id="bulk-sale-count">0</strong> selected item(s). BMM will calculate each sale price from the regular item price and keep the sale active only for the dates below.
             </p>
             <div class="form-group" style="margin-bottom:1rem">
-                <label class="form-label">Percent Off *</label>
+                <label class="form-label">Discount Amount (%) *</label>
                 <div style="display:flex;align-items:center;gap:8px">
                     <input class="form-control" type="number" id="bulk-sale-percent"
                         min="1" max="100" step="1" placeholder="e.g. 20" inputmode="numeric"
                         style="max-width:120px">
                     <span style="font-size:1rem;color:var(--text-light)">% off</span>
+                </div>
+                <div class="sale-quick-discounts">
+                    <button type="button" onclick="setQuickDiscount(10)">10% Off</button>
+                    <button type="button" onclick="setQuickDiscount(15)">15% Off</button>
+                    <button type="button" onclick="setQuickDiscount(20)">20% Off</button>
+                    <button type="button" onclick="setQuickDiscount(25)">25% Off</button>
                 </div>
             </div>
             <div style="display:flex;gap:1rem">
@@ -1166,15 +1207,25 @@
         showAlert('alert-container', `${filtered.length} visible item(s) selected.`, 'success');
     }
 
+    function setQuickDiscount(percent) {
+        document.getElementById('bulk-sale-percent').value = percent;
+    }
+
     function updateSelectionUI() {
         const bar = document.getElementById('batch-actions-bar');
         const count = selectedItemIds.size;
+        const toolsCount = document.getElementById('sale-tools-selected-count');
+        const applyBtn = document.getElementById('sale-tools-apply-btn');
+        const clearBtn = document.getElementById('sale-tools-clear-btn');
         if (count > 0) {
             bar.style.display = 'flex';
             document.getElementById('selected-count').textContent = count;
         } else {
             bar.style.display = 'none';
         }
+        if (toolsCount) toolsCount.textContent = count;
+        if (applyBtn) applyBtn.disabled = count === 0;
+        if (clearBtn) clearBtn.disabled = count === 0;
         document.querySelectorAll('.item-select-cb').forEach(cb => {
             cb.checked = selectedItemIds.has(parseInt(cb.dataset.itemId));
         });
