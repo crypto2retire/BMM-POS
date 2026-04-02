@@ -489,7 +489,7 @@
     </div>
 
     <div id="read-only-banner" style="display:none; margin-bottom:1rem; padding:0.8rem 1rem; background:var(--surface); border:1px solid var(--warm-border); color:var(--text); font-size:0.9rem">
-        You are in read-only support mode. Search all vendors, review archived items, and print labels if needed. Item edits, sale tools, and inventory changes are disabled.
+        You are in read-only support mode. Search all vendors, review archived items, print labels if needed, and reactivate archived inventory. Item edits, sale tools, and other inventory changes are disabled.
     </div>
 
     <div class="ornament">&loz;</div>
@@ -933,6 +933,7 @@
     let labelSizesLoaded = false;
     let canMutateItems = true;
     let canPrintLabels = false;
+    let canReactivateArchivedItems = false;
 
     let allItems = [];
     let currentView = localStorage.getItem('bmm_items_view') || 'list';
@@ -950,6 +951,7 @@
     function applyItemAccessMode(session) {
         canMutateItems = !!(session.permissions && session.permissions.role_manage_items);
         canPrintLabels = !!(session.permissions && session.permissions.role_print_labels);
+        canReactivateArchivedItems = !!(session.is_staff || canMutateItems);
 
         var readOnly = currentInventoryIsReadOnly();
         var readOnlyBanner = document.getElementById('read-only-banner');
@@ -2336,6 +2338,7 @@
 
         grid.innerHTML = pageItems.map(item => {
             const canMutate = !currentInventoryIsReadOnly();
+            const canReactivate = canMutate || canReactivateArchivedItems;
             const isOnSale = item.sale_price && item.sale_start && item.sale_end &&
                 item.sale_start <= today && today <= item.sale_end;
             const priceHtml = isOnSale
@@ -2392,7 +2395,7 @@
                         </label>
                         <span style="font-size:0.65rem;color:${isActive ? 'var(--success-light)' : 'var(--text-light)'};white-space:nowrap">${isActive ? 'For Sale' : 'Not For Sale'}</span>
                     </div>` : ''}
-                    ${canMutate && item.status === 'pending_delete'
+                    ${canReactivate && item.status === 'pending_delete'
                         ? `<button class="btn btn-outline" onclick="event.stopPropagation();reactivateItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.68rem;padding:0.25rem 0.5rem">Reactivate</button>`
                         : canMutate && item.status !== 'removed'
                             ? `<button class="btn btn-outline" onclick="event.stopPropagation();deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.68rem;padding:0.25rem 0.5rem;color:var(--danger);border-color:color-mix(in srgb, var(--danger) 35%, transparent)" title="Delete item">Delete</button>`
@@ -2461,6 +2464,7 @@
 
         pageItems.forEach(item => {
             const canMutate = !currentInventoryIsReadOnly();
+            const canReactivate = canMutate || canReactivateArchivedItems;
             const isOnSale = item.sale_price && item.sale_start && item.sale_end &&
                 item.sale_start <= today && today <= item.sale_end;
             const priceHtml = `$${parseFloat(item.price).toFixed(2)}`;
@@ -2495,7 +2499,7 @@
                         <span class="slider"></span>
                     </label>
                     <span style="font-size:0.6rem;color:${isActive ? 'var(--success-light)' : 'var(--text-light)'};min-width:50px">${isActive ? 'For Sale' : 'Not For Sale'}</span>` : ''}
-                    ${canMutate && item.status === 'pending_delete'
+                    ${canReactivate && item.status === 'pending_delete'
                         ? `<button class="btn btn-outline" onclick="reactivateItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:0.2rem 0.45rem" title="Reactivate">↺</button>`
                         : canMutate && item.status !== 'removed'
                             ? `<button class="btn btn-outline" onclick="deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:0.2rem 0.45rem;color:var(--danger);border-color:color-mix(in srgb, var(--danger) 35%, transparent)" title="Delete">&#x2716;</button>`

@@ -100,6 +100,12 @@ async def _require_view_items(db: AsyncSession, user: Vendor) -> None:
     await _require_manage_items(db, user)
 
 
+async def _can_reactivate_archived_items(db: AsyncSession, user: Vendor) -> bool:
+    if user.role in ("admin", "cashier"):
+        return await _can_view_all_items(db, user)
+    return await role_feature_allowed(db, user, "role_manage_items")
+
+
 def item_to_response(item: Item) -> ItemResponse:
     booth_number = None
     if item.vendor:
@@ -823,7 +829,11 @@ async def reactivate_item(
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    await _require_manage_items(db, current_user)
+    if not await _can_reactivate_archived_items(db, current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Archived item reactivation is not enabled for your role.",
+        )
 
     if item.status != "pending_delete":
         raise HTTPException(status_code=409, detail=f"Cannot reactivate {item.status} items")
