@@ -63,6 +63,16 @@ def _snap_up(val):
     return math.ceil(val / DOT) * DOT
 
 
+def _fit_bar_width(usable_w, probe_width):
+    if usable_w <= 0 or probe_width <= 0:
+        return DOT
+    fit_bar_w = usable_w / probe_width
+    snapped = max(round(fit_bar_w / DOT), 1) * DOT
+    while snapped > DOT and (probe_width * snapped) > usable_w:
+        snapped -= DOT
+    return max(snapped, DOT)
+
+
 def generate_label_pdf(item, label_size=None) -> bytes:
     lw, lh = _get_label_dims(label_size)
     buffer = io.BytesIO()
@@ -95,30 +105,31 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
     scale_w = w / ref_w
     scale_h = h / ref_h
     scale = min(scale_w, scale_h)
+    small_label = w <= (1.6 * inch) and h <= (1.05 * inch)
 
-    margin = _snap_up(max(3, 3 * scale))
+    margin = _snap_up(max(2 if small_label else 3, (2.5 if small_label else 3) * scale))
 
-    inner_left = _snap_up(margin + 3 * scale)
-    inner_right = _snap_down(w - margin - 3 * scale)
+    inner_left = _snap_up(margin + (2 if small_label else 3) * scale)
+    inner_right = _snap_down(w - margin - (2 if small_label else 3) * scale)
 
     booth = getattr(item, "vendor", None)
     booth_number = ""
     if booth:
         booth_number = getattr(booth, "booth_number", "") or ""
 
-    name = (item.name or "")[:50 if scale > 1.2 else 40]
-    name_y = _snap_down(h - margin - 13 * scale_h)
+    name = (item.name or "")[:24 if small_label else (50 if scale > 1.2 else 40)]
+    name_y = _snap_down(h - margin - (10 if small_label else 13) * scale_h)
 
-    base_name_size = 11
-    if len(name) > 28:
-        base_name_size = 8
-    elif len(name) > 20:
-        base_name_size = 10
-    name_size = max(6, min(24, base_name_size * scale))
+    base_name_size = 8 if small_label else 11
+    if len(name) > (18 if small_label else 28):
+        base_name_size = 6.5 if small_label else 8
+    elif len(name) > (14 if small_label else 20):
+        base_name_size = 7.5 if small_label else 10
+    name_size = max(5.5 if small_label else 6, min(24, base_name_size * scale))
     c.setFont("Helvetica-Bold", name_size)
     c.drawString(inner_left, name_y, name)
 
-    divider_y = _snap_down(name_y - 5 * scale_h)
+    divider_y = _snap_down(name_y - (3.5 if small_label else 5) * scale_h)
     c.setStrokeColorRGB(0.4, 0.4, 0.4)
     c.setLineWidth(DOT)
     c.line(inner_left, divider_y, inner_right, divider_y)
@@ -136,8 +147,8 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
         on_sale = True
 
     price_str = f"${active_price:.2f}"
-    price_size = max(8, min(28, 14 * scale))
-    price_y = _snap_down(divider_y - 16 * scale_h)
+    price_size = max(9 if small_label else 8, min(28, (13 if small_label else 14) * scale))
+    price_y = _snap_down(divider_y - (13 if small_label else 16) * scale_h)
     c.setFont("Helvetica-Bold", price_size)
     c.setFillColorRGB(0, 0, 0)
     c.drawString(inner_left, price_y, price_str)
@@ -145,7 +156,7 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
     if on_sale:
         orig_str = f"${item.price:.2f}"
         price_w = c.stringWidth(price_str, "Helvetica-Bold", price_size)
-        orig_size = max(6, min(16, 8 * scale))
+        orig_size = max(5.5 if small_label else 6, min(16, (7 if small_label else 8) * scale))
         c.setFont("Helvetica", orig_size)
         c.setFillColorRGB(0.35, 0.35, 0.35)
         orig_x = _snap_up(inner_left + price_w + 4 * scale_w)
@@ -153,35 +164,36 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
         orig_w = c.stringWidth(orig_str, "Helvetica", orig_size)
         c.setStrokeColorRGB(0.35, 0.35, 0.35)
         c.setLineWidth(DOT)
-        strike_y = _snap_down(price_y + 4.5 * scale_h)
+        strike_y = _snap_down(price_y + (4 if small_label else 4.5) * scale_h)
         c.line(orig_x, strike_y, orig_x + orig_w, strike_y)
         c.setFillColorRGB(0, 0, 0)
 
     if booth_number:
-        c.setFont("Helvetica-Bold", price_size)
+        booth_size = max(8 if small_label else price_size, min(price_size, (11 if small_label else price_size)))
+        c.setFont("Helvetica-Bold", booth_size)
         c.drawRightString(inner_right, price_y, "B" + booth_number)
 
     barcode_val = item.barcode or ""
     if barcode_val:
         avail_w = w - margin * 2
 
-        barcode_text_size = max(6, min(16, 10 * scale))
-        barcode_text_y = _snap_up(margin + 1 * scale_h)
-        barcode_y = _snap_up(barcode_text_y + 14 * scale_h)
+        barcode_text_size = max(5.5 if small_label else 6, min(16, (7 if small_label else 10) * scale))
+        barcode_text_y = _snap_up(margin + (1 if small_label else 1) * scale_h)
+        barcode_y = _snap_up(barcode_text_y + (10 if small_label else 14) * scale_h)
 
-        bar_h = _snap_down(price_y - 8 * scale_h - barcode_y)
-        bar_h = max(bar_h, _snap_down(0.32 * inch * scale_h))
+        min_bar_h = _snap_down((0.4 if small_label else 0.32) * inch * scale_h)
+        bar_h = _snap_down(price_y - (5 if small_label else 8) * scale_h - barcode_y)
+        bar_h = max(bar_h, min_bar_h)
 
         probe = code128.Code128(barcode_val, barHeight=10, barWidth=1.0,
                                 humanReadable=False, quiet=False)
-        min_modules = probe.width
+        probe_width = probe.width
 
-        # Reserve 10x module width for quiet zones (5x each side)
-        quiet_zone = 10 * DOT
+        # Keep quiet zones, but keep them tighter on the smallest label.
+        quiet_zone = (6 if small_label else 10) * DOT
         usable_w = avail_w - quiet_zone * 2
 
-        raw_bar_w = usable_w / min_modules
-        bar_w = max(math.floor(raw_bar_w / DOT), 1) * DOT
+        bar_w = _fit_bar_width(usable_w, probe_width)
 
         barcode_obj = code128.Code128(
             barcode_val,
