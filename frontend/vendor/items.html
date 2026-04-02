@@ -316,6 +316,29 @@
         .mobile-tool-drawer-body {
             display: block;
         }
+        .sale-tools-panel {
+            margin-bottom: 1rem;
+            padding: 1rem 1.1rem;
+            background: color-mix(in srgb, var(--surface) 94%, transparent);
+            border: 1px solid var(--warm-border);
+        }
+        .sale-tools-title {
+            font: 600 0.8rem/1.4 'Roboto', sans-serif;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--gold);
+            margin-bottom: 0.35rem;
+        }
+        .sale-tools-copy {
+            font-size: 0.82rem;
+            color: var(--text-light);
+            margin-bottom: 0.85rem;
+        }
+        .sale-tools-actions {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
 
         @media (min-width: 768px) {
             .batch-mobile-only { display: none !important; }
@@ -394,6 +417,9 @@
             .items-toolbar .view-toggle button {
                 flex: 1 1 0;
                 min-height: 42px;
+            }
+            .sale-tools-actions .btn {
+                width: 100%;
             }
         }
     </style>
@@ -518,6 +544,16 @@
         <div class="view-toggle">
             <button id="view-grid-btn" onclick="setView('grid')">Grid</button>
             <button id="view-list-btn" onclick="setView('list')">List</button>
+        </div>
+    </div>
+
+    <div class="sale-tools-panel">
+        <div class="sale-tools-title">Booth Sale Tools</div>
+        <div class="sale-tools-copy">Use your current search and status filter, then apply or clear sale pricing for all visible items at once.</div>
+        <div class="sale-tools-actions">
+            <button class="btn btn-outline" type="button" onclick="selectVisibleItems()">Select Visible Items</button>
+            <button class="btn btn-primary" type="button" onclick="openBulkSaleForVisible()" style="background:var(--gold);border-color:var(--gold);color:#1a1a1d">Apply Sale To Visible</button>
+            <button class="btn btn-outline" type="button" onclick="clearSaleForVisible()" style="color:var(--warning);border-color:color-mix(in srgb, var(--warning) 35%, transparent)">Clear Sale From Visible</button>
         </div>
     </div>
 
@@ -1096,8 +1132,18 @@
         updateSelectionUI();
     }
 
+    function getVisibleItems() {
+        let filtered = getFilteredItems();
+        if (statusFilter === 'active') {
+            filtered = filtered.filter(function(i) { return i.status === 'active'; });
+        } else if (statusFilter === 'inactive') {
+            filtered = filtered.filter(function(i) { return i.status === 'inactive'; });
+        }
+        return filtered;
+    }
+
     function toggleSelectAll() {
-        const filtered = getFilteredItems();
+        const filtered = getVisibleItems();
         if (selectedItemIds.size === filtered.length && filtered.length > 0) {
             selectedItemIds.clear();
         } else {
@@ -1105,6 +1151,19 @@
         }
         updateSelectionUI();
         displayItems();
+    }
+
+    function selectVisibleItems() {
+        const filtered = getVisibleItems();
+        if (!filtered.length) {
+            showAlert('alert-container', 'No visible items match the current filters.', 'warning');
+            return;
+        }
+        selectedItemIds.clear();
+        filtered.forEach(function(item) { selectedItemIds.add(item.id); });
+        updateSelectionUI();
+        displayItems();
+        showAlert('alert-container', `${filtered.length} visible item(s) selected.`, 'success');
     }
 
     function updateSelectionUI() {
@@ -1813,6 +1872,19 @@
         document.getElementById('bulk-sale-modal').classList.add('hidden');
     }
 
+    function openBulkSaleForVisible() {
+        const filtered = getVisibleItems();
+        if (!filtered.length) {
+            showAlert('alert-container', 'No visible items match the current filters.', 'warning');
+            return;
+        }
+        selectedItemIds.clear();
+        filtered.forEach(function(item) { selectedItemIds.add(item.id); });
+        updateSelectionUI();
+        displayItems();
+        openBulkSaleModal();
+    }
+
     async function submitBulkSale() {
         const percent = parseFloat(document.getElementById('bulk-sale-percent').value);
         const start = document.getElementById('bulk-sale-start').value;
@@ -1867,6 +1939,26 @@
             showAlert('alert-container', `Sale cleared from ${resp.cleared} items.`, 'success');
             selectedItemIds.clear();
             updateSelectionUI();
+            await loadItems();
+        } catch (err) {
+            showAlert('alert-container', err.message || 'Failed to clear sales.', 'error');
+        }
+    }
+
+    async function clearSaleForVisible() {
+        const filtered = getVisibleItems();
+        if (!filtered.length) {
+            showAlert('alert-container', 'No visible items match the current filters.', 'warning');
+            return;
+        }
+        if (!confirm(`Clear sale pricing from ${filtered.length} visible item(s)?`)) return;
+
+        try {
+            const ids = filtered.map(function(item) { return item.id; });
+            const resp = await apiFetch('POST', '/api/v1/items/bulk-clear-sale', { item_ids: ids });
+            selectedItemIds.clear();
+            updateSelectionUI();
+            showAlert('alert-container', `Sale cleared from ${resp.cleared} visible item(s).`, 'success');
             await loadItems();
         } catch (err) {
             showAlert('alert-container', err.message || 'Failed to clear sales.', 'error');
