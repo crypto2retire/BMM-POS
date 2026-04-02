@@ -115,8 +115,10 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
     access_token = create_access_token(data=token_data)
 
     redirect = None
-    if user.role in ("admin", "cashier") and is_vendor and booth_number:
+    if user.role == "cashier" and is_vendor and booth_number:
         redirect = "choose"
+    elif user.role == "admin":
+        redirect = "/admin/index.html"
 
     first_login = not getattr(user, 'password_changed', True)
 
