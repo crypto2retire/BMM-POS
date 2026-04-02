@@ -372,6 +372,7 @@ async def sales_summary_today(
 async def vendor_sold_items(
     period: str = Query("month"),
     limit: int = Query(100, ge=1, le=250),
+    vendor_id: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
@@ -385,6 +386,17 @@ async def vendor_sold_items(
         raise HTTPException(status_code=403, detail="Vendor sales access is not available for this account")
     if current_user.role in ("admin", "cashier") and not current_user.is_vendor:
         raise HTTPException(status_code=403, detail="Vendor sales access is not available for this account")
+
+    target_vendor_id = current_user.id
+    if vendor_id is not None:
+        if current_user.role in ("admin", "cashier"):
+            if vendor_id != current_user.id and not await role_feature_allowed(db, current_user, "role_manage_vendors"):
+                raise HTTPException(status_code=403, detail="Access denied")
+            target_vendor_id = vendor_id
+        else:
+            if vendor_id != current_user.id:
+                raise HTTPException(status_code=403, detail="Access denied")
+            target_vendor_id = vendor_id
 
     start_utc, end_utc, period_label = _current_period_window(period)
     result = await db.execute(
@@ -404,7 +416,7 @@ async def vendor_sold_items(
         .join(Sale, Sale.id == SaleItem.sale_id)
         .join(Item, Item.id == SaleItem.item_id)
         .where(
-            SaleItem.vendor_id == current_user.id,
+            SaleItem.vendor_id == target_vendor_id,
             Sale.is_voided.is_(False),
             Sale.created_at >= start_utc,
             Sale.created_at < end_utc,

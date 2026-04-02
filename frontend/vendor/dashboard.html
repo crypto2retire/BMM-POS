@@ -587,6 +587,8 @@
     var itemsPageUrl = '/vendor/items.html';
     var soldItemsPeriod = 'month';
     var soldItemsSession = null;
+    var vendorDashboardRefreshTimer = null;
+    var lastVendorDashboardRefresh = 0;
 
     function updateItemLinks() {
         document.querySelectorAll('a[href="/vendor/items.html"]').forEach(function(a) {
@@ -673,7 +675,11 @@
         cards.innerHTML = '';
 
         try {
-            var data = await apiGet('/api/v1/sales/vendor-sold-items?period=' + encodeURIComponent(soldItemsPeriod));
+            var query = '/api/v1/sales/vendor-sold-items?period=' + encodeURIComponent(soldItemsPeriod);
+            if (soldItemsSession.vendor_id) {
+                query += '&vendor_id=' + encodeURIComponent(soldItemsSession.vendor_id);
+            }
+            var data = await apiGet(query);
             document.getElementById('sold-items-period-label').textContent = data.period_label || soldItemsPeriod;
             document.getElementById('sold-items-total').textContent = data.total_items || 0;
 
@@ -693,6 +699,13 @@
 
     function changeSoldItemsPeriod(period) {
         loadSoldItems(period);
+    }
+
+    async function refreshVendorDashboardData(force) {
+        var now = Date.now();
+        if (!force && now - lastVendorDashboardRefresh < 15000) return;
+        lastVendorDashboardRefresh = now;
+        await loadDashboard();
     }
 
     async function loadDashboard() {
@@ -763,6 +776,10 @@
     }
 
     window.addEventListener('resize', () => applyLayout(cachedItems));
+    window.addEventListener('focus', function() { refreshVendorDashboardData(false); });
+    document.addEventListener('visibilitychange', function() {
+        if (document.visibilityState === 'visible') refreshVendorDashboardData(false);
+    });
 
     async function loadRentStatus() {
         try {
@@ -905,7 +922,12 @@
     };
 
     checkRentReturn();
-    loadDashboard();
+    loadDashboard().then(function() {
+        if (vendorDashboardRefreshTimer) clearInterval(vendorDashboardRefreshTimer);
+        vendorDashboardRefreshTimer = window.setInterval(function() {
+            if (document.visibilityState === 'visible') refreshVendorDashboardData(false);
+        }, 60000);
+    });
     window.loadDisplayPrefs();
 </script>
 <script src="/static/js/change-password.js"></script>
