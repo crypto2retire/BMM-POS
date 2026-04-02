@@ -571,6 +571,7 @@
 </nav>
 
 <script src="/static/js/api.js"></script>
+<script src="/static/js/auth-bootstrap.js"></script>
 <script>
     let allVendors = [];
     let editingVendor = null;
@@ -591,8 +592,7 @@
     });
 
     function handleLogout() {
-        clearToken();
-        window.location.href = "/vendor/login.html";
+        window.bmmAuth.logout();
     }
 
     function statusBadge(s) {
@@ -1103,15 +1103,14 @@
     }
 
     async function init() {
-        const token = sessionStorage.getItem('bmm_token');
-        if (!token) { window.location.href = '/vendor/login.html'; return; }
-        const payload = parseToken();
-        if (!payload || !['admin', 'cashier'].includes(payload.role)) {
-            window.location.href = '/vendor/login.html';
-            return;
-        }
-        isAdmin = payload.role === 'admin';
-        document.getElementById('user-name').textContent = payload.name || 'User';
+        const session = await window.bmmAuth.requirePageAccess({
+            access: 'canManageVendors',
+            userNameId: 'user-name',
+            title: 'Vendor Management Restricted',
+            message: 'Managing vendors is not enabled for your current role.'
+        });
+        if (!session) return;
+        isAdmin = session.role === 'admin';
         if (!isAdmin) {
             document.getElementById('add-vendor-btn').style.display = 'none';
         }

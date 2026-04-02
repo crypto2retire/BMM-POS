@@ -546,12 +546,12 @@
 </nav>
 
 <script src="/static/js/api.js"></script>
+<script src="/static/js/auth-bootstrap.js"></script>
 <script>
     let allVendors = [];
 
     function handleLogout() {
-        clearToken();
-        window.location.href = '/vendor/login.html';
+        window.bmmAuth.logout();
     }
 
     function toggleMobileNav() {
@@ -678,14 +678,13 @@
     }
 
     async function loadRentStatus() {
-        const token = sessionStorage.getItem('bmm_token');
-        if (!token) { window.location.href = '/vendor/login.html'; return; }
-        const payload = parseToken();
-        if (!payload || (payload.role !== 'admin' && payload.role !== 'cashier')) {
-            window.location.href = '/vendor/login.html';
-            return;
-        }
-        document.getElementById('user-name').textContent = payload.name || 'Administrator';
+        const session = await window.bmmAuth.requirePageAccess({
+            access: 'canManageRent',
+            userNameId: 'user-name',
+            title: 'Rent Tools Restricted',
+            message: 'Rent management is not enabled for your current role.'
+        });
+        if (!session) return;
 
         try {
             const data = await apiGet('/api/v1/admin/rent-status');

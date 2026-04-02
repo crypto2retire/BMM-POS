@@ -993,6 +993,7 @@
 </nav>
 
 <script src="/static/js/api.js?v=20260402a"></script>
+<script src="/static/js/auth-bootstrap.js"></script>
 <script src="/static/js/admin-vendor-dashboard.js?v=20260402b"></script>
 <script>
     function toggleMobileNav() {
@@ -1005,7 +1006,7 @@
             nav.classList.remove('open');
         }
     });
-    function handleLogout() { clearToken(); window.location.href = '/vendor/login.html'; }
+    function handleLogout() { window.bmmAuth.logout(); }
     function statusBadge(s) { return '<span class="badge ' + (s === 'active' ? 'badge-green' : 'badge-red') + '">' + s + '</span>'; }
     function roleBadge(r) { return '<span class="badge ' + (r === 'admin' ? 'badge-blue' : 'badge-gray') + '">' + r + '</span>'; }
     function toggleCardDetail(id) {
@@ -1130,31 +1131,29 @@
     }
 
     async function loadDashboard() {
-        var token = sessionStorage.getItem('bmm_token');
-        if (!token) { window.location.href = '/vendor/login.html'; return; }
-        var payload = parseToken();
-        if (!payload) { window.location.href = '/vendor/login.html'; return; }
-        if (payload.role === 'vendor') {
-            window.location.href = '/vendor/dashboard.html';
-            return;
-        }
-        if (!['admin', 'cashier'].includes(payload.role)) {
-            window.location.href = '/vendor/login.html';
-            return;
-        }
-        var isAdmin = payload.role === 'admin';
-        var isStaffManager = payload.role === 'admin' || payload.role === 'cashier';
+        var session = await window.bmmAuth.requirePageAccess({
+            access: function(s) {
+                return s.canAccessAdminDashboard || s.canManageVendors || s.canManageRent || s.canViewReports;
+            },
+            title: 'Dashboard Restricted',
+            message: 'Your role does not currently have access to the admin dashboard.'
+        });
+        if (!session) return;
+        var isAdmin = session.role === 'admin';
+        var isStaffManager = session.role === 'admin' || session.role === 'cashier';
         window._adminDashboardIsAdmin = isStaffManager;
         applyCashierAdminDashboardUI(isAdmin);
-        var name = (payload && payload.name) || 'Admin';
+        var name = session.name || 'Admin';
         document.getElementById('user-name').textContent = name;
 
         var hour = new Date().getHours();
         var greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
         document.getElementById('greeting').textContent = greet + ', ' + name.split(' ')[0] + '.';
 
-        loadDashboardStats('today');
-        if (typeof window.loadVendorOverview === 'function') {
+        if (session.canViewReports || session.canAccessAdminDashboard) {
+            loadDashboardStats('today');
+        }
+        if ((session.canManageVendors || session.canManageRent || session.canViewReports) && typeof window.loadVendorOverview === 'function') {
             window.loadVendorOverview();
         }
     }

@@ -24,7 +24,12 @@ function clearToken() {
     _token = null;
     try {
         sessionStorage.removeItem('bmm_token');
+        sessionStorage.removeItem('bmm_booth_mode');
+        sessionStorage.removeItem('bmm_user');
     } catch (e) {}
+    if (window.bmmAuth && typeof window.bmmAuth.resetCache === 'function') {
+        window.bmmAuth.resetCache();
+    }
 }
 
 function parseToken() {
@@ -151,6 +156,8 @@ function showAlert(containerId, message, type) {
     if (!el) return;
     var div = document.createElement('div');
     div.className = 'alert alert-' + (['error','success','info','warning'].indexOf(type) >= 0 ? type : 'error');
+    div.setAttribute('aria-live', 'polite');
+    div.setAttribute('role', type === 'error' ? 'alert' : 'status');
     div.textContent = message;
     el.innerHTML = '';
     el.appendChild(div);

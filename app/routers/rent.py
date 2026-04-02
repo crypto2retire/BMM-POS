@@ -14,12 +14,16 @@ from app.routers.auth import get_current_user
 router = APIRouter(prefix="/vendor", tags=["vendor-rent"])
 
 
+def _has_vendor_booth_access(user: Vendor) -> bool:
+    return user.role in ("vendor", "admin") or bool(getattr(user, "is_vendor", False))
+
+
 @router.get("/rent-status")
 async def rent_status(
     db: AsyncSession = Depends(get_db),
     current_vendor: Vendor = Depends(get_current_user),
 ):
-    if current_vendor.role not in ("vendor", "admin"):
+    if not _has_vendor_booth_access(current_vendor):
         raise HTTPException(status_code=403, detail="Vendor access required.")
 
     vendor = current_vendor
@@ -69,7 +73,7 @@ async def pay_rent(
     db: AsyncSession = Depends(get_db),
     current_vendor: Vendor = Depends(get_current_user),
 ):
-    if current_vendor.role not in ("vendor", "admin"):
+    if not _has_vendor_booth_access(current_vendor):
         raise HTTPException(status_code=403, detail="Vendor access required.")
 
     vendor = current_vendor
@@ -112,7 +116,7 @@ async def rent_confirmed(
     db: AsyncSession = Depends(get_db),
     current_vendor: Vendor = Depends(get_current_user),
 ):
-    if current_vendor.role not in ("vendor", "admin"):
+    if not _has_vendor_booth_access(current_vendor):
         raise HTTPException(status_code=403, detail="Vendor access required.")
 
     vendor = current_vendor

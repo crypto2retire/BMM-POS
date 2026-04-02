@@ -338,8 +338,9 @@
 </nav>
 
 <script src="/static/js/api.js"></script>
+<script src="/static/js/auth-bootstrap.js"></script>
 <script>
-    function handleLogout() { clearToken(); window.location.href = '/vendor/login.html'; }
+    function handleLogout() { window.bmmAuth.logout(); }
     function toggleMobileNav() { document.getElementById('mobile-nav').classList.toggle('open'); }
     document.addEventListener('click', function(e) {
         var nav = document.getElementById('mobile-nav');
@@ -395,14 +396,16 @@
     }
 
     async function loadPreview() {
-        var token = sessionStorage.getItem('bmm_token');
-        if (!token) { window.location.href = '/vendor/login.html'; return; }
-        var payload = parseToken();
-        if (!payload || payload.role !== 'admin') {
-            window.location.href = '/vendor/login.html';
-            return;
-        }
-        document.getElementById('user-name').textContent = payload.name || 'Administrator';
+        var session = await window.bmmAuth.requirePageAccess({
+            access: 'canViewPayouts',
+            userNameId: 'user-name',
+            title: 'Payout Tools Restricted',
+            message: 'Payout preview access is not enabled for your current role.'
+        });
+        if (!session) return;
+        document.getElementById('process-btn').disabled = !session.canManageRent;
+        document.getElementById('reminder-btn').disabled = !session.canManageRent;
+        document.getElementById('weekly-btn').disabled = !session.canViewReports;
 
         try {
             payoutData = await apiGet('/api/v1/admin/payout-preview');

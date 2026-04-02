@@ -634,6 +634,7 @@
 </div>
 
 <script src="/static/js/api.js"></script>
+<script src="/static/js/auth-bootstrap.js"></script>
 <script>
     const TAX_RATE = 0.055;
 
@@ -642,8 +643,7 @@
     let searchTimer = null;
 
     function handleLogout() {
-        clearToken();
-        window.location.href = "/vendor/login.html";
+        window.bmmAuth.logout();
     }
 
     function getActivePrice(item) {
@@ -949,16 +949,17 @@
 
     // ── Init ───────────────────────────────────────────────────────────
     function init() {
-        const token = sessionStorage.getItem('bmm_token');
-        if (!token) { window.location.href = '/vendor/login.html'; return; }
-        const payload = parseToken();
-        if (!payload || (payload.role !== 'admin' && payload.role !== 'cashier')) {
-            window.location.href = '/vendor/dashboard.html';
-            return;
-        }
-        document.getElementById('nav-cashier').textContent = payload.name || payload.role;
-        selectPayment('cash');
-        renderCart();
+        window.bmmAuth.requirePageAccess({
+            access: 'canProcessSales',
+            userNameId: 'nav-cashier',
+            title: 'Register Access Restricted',
+            message: 'Processing sales is not enabled for your current role.'
+        }).then(function(session) {
+            if (!session) return;
+            document.getElementById('nav-cashier').textContent = session.name || session.role;
+            selectPayment('cash');
+            renderCart();
+        });
     }
 
     init();

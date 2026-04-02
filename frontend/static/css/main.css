@@ -1284,3 +1284,50 @@ select.form-control option { background: var(--surface-2); color: var(--text); }
     .receipt-print-area .receipt-total-line { font-weight: 700; font-size: 12px; }
     .receipt-print-area .receipt-footer { text-align: center; font-size: 9px; margin-top: 4mm; color: #555; }
 }
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: 2px solid var(--gold);
+    outline-offset: 2px;
+}
+
+.bmm-blocked-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    background: color-mix(in srgb, black 72%, transparent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.bmm-blocked-card {
+    width: min(520px, 100%);
+    background: var(--surface);
+    border: 1px solid var(--warm-border);
+    box-shadow: var(--shadow-warm);
+    padding: 1.5rem;
+}
+
+.bmm-blocked-title {
+    margin: 0 0 0.75rem;
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 1.6rem;
+    color: var(--text);
+}
+
+.bmm-blocked-message {
+    margin: 0 0 1rem;
+    color: var(--text-light);
+    line-height: 1.5;
+}
+
+.bmm-blocked-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}

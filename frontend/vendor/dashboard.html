@@ -237,6 +237,7 @@
 </nav>
 
 <script src="/static/js/api.js"></script>
+<script src="/static/js/auth-bootstrap.js"></script>
 <script src="/static/js/assistant-panel.js"></script>
 <script>
 (function() {
@@ -258,9 +259,7 @@
     }
 
     function handleLogout() {
-        clearToken();
-        sessionStorage.removeItem('bmm_booth_mode');
-        window.location.href = "/vendor/login.html";
+        window.bmmAuth.logout();
     }
 
     function toggleNav() {
@@ -366,22 +365,21 @@
     }
 
     async function loadDashboard() {
-        const token = sessionStorage.getItem('bmm_token');
-        if (!token) { window.location.href = '/vendor/login.html'; return; }
-        const payload = parseToken();
-        const isVendorRole = payload.role === 'vendor';
-        const boothMode = sessionStorage.getItem('bmm_booth_mode') === '1';
-        const hasBoothAccess = isVendorRole || (payload.is_vendor && boothMode);
-        if (!payload || !hasBoothAccess) { window.location.href = '/vendor/login.html'; return; }
-        document.getElementById("vendor-name").textContent = payload?.name || "Vendor";
+        const session = await window.bmmAuth.requirePageAccess({
+            access: 'canViewVendorDashboard',
+            userNameId: 'vendor-name',
+            title: 'Vendor Dashboard Restricted',
+            message: 'Vendor dashboard access is not enabled for this account right now.'
+        });
+        if (!session) return;
 
-        if (payload.role !== 'vendor' && payload.vendor_id) {
-            itemsPageUrl = '/vendor/items.html?vendor_id=' + payload.vendor_id;
+        if (session.role !== 'vendor' && session.vendor_id) {
+            itemsPageUrl = '/vendor/items.html?vendor_id=' + session.vendor_id;
         }
         updateItemLinks();
 
         try {
-            const vendor = await apiGet(`/api/v1/vendors/${payload.vendor_id}`);
+            const vendor = await apiGet(`/api/v1/vendors/${session.vendor_id}`);
             document.getElementById("booth-number").textContent = vendor.booth_number || "N/A";
             const salesBal = parseFloat(vendor.sales_balance != null ? vendor.sales_balance : 0);
             const rentBal = parseFloat(vendor.rent_balance != null ? vendor.rent_balance : 0);
@@ -403,7 +401,7 @@
             }
             loadRentStatus();
 
-            const vendorItemsUrl = (payload.role === 'vendor') ? '/api/v1/items/' : `/api/v1/items/?vendor_id=${payload.vendor_id}`;
+            const vendorItemsUrl = (session.role === 'vendor') ? '/api/v1/items/' : `/api/v1/items/?vendor_id=${session.vendor_id}`;
             const items = await apiGet(vendorItemsUrl);
             const active = items.filter(i => i.status === "active");
             document.getElementById("active-items").textContent = active.length;
@@ -629,4 +627,3 @@
 </script>
 </body>
 </html>
-

@@ -442,6 +442,7 @@
 </nav>
 
 <script src="/static/js/api.js"></script>
+<script src="/static/js/auth-bootstrap.js"></script>
 <script>
 var showcase = null;
 
@@ -454,16 +455,24 @@ function showStatus(msg, type) {
     setTimeout(function() { el.className = 'status-msg'; }, 4000);
 }
 
+function handleLogout() {
+    window.bmmAuth.logout();
+}
+
 async function loadShowcase() {
     try {
-        var token = sessionStorage.getItem('bmm_token');
-        if (!token) { window.location.href = '/vendor/login.html'; return; }
+        var session = await window.bmmAuth.requirePageAccess({
+            access: 'canAccessVendorBooth',
+            title: 'Booth Showcase Restricted',
+            message: 'Your account does not currently have booth access.'
+        });
+        if (!session) return;
 
-        var decoded = JSON.parse(atob(token.split('.')[1]));
-        document.getElementById('vendor-name').textContent = decoded.name || 'Vendor';
-        if (decoded.booth_number) {
+        var token = sessionStorage.getItem('bmm_token');
+        document.getElementById('vendor-name').textContent = session.name || 'Vendor';
+        if (session.booth_number) {
             var badge = document.getElementById('booth-badge');
-            badge.textContent = 'Booth ' + escHtml(decoded.booth_number);
+            badge.textContent = 'Booth ' + escHtml(session.booth_number);
             badge.style.display = 'inline-block';
         }
 

@@ -719,6 +719,7 @@
 </div>
 
 <script src="/static/js/api.js"></script>
+<script src="/static/js/auth-bootstrap.js"></script>
 <script src="/static/js/assistant-panel.js"></script>
 <script>(function(){ var d = parseToken(); initAssistantPanel('The vendor is managing their inventory items at Bowenstreet Market.', { assistantName: d ? d.assistant_name : null }); })();</script>
 <script>
@@ -749,7 +750,7 @@
     let statusFilter = 'active';
 
     // ── Nav helpers ────────────────────────────────────────────────────
-    function handleLogout() { clearToken(); sessionStorage.removeItem('bmm_booth_mode'); window.location.href = '/vendor/login.html'; }
+    function handleLogout() { window.bmmAuth.logout(); }
     function toggleNav() {
         document.getElementById('main-nav').classList.toggle('open');
     }
@@ -2084,13 +2085,17 @@
 
     // ── Init ───────────────────────────────────────────────────────────
     async function init() {
-        const token = sessionStorage.getItem('bmm_token');
-        if (!token) { window.location.href = '/vendor/login.html'; return; }
-        const payload = parseToken();
-        if (!payload) { window.location.href = '/vendor/login.html'; return; }
+        const session = await window.bmmAuth.requirePageAccess({
+            access: function(s) {
+                return (s.canAccessVendorBooth && s.canManageItems) || s.is_staff;
+            },
+            title: 'Item Access Restricted',
+            message: 'Item management is not enabled for your current role.'
+        });
+        if (!session) return;
 
-        currentRole = payload.role;
-        isVendorMode = (currentRole === 'admin' || currentRole === 'cashier') && payload.is_vendor;
+        currentRole = session.role;
+        isVendorMode = (currentRole === 'admin' || currentRole === 'cashier') && session.is_vendor;
 
         const boothMode = sessionStorage.getItem('bmm_booth_mode') === '1';
         var urlVendorId = new URLSearchParams(window.location.search).get('vendor_id');
@@ -2099,7 +2104,7 @@
         if (hasUrlVendor) {
             isVendorMode = false;
             selectedVendorId = parseInt(urlVendorId);
-            document.getElementById('vendor-name').textContent = payload.name || 'User';
+            document.getElementById('vendor-name').textContent = session.name || 'User';
             const homeHref = currentRole === 'admin' ? '/admin/index.html' : '/pos/index.html';
             document.getElementById('nav-brand').href = homeHref;
             document.getElementById('nav-role-label').textContent = currentRole === 'admin' ? 'Admin' : 'Cashier';
@@ -2111,7 +2116,8 @@
             document.body.classList.remove('has-bottom-nav');
             await loadVendors();
         } else if (isVendorMode && boothMode) {
-            document.getElementById('vendor-name').textContent = payload.name || 'User';
+            selectedVendorId = session.vendor_id;
+            document.getElementById('vendor-name').textContent = session.name || 'User';
             document.getElementById('nav-brand').href = '/vendor/dashboard.html';
             document.getElementById('nav-role-label').textContent = 'My Booth';
             document.getElementById('nav-home').href = '/vendor/dashboard.html';
@@ -2122,7 +2128,7 @@
             currentRole = 'vendor';
         } else if (currentRole === 'admin' || currentRole === 'cashier') {
             isVendorMode = false;
-            document.getElementById('vendor-name').textContent = payload.name || 'User';
+            document.getElementById('vendor-name').textContent = session.name || 'User';
             const homeHref = currentRole === 'admin' ? '/admin/index.html' : '/pos/index.html';
             document.getElementById('nav-brand').href = homeHref;
             document.getElementById('nav-role-label').textContent = currentRole === 'admin' ? 'Admin' : 'Cashier';
@@ -2134,7 +2140,8 @@
             document.body.classList.remove('has-bottom-nav');
             await loadVendors();
         } else {
-            document.getElementById('vendor-name').textContent = payload.name || 'User';
+            selectedVendorId = session.vendor_id;
+            document.getElementById('vendor-name').textContent = session.name || 'User';
             document.getElementById('nav-brand').href = '/vendor/dashboard.html';
             document.getElementById('nav-home').href = '/vendor/dashboard.html';
             document.getElementById('nav-home').textContent = 'Dashboard';
@@ -2142,12 +2149,14 @@
             document.getElementById('page-title').textContent = 'My Items';
         }
 
-        try {
-            var vendorInfo = await apiGet('/api/v1/vendors/' + payload.vendor_id);
-            vendorLabelPref = vendorInfo.label_preference || 'standard';
-            vendorLabelSize = vendorInfo.pdf_label_size || '2.25x1.25';
-            updateLabelPrefUI();
-        } catch (e) { /* fallback to standard */ }
+        if (selectedVendorId) {
+            try {
+                var vendorInfo = await apiGet('/api/v1/vendors/' + selectedVendorId);
+                vendorLabelPref = vendorInfo.label_preference || 'standard';
+                vendorLabelSize = vendorInfo.pdf_label_size || '2.25x1.25';
+                updateLabelPrefUI();
+            } catch (e) { /* fallback to standard */ }
+        }
 
         await loadLabelSizes();
 

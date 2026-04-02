@@ -1571,6 +1571,7 @@
 <div class="toast-container" id="toast-container"></div>
 
 <script src="/static/js/api.js"></script>
+<script src="/static/js/auth-bootstrap.js"></script>
 <script>
     // ─── State ───────────────────────────────────────────────────────────────
     let cart = [];          // { item, quantity }
@@ -1641,29 +1642,28 @@
 
     // ─── Init ─────────────────────────────────────────────────────────────────
     function init() {
-        const token = sessionStorage.getItem('bmm_token');
-        if (!token) { window.location.href = '/vendor/login.html'; return; }
-        const payload = parseToken();
-        if (!payload || !['admin', 'cashier'].includes(payload.role)) {
-            showToast('Access denied. Cashier or Admin role required.', 'error');
-            setTimeout(() => { window.location.href = '/vendor/login.html'; }, 1500);
-            return;
-        }
-        document.getElementById('cashier-name').textContent = payload.name || 'Cashier';
-        if (payload.role === 'admin') {
-            document.getElementById('admin-link').style.display = 'inline';
-        }
-        window.loadDisplayPrefs();
-        document.getElementById('barcode-input').focus();
-        document.getElementById('barcode-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { e.preventDefault(); addByBarcode(); }
+        window.bmmAuth.requirePageAccess({
+            access: 'canProcessSales',
+            userNameId: 'cashier-name',
+            title: 'POS Access Restricted',
+            message: 'Processing sales is not enabled for your current role.'
+        }).then(function(session) {
+            if (!session) return;
+            document.getElementById('cashier-name').textContent = session.name || 'Cashier';
+            if (session.role === 'admin') {
+                document.getElementById('admin-link').style.display = 'inline';
+            }
+            window.loadDisplayPrefs();
+            document.getElementById('barcode-input').focus();
+            document.getElementById('barcode-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); addByBarcode(); }
+            });
+            checkCameraAvailable();
         });
-        checkCameraAvailable();
     }
 
     function handleLogout() {
-        clearToken();
-        window.location.href = '/vendor/login.html';
+        window.bmmAuth.logout();
     }
 
     // ─── Scan sounds ───────────────────────────────────────────────────────────

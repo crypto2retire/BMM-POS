@@ -768,13 +768,11 @@
     </div>
 </div>
 
+<script src="/static/js/auth-bootstrap.js"></script>
 <script>
 const API = '/api/v1';
-const token = sessionStorage.getItem('bmm_token');
-if (!token) window.location.href = '/vendor/login.html';
-
-const headers = { 'Authorization': 'Bearer ' + token };
-const jsonHeaders = { ...headers, 'Content-Type': 'application/json' };
+let headers = {};
+let jsonHeaders = { 'Content-Type': 'application/json' };
 
 let allVendorStatus = [];
 let userRole = null;
@@ -793,8 +791,7 @@ function toggleMobileNav() {
 }
 
 function handleLogout() {
-    sessionStorage.removeItem('bmm_token');
-    window.location.href = '/vendor/login.html';
+    window.bmmAuth.logout();
 }
 
 function esc(s) {
@@ -807,15 +804,17 @@ function esc(s) {
 // ── Detect user role and show/hide admin features ──
 async function detectRole() {
     try {
-        var res = await fetch(API + '/auth/me', { headers: headers });
-        if (!res.ok) { window.location.href = '/vendor/login.html'; return; }
-        var data = await res.json();
-        userRole = data.role;
-        if (userRole === 'vendor') {
-            window.location.href = '/vendor/dashboard.html';
-            return;
-        }
-        document.getElementById('user-name').textContent = data.name || data.email;
+        var session = await window.bmmAuth.requirePageAccess({
+            access: 'canInventoryVerify',
+            userNameId: 'user-name',
+            title: 'Inventory Review Restricted',
+            message: 'Inventory verification is not enabled for your current role.'
+        });
+        if (!session) return;
+        var token = sessionStorage.getItem('bmm_token');
+        headers = { 'Authorization': 'Bearer ' + token };
+        jsonHeaders = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+        userRole = session.role;
 
         if (userRole === 'admin') {
             document.querySelectorAll('.admin-only').forEach(function(el) {

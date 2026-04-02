@@ -174,6 +174,7 @@
 </nav>
 
 <script src="/static/js/api.js"></script>
+<script src="/static/js/auth-bootstrap.js"></script>
 <script>
     function toggleMobileNav() {
         document.getElementById('mobile-nav').classList.toggle('open');
@@ -187,9 +188,7 @@
     });
 
     function handleLogout() {
-        sessionStorage.removeItem('bmm_token');
-        sessionStorage.removeItem('bmm_user');
-        window.location.href = '/pos/index.html';
+        window.bmmAuth.logout();
     }
 
     function escHtml(s) {
@@ -338,13 +337,15 @@
         document.getElementById('list-view').style.display = 'block';
     }
 
-    var user = JSON.parse(sessionStorage.getItem('bmm_user') || '{}');
-    if (!user.role || (user.role !== 'admin' && user.role !== 'cashier')) {
-        window.location.href = '/pos/index.html';
-    } else {
-        document.getElementById('user-name').textContent = user.name || (user.role === 'cashier' ? 'Cashier' : 'Administrator');
+    window.bmmAuth.requirePageAccess({
+        access: 'canViewReports',
+        userNameId: 'user-name',
+        title: 'EOD Reports Restricted',
+        message: 'End-of-day reports are not enabled for your current role.'
+    }).then(function(session) {
+        if (!session) return;
         loadReports();
-    }
+    });
 </script>
 </body>
 </html>

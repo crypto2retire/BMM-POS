@@ -335,6 +335,7 @@
 </nav>
 
 <script src="/static/js/api.js"></script>
+<script src="/static/js/auth-bootstrap.js"></script>
 <script>
     let classes = [];
     let currentYear, currentMonth;
@@ -345,13 +346,13 @@
     const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
     async function init() {
-        const token = sessionStorage.getItem('bmm_token');
-        if (!token) { window.location.href = '/vendor/login.html'; return; }
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            if (payload.role !== 'admin' && payload.role !== 'cashier') { window.location.href = '/vendor/login.html'; return; }
-            document.getElementById('user-name').textContent = payload.name || 'Admin';
-        } catch { window.location.href = '/vendor/login.html'; return; }
+        const session = await window.bmmAuth.requirePageAccess({
+            access: 'canManageStudio',
+            userNameId: 'user-name',
+            title: 'Studio Tools Restricted',
+            message: 'Studio management is not enabled for your current role.'
+        });
+        if (!session) return;
 
         const now = new Date();
         currentYear = now.getFullYear();
@@ -633,9 +634,7 @@
     });
 
     function handleLogout() {
-        sessionStorage.removeItem('bmm_token');
-        sessionStorage.removeItem('bmm_booth_mode');
-        window.location.href = '/vendor/login.html';
+        window.bmmAuth.logout();
     }
     function toggleMobileNav() {
         document.getElementById('mobile-nav').classList.toggle('open');

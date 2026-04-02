@@ -30,7 +30,12 @@ from app.services.email_templates import (
     rent_overdue_27day_email,
 )
 from app.routers.notifications import notify_weekly_report
-from app.routers.settings import get_setting, role_allows_manage_vendors, require_any_staff_feature
+from app.routers.settings import (
+    get_setting,
+    role_feature_allowed,
+    require_any_staff_feature,
+    require_staff_feature,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +46,22 @@ async def require_vendor_hub_access(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ) -> Vendor:
-    if current_user.role in ("admin", "cashier"):
+    if current_user.role == "admin":
         return current_user
-    if await role_allows_manage_vendors(db, current_user):
+    if current_user.role == "cashier":
+        for slug in (
+            "role_view_dashboard",
+            "role_manage_vendors",
+            "role_manage_rent",
+            "role_view_reports",
+        ):
+            if await role_feature_allowed(db, current_user, slug):
+                return current_user
+    if current_user.role == "vendor" and await role_feature_allowed(db, current_user, "role_manage_vendors"):
         return current_user
     raise HTTPException(
         status_code=403,
-        detail="Vendor hub requires staff access or the Manage Vendors permission (Settings → User Roles).",
+        detail="Vendor hub requires a staff dashboard permission or the Manage Vendors permission (Settings → User Roles).",
     )
 
 
@@ -283,7 +297,7 @@ async def rent_status(
 async def toggle_vendor_flag(
     vendor_id: int,
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_cashier_or_admin),
+    _: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_manage_vendors")),
 ):
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -355,7 +369,7 @@ async def record_rent_payment(
     vendor_id: int,
     body: dict = Body(...),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_rent")),
 ):
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -445,7 +459,7 @@ async def rent_charge_card(
     vendor_id: int,
     body: dict = Body(...),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_rent")),
 ):
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -495,7 +509,7 @@ async def rent_charge_card(
 @router.get("/rent-charge-status/{poynt_order_id}")
 async def rent_charge_status(
     poynt_order_id: str,
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_rent")),
 ):
     try:
         from app.services.poynt import get_transaction_for_order
@@ -513,7 +527,7 @@ async def rent_charge_status(
 @router.get("/payout-preview")
 async def payout_preview(
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_cashier_or_admin),
+    _: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
 ):
     today = date.today()
     period = date(today.year, today.month, 1)
@@ -589,7 +603,7 @@ async def payout_preview(
 @router.post("/process-payouts")
 async def process_payouts(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_rent")),
 ):
     today = date.today()
     period = date(today.year, today.month, 1)
@@ -718,7 +732,7 @@ async def process_payouts(
 @router.post("/send-rent-reminders")
 async def send_rent_reminders(
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_cashier_or_admin),
+    _: Vendor = Depends(require_staff_feature("role_manage_rent")),
 ):
     rent_emails_on = (await get_setting(db, "notify_rent_due")) == "true"
     if not rent_emails_on:
@@ -803,7 +817,7 @@ async def send_rent_reminders(
 @router.post("/send-weekly-reports")
 async def send_weekly_reports(
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_cashier_or_admin),
+    _: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     today = date.today()
     week_start = today - timedelta(days=7)
