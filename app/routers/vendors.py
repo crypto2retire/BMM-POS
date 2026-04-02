@@ -124,8 +124,6 @@ async def get_vendor(
 ):
     if current_user.role == "admin" or current_user.id == vendor_id:
         pass
-    elif current_user.role == "cashier":
-        pass
     elif await role_allows_manage_vendors(db, current_user):
         pass
     else:
@@ -338,7 +336,19 @@ async def get_vendor_balance(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user)
 ):
-    if current_user.role not in ("admin", "cashier") and current_user.id != vendor_id:
+    if current_user.id == vendor_id:
+        pass
+    elif current_user.role == "admin":
+        pass
+    elif (
+        current_user.role == "cashier"
+        and (
+            await role_feature_allowed(db, current_user, "role_balance_adjustments")
+            or await role_allows_manage_vendors(db, current_user)
+        )
+    ):
+        pass
+    else:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     result = await db.execute(select(VendorBalance).where(VendorBalance.vendor_id == vendor_id))
@@ -368,6 +378,8 @@ async def adjust_vendor_balance(
 ):
     if current_user.role == "admin":
         pass
+    elif current_user.role != "cashier":
+        raise HTTPException(status_code=403, detail="Not authorized")
     elif not await role_feature_allowed(db, current_user, "role_balance_adjustments"):
         raise HTTPException(
             status_code=403,
@@ -446,7 +458,7 @@ async def get_balance_history(
         pass
     elif current_user.role == "admin":
         pass
-    elif (
+    elif current_user.role == "cashier" and (
         await role_feature_allowed(db, current_user, "role_balance_adjustments")
         or await role_feature_allowed(db, current_user, "role_manage_vendors")
     ):

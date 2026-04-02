@@ -57,11 +57,9 @@ async def require_vendor_hub_access(
         ):
             if await role_feature_allowed(db, current_user, slug):
                 return current_user
-    if current_user.role == "vendor" and await role_feature_allowed(db, current_user, "role_manage_vendors"):
-        return current_user
     raise HTTPException(
         status_code=403,
-        detail="Vendor hub requires a staff dashboard permission or the Manage Vendors permission (Settings → User Roles).",
+        detail="Vendor hub requires a staff dashboard permission in Settings → User Roles.",
     )
 
 
