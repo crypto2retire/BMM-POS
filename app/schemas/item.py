@@ -95,6 +95,14 @@ class ItemSearchResult(BaseModel):
     photo_url: Optional[str] = None
     image_path: Optional[str] = None
 
+
+class ItemListingResponse(BaseModel):
+    items: List[ItemResponse]
+    total: int
+    active_count: int
+    inactive_count: int
+    archive_count: int
+
 class BarcodeResponse(BaseModel):
     item: ItemResponse
     vendor_name: str

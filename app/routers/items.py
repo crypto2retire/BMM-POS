@@ -15,7 +15,7 @@ from app.database import get_db
 from app.models.item import Item
 from app.models.item_image import ItemImage
 from app.models.vendor import Vendor
-from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse
+from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse, ItemListingResponse
 from app.routers.auth import get_current_user
 from app.routers.settings import role_feature_allowed, get_setting
 from app.services.barcode import generate_sku, generate_short_barcode
@@ -174,6 +174,97 @@ async def list_items(
     result = await db.execute(query)
     items = result.scalars().all()
     return [item_to_response(i) for i in items]
+
+
+@router.get("/listing", response_model=ItemListingResponse)
+async def list_items_listing(
+    status_filter: Optional[str] = Query(None, alias="status"),
+    q: Optional[str] = Query(None, description="Search by name, barcode, or sku"),
+    vendor_id: Optional[int] = Query(None, description="Filter by vendor (admin/cashier only)"),
+    limit: int = Query(25, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    sort_by: str = Query("created_at"),
+    sort_dir: str = Query("desc"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    await _require_view_items(db, current_user)
+
+    allowed_sorts = {
+        "created_at": Item.created_at,
+        "name": Item.name,
+        "price": Item.price,
+        "quantity": Item.quantity,
+        "status": Item.status,
+    }
+    if sort_by not in allowed_sorts:
+        raise HTTPException(status_code=400, detail="Invalid sort column")
+    if sort_dir not in ("asc", "desc"):
+        raise HTTPException(status_code=400, detail="Invalid sort direction")
+
+    base_filters = []
+    if current_user.role not in ("admin", "cashier"):
+        base_filters.append(Item.vendor_id == current_user.id)
+    elif vendor_id:
+        base_filters.append(Item.vendor_id == vendor_id)
+
+    if q:
+        term = f"%{q.lower()}%"
+        base_filters.append(
+            or_(
+                func.lower(Item.name).like(term),
+                func.lower(Item.barcode).like(term),
+                func.lower(Item.sku).like(term),
+            )
+        )
+
+    counts_query = select(
+        func.count(Item.id).label("total"),
+        func.count(Item.id).filter(Item.status == "active").label("active_count"),
+        func.count(Item.id).filter(Item.status == "inactive").label("inactive_count"),
+        func.count(Item.id).filter(Item.status.in_(("sold", "removed", "pending_delete"))).label("archive_count"),
+    )
+    if base_filters:
+        counts_query = counts_query.where(*base_filters)
+    counts_result = await db.execute(counts_query)
+    counts = counts_result.one()
+
+    item_query = select(Item).options(selectinload(Item.vendor))
+    if base_filters:
+        item_query = item_query.where(*base_filters)
+    if status_filter == "active":
+        item_query = item_query.where(Item.status == "active")
+    elif status_filter == "inactive":
+        item_query = item_query.where(Item.status == "inactive")
+    elif status_filter == "archive":
+        item_query = item_query.where(Item.status.in_(("sold", "removed", "pending_delete")))
+
+    sort_column = allowed_sorts[sort_by]
+    if sort_dir == "asc":
+        item_query = item_query.order_by(sort_column.asc(), Item.id.asc())
+    else:
+        item_query = item_query.order_by(sort_column.desc(), Item.id.desc())
+
+    item_query = item_query.offset(offset).limit(limit)
+    result = await db.execute(item_query)
+    items = result.scalars().all()
+
+    if status_filter == "active":
+        total = counts.active_count or 0
+    elif status_filter == "inactive":
+        total = counts.inactive_count or 0
+    elif status_filter == "archive":
+        total = counts.archive_count or 0
+    else:
+        total = counts.total or 0
+
+    return ItemListingResponse(
+        items=[item_to_response(i) for i in items],
+        total=int(total or 0),
+        active_count=int(counts.active_count or 0),
+        inactive_count=int(counts.inactive_count or 0),
+        archive_count=int(counts.archive_count or 0),
+    )
 
 
 @router.post("/", response_model=ItemResponse, status_code=status.HTTP_201_CREATED)

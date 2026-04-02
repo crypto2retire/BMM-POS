@@ -936,6 +936,8 @@
     let canReactivateArchivedItems = false;
 
     let allItems = [];
+    let currentTotalItems = 0;
+    let inventoryCounts = { active: 0, inactive: 0, archive: 0, all: 0 };
     let currentView = localStorage.getItem('bmm_items_view') || 'list';
     let searchTerm = '';
     let sortColumn = 'created_at';
@@ -943,6 +945,9 @@
     let currentPage = 1;
     let pageSize = parseInt(localStorage.getItem('bmm_items_pageSize')) || 25;
     let statusFilter = 'active';
+    let itemsRequestSeq = 0;
+    let itemsSearchTimer = null;
+    const INVENTORY_CACHE_TTL_MS = 60000;
 
     function currentInventoryIsReadOnly() {
         return (currentRole === 'admin' || currentRole === 'cashier') && !isVendorMode && !canMutateItems;
@@ -1997,7 +2002,7 @@
             document.getElementById('page-title').textContent = filter === 'archive' ? 'Archived Items' : 'Item Management';
         }
         currentPage = 1;
-        displayItems();
+        loadItems();
     }
 
     async function toggleItemStatus(id) {
@@ -2217,13 +2222,16 @@
         document.getElementById('view-grid-btn').classList.toggle('active', view === 'grid');
         document.getElementById('view-list-btn').classList.toggle('active', view === 'list');
         currentPage = 1;
-        displayItems();
+        loadItems();
     }
 
     function onSearchInput() {
-        searchTerm = document.getElementById('items-search').value.trim().toLowerCase();
+        searchTerm = document.getElementById('items-search').value.trim();
         currentPage = 1;
-        displayItems();
+        clearTimeout(itemsSearchTimer);
+        itemsSearchTimer = setTimeout(function() {
+            loadItems();
+        }, 180);
     }
 
     function setSort(col) {
@@ -2233,7 +2241,8 @@
             sortColumn = col;
             sortDirection = 'asc';
         }
-        displayItems();
+        currentPage = 1;
+        loadItems();
         const dd = document.getElementById('sort-order');
         if (dd) dd.value = (sortColumn === 'created_at') ? sortDirection : 'desc';
     }
@@ -2241,65 +2250,32 @@
     function setSortOrder(dir) {
         sortColumn = 'created_at';
         sortDirection = dir;
-        displayItems();
-    }
-
-    function getFilteredItems() {
-        if (!searchTerm) return allItems.slice();
-        return allItems.filter(item => {
-            const name = (item.name || '').toLowerCase();
-            const sku = (item.sku || '').toLowerCase();
-            const barcode = (item.barcode || '').toLowerCase();
-            return name.includes(searchTerm) || sku.includes(searchTerm) || barcode.includes(searchTerm);
-        });
-    }
-
-    function getSortedItems(items) {
-        return items.sort((a, b) => {
-            let va, vb;
-            if (sortColumn === 'name') { va = (a.name || '').toLowerCase(); vb = (b.name || '').toLowerCase(); }
-            else if (sortColumn === 'price') { va = parseFloat(a.price) || 0; vb = parseFloat(b.price) || 0; }
-            else if (sortColumn === 'quantity') { va = parseInt(a.quantity) || 0; vb = parseInt(b.quantity) || 0; }
-            else if (sortColumn === 'status') { va = a.status || ''; vb = b.status || ''; }
-            else if (sortColumn === 'created_at') { va = a.created_at || ''; vb = b.created_at || ''; }
-            else { va = ''; vb = ''; }
-            if (va < vb) return sortDirection === 'asc' ? -1 : 1;
-            if (va > vb) return sortDirection === 'asc' ? 1 : -1;
-            return 0;
-        });
+        currentPage = 1;
+        loadItems();
     }
 
     function displayItems() {
-        var filtered = getFilteredItems();
-        if (statusFilter === 'active') {
-            filtered = filtered.filter(function(i) { return i.status === 'active'; });
-        } else if (statusFilter === 'inactive') {
-            filtered = filtered.filter(function(i) { return i.status === 'inactive'; });
-        } else if (statusFilter === 'archive') {
-            filtered = filtered.filter(function(i) { return isArchiveStatus(i.status); });
-        }
-        const sorted = getSortedItems(filtered);
-
-        var activeCount = allItems.filter(function(i) { return i.status === 'active'; }).length;
-        var inactiveCount = allItems.filter(function(i) { return i.status === 'inactive'; }).length;
-        var archiveCount = allItems.filter(function(i) { return isArchiveStatus(i.status); }).length;
+        var activeCount = inventoryCounts.active || 0;
+        var inactiveCount = inventoryCounts.inactive || 0;
+        var archiveCount = inventoryCounts.archive || 0;
+        var allCount = inventoryCounts.all || 0;
         var btns = document.querySelectorAll('.status-filter-bar button');
         btns.forEach(function(b) {
             var s = b.getAttribute('data-status');
             if (s === 'active') b.textContent = 'For Sale (' + activeCount + ')';
             else if (s === 'inactive') b.textContent = 'Not For Sale (' + inactiveCount + ')';
             else if (s === 'archive') b.textContent = 'Archive (' + archiveCount + ')';
-            else b.textContent = 'All (' + allItems.length + ')';
+            else b.textContent = 'All (' + allCount + ')';
         });
         updateUnprintedBanner();
 
         const grid = document.getElementById('items-grid');
         if (currentView === 'list') {
             grid.className = '';
-            renderListView(sorted, grid);
+            renderListView(allItems, grid, currentTotalItems);
         } else {
             grid.className = 'item-cards-grid';
-            renderGridView(sorted, grid);
+            renderGridView(allItems, grid, currentTotalItems);
         }
     }
 
@@ -2319,9 +2295,9 @@
         return `<span style="font-size:1.8rem;opacity:0.4">&#x1F4F7;</span>`;
     }
 
-    function renderGridView(items, grid) {
+    function renderGridView(items, grid, totalOverride) {
         const today = new Date().toISOString().split('T')[0];
-        const total = items.length;
+        const total = totalOverride != null ? totalOverride : items.length;
 
         if (total === 0) {
             grid.innerHTML = `<div style="grid-column:1/-1" class="card">
@@ -2333,8 +2309,8 @@
         const totalPages = Math.ceil(total / pageSize);
         if (currentPage > totalPages) currentPage = totalPages;
         const start = (currentPage - 1) * pageSize;
-        const end = Math.min(start + pageSize, total);
-        const pageItems = items.slice(start, end);
+        const end = Math.min(start + items.length, total);
+        const pageItems = items;
 
         grid.innerHTML = pageItems.map(item => {
             const canMutate = !currentInventoryIsReadOnly();
@@ -2427,9 +2403,9 @@
         </div>`;
     }
 
-    function renderListView(items, grid) {
+    function renderListView(items, grid, totalOverride) {
         const today = new Date().toISOString().split('T')[0];
-        const total = items.length;
+        const total = totalOverride != null ? totalOverride : items.length;
 
         if (total === 0) {
             grid.innerHTML = `<div class="card"><div class="empty-state">No items match your search.</div></div>`;
@@ -2439,8 +2415,8 @@
         const totalPages = Math.ceil(total / pageSize);
         if (currentPage > totalPages) currentPage = totalPages;
         const start = (currentPage - 1) * pageSize;
-        const end = Math.min(start + pageSize, total);
-        const pageItems = items.slice(start, end);
+        const end = Math.min(start + items.length, total);
+        const pageItems = items;
 
         function sortArrow(col) {
             const cls = sortColumn === col ? 'sorted' : '';
@@ -2527,32 +2503,95 @@
 
     function changePage(delta) {
         currentPage += delta;
-        displayItems();
+        loadItems();
     }
 
     function goToPage(page) {
         currentPage = page;
-        displayItems();
+        loadItems();
     }
 
     function changePageSize(size) {
         pageSize = parseInt(size);
         localStorage.setItem('bmm_items_pageSize', pageSize);
         currentPage = 1;
+        loadItems();
+    }
+
+    function inventoryCacheKey() {
+        return JSON.stringify({
+            vendor_id: selectedVendorId || null,
+            status: statusFilter || 'all',
+            q: (searchTerm || '').trim().toLowerCase(),
+            page: currentPage,
+            page_size: pageSize,
+            sort_by: sortColumn,
+            sort_dir: sortDirection,
+            role: currentRole,
+            vendor_mode: !!isVendorMode
+        });
+    }
+
+    function readInventoryCache() {
+        try {
+            const raw = localStorage.getItem('bmm_items_listing_cache');
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            if (!parsed || parsed.key !== inventoryCacheKey()) return null;
+            if (Date.now() - (parsed.saved_at || 0) > INVENTORY_CACHE_TTL_MS) return null;
+            return parsed.data || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function writeInventoryCache(data) {
+        try {
+            localStorage.setItem('bmm_items_listing_cache', JSON.stringify({
+                key: inventoryCacheKey(),
+                saved_at: Date.now(),
+                data: data
+            }));
+        } catch (e) {}
+    }
+
+    function applyInventoryResponse(data) {
+        allItems = data.items || [];
+        currentTotalItems = Number(data.total || 0);
+        inventoryCounts = {
+            active: Number(data.active_count || 0),
+            inactive: Number(data.inactive_count || 0),
+            archive: Number(data.archive_count || 0),
+            all: Number((data.active_count || 0) + (data.inactive_count || 0) + (data.archive_count || 0))
+        };
         displayItems();
     }
 
     async function loadItems() {
         try {
-            let url = '/api/v1/items/';
+            const params = new URLSearchParams();
+            params.set('limit', String(pageSize));
+            params.set('offset', String((currentPage - 1) * pageSize));
+            params.set('sort_by', sortColumn);
+            params.set('sort_dir', sortDirection);
+            if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter);
+            if (searchTerm && searchTerm.trim()) params.set('q', searchTerm.trim());
+
             const payload = parseToken();
             if (isVendorMode) {
-                url += `?vendor_id=${payload.vendor_id}`;
+                params.set('vendor_id', String(payload.vendor_id));
             } else if (currentRole !== 'vendor' && selectedVendorId) {
-                url += `?vendor_id=${selectedVendorId}`;
+                params.set('vendor_id', String(selectedVendorId));
             }
-            allItems = await apiGet(url);
-            displayItems();
+
+            const cached = readInventoryCache();
+            if (cached) applyInventoryResponse(cached);
+
+            const requestSeq = ++itemsRequestSeq;
+            const data = await apiGet('/api/v1/items/listing?' + params.toString());
+            if (requestSeq !== itemsRequestSeq) return;
+            writeInventoryCache(data);
+            applyInventoryResponse(data);
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
         }
