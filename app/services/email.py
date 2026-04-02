@@ -96,6 +96,7 @@ async def _get_sender_email(access_token: str) -> str:
             resp.raise_for_status()
             return resp.json().get("emailAddress", "me")
     except Exception:
+        logger.exception("Failed to fetch sender email from Gmail profile API")
         return "me"
 
 
@@ -182,7 +183,7 @@ async def send_email(
             return {"success": False, "error": "No email provider configured"}
 
     except Exception as e:
-        logger.error(f"Failed to send email to {to_email}: {e}")
+        logger.exception("Failed to send email to %s with subject %r", to_email, subject)
         return {"success": False, "error": str(e)}
 
 
@@ -195,5 +196,5 @@ async def send_email_safe(
     try:
         return await send_email(to_email, subject, html_body, plain_body)
     except Exception as e:
-        logger.error(f"send_email_safe failed for {to_email}: {e}")
+        logger.exception("send_email_safe failed for %s with subject %r", to_email, subject)
         return {"success": False, "error": str(e)}

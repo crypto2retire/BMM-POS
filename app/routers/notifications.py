@@ -32,6 +32,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
+def _log_email_delivery_result(result: dict, *, context: str, email: str) -> None:
+    if result.get("success"):
+        return
+    logger.error(
+        "Email delivery failed during %s for %s: %s",
+        context,
+        email,
+        result.get("error", "Unknown error"),
+    )
+
+
 async def _is_notification_enabled(db: AsyncSession, key: str) -> bool:
     result = await db.execute(
         select(StoreSetting.value).where(StoreSetting.key == key)
@@ -125,7 +136,8 @@ async def notify_product_sold(
         sold_at=sold_at,
         db=db,
     )
-    await send_email_safe(vendor.email, subject, html_body, plain_body)
+    result = await send_email_safe(vendor.email, subject, html_body, plain_body)
+    _log_email_delivery_result(result, context="product sold notification", email=vendor.email)
 
 
 async def notify_vendor_welcome(
@@ -149,7 +161,8 @@ async def notify_vendor_welcome(
         login_url=login_url,
         db=db,
     )
-    await send_email_safe(email, subject, html_body, plain_body)
+    result = await send_email_safe(email, subject, html_body, plain_body)
+    _log_email_delivery_result(result, context="vendor welcome notification", email=email)
 
 
 async def notify_order_confirmation(
@@ -178,7 +191,8 @@ async def notify_order_confirmation(
         payment_method=payment_method,
         db=db,
     )
-    await send_email_safe(receipt_email, subject, html_body, plain_body)
+    result = await send_email_safe(receipt_email, subject, html_body, plain_body)
+    _log_email_delivery_result(result, context="order confirmation", email=receipt_email)
 
 
 async def bg_notify_product_sold(
@@ -217,9 +231,10 @@ async def bg_notify_product_sold(
                 sale_price=sale_price, sale_id=sale_id, sold_at=sold_at,
                 current_balance=current_balance, db=db,
             )
-            await send_email_safe(vendor_email, subject, html_body, plain_body)
+            result = await send_email_safe(vendor_email, subject, html_body, plain_body)
+            _log_email_delivery_result(result, context="background product sold notification", email=vendor_email)
     except Exception as e:
-        logger.warning(f"Background product sold notification failed: {e}")
+        logger.exception("Background product sold notification failed")
 
 
 async def bg_notify_order_confirmation(
@@ -241,9 +256,10 @@ async def bg_notify_order_confirmation(
                 subtotal=subtotal, tax=tax, total=total,
                 payment_method=payment_method, db=db,
             )
-            await send_email_safe(receipt_email, subject, html_body, plain_body)
+            result = await send_email_safe(receipt_email, subject, html_body, plain_body)
+            _log_email_delivery_result(result, context="background order confirmation", email=receipt_email)
     except Exception as e:
-        logger.warning(f"Background order confirmation failed: {e}")
+        logger.exception("Background order confirmation failed")
 
 
 async def notify_weekly_report(
@@ -271,7 +287,8 @@ async def notify_weekly_report(
         expiring_count=expiring_count,
         db=db,
     )
-    await send_email_safe(vendor.email, subject, html_body, plain_body)
+    result = await send_email_safe(vendor.email, subject, html_body, plain_body)
+    _log_email_delivery_result(result, context="weekly report", email=vendor.email)
 
 
 @router.post("/send-sale-digests")
@@ -395,9 +412,14 @@ async def send_sale_digests(
                 current_balance=current_balance,
                 db=db,
             )
-            await send_email_safe(vendor.email, subject, html_body, plain_body)
+            result = await send_email_safe(vendor.email, subject, html_body, plain_body)
+            _log_email_delivery_result(
+                result,
+                context=f"{period} sale digest for vendor {vendor.id}",
+                email=vendor.email,
+            )
             sent_count += 1
-        except Exception as e:
-            logger.warning(f"Failed to send {period} digest to vendor {vendor.id}: {e}")
+        except Exception:
+            logger.exception("Failed to send %s digest to vendor %s", period, vendor.id)
 
     return {"message": f"Sent {sent_count} {period} digest email(s)", "sent": sent_count}

@@ -39,6 +39,7 @@ from app.routers.settings import get_tax_rate
 from app.timezone import STORE_TZ
 
 router = APIRouter(prefix="/pos", tags=["pos"])
+logger = logging.getLogger(__name__)
 
 
 def _format_cst(dt):
@@ -445,7 +446,6 @@ async def pos_create_sale(
             )
         )
 
-    _logger = logging.getLogger(__name__)
     if sale.created_at:
         _sat = sale.created_at
         if _sat.tzinfo is None:
@@ -467,7 +467,7 @@ async def pos_create_sale(
                     sold_at=sold_at_str,
                 ))
             except Exception as e:
-                _logger.warning(f"Failed to queue product sold notification: {e}")
+                logger.exception("Failed to queue product sold notification")
 
     if sale.receipt_email:
         try:
@@ -484,7 +484,7 @@ async def pos_create_sale(
                 payment_method=sale.payment_method,
             ))
         except Exception as e:
-            _logger.warning(f"Failed to queue order confirmation: {e}")
+            logger.exception("Failed to queue order confirmation")
 
     return SaleResponse(
         id=sale.id,
@@ -725,6 +725,10 @@ async def poynt_callback(
     try:
         payload = await request.json()
     except Exception:
+        logger.warning(
+            "Ignoring non-JSON Poynt callback with content-type %r",
+            request.headers.get("content-type"),
+        )
         return {"status": "ok"}
 
     reference_id = None

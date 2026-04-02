@@ -1,5 +1,6 @@
 import sys
 import uuid
+import logging
 
 import httpx
 
@@ -7,6 +8,7 @@ from app.config import settings
 
 SQUARE_BASE = "https://connect.squareup.com"
 SQUARE_API_VERSION = "2024-02-15"
+logger = logging.getLogger(__name__)
 
 
 def _access_token() -> str:
@@ -36,7 +38,7 @@ def _parse_square_error(body: str) -> str:
             if detail:
                 return f"Payment service error: {detail}"
     except Exception:
-        pass
+        logger.exception("Failed to parse Square error response")
     return "Payment service returned an unexpected error. Please contact the store."
 
 
@@ -46,26 +48,34 @@ async def create_payment_link(name: str, price_cents: int, redirect_url: str) ->
     if not token or not location:
         raise ValueError("Square credentials not configured (SQUARE_ACCESS_TOKEN / SQUARE_LOCATION_ID)")
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        resp = await client.post(
-            f"{SQUARE_BASE}/v2/online-checkout/payment-links",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-                "Square-Version": SQUARE_API_VERSION,
-            },
-            json={
-                "idempotency_key": str(uuid.uuid4()),
-                "quick_pay": {
-                    "name": name,
-                    "price_money": {"amount": price_cents, "currency": "USD"},
-                    "location_id": location,
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            resp = await client.post(
+                f"{SQUARE_BASE}/v2/online-checkout/payment-links",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                    "Square-Version": SQUARE_API_VERSION,
                 },
-                "checkout_options": {
-                    "redirect_url": redirect_url,
+                json={
+                    "idempotency_key": str(uuid.uuid4()),
+                    "quick_pay": {
+                        "name": name,
+                        "price_money": {"amount": price_cents, "currency": "USD"},
+                        "location_id": location,
+                    },
+                    "checkout_options": {
+                        "redirect_url": redirect_url,
+                    },
                 },
-            },
+            )
+    except httpx.HTTPError:
+        logger.exception(
+            "Square payment link request failed for %r (%s cents)",
+            name,
+            price_cents,
         )
+        raise
 
     if resp.status_code != 200:
         raw = resp.text
