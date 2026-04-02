@@ -485,7 +485,11 @@
 
     <div class="page-header">
         <h1 class="page-title" id="page-title">Items</h1>
-        <button class="btn btn-primary" onclick="openModal()">+ Add Item</button>
+        <button class="btn btn-primary" id="add-item-btn" onclick="openModal()">+ Add Item</button>
+    </div>
+
+    <div id="read-only-banner" style="display:none; margin-bottom:1rem; padding:0.8rem 1rem; background:var(--surface); border:1px solid var(--warm-border); color:var(--text); font-size:0.9rem">
+        You are in read-only support mode. Search all vendors, review archived items, and print labels if needed. Item edits, sale tools, and inventory changes are disabled.
     </div>
 
     <div class="ornament">&loz;</div>
@@ -543,7 +547,7 @@
                     <button data-status="archive" onclick="setStatusFilter('archive')">Archive</button>
                     <button data-status="all" onclick="setStatusFilter('all')">All</button>
                 </div>
-                <div style="display:flex;align-items:center;gap:6px">
+                <div style="display:flex;align-items:center;gap:6px" id="label-pref-wrap">
                     <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Label Type:</label>
                     <select id="label-pref-select" class="form-control" onchange="saveLabelPref()" style="width:auto;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
                         <option value="standard">Standard PDF</option>
@@ -581,7 +585,7 @@
         </div>
     </div>
 
-    <div class="sale-tools-panel">
+    <div class="sale-tools-panel" id="sale-tools-panel">
         <div class="sale-tools-title">Booth Sale Tools</div>
         <div class="sale-tools-copy">1. Select all matching items or hand-pick the ones you want. 2. Enter the discount amount and sale dates. 3. Apply or clear the sale in one step.</div>
         <div class="sale-tools-summary"><strong id="sale-tools-selected-count">0</strong> item(s) selected</div>
@@ -927,6 +931,8 @@
     let vendorLabelPref = 'standard';
     let vendorLabelSize = '2.25x1.25';
     let labelSizesLoaded = false;
+    let canMutateItems = true;
+    let canPrintLabels = false;
 
     let allItems = [];
     let currentView = localStorage.getItem('bmm_items_view') || 'list';
@@ -936,6 +942,74 @@
     let currentPage = 1;
     let pageSize = parseInt(localStorage.getItem('bmm_items_pageSize')) || 25;
     let statusFilter = 'active';
+
+    function currentInventoryIsReadOnly() {
+        return (currentRole === 'admin' || currentRole === 'cashier') && !isVendorMode && !canMutateItems;
+    }
+
+    function applyItemAccessMode(session) {
+        canMutateItems = !!(session.permissions && session.permissions.role_manage_items);
+        canPrintLabels = !!(session.permissions && session.permissions.role_print_labels);
+
+        var readOnly = currentInventoryIsReadOnly();
+        var readOnlyBanner = document.getElementById('read-only-banner');
+        var addItemBtn = document.getElementById('add-item-btn');
+        var bulkStatusBar = document.getElementById('bulk-status-bar');
+        var saleToolsPanel = document.getElementById('sale-tools-panel');
+        var labelPrefWrap = document.getElementById('label-pref-wrap');
+        var labelSizeWrap = document.getElementById('label-size-container');
+
+        if (readOnlyBanner) readOnlyBanner.style.display = readOnly ? 'block' : 'none';
+        if (addItemBtn) addItemBtn.style.display = readOnly ? 'none' : '';
+        if (bulkStatusBar) bulkStatusBar.style.display = readOnly ? 'none' : 'flex';
+        if (saleToolsPanel) saleToolsPanel.style.display = readOnly ? 'none' : '';
+        if (labelPrefWrap) labelPrefWrap.style.display = currentRole === 'vendor' || isVendorMode ? 'flex' : 'none';
+        if (labelSizeWrap) labelSizeWrap.style.display = currentRole === 'vendor' || isVendorMode ? 'flex' : 'none';
+    }
+
+    function applyModalAccessMode(item) {
+        var readOnly = currentInventoryIsReadOnly();
+        var fieldIds = [
+            'f-name',
+            'f-vendor-id',
+            'f-category',
+            'f-description',
+            'f-price',
+            'f-quantity',
+            'f-sale-price',
+            'f-sale-start',
+            'f-sale-end',
+            'f-is-online',
+            'f-is-tax-exempt',
+            'f-is-consignment',
+            'f-consignment-rate',
+            'f-label-style',
+            'f-photo'
+        ];
+        fieldIds.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.disabled = readOnly;
+        });
+        var photoArea = document.getElementById('photo-upload-area');
+        if (photoArea) photoArea.style.pointerEvents = readOnly ? 'none' : '';
+        var aiDescribe = document.getElementById('ai-describe-btn');
+        if (aiDescribe) aiDescribe.style.display = readOnly ? 'none' : '';
+        var aiWrite = document.getElementById('ai-write-desc-btn');
+        if (aiWrite) aiWrite.style.display = readOnly ? 'none' : '';
+        var aiImprove = document.getElementById('ai-improve-desc-btn');
+        if (aiImprove) aiImprove.style.display = readOnly ? 'none' : '';
+        var aiTools = document.getElementById('ai-desc-tools');
+        if (aiTools) aiTools.style.display = readOnly ? 'none' : 'block';
+        var saveBtn = document.getElementById('save-btn');
+        var saveCloseBtn = document.getElementById('save-close-btn');
+        var saveAnotherBtn = document.getElementById('save-another-btn');
+        if (readOnly) {
+            if (saveBtn) saveBtn.style.display = 'none';
+            if (saveCloseBtn) saveCloseBtn.style.display = 'none';
+            if (saveAnotherBtn) saveAnotherBtn.style.display = 'none';
+        }
+        document.getElementById('modal-title').textContent = readOnly ? 'View Item' : (item ? 'Edit Item' : 'Add Item');
+    }
 
     // ── Nav helpers ────────────────────────────────────────────────────
     function handleLogout() { window.bmmAuth.logout(); }
@@ -1421,6 +1495,10 @@
     }
 
     function openModal(item = null) {
+        if (!item && currentInventoryIsReadOnly()) {
+            showAlert('alert-container', 'This account can view inventory but cannot add or edit items.', 'warning');
+            return;
+        }
         editingId = item ? item.id : null;
         pendingPhotoFile = null;
         pendingPhotoBase64 = null;
@@ -1483,6 +1561,8 @@
             document.getElementById('save-close-btn').style.display = '';
             document.getElementById('save-another-btn').style.display = '';
         }
+
+        applyModalAccessMode(item);
 
         document.getElementById('modal-overlay').classList.remove('hidden');
         setTimeout(() => document.getElementById('f-name').focus(), 100);
@@ -1890,6 +1970,9 @@
         document.querySelectorAll('.status-filter-bar button').forEach(function(b) {
             b.classList.toggle('active', b.getAttribute('data-status') === filter);
         });
+        if ((currentRole === 'admin' || currentRole === 'cashier') && !isVendorMode) {
+            document.getElementById('page-title').textContent = filter === 'archive' ? 'Archived Items' : 'Item Management';
+        }
         currentPage = 1;
         displayItems();
     }
@@ -2231,6 +2314,7 @@
         const pageItems = items.slice(start, end);
 
         grid.innerHTML = pageItems.map(item => {
+            const canMutate = !currentInventoryIsReadOnly();
             const isOnSale = item.sale_price && item.sale_start && item.sale_end &&
                 item.sale_start <= today && today <= item.sale_end;
             const priceHtml = isOnSale
@@ -2247,7 +2331,7 @@
             const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
 
             const selChecked = selectedItemIds.has(item.id) ? 'checked' : '';
-            const canSelect = isSelectableItem(item);
+            const canSelect = isSelectableItem(item) && (canMutate || canPrintLabels);
             const checkboxDisabled = canSelect ? '' : 'disabled';
             const checkboxTitle = canSelect ? 'Select item' : 'Archived items are view-only';
 
@@ -2269,8 +2353,8 @@
                     </div>
                 </div>
                 <div class="item-card-actions">
-                    <button class="btn btn-outline" onclick="openModal(${itemJson})">Edit</button>
-                    <div class="label-btn-wrap" onclick="event.stopPropagation()" style="flex:1;display:flex">
+                    <button class="btn btn-outline" onclick="openModal(${itemJson})">${canMutate ? 'Edit' : 'View'}</button>
+                    ${canPrintLabels ? `<div class="label-btn-wrap" onclick="event.stopPropagation()" style="flex:1;display:flex">
                         <button class="btn btn-secondary label-btn-main" style="flex:1;border-radius:0"
                             onclick="printLabelAuto(${item.id}, '${style}')">${labelBtnText}</button>
                         <button class="btn btn-secondary label-btn-toggle"
@@ -2279,29 +2363,29 @@
                             <button onclick="printPdfLabel(${item.id})">PDF Label</button>
                             <button onclick="printDymoLabel(${item.id})">Dymo Label</button>
                         </div>
-                    </div>
-                    ${item.status === 'active' || item.status === 'inactive' ? `<div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+                    </div>` : ''}
+                    ${canMutate && (item.status === 'active' || item.status === 'inactive') ? `<div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
                         <label class="status-toggle" title="${isActive ? 'Mark not for sale' : 'Mark for sale'}">
                             <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
                             <span class="slider"></span>
                         </label>
                         <span style="font-size:0.65rem;color:${isActive ? 'var(--success-light)' : 'var(--text-light)'};white-space:nowrap">${isActive ? 'For Sale' : 'Not For Sale'}</span>
                     </div>` : ''}
-                    ${item.status === 'pending_delete'
+                    ${canMutate && item.status === 'pending_delete'
                         ? `<button class="btn btn-outline" onclick="event.stopPropagation();reactivateItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.68rem;padding:0.25rem 0.5rem">Reactivate</button>`
-                        : item.status !== 'removed'
+                        : canMutate && item.status !== 'removed'
                             ? `<button class="btn btn-outline" onclick="event.stopPropagation();deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.68rem;padding:0.25rem 0.5rem;color:var(--danger);border-color:color-mix(in srgb, var(--danger) 35%, transparent)" title="Delete item">Delete</button>`
-                            : '<span style="font-size:0.65rem;color:var(--danger);opacity:0.6">Deleted</span>'}
+                            : item.status === 'removed' ? '<span style="font-size:0.65rem;color:var(--danger);opacity:0.6">Deleted</span>' : ''}
                 </div>
                 <div class="item-card-photos">
                     ${(item.photo_urls || []).slice(1).map(url =>
                         `<img src="${url}" alt="" onclick="window.open('${url}','_blank')">`
                     ).join('')}
-                    <button class="add-photo-btn" title="Add photo" type="button">
+                    ${canMutate ? `<button class="add-photo-btn" title="Add photo" type="button">
                         <span style="pointer-events:none">+&#x1F4F7;</span>
                         <input type="file" accept="image/*" capture="environment"
                             onchange="uploadCardPhoto(${item.id}, this)">
-                    </button>
+                    </button>` : ''}
                 </div>
             </div>`;
         }).join('');
@@ -2355,6 +2439,7 @@
             </tr></thead><tbody>`;
 
         pageItems.forEach(item => {
+            const canMutate = !currentInventoryIsReadOnly();
             const isOnSale = item.sale_price && item.sale_start && item.sale_end &&
                 item.sale_start <= today && today <= item.sale_end;
             const priceHtml = `$${parseFloat(item.price).toFixed(2)}`;
@@ -2366,7 +2451,7 @@
             const style = item.label_style || 'standard';
             const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
             const selChecked = selectedItemIds.has(item.id) ? 'checked' : '';
-            const canSelect = isSelectableItem(item);
+            const canSelect = isSelectableItem(item) && (canMutate || canPrintLabels);
             const checkboxDisabled = canSelect ? '' : 'disabled';
 
             const isActive = item.status === 'active';
@@ -2382,16 +2467,16 @@
                 <td style="text-align:center">${item.quantity ?? 1}</td>
                 <td>${statusBadge(item.status)}${!item.label_printed ? ' <span class="item-needs-label-chip item-needs-label-chip--compact">NEW</span>' : ''}</td>
                 <td><div class="actions-cell">
-                    <button class="btn btn-outline" onclick="openModal(${itemJson})">Edit</button>
-                    <button class="btn btn-secondary" onclick="printLabelAuto(${item.id}, '${style}')">Label</button>
-                    ${item.status === 'active' || item.status === 'inactive' ? `<label class="status-toggle" title="${isActive ? 'Mark not for sale' : 'Mark for sale'}">
+                    <button class="btn btn-outline" onclick="openModal(${itemJson})">${canMutate ? 'Edit' : 'View'}</button>
+                    ${canPrintLabels ? `<button class="btn btn-secondary" onclick="printLabelAuto(${item.id}, '${style}')">Label</button>` : ''}
+                    ${canMutate && (item.status === 'active' || item.status === 'inactive') ? `<label class="status-toggle" title="${isActive ? 'Mark not for sale' : 'Mark for sale'}">
                         <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
                         <span class="slider"></span>
                     </label>
                     <span style="font-size:0.6rem;color:${isActive ? 'var(--success-light)' : 'var(--text-light)'};min-width:50px">${isActive ? 'For Sale' : 'Not For Sale'}</span>` : ''}
-                    ${item.status === 'pending_delete'
+                    ${canMutate && item.status === 'pending_delete'
                         ? `<button class="btn btn-outline" onclick="reactivateItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:0.2rem 0.45rem" title="Reactivate">↺</button>`
-                        : item.status !== 'removed'
+                        : canMutate && item.status !== 'removed'
                             ? `<button class="btn btn-outline" onclick="deleteItem(${item.id},'${item.name.replace(/'/g, "\\'")}')" style="font-size:0.65rem;padding:0.2rem 0.45rem;color:var(--danger);border-color:color-mix(in srgb, var(--danger) 35%, transparent)" title="Delete">&#x2716;</button>`
                             : ''}
                 </div></td>
@@ -2461,6 +2546,10 @@
 
         currentRole = session.role;
         isVendorMode = (currentRole === 'admin' || currentRole === 'cashier') && session.is_vendor;
+        var requestedStatus = new URLSearchParams(window.location.search).get('status');
+        if (requestedStatus && ['active', 'inactive', 'archive', 'all'].indexOf(requestedStatus) !== -1) {
+            statusFilter = requestedStatus;
+        }
 
         const boothMode = sessionStorage.getItem('bmm_booth_mode') === '1';
         var urlVendorId = new URLSearchParams(window.location.search).get('vendor_id');
@@ -2512,6 +2601,11 @@
             document.getElementById('nav-home').textContent = 'Dashboard';
             document.getElementById('bottom-nav').style.display = '';
             document.getElementById('page-title').textContent = 'My Items';
+        }
+
+        applyItemAccessMode(session);
+        if (statusFilter === 'archive' && (currentRole === 'admin' || currentRole === 'cashier') && !isVendorMode) {
+            document.getElementById('page-title').textContent = 'Archived Items';
         }
 
         if (selectedVendorId) {

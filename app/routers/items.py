@@ -50,6 +50,34 @@ async def _require_manage_items(db: AsyncSession, user: Vendor) -> None:
         )
 
 
+async def _can_view_all_items(db: AsyncSession, user: Vendor) -> bool:
+    if user.role == "admin":
+        return True
+    if user.role != "cashier":
+        return False
+    for feature in (
+        "role_manage_items",
+        "role_manage_vendors",
+        "role_process_sales",
+        "role_manage_rent",
+        "role_view_reports",
+    ):
+        if await role_feature_allowed(db, user, feature):
+            return True
+    return False
+
+
+async def _require_view_items(db: AsyncSession, user: Vendor) -> None:
+    if user.role in ("admin", "cashier"):
+        if await _can_view_all_items(db, user):
+            return
+        raise HTTPException(
+            status_code=403,
+            detail="Item viewing is not enabled for your role in Settings → User Roles.",
+        )
+    await _require_manage_items(db, user)
+
+
 def item_to_response(item: Item) -> ItemResponse:
     booth_number = None
     if item.vendor:
@@ -91,7 +119,7 @@ async def list_items(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    await _require_manage_items(db, current_user)
+    await _require_view_items(db, current_user)
 
     query = select(Item).options(selectinload(Item.vendor))
     if current_user.role not in ("admin", "cashier"):
@@ -203,7 +231,7 @@ async def get_item_by_barcode(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
     if current_user.role in ("admin", "cashier"):
-        await _require_manage_items(db, current_user)
+        await _require_view_items(db, current_user)
     else:
         if item.vendor_id != current_user.id:
             raise HTTPException(status_code=403, detail="Access denied")
@@ -359,7 +387,7 @@ async def get_item(
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    await _require_manage_items(db, current_user)
+    await _require_view_items(db, current_user)
 
     return item_to_response(item)
 

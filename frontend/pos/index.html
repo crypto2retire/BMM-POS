@@ -57,6 +57,8 @@
             .scan-btn { height: 48px; }
             .search-bar { padding: 0.4rem 0.75rem 0.5rem; }
             .search-bar input { height: 44px; }
+            .service-tools-bar { padding-bottom: 0.65rem; }
+            .service-tools-bar a, .service-tools-bar button { flex: 1 1 100%; }
             .search-result-item { min-height: 56px; }
             .cart-area { padding: 0.5rem; }
             .mobile-pay-bar {
@@ -174,6 +176,36 @@
         .scanner-bar .scan-btn:hover { background: var(--text-muted); }
 
         .cart-area { flex: 1; overflow-y: auto; padding: 0.75rem; }
+        .service-tools-bar {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            padding: 0.6rem 0.75rem 0.75rem;
+            border-bottom: 1px solid color-mix(in srgb, var(--gold) 10%, transparent);
+            background: color-mix(in srgb, var(--gold) 4%, var(--surface));
+        }
+        .service-tools-bar a,
+        .service-tools-bar button {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            text-decoration: none;
+            padding: 0.5rem 0.75rem;
+            min-height: 42px;
+            font-size: 0.76rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-family: 'Roboto', sans-serif;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        .service-tools-bar a:hover,
+        .service-tools-bar button:hover {
+            background: color-mix(in srgb, var(--gold) 6%, var(--surface));
+            border-color: color-mix(in srgb, var(--gold) 18%, transparent);
+        }
 
         .cart-empty {
             display: flex;
@@ -866,6 +898,7 @@
             <button class="nav-link" onclick="openEndOfDay()">End of Day</button>
             <a href="/admin/vendors.html">Vendors</a>
             <a href="/vendor/items.html">Items</a>
+            <a href="/admin/reports.html" id="reports-link" style="display:none">Reports</a>
             <a href="/admin/inventory-verify.html">Verify</a>
             <a href="/admin/studio.html">Studio</a>
             <a href="/admin/index.html" id="admin-link" style="display:none">Admin</a>
@@ -897,6 +930,11 @@
             <button class="manual-entry-btn" onclick="openImageSearch()" title="Search by photo">📷 Photo</button>
             <button class="manual-entry-btn" onclick="openManualEntry()">+ Manual</button>
             <div class="search-results hidden" id="search-results"></div>
+        </div>
+        <div class="service-tools-bar" id="service-tools-bar" style="display:none">
+            <button type="button" onclick="openTodayTransactions()">Today's Transactions</button>
+            <a href="/admin/reports.html?type=top_items&preset=today">Items Sold Today</a>
+            <a href="/vendor/items.html?status=archive">Archived Vendor Items</a>
         </div>
         <div class="scan-error" id="scan-error"></div>
         <div class="cart-area" id="cart-area">
@@ -1684,6 +1722,12 @@
             document.getElementById('cashier-name').textContent = session.name || 'Cashier';
             if (session.role === 'admin') {
                 document.getElementById('admin-link').style.display = 'inline';
+            }
+            if (session.canViewReports) {
+                document.getElementById('reports-link').style.display = 'inline';
+            }
+            if (session.role === 'admin' || session.role === 'cashier') {
+                document.getElementById('service-tools-bar').style.display = 'flex';
             }
             window.loadDisplayPrefs();
             await checkStartingCashPrompt();
@@ -3421,6 +3465,13 @@ table { width: 100%; border-collapse: collapse; }
         document.getElementById('receipt-search-results').innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem">Enter a sale number or select a date range</p>';
         document.getElementById('receipt-modal-lookup').classList.remove('hidden');
         setTimeout(() => document.getElementById('receipt-search-input').focus(), 100);
+    }
+
+    function openTodayTransactions() {
+        openReceiptLookup();
+        setTimeout(function() {
+            setReceiptDatePreset('today');
+        }, 0);
     }
 
     function setReceiptDatePreset(preset) {

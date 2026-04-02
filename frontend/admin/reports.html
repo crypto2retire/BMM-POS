@@ -196,6 +196,49 @@
 
     var currentReportData = [];
 
+    function localDateInputValue(d) {
+        var year = d.getFullYear();
+        var month = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+    }
+
+    function resolveDateParam(value) {
+        if (!value) return '';
+        if (value === 'today') return localDateInputValue(new Date());
+        if (value === 'yesterday') {
+            var d = new Date();
+            d.setDate(d.getDate() - 1);
+            return localDateInputValue(d);
+        }
+        return value;
+    }
+
+    function applyQueryPreset() {
+        var params = new URLSearchParams(window.location.search);
+        var type = params.get('type');
+        var preset = params.get('preset');
+        var from = params.get('from');
+        var to = params.get('to');
+
+        if (type) {
+            var typeSelect = document.getElementById('reportType');
+            if (Array.from(typeSelect.options).some(function(opt) { return opt.value === type; })) {
+                typeSelect.value = type;
+            }
+        }
+
+        if (preset === 'today') {
+            var todayValue = localDateInputValue(new Date());
+            document.getElementById('reportDateFrom').value = todayValue;
+            document.getElementById('reportDateTo').value = todayValue;
+            return;
+        }
+
+        if (from) document.getElementById('reportDateFrom').value = resolveDateParam(from);
+        if (to) document.getElementById('reportDateTo').value = resolveDateParam(to);
+    }
+
     async function loadReport() {
         var type = document.getElementById('reportType').value;
         var from = document.getElementById('reportDateFrom').value;
@@ -325,6 +368,7 @@
             message: 'Sales reports are not enabled for your current role.'
         });
         if (!session) return;
+        applyQueryPreset();
         loadReport();
     }
 
