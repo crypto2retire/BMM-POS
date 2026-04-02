@@ -275,6 +275,9 @@ async def lifespan(app: FastAPI):
             await session.execute(text(
                 "CREATE INDEX IF NOT EXISTS idx_eod_reports_date ON eod_reports(report_date)"
             ))
+            await session.execute(text(
+                "ALTER TABLE eod_reports ADD COLUMN IF NOT EXISTS denomination_counts JSONB"
+            ))
             await session.commit()
     except Exception as e:
         print(f"BMM-POS: column migration FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)

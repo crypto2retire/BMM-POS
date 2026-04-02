@@ -14,7 +14,8 @@ from sqlalchemy import select, or_, func, cast, Date
 from sqlalchemy.orm import selectinload
 import httpx
 from app.database import get_db
-from app.routers.auth import require_admin
+from app.routers.auth import require_cashier_or_admin
+from app.models.store_setting import StoreSetting
 from app.routers.settings import require_staff_feature, role_feature_allowed
 from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
@@ -872,7 +873,6 @@ async def end_of_day_report(
     )
 
     starting_balance = Decimal("150.00")
-    from app.models.store_setting import StoreSetting
     sb_result = await db.execute(
         select(StoreSetting).where(StoreSetting.key == "starting_cash_" + target_date.isoformat())
     )
@@ -929,7 +929,6 @@ async def set_starting_cash(
     if amount_dec < 0:
         raise HTTPException(status_code=400, detail="Amount cannot be negative")
 
-    from app.models.store_setting import StoreSetting
     store_tz = STORE_TZ
     today = datetime.now(store_tz).date()
     key = "starting_cash_" + today.isoformat()
@@ -950,7 +949,6 @@ async def get_starting_cash(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
-    from app.models.store_setting import StoreSetting
     store_tz = STORE_TZ
     today = datetime.now(store_tz).date()
     key = "starting_cash_" + today.isoformat()
@@ -986,6 +984,10 @@ async def submit_eod_report(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail=f"An End of Day report for {report_date.isoformat()} has already been submitted.")
 
+    denom = body.get("denomination_counts")
+    if denom is not None and not isinstance(denom, dict):
+        raise HTTPException(status_code=400, detail="denomination_counts must be an object")
+
     report = EodReport(
         report_date=report_date,
         submitted_by=current_user.id,
@@ -1009,11 +1011,39 @@ async def submit_eod_report(
         voided_total=Decimal(str(body.get("voided_total", 0))),
         cashier_breakdown=body.get("cashier_breakdown"),
         notes=body.get("notes"),
+        denomination_counts=denom,
     )
     db.add(report)
+
+    # Cash left in drawer after deposit → next calendar day's starting drawer (store opening)
+    next_date = report_date + timedelta(days=1)
+    counted_dec = Decimal(str(body["counted_cash"]))
+    deposit_dec = Decimal(str(body["deposit"]))
+    next_starting = (counted_dec - deposit_dec).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    if next_starting < 0:
+        next_starting = Decimal("0.00")
+    key_next = "starting_cash_" + next_date.isoformat()
+    next_setting_result = await db.execute(select(StoreSetting).where(StoreSetting.key == key_next))
+    next_setting = next_setting_result.scalar_one_or_none()
+    if next_setting:
+        next_setting.value = str(next_starting)
+    else:
+        db.add(
+            StoreSetting(
+                key=key_next,
+                value=str(next_starting),
+                description=f"Starting cash for {next_date.isoformat()} (set at EOD close)",
+            )
+        )
+
     await db.commit()
     await db.refresh(report)
-    return {"id": report.id, "detail": f"End of Day report for {report_date.isoformat()} submitted successfully."}
+    return {
+        "id": report.id,
+        "detail": f"End of Day report for {report_date.isoformat()} submitted successfully.",
+        "next_day": next_date.isoformat(),
+        "next_day_starting_cash": float(next_starting),
+    }
 
 
 @router.get("/end-of-day/reports")
@@ -1021,7 +1051,7 @@ async def list_eod_reports(
     limit: int = Query(30, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    _admin: Vendor = Depends(require_admin),
+    _: Vendor = Depends(require_cashier_or_admin),
 ):
     count_result = await db.execute(select(func.count(EodReport.id)))
     total = count_result.scalar()
@@ -1059,7 +1089,7 @@ async def list_eod_reports(
 async def get_eod_report(
     report_id: int,
     db: AsyncSession = Depends(get_db),
-    _admin: Vendor = Depends(require_admin),
+    _: Vendor = Depends(require_cashier_or_admin),
 ):
     result = await db.execute(select(EodReport).where(EodReport.id == report_id))
     report = result.scalar_one_or_none()
@@ -1090,6 +1120,7 @@ async def get_eod_report(
         "voided_total": float(report.voided_total),
         "cashier_breakdown": report.cashier_breakdown,
         "notes": report.notes,
+        "denomination_counts": report.denomination_counts,
         "submitted_at": report.submitted_at.isoformat() if report.submitted_at else None,
     }
 

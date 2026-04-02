@@ -1463,7 +1463,9 @@
                     <div class="denom-row"><label>$1 x</label><input type="number" min="0" value="0" data-denom="1" onchange="updateCashCount()" oninput="updateCashCount()"></div>
                     <div class="denom-row"><label>Quarters</label><input type="number" min="0" value="0" data-denom="0.25" onchange="updateCashCount()" oninput="updateCashCount()"></div>
                     <div class="denom-row"><label>Dimes</label><input type="number" min="0" value="0" data-denom="0.10" onchange="updateCashCount()" oninput="updateCashCount()"></div>
-                    <div class="denom-row"><label>Other $</label><input type="number" min="0" step="0.01" value="0" data-denom="1" data-raw="true" onchange="updateCashCount()" oninput="updateCashCount()"></div>
+                    <div class="denom-row"><label>Nickels</label><input type="number" min="0" value="0" data-denom="0.05" onchange="updateCashCount()" oninput="updateCashCount()"></div>
+                    <div class="denom-row"><label>Pennies</label><input type="number" min="0" value="0" data-denom="0.01" onchange="updateCashCount()" oninput="updateCashCount()"></div>
+                    <div class="denom-row"><label>Other $</label><input type="number" min="0" step="0.01" value="0" data-raw="true" onchange="updateCashCount()" oninput="updateCashCount()"></div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-top:10px;background:var(--surface-2)">
                     <div style="padding:8px 12px;text-align:center">
@@ -3691,6 +3693,19 @@ table { width: 100%; border-collapse: collapse; }
         }
     }
 
+    function collectEodDenominationCounts() {
+        const o = {};
+        document.querySelectorAll('#denom-grid input').forEach(inp => {
+            const n = parseFloat(inp.value) || 0;
+            if (inp.dataset.raw === 'true') {
+                o.other_dollars = n;
+            } else {
+                o[inp.dataset.denom] = n;
+            }
+        });
+        return o;
+    }
+
     function updateCashCount() {
         let total = 0;
         document.querySelectorAll('#denom-grid input').forEach(inp => {
@@ -3789,6 +3804,7 @@ table { width: 100%; border-collapse: collapse; }
             voided_total: eodData.voided ? eodData.voided.total : 0,
             cashier_breakdown: eodData.cashier_breakdown || [],
             notes: document.getElementById('eod-notes').value.trim() || null,
+            denomination_counts: collectEodDenominationCounts(),
         };
 
         const btn = document.getElementById('eod-submit-btn');
@@ -3801,8 +3817,21 @@ table { width: 100%; border-collapse: collapse; }
             statusEl.style.display = 'block';
             statusEl.style.background = 'var(--success)';
             statusEl.style.color = 'var(--success-light)';
-            statusEl.textContent = resp.detail || 'Report submitted successfully!';
+            var nextMsg = resp.next_day_starting_cash != null
+                ? ' Next day starting drawer: $' + Number(resp.next_day_starting_cash).toFixed(2) + '.'
+                : '';
+            statusEl.textContent = (resp.detail || 'Report submitted successfully!') + nextMsg;
             btn.textContent = 'Submitted ✓';
+            document.querySelectorAll('#denom-grid input').forEach(inp => { inp.value = '0'; });
+            document.getElementById('eod-notes').value = '';
+            updateCashCount();
+            eodData = null;
+            setTimeout(function () {
+                document.getElementById('eod-modal').classList.add('hidden');
+                statusEl.style.display = 'none';
+                btn.disabled = false;
+                btn.textContent = 'Submit & Close Day';
+            }, 2800);
         } catch (err) {
             statusEl.style.display = 'block';
             statusEl.style.background = 'var(--danger-dark)';

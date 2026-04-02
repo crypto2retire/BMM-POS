@@ -147,6 +147,10 @@
         </div>
 
         <h3 style="font-family:'EB Garamond',serif;font-size:1.1rem;margin:1.25rem 0 0.5rem">Cash Drawer</h3>
+        <div id="d-denom-section" style="display:none;margin-bottom:1rem">
+            <h4 style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.35rem">Drawer count (bills &amp; coins)</h4>
+            <div style="font-size:0.82rem;color:var(--text);background:var(--bg);padding:0.6rem 0.75rem;border:1px solid var(--border)" id="d-denom-body"></div>
+        </div>
         <div class="detail-line"><span class="dl-label">Starting Balance</span><span class="dl-val" id="d-starting">$0.00</span></div>
         <div class="detail-line"><span class="dl-label">Expected Cash in Drawer</span><span class="dl-val val-green" id="d-expected">$0.00</span></div>
         <div class="detail-line"><span class="dl-label">Counted Cash</span><span class="dl-val" id="d-counted">$0.00</span></div>
@@ -194,7 +198,28 @@
         return d.innerHTML;
     }
 
-    function fmt(n) { return '$' + (n || 0).toFixed(2); }
+    function fmt(n) {
+        var x = typeof n === 'number' ? n : parseFloat(n);
+        if (isNaN(x)) x = 0;
+        return '$' + x.toFixed(2);
+    }
+
+    var DENOM_ORDER = ['100', '50', '20', '10', '5', '1', '0.25', '0.10', '0.05', '0.01', 'other_dollars'];
+    var DENOM_LABEL = {
+        '100': '$100', '50': '$50', '20': '$20', '10': '$10', '5': '$5', '1': '$1',
+        '0.25': 'Quarters', '0.10': 'Dimes', '0.05': 'Nickels', '0.01': 'Pennies', 'other_dollars': 'Other ($)'
+    };
+
+    function renderDenominationCounts(dc) {
+        if (!dc || typeof dc !== 'object') return '';
+        var parts = [];
+        DENOM_ORDER.forEach(function (k) {
+            if (dc[k] != null && dc[k] !== '' && Number(dc[k]) !== 0) {
+                parts.push('<span style="margin-right:0.75rem;white-space:nowrap"><strong>' + escHtml(DENOM_LABEL[k] || k) + ':</strong> ' + escHtml(String(dc[k])) + '</span>');
+            }
+        });
+        return parts.length ? parts.join('') : '<span style="color:var(--text-light)">No per-denomination counts stored</span>';
+    }
 
     function fmtDate(iso) {
         var d = new Date(iso + 'T12:00:00');
@@ -271,6 +296,15 @@
             else { vEl.textContent = fmt(0); vEl.className = 'dl-val'; }
             document.getElementById('d-deposit').textContent = fmt(r.deposit);
 
+            var dden = document.getElementById('d-denom-section');
+            var ddb = document.getElementById('d-denom-body');
+            if (r.denomination_counts && Object.keys(r.denomination_counts).length > 0) {
+                dden.style.display = 'block';
+                ddb.innerHTML = renderDenominationCounts(r.denomination_counts);
+            } else {
+                dden.style.display = 'none';
+            }
+
             var csec = document.getElementById('d-cashier-section');
             if (r.cashier_breakdown && r.cashier_breakdown.length > 0) {
                 var ch = '<h3 style="font-family:\'EB Garamond\',serif;font-size:1.1rem;margin-bottom:0.5rem">Cashier Breakdown</h3>';
@@ -305,10 +339,10 @@
     }
 
     var user = JSON.parse(sessionStorage.getItem('bmm_user') || '{}');
-    if (!user.role || user.role !== 'admin') {
+    if (!user.role || (user.role !== 'admin' && user.role !== 'cashier')) {
         window.location.href = '/pos/index.html';
     } else {
-        document.getElementById('user-name').textContent = user.name || 'Administrator';
+        document.getElementById('user-name').textContent = user.name || (user.role === 'cashier' ? 'Cashier' : 'Administrator');
         loadReports();
     }
 </script>

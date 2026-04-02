@@ -34,5 +34,7 @@ class EodReport(Base):
 
     cashier_breakdown = Column(JSON, nullable=True)
     notes = Column(Text, nullable=True)
+    # Bill/coin counts from POS drawer count (e.g. {"100": 1, "0.01": 50})
+    denomination_counts = Column(JSON, nullable=True)
 
     submitted_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
