@@ -19,6 +19,22 @@ from app.routers.settings import role_allows_manage_vendors, role_feature_allowe
 router = APIRouter(prefix="/vendors", tags=["vendors"])
 
 
+async def _can_access_vendor_directory(db: AsyncSession, user: Vendor) -> bool:
+    if user.role == "admin":
+        return True
+    if user.role != "cashier":
+        return False
+    for slug in (
+        "role_manage_vendors",
+        "role_process_sales",
+        "role_manage_rent",
+        "role_view_reports",
+    ):
+        if await role_feature_allowed(db, user, slug):
+            return True
+    return False
+
+
 def _display_rent_balance_for_admin_list(
     rent_ledger: Decimal,
     monthly_rent: Decimal,
@@ -40,9 +56,7 @@ async def list_vendors(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    if current_user.role not in ("admin", "cashier") and not await role_allows_manage_vendors(
-        db, current_user
-    ):
+    if not await _can_access_vendor_directory(db, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to list vendors")
     result = await db.execute(select(Vendor).order_by(Vendor.name))
     vendors = result.scalars().all()
