@@ -163,3 +163,36 @@ function showAlert(containerId, message, type) {
     el.appendChild(div);
     setTimeout(function () { el.innerHTML = ''; }, 5000);
 }
+
+function bmmDateValue(value) {
+    if (!value) return null;
+    if (value instanceof Date) {
+        return isNaN(value.getTime()) ? null : value;
+    }
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? null : date;
+}
+
+function bmmFormatDate(value, options, locale) {
+    const date = bmmDateValue(value);
+    if (!date) return '';
+    return date.toLocaleDateString(locale || undefined, options || undefined);
+}
+
+function bmmFormatTime(value, options, locale) {
+    const date = bmmDateValue(value);
+    if (!date) return '';
+    return date.toLocaleTimeString(locale || undefined, options || undefined);
+}
+
+function bmmFormatDateTime(value, dateOptions, timeOptions, locale) {
+    const date = bmmDateValue(value);
+    if (!date) return '';
+    const datePart = bmmFormatDate(date, dateOptions, locale);
+    const timePart = bmmFormatTime(date, timeOptions, locale);
+    return [datePart, timePart].filter(Boolean).join(' ');
+}
+
+window.bmmFormatDate = bmmFormatDate;
+window.bmmFormatTime = bmmFormatTime;
+window.bmmFormatDateTime = bmmFormatDateTime;

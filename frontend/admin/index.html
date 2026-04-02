@@ -37,7 +37,7 @@
             background: var(--surface);
             border: 1px solid var(--border);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
             text-transform: uppercase;
             letter-spacing: 0.08em;
         }
@@ -368,7 +368,7 @@
             border: none;
             border-bottom: 3px solid transparent;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: color 0.2s ease, border-color 0.2s ease;
             margin-bottom: -2px;
         }
         .main-tab.active {
@@ -477,7 +477,7 @@
             <a href="/vendor/items.html">Items</a>
             <a href="/admin/settings.html" class="admin-only-nav">Settings</a>
             <a href="/pos/index.html">POS Terminal</a>
-            <a href="#" onclick="handleLogout()">Logout</a>
+            <button type="button" onclick="handleLogout()">Logout</button>
         </nav>
         <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
     </div>
@@ -492,7 +492,7 @@
     <a href="/vendor/items.html">Items</a>
     <a href="/admin/settings.html" class="admin-only-nav">Settings</a>
     <a href="/pos/index.html">POS Terminal</a>
-    <a href="#" onclick="handleLogout()">Logout</a>
+    <button type="button" onclick="handleLogout()">Logout</button>
 </div>
 
 <div class="main-content">
@@ -650,12 +650,12 @@
                         </tr>
                     </thead>
                     <tbody id="employees-table-body">
-                        <tr><td colspan="5" class="loading">Loading...</td></tr>
+                        <tr><td colspan="5" class="loading">Loading…</td></tr>
                     </tbody>
                 </table>
             </div>
             <div class="vendor-cards-mobile" id="employee-cards" style="display:none">
-                <div style="color:var(--text-light);padding:1rem;text-align:center">Loading...</div>
+                <div style="color:var(--text-light);padding:1rem;text-align:center">Loading…</div>
             </div>
         </div>
     </div>
@@ -1162,7 +1162,7 @@
 
     async function loadAdminOrders(statusFilter) {
         var list = document.getElementById('admin-orders-list');
-        list.innerHTML = '<div class="loading">Loading...</div>';
+        list.innerHTML = '<div class="loading">Loading…</div>';
 
         document.querySelectorAll('[id^="admin-filter-"]').forEach(function(b) {
             b.style.background = ''; b.style.color = '';
@@ -1195,8 +1195,8 @@
             }
             list.innerHTML = orders.map(function(o) {
                 var d = new Date(o.date || o.created_at);
-                var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
-                var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+                var dateStr = bmmFormatDate(d, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+                var timeStr = bmmFormatTime(d, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
                 var statusColor = o.status === 'pending' ? 'var(--charcoal-deep)' : o.status === 'ready' ? 'var(--text)' : 'var(--success-light)';
                 var statusBg = o.status === 'pending' ? 'color-mix(in srgb, var(--warning) 55%, var(--bg))' : o.status === 'ready' ? 'color-mix(in srgb, var(--info) 50%, var(--bg))' : 'color-mix(in srgb, var(--success) 45%, var(--bg))';
                 var actionBtns = '';
@@ -1262,7 +1262,7 @@
             }
 
             tbody.innerHTML = employees.map(function(e) {
-                var created = new Date(e.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+                var created = bmmFormatDate(e.created_at, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
                 return '<tr><td><strong>' + e.name + '</strong></td><td>' + e.email + '</td>'
                     + '<td>' + roleBadge(e.role) + '</td>'
                     + '<td>' + statusBadge(e.status || 'active') + '</td>'
@@ -1551,7 +1551,7 @@
 
     async function openHistoryModal(vendorId, vendorName) {
         document.getElementById('hist-vendor-name').textContent = vendorName;
-        document.getElementById('hist-body').innerHTML = '<tr><td colspan="5" class="loading">Loading...</td></tr>';
+        document.getElementById('hist-body').innerHTML = '<tr><td colspan="5" class="loading">Loading…</td></tr>';
         document.getElementById('history-modal').style.display = 'flex';
         try {
             var token = sessionStorage.getItem('bmm_token');
@@ -1568,7 +1568,7 @@
                 var d = new Date(a.created_at);
                 var typeClass = a.adjustment_type === 'credit' ? 'color:var(--success-light)' : 'color:var(--danger)';
                 return '<tr>'
-                    + '<td style="font-size:0.78rem">' + d.toLocaleDateString('en-US', { timeZone: 'America/Chicago' }) + ' ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago' }) + '</td>'
+                    + '<td style="font-size:0.78rem">' + bmmFormatDate(d, { timeZone: 'America/Chicago' }) + ' ' + bmmFormatTime(d, { hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago' }) + '</td>'
                     + '<td style="' + typeClass + ';font-weight:600;font-size:0.78rem;text-transform:uppercase">' + a.adjustment_type + '</td>'
                     + '<td style="font-size:0.78rem;font-weight:600">' + fmt(parseFloat(a.amount)) + '</td>'
                     + '<td style="font-size:0.78rem">' + escapeHtml(a.reason) + '</td>'

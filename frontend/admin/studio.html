@@ -161,7 +161,7 @@
         .li-action {
             background: none; border: 1px solid var(--border); color: var(--text-light);
             padding: 0.3rem 0.7rem; font-size: 0.65rem; cursor: pointer;
-            text-transform: uppercase; letter-spacing: 0.08em; transition: all 0.15s;
+            text-transform: uppercase; letter-spacing: 0.08em; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
         }
         .li-action:hover { border-color: var(--gold); color: var(--gold); }
 
@@ -171,7 +171,7 @@
         .view-toggle button {
             background: var(--surface); border: none; color: var(--text-light);
             padding: 0.4rem 0.9rem; font-size: 0.7rem; cursor: pointer;
-            font-family: 'Roboto', sans-serif; transition: all 0.15s;
+            font-family: 'Roboto', sans-serif; transition: background 0.15s ease, color 0.15s ease;
         }
         .view-toggle button.active { background: var(--gold); color: var(--charcoal-deep); }
 
@@ -205,7 +205,7 @@
             <a href="/vendor/items.html">Items</a>
             <a href="/admin/settings.html">Settings</a>
             <a href="/pos/index.html">POS Terminal</a>
-            <a href="#" onclick="handleLogout()">Logout</a>
+            <button type="button" onclick="handleLogout()">Logout</button>
         </nav>
         <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
     </div>
@@ -220,7 +220,7 @@
     <a href="/vendor/items.html">Items</a>
     <a href="/admin/settings.html">Settings</a>
     <a href="/pos/index.html">POS Terminal</a>
-    <a href="#" onclick="handleLogout()">Logout</a>
+    <button type="button" onclick="handleLogout()">Logout</button>
 </div>
 
 <div class="main-content">
@@ -453,7 +453,7 @@
             else { badge = `${c.spots_left} spots`; badgeCls = 'badge-open'; }
 
             const d = new Date(c.class_date + 'T12:00:00');
-            const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            const dateStr = bmmFormatDate(d, { weekday: 'short', month: 'short', day: 'numeric' });
             const timeStr = `${c.start_time.slice(0,5)} - ${c.end_time.slice(0,5)}`;
 
             return `<div class="list-item">

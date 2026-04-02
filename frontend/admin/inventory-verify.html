@@ -66,7 +66,7 @@
             background: var(--surface);
             border: 1px solid var(--border);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             min-height: 44px;
@@ -238,7 +238,7 @@
             border: 1px solid var(--border);
             background: var(--surface-2);
             color: var(--text-light);
-            transition: all 0.15s;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
             min-height: 36px;
         }
         .btn-sm:hover { border-color: var(--gold-dim); color: var(--gold); }
@@ -261,7 +261,7 @@
             font-size: 0.82rem;
             font-family: 'Roboto', sans-serif;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
             min-height: 44px;
         }
         .btn-danger:hover { background: color-mix(in srgb, var(--danger) 25%, transparent); }
@@ -273,7 +273,7 @@
             font-size: 0.82rem;
             font-family: 'Roboto', sans-serif;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
             min-height: 44px;
         }
         .btn-warning:hover { background: color-mix(in srgb, var(--warning) 20%, transparent); }
@@ -285,7 +285,7 @@
             font-size: 0.82rem;
             font-family: 'Roboto', sans-serif;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
             min-height: 44px;
         }
         .btn-success:hover { background: color-mix(in srgb, var(--success-light) 20%, transparent); }
@@ -455,7 +455,7 @@
             <a href="/vendor/items.html">Items</a>
             <a href="/admin/settings.html">Settings</a>
             <a href="/pos/index.html">POS Terminal</a>
-            <a href="#" onclick="handleLogout()">Logout</a>
+            <button type="button" onclick="handleLogout()">Logout</button>
         </nav>
         <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
     </div>
@@ -470,7 +470,7 @@
     <a href="/vendor/items.html">Items</a>
     <a href="/admin/settings.html">Settings</a>
     <a href="/pos/index.html">POS Terminal</a>
-    <a href="#" onclick="handleLogout()">Logout</a>
+    <button type="button" onclick="handleLogout()">Logout</button>
 </div>
 
 <div class="main-content">
@@ -729,7 +729,7 @@
     <!-- Unverified items modal -->
     <div class="modal-overlay" id="unverified-modal">
         <div class="modal-box">
-            <button class="modal-close" onclick="closeUnverifiedModal()">&times;</button>
+            <button type="button" class="modal-close" onclick="closeUnverifiedModal()" aria-label="Close unverified items dialog">&times;</button>
             <h3>Unverified Items — <span id="unverified-vendor-name"></span></h3>
             <p class="modal-sub">These Ricochet-imported items were NOT found in the vendor's CSV export. They are likely sold items.</p>
             <div class="vendor-table-wrap">
@@ -1309,7 +1309,7 @@ async function archiveUnverified() {
         var res = await fetch(API + '/inventory-verify/archive-unverified', { method: 'POST', headers: headers });
         var data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Archive failed');
-        showAlert('Archived ' + data.archived + ' unverified Ricochet items. Expires: ' + new Date(data.expires_at).toLocaleDateString(), 'success');
+        showAlert('Archived ' + data.archived + ' unverified Ricochet items. Expires: ' + bmmFormatDate(data.expires_at), 'success');
         loadStatus();
         loadPending();
     } catch (e) {
@@ -1339,7 +1339,7 @@ async function loadPending() {
         table.style.display = 'table';
 
         tbody.innerHTML = data.vendors.map(function(v) {
-            var expiry = v.earliest_expiry ? new Date(v.earliest_expiry).toLocaleDateString() : '—';
+            var expiry = v.earliest_expiry ? bmmFormatDate(v.earliest_expiry) : '—';
             return '<tr>' +
                 '<td style="color:var(--text); font-weight:500">' + esc(v.vendor_name) + '</td>' +
                 '<td>' + esc(v.booth_number || '—') + '</td>' +

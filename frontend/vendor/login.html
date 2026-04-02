@@ -69,6 +69,16 @@
             transition: color 0.2s;
         }
         .login-footer a:hover { color: #C9A84C; }
+        .forgot-password-link {
+            font-size: 0.85rem;
+            color: #5a554d;
+            text-decoration: none;
+            font-family: 'Roboto', sans-serif;
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            transition: color 0.2s ease;
+        }
+        .forgot-password-link:hover { color: #C9A84C; }
 
         /* Form overrides for light theme */
         .login-card .form-label {
@@ -131,6 +141,9 @@
             cursor: pointer;
             transition: border-color 0.25s, box-shadow 0.25s;
             text-decoration: none;
+            width: 100%;
+            text-align: left;
+            font: inherit;
         }
         .choice-btn:hover {
             border-color: #C9A84C;
@@ -162,7 +175,7 @@
 <div class="login-page">
     <div class="login-card">
         <div class="login-logo">
-            <img src="/static/images/logo.webp" alt="Bowenstreet Market">
+            <img src="/static/images/logo.webp" alt="Bowenstreet Market" width="72" height="72">
         </div>
         <div class="login-masthead">
             <h1 class="login-masthead-title">Bowenstreet Market</h1>
@@ -186,7 +199,7 @@
             </div>
             <button class="btn btn-primary btn-lg btn-full" type="submit" id="login-btn">Sign In</button>
             <div style="text-align: center; margin-top: 12px;">
-                <a href="/vendor/forgot-password.html" style="font-size: 0.85rem; color: #5a554d; text-decoration: none; font-family: 'Roboto', sans-serif; transition: color 0.2s; display:inline-block; padding:0.5rem 1rem;" onmouseover="this.style.color='#C9A84C'" onmouseout="this.style.color='#5a554d'">Forgot your password?</a>
+                <a href="/vendor/forgot-password.html" class="forgot-password-link">Forgot your password?</a>
             </div>
         </form>
 
@@ -195,20 +208,20 @@
             <div class="choice-greeting" id="choice-greeting">Welcome back</div>
             <div class="choice-sub">Where would you like to go?</div>
             <div class="choice-buttons">
-                <a href="#" class="choice-btn" id="choice-admin" onclick="sessionStorage.removeItem('bmm_booth_mode')">
+                <button type="button" class="choice-btn" id="choice-admin" onclick="chooseStaffArea()">
                     <span class="choice-icon">&#128202;</span>
                     <div>
                         <div class="choice-label" id="choice-admin-label">Admin Dashboard</div>
-                        <div class="choice-desc">Manage vendors, reports, and settings</div>
+                        <div class="choice-desc" id="choice-admin-desc">Manage vendors, reports, and settings</div>
                     </div>
-                </a>
-                <a href="/vendor/dashboard.html" class="choice-btn" id="choice-booth" onclick="sessionStorage.setItem('bmm_booth_mode','1')">
+                </button>
+                <button type="button" class="choice-btn" id="choice-booth" onclick="chooseBoothArea()">
                     <span class="choice-icon">&#127991;&#65039;</span>
                     <div>
                         <div class="choice-label">My Booth</div>
                         <div class="choice-desc">View your items, sales, and balance</div>
                     </div>
-                </a>
+                </button>
             </div>
         </div>
 
@@ -219,13 +232,24 @@
 </div>
 <script src="/static/js/api.js"></script>
 <script>
+    function chooseStaffArea() {
+        var target = document.getElementById('choice-admin').dataset.target || '/admin/index.html';
+        sessionStorage.removeItem('bmm_booth_mode');
+        window.location.href = target;
+    }
+
+    function chooseBoothArea() {
+        sessionStorage.setItem('bmm_booth_mode', '1');
+        window.location.href = '/vendor/dashboard.html';
+    }
+
     document.getElementById("login-form").addEventListener("submit", async (e) => {
         e.preventDefault();
         const email = document.getElementById("email").value;
         const password = document.getElementById("password").value;
         const btn = document.getElementById("login-btn");
         btn.disabled = true;
-        btn.textContent = "Signing in...";
+        btn.textContent = "Signing In…";
         try {
             const res = await fetch("/api/v1/auth/login", {
                 method: "POST",
@@ -250,15 +274,17 @@
                 document.getElementById("choice-greeting").textContent = `Welcome back, ${data.name || payload.name || 'there'}`;
 
                 // Set admin link based on role
-                const adminLink = document.getElementById("choice-admin");
+                const adminButton = document.getElementById("choice-admin");
                 const adminLabel = document.getElementById("choice-admin-label");
+                const adminDesc = document.getElementById("choice-admin-desc");
                 if (payload.role === "admin") {
-                    adminLink.href = "/admin/index.html";
+                    adminButton.dataset.target = "/admin/index.html";
                     adminLabel.textContent = "Admin Dashboard";
+                    adminDesc.textContent = "Manage vendors, reports, and settings";
                 } else {
-                    adminLink.href = "/pos/index.html";
+                    adminButton.dataset.target = "/pos/index.html";
                     adminLabel.textContent = "POS Terminal";
-                    document.querySelector("#choice-admin .choice-desc").textContent = "Ring up sales at the register";
+                    adminDesc.textContent = "Ring up sales at the register";
                 }
             } else if (data.redirect) {
                 window.location.href = data.redirect;

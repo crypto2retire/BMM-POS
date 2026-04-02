@@ -311,7 +311,7 @@
             font-size: 0.85rem;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
             color: var(--text-light);
             font-family: 'Roboto', sans-serif;
         }
@@ -550,7 +550,7 @@
             <a href="/pos/register.html" class="active">Register</a>
             <a href="/pos/index.html">POS Terminal</a>
             <a href="/admin/inventory-verify.html">Verify</a>
-            <a href="#" onclick="handleLogout()">Logout</a>
+            <button type="button" onclick="handleLogout()">Logout</button>
         </nav>
     </div>
 </nav>
@@ -559,7 +559,7 @@
     <!-- LEFT: Search -->
     <div class="reg-left">
         <div class="search-bar-wrap">
-            <input type="text" id="search-input" placeholder="Type item name, scan barcode, or enter SKU…" autocomplete="off" autofocus />
+            <input type="text" id="search-input" placeholder="Type item name, scan barcode, or enter SKU…" autocomplete="off" />
             <div class="search-hint">Press Enter or scan a barcode to add directly to cart</div>
         </div>
         <div class="results-area" id="results-area">

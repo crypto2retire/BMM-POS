@@ -365,7 +365,6 @@
     </style>
 </head>
 <body>
-<script>window.location.replace('/admin/index.html');</script>
 <script src="/static/js/theme-loader.js"></script>
 
 <nav class="navbar">
@@ -387,7 +386,7 @@
             <a href="/admin/payouts.html">Payouts</a>
             <a href="/admin/settings.html">Settings</a>
             <a href="/pos/index.html">POS Terminal</a>
-            <a href="#" onclick="handleLogout()">Logout</a>
+            <button type="button" onclick="handleLogout()">Logout</button>
         </nav>
         <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
     </div>
@@ -405,7 +404,7 @@
             <a href="/admin/payouts.html">Payouts</a>
     <a href="/admin/settings.html">Settings</a>
     <a href="/pos/index.html">POS Terminal</a>
-    <a href="#" onclick="handleLogout()">Logout</a>
+    <button type="button" onclick="handleLogout()">Logout</button>
 </div>
 
 <div class="main-content">
@@ -735,7 +734,7 @@
                 document.getElementById('detail-payments').innerHTML = '<p class="no-payments">No rent payments recorded yet.</p>';
             } else {
                 document.getElementById('detail-payments').innerHTML = `<ul class="payment-list">${payments.map(p => {
-                    const d = p.processed_at ? new Date(p.processed_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '—';
+                    const d = p.processed_at ? bmmFormatDate(p.processed_at, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '—';
                     const badgeCls = p.status === 'paid' ? 'paid' : 'pending';
                     return `<li class="payment-item">
                         <div>

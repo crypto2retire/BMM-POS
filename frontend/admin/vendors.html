@@ -259,7 +259,7 @@
             <a href="/admin/payouts.html">Payouts</a>
             <a href="/admin/settings.html">Settings</a>
             <a href="/pos/index.html">POS Terminal</a>
-            <a href="#" onclick="handleLogout()">Logout</a>
+            <button type="button" onclick="handleLogout()">Logout</button>
         </nav>
         <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
     </div>
@@ -277,7 +277,7 @@
             <a href="/admin/payouts.html">Payouts</a>
     <a href="/admin/settings.html">Settings</a>
     <a href="/pos/index.html">POS Terminal</a>
-    <a href="#" onclick="handleLogout()">Logout</a>
+    <button type="button" onclick="handleLogout()">Logout</button>
 </div>
 
 <div class="main-content">
@@ -456,7 +456,7 @@
     <div class="modal">
         <div class="modal-header">
             <h3 class="modal-title">Add Vendor</h3>
-            <button class="modal-close" onclick="closeAddModal()">&#10005;</button>
+            <button type="button" class="modal-close" onclick="closeAddModal()" aria-label="Close add vendor dialog">&#10005;</button>
         </div>
         <div class="modal-body">
             <div id="add-modal-alert"></div>
@@ -532,7 +532,7 @@
     <div class="modal" style="max-width:420px;">
         <div class="modal-header">
             <h3 class="modal-title">Reset Password</h3>
-            <button class="modal-close" onclick="closePasswordModal()">&#10005;</button>
+            <button type="button" class="modal-close" onclick="closePasswordModal()" aria-label="Close password dialog">&#10005;</button>
         </div>
         <div class="modal-body">
             <div id="pw-modal-alert"></div>
@@ -794,7 +794,7 @@
 
         document.getElementById('detail-name').textContent = v.name;
         document.getElementById('detail-balance').textContent = '$' + formatBalanceAmount(v.current_balance);
-        document.getElementById('detail-since').textContent = v.created_at ? new Date(v.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—';
+        document.getElementById('detail-since').textContent = v.created_at ? bmmFormatDate(v.created_at, { month: 'short', year: 'numeric' }) : '—';
 
         // Load monthly sales
         document.getElementById('detail-sales').textContent = '...';

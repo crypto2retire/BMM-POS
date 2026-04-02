@@ -301,7 +301,7 @@
             <a href="/vendor/items.html">Items</a>
             <a href="/admin/settings.html" class="active">Settings</a>
             <a href="/pos/index.html">POS Terminal</a>
-            <a href="#" onclick="handleLogout()">Logout</a>
+            <button type="button" onclick="handleLogout()">Logout</button>
         </nav>
         <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
     </div>
@@ -317,7 +317,7 @@
     <a href="/vendor/items.html">Items</a>
     <a href="/admin/settings.html" class="active">Settings</a>
     <a href="/pos/index.html">POS Terminal</a>
-    <a href="#" onclick="handleLogout()">Logout</a>
+    <button type="button" onclick="handleLogout()">Logout</button>
 </div>
 
 <div class="main-content">
@@ -336,10 +336,10 @@
             <div>
                 <label style="font-size:0.72rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.1em; display:block; margin-bottom:0.3rem; font-family:'Roboto',sans-serif">Theme</label>
                 <div style="display:flex; gap:0">
-                    <button id="theme-dark-btn" onclick="setThemePref('dark')" style="padding:0.5rem 1rem; font-size:0.82rem; font-family:'Roboto',sans-serif; cursor:pointer; border:1px solid var(--border); min-height:44px; transition:all 0.15s; background:var(--surface-2); color:var(--text-light)">
+                    <button id="theme-dark-btn" onclick="setThemePref('dark')" style="padding:0.5rem 1rem; font-size:0.82rem; font-family:'Roboto',sans-serif; cursor:pointer; border:1px solid var(--border); min-height:44px; transition:background 0.15s ease, color 0.15s ease, border-color 0.15s ease; background:var(--surface-2); color:var(--text-light)">
                         &#9790; Dark
                     </button>
-                    <button id="theme-light-btn" onclick="setThemePref('light')" style="padding:0.5rem 1rem; font-size:0.82rem; font-family:'Roboto',sans-serif; cursor:pointer; border:1px solid var(--border); border-left:none; min-height:44px; transition:all 0.15s; background:var(--surface-2); color:var(--text-light)">
+                    <button id="theme-light-btn" onclick="setThemePref('light')" style="padding:0.5rem 1rem; font-size:0.82rem; font-family:'Roboto',sans-serif; cursor:pointer; border:1px solid var(--border); border-left:none; min-height:44px; transition:background 0.15s ease, color 0.15s ease, border-color 0.15s ease; background:var(--surface-2); color:var(--text-light)">
                         &#9788; Light
                     </button>
                 </div>

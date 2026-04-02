@@ -16,7 +16,7 @@
     <script src="https://unpkg.com/@zxing/browser@latest/umd/index.min.js"></script>
     <style>
         :root {
-            --pos-payment-gift: #7C3AED;
+            --pos-payment-gift: #B9893B;
         }
 
 
@@ -341,7 +341,7 @@
             font-size: 0.85rem;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.15s;
+            transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -841,12 +841,12 @@
     <!-- Navbar -->
     <nav class="pos-navbar">
         <div class="pos-navbar-brand">
-            <img src="/static/images/logo.webp" alt="Bowenstreet Market" style="height:38px;width:auto;">
+            <img src="/static/images/logo.webp" alt="Bowenstreet Market" width="38" height="38" style="height:38px;width:38px;object-fit:contain;">
             <span class="label">POS Terminal</span>
         </div>
         <div class="pos-navbar-right" style="position:relative">
-            <span id="cashier-name">Loading...</span>
-            <button onclick="toggleDisplayPrefs()" style="background:none; border:none; color:var(--text-light); font-size:1.1rem; cursor:pointer; padding:0.5rem; min-height:44px; min-width:44px" title="Display Settings">&#9881;</button>
+            <span id="cashier-name">Loading…</span>
+            <button onclick="toggleDisplayPrefs()" style="background:none; border:none; color:var(--text-light); font-size:1.1rem; cursor:pointer; padding:0.5rem; min-height:44px; min-width:44px" title="Display Settings" aria-label="Open display settings" aria-expanded="false">&#9881;</button>
             <div id="display-prefs-dropdown" style="display:none; position:absolute; right:1rem; top:60px; background:var(--surface); border:1px solid var(--border); padding:1rem; z-index:100; min-width:220px; box-shadow:var(--shadow-md)">
                 <div style="font-size:0.72rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; font-family:'Roboto',sans-serif">Theme</div>
                 <div style="display:flex; gap:0; margin-bottom:0.75rem">
@@ -882,7 +882,6 @@
                 id="barcode-input"
                 placeholder="Scan barcode + Enter to add instantly"
                 autocomplete="off"
-                autofocus
             >
             <button class="camera-scan-btn" id="camera-scan-btn" onclick="startScanner()" title="Scan with camera" aria-label="Open camera scanner">📷</button>
             <button class="scan-btn" onclick="addByBarcode()">Add ↵</button>
@@ -1217,7 +1216,7 @@
 <div id="scanner-overlay" style="display:none">
     <div style="position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:1rem;z-index:10">
         <span style="color:var(--white);font-size:1rem;font-weight:600">Point camera at barcode</span>
-        <button onclick="stopScanner()" style="background:color-mix(in srgb, var(--white) 15%, transparent);border:none;color:var(--white);font-size:1.1rem;width:44px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center">✕</button>
+        <button onclick="stopScanner()" style="background:color-mix(in srgb, var(--white) 15%, transparent);border:none;color:var(--white);font-size:1.1rem;width:44px;height:44px;cursor:pointer;display:flex;align-items:center;justify-content:center" aria-label="Close camera scanner">✕</button>
     </div>
     <div class="scanner-frame scanner-corners">
         <video id="scanner-video" autoplay muted playsinline></video>
@@ -1584,13 +1583,18 @@
     // ── Display preferences (POS) ─────────────────────────────────────────────
     function toggleDisplayPrefs() {
         var dd = document.getElementById('display-prefs-dropdown');
-        dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+        var toggle = document.querySelector('[onclick*="toggleDisplayPrefs"]');
+        var isOpen = dd.style.display === 'none';
+        dd.style.display = isOpen ? 'block' : 'none';
+        if (toggle) toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     }
 
     document.addEventListener('click', function(e) {
         var dd = document.getElementById('display-prefs-dropdown');
         if (dd && dd.style.display !== 'none' && !e.target.closest('#display-prefs-dropdown') && !e.target.closest('[onclick*="toggleDisplayPrefs"]')) {
             dd.style.display = 'none';
+            var toggle = document.querySelector('[onclick*="toggleDisplayPrefs"]');
+            if (toggle) toggle.setAttribute('aria-expanded', 'false');
         }
     });
 
@@ -2286,8 +2290,8 @@
             receiptDateTime = sale.created_at_display;
         } else {
             const now = new Date(sale.created_at || Date.now());
-            const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
-            const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+            const dateStr = bmmFormatDate(now, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+            const timeStr = bmmFormatTime(now, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
             receiptDateTime = dateStr + ' at ' + timeStr;
         }
 
@@ -2435,8 +2439,8 @@
             receiptDateTime = sale.created_at_display;
         } else {
             const now = new Date(sale.created_at || Date.now());
-            const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
-            const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+            const dateStr = bmmFormatDate(now, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+            const timeStr = bmmFormatTime(now, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
             receiptDateTime = dateStr + ' at ' + timeStr;
         }
 
@@ -2779,7 +2783,7 @@ table { width: 100%; border-collapse: collapse; }
         if (cart.length === 0) return;
         const held = {
             id: Date.now(),
-            time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }),
+            time: bmmFormatTime(new Date(), { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }),
             items: JSON.parse(JSON.stringify(cart)),
             itemCount: cart.reduce((s, c) => s + c.quantity, 0),
         };
@@ -2888,8 +2892,8 @@ table { width: 100%; border-collapse: collapse; }
                 html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:6px">Transaction History</div>';
                 html += data.transactions.slice(0, 10).map(function(t) {
                     var d = new Date(t.created_at);
-                    var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
-                    var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+                    var dateStr = bmmFormatDate(d, { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
+                    var timeStr = bmmFormatTime(d, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
                     var color = t.type === 'load' ? 'var(--success-light)' : 'var(--danger)';
                     var sign = t.type === 'load' ? '+' : '-';
                     return '<div style="display:flex;justify-content:space-between;padding:4px 6px;background:var(--surface-2);margin-bottom:2px;font-size:0.82rem">'
@@ -2913,7 +2917,7 @@ table { width: 100%; border-collapse: collapse; }
         if (!amount || amount <= 0) { errEl.textContent = 'Enter a valid amount'; return; }
         errEl.textContent = '';
         var btn = document.getElementById('gc-load-btn');
-        btn.disabled = true; btn.textContent = 'Loading...';
+        btn.disabled = true; btn.textContent = 'Loading…';
         try {
             var card = await apiPost('/api/v1/pos/gift-cards/' + encodeURIComponent(bc) + '/load', { amount: amount, notes: notes || null });
             errEl.style.color = 'var(--success-light)';
@@ -3357,9 +3361,9 @@ table { width: 100%; border-collapse: collapse; }
             var sales = await apiGet(url);
             var d1 = new Date(dateFrom + 'T00:00:00');
             var d2 = new Date(dateTo + 'T00:00:00');
-            var rangeLabel = d1.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+            var rangeLabel = bmmFormatDate(d1, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
             if (dateFrom !== dateTo) {
-                rangeLabel += ' – ' + d2.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+                rangeLabel += ' – ' + bmmFormatDate(d2, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
             }
             renderReceiptResults(sales, rangeLabel);
         } catch (err) {
@@ -3387,7 +3391,7 @@ table { width: 100%; border-collapse: collapse; }
                 when = s.created_at_display.replace(/\s+(CST|CDT)$/i, '').replace(/\s+at\s+/i, ' ');
             } else {
                 var d = new Date(s.created_at);
-                when = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+                when = bmmFormatDate(d, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) + ' ' + bmmFormatTime(d, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
             }
             var itemCount = (s.line_items || []).reduce(function(sum, li){ return sum + li.quantity; }, 0);
             var voidTag = s.is_voided ? ' · <span style="color:var(--danger);font-weight:700">VOIDED</span>' : '';
@@ -3413,8 +3417,8 @@ table { width: 100%; border-collapse: collapse; }
                 receiptDateTime = sale.created_at_display;
             } else {
                 const now = new Date(sale.created_at);
-                const dateStr = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
-                const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+                const dateStr = bmmFormatDate(now, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+                const timeStr = bmmFormatTime(now, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
                 receiptDateTime = dateStr + ' at ' + timeStr;
             }
 
@@ -3513,7 +3517,7 @@ table { width: 100%; border-collapse: collapse; }
 
     async function loadOnlineOrders(statusFilter) {
         const list = document.getElementById('online-orders-list');
-        list.innerHTML = '<p style="text-align:center;color:var(--text-muted)">Loading...</p>';
+        list.innerHTML = '<p style="text-align:center;color:var(--text-muted)">Loading…</p>';
 
         document.querySelectorAll('#online-orders-modal button[id^="filter-"]').forEach(b => {
             b.style.background = 'var(--text-light)'; b.style.color = 'var(--border)';
@@ -3537,8 +3541,8 @@ table { width: 100%; border-collapse: collapse; }
             }
             list.innerHTML = orders.map(o => {
                 const d = new Date(o.date || o.created_at);
-                const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
-                const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+                const dateStr = bmmFormatDate(d, { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
+                const timeStr = bmmFormatTime(d, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
                 const statusColor = o.status === 'pending' ? 'color-mix(in srgb, var(--warning) 38%, var(--white))' : o.status === 'ready' ? 'color-mix(in srgb, var(--info) 48%, var(--white))' : o.status === 'completed' ? 'var(--success-light)' : 'var(--border)';
                 const statusBg = o.status === 'pending' ? 'color-mix(in srgb, var(--warning) 58%, var(--bg))' : o.status === 'ready' ? 'color-mix(in srgb, var(--info) 42%, var(--bg))' : o.status === 'completed' ? 'var(--success)' : 'var(--text-light)';
                 var actionBtns = '';
@@ -3636,7 +3640,7 @@ table { width: 100%; border-collapse: collapse; }
         try {
             eodData = await apiGet('/api/v1/pos/end-of-day');
             const d = new Date(eodData.date + 'T12:00:00');
-            document.getElementById('eod-date-label').textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+            document.getElementById('eod-date-label').textContent = bmmFormatDate(d, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
             document.getElementById('eod-total-revenue').textContent = '$' + eodData.total_revenue.toFixed(2);
             document.getElementById('eod-total-txns').textContent = eodData.total_transactions;
             document.getElementById('eod-cash-total').textContent = '$' + eodData.cash.total.toFixed(2);
@@ -3845,7 +3849,7 @@ table { width: 100%; border-collapse: collapse; }
     function printEndOfDay() {
         if (!eodData) return;
         const d = new Date(eodData.date + 'T12:00:00');
-        const dateLabel = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+        const dateLabel = bmmFormatDate(d, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
         const countedCash = document.getElementById('eod-counted-cash').textContent;
         const variance = document.getElementById('eod-variance').textContent;
         const deposit = document.getElementById('eod-deposit').textContent;
