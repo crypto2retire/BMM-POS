@@ -2,6 +2,7 @@ import uuid
 import os
 import shutil
 from decimal import Decimal
+from datetime import date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Body
 from fastapi.responses import Response
@@ -28,6 +29,17 @@ ALLOWED_IMAGE_TYPES = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_IMAGE_DIMENSION = 800
 
 router = APIRouter(prefix="/items", tags=["items"])
+
+
+def _parse_iso_date(value, field_name: str) -> date:
+    if isinstance(value, date):
+        return value
+    if not value or not isinstance(value, str):
+        raise HTTPException(status_code=400, detail=f"{field_name} is required")
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"{field_name} must be a valid date")
 
 
 async def _require_manage_items(db: AsyncSession, user: Vendor) -> None:
@@ -659,6 +671,8 @@ async def bulk_apply_sale(
         raise HTTPException(status_code=400, detail="Percent off must be between 1 and 100")
     if not sale_start or not sale_end:
         raise HTTPException(status_code=400, detail="Sale start and end dates are required")
+    sale_start = _parse_iso_date(sale_start, "sale_start")
+    sale_end = _parse_iso_date(sale_end, "sale_end")
     if sale_end < sale_start:
         raise HTTPException(status_code=400, detail="Sale end must be after sale start")
 
