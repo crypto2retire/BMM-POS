@@ -291,7 +291,7 @@
         </div>
 
         <div class="search-bar" style="flex-wrap:wrap">
-            <input type="text" id="search-input" placeholder="Filter by name or booth number&hellip;" oninput="filterTable()">
+            <input type="text" id="search-input" placeholder="Filter by name or booth number&hellip;" oninput="filterTable()" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
             <select id="vendor-status-filter" onchange="filterTable()"
                 style="padding:0.4rem 0.6rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text-light); font-size:0.78rem; font-family:'Roboto',sans-serif; cursor:pointer; min-height:44px">
                 <option value="active" selected>Active Vendors</option>
@@ -659,6 +659,16 @@
     function filterTable() {
         vendorPage = 1;
         renderGrid(getFilteredVendors());
+    }
+
+    function renderVendorLoadFailure(message) {
+        const tbody = document.getElementById('vendors-table-body');
+        const cards = document.getElementById('vendor-cards');
+        const pagDiv = document.getElementById('vendor-pagination');
+        const safe = esc(message || 'Failed to load vendors.');
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">' + safe + '</td></tr>';
+        cards.innerHTML = '<div style="color:var(--danger);padding:1rem;text-align:center">' + safe + '</div>';
+        if (pagDiv) pagDiv.innerHTML = '';
     }
 
     function renderGrid(vendors) {
@@ -1096,9 +1106,12 @@
 
     async function loadVendors() {
         try {
-            allVendors = await apiGet('/api/v1/vendors/');
+            const vendors = await apiGet('/api/v1/vendors/');
+            allVendors = (vendors || []).filter(v => v.role === 'vendor' || v.is_vendor || v.booth_number);
         } catch (err) {
+            allVendors = [];
             showAlert('alert-container', err.message, 'error');
+            renderVendorLoadFailure(err.message || 'Failed to load vendors.');
         }
     }
 
@@ -1111,6 +1124,10 @@
         });
         if (!session) return;
         isAdmin = session.role === 'admin';
+        const searchInput = document.getElementById('search-input');
+        if (searchInput && searchInput.value && searchInput.value.indexOf('@') !== -1) {
+            searchInput.value = '';
+        }
         if (!isAdmin) {
             document.getElementById('add-vendor-btn').style.display = 'none';
         }
