@@ -476,12 +476,43 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-_replit_domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
-_replit_domains = os.environ.get("REPLIT_DOMAINS", "")
-_allowed_origins = [
-    f"https://{_replit_domain}",
-    *[f"https://{d.strip()}" for d in _replit_domains.split(",") if d.strip()],
-] if _replit_domain else ["*"]
+def _normalize_origin(value: str) -> str:
+    value = (value or "").strip()
+    if not value:
+        return ""
+    if "://" in value:
+        return value.rstrip("/")
+    return f"https://{value}".rstrip("/")
+
+
+def _build_allowed_origins() -> list[str]:
+    origins: list[str] = []
+
+    for raw_value in (
+        os.environ.get("REPLIT_DEV_DOMAIN", ""),
+        *os.environ.get("REPLIT_DOMAINS", "").split(","),
+        *os.environ.get("CORS_ALLOWED_ORIGINS", "").split(","),
+        os.environ.get("PUBLIC_APP_ORIGIN", ""),
+        os.environ.get("RAILWAY_PUBLIC_DOMAIN", ""),
+    ):
+        origin = _normalize_origin(raw_value)
+        if origin and origin not in origins:
+            origins.append(origin)
+
+    # Same-origin requests do not need CORS, but localhost dev often does.
+    for localhost_origin in (
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5000",
+        "http://127.0.0.1:5000",
+    ):
+        if localhost_origin not in origins:
+            origins.append(localhost_origin)
+
+    return origins
+
+
+_allowed_origins = _build_allowed_origins()
 
 app.add_middleware(
     CORSMiddleware,
