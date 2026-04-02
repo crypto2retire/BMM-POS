@@ -1008,7 +1008,7 @@
 
 <div class="modal-overlay" id="edit-vendor-overlay" style="display:none;position:fixed;inset:0;background:color-mix(in srgb, black 78%, transparent);z-index:1000;align-items:center;justify-content:center;padding:1rem;overflow-y:auto" onclick="if(event.target===this)window.closeEditModalHub()">
     <div style="background:var(--surface);border:1px solid var(--warm-border);padding:1.75rem;width:100%;max-width:520px;color:var(--text);margin:auto" onclick="event.stopPropagation()">
-        <h2 style="font-family:'EB Garamond',serif;font-size:1.35rem;font-weight:500;margin-bottom:1rem;color:var(--gold);font-style:italic">Edit vendor</h2>
+        <h2 id="edit-account-title" style="font-family:'EB Garamond',serif;font-size:1.35rem;font-weight:500;margin-bottom:1rem;color:var(--gold);font-style:italic">Edit vendor</h2>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem">
             <div>
                 <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem">Name</label>
@@ -1379,7 +1379,10 @@
     async function loadEmployees() {
         try {
             var vendors = await apiGet('/api/v1/vendors/');
-            var employees = vendors.filter(function(v) { return v.role === 'admin' || v.role === 'cashier'; });
+            window._adminAccountDirectory = vendors || [];
+            var employees = vendors.filter(function(v) {
+                return (v.role === 'admin' || v.role === 'cashier') && (v.status || 'active') !== 'archived';
+            });
             var tbody = document.getElementById('employees-table-body');
             var cards = document.getElementById('employee-cards');
 
@@ -1391,7 +1394,7 @@
 
             tbody.innerHTML = employees.map(function(e) {
                 var created = window.bmmFormatDate(e.created_at, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
-                return '<tr><td><strong>' + e.name + '</strong></td><td>' + e.email + '</td>'
+                return '<tr style="cursor:pointer" onclick="window.openEditModalHub(' + e.id + ')"><td><strong>' + e.name + '</strong></td><td>' + e.email + '</td>'
                     + '<td>' + roleBadge(e.role) + '</td>'
                     + '<td>' + statusBadge(e.status || 'active') + '</td>'
                     + '<td style="font-size:0.85rem;color:var(--text-light)">' + created + '</td></tr>';
@@ -1400,7 +1403,7 @@
             if (cards) {
                 cards.style.display = '';
                 cards.innerHTML = employees.map(function(e) {
-                    return '<div class="vendor-card"><div class="vendor-card-header"><div>'
+                    return '<div class="vendor-card" style="cursor:pointer" onclick="window.openEditModalHub(' + e.id + ')"><div class="vendor-card-header"><div>'
                         + '<div class="vendor-card-name">' + e.name + '</div>'
                         + '<div class="vendor-card-sub">' + e.email + '</div>'
                         + '</div><div class="vendor-card-right">'

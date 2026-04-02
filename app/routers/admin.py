@@ -101,7 +101,7 @@ async def vendor_overview(
     period_label = current_period.strftime("%B %Y")
 
     vendors_result = await db.execute(
-        select(Vendor).where(Vendor.status == "active").order_by(Vendor.name)
+        select(Vendor).where(Vendor.status == "active", Vendor.role == "vendor").order_by(Vendor.name)
     )
     vendors = vendors_result.scalars().all()
 
@@ -244,6 +244,7 @@ async def rent_status(
     vendors_result = await db.execute(
         select(Vendor).where(
             Vendor.status == "active",
+            Vendor.role == "vendor",
             Vendor.monthly_rent > 0,
         ).order_by(Vendor.name)
     )
@@ -748,6 +749,7 @@ async def send_rent_reminders(
     vendors_result = await db.execute(
         select(Vendor).where(
             Vendor.status == "active",
+            Vendor.role == "vendor",
             Vendor.monthly_rent > 0,
         ).order_by(Vendor.name)
     )
@@ -828,7 +830,7 @@ async def send_weekly_reports(
     end_utc = datetime(today.year, today.month, today.day, tzinfo=cst).astimezone(tz.utc) + timedelta(days=1)
 
     vendors_result = await db.execute(
-        select(Vendor).where(Vendor.status == "active").order_by(Vendor.name)
+        select(Vendor).where(Vendor.status == "active", Vendor.role == "vendor").order_by(Vendor.name)
     )
     vendors = vendors_result.scalars().all()
 
@@ -971,7 +973,7 @@ async def rent_payout_ledger(
 
     # ── Active vendors with rent ──
     vendors_result = await db.execute(
-        select(Vendor).where(Vendor.status == "active", Vendor.monthly_rent > 0)
+        select(Vendor).where(Vendor.status == "active", Vendor.role == "vendor", Vendor.monthly_rent > 0)
     )
     active_rent_vendors = vendors_result.scalars().all()
 
@@ -991,7 +993,7 @@ async def rent_payout_ledger(
 
     # ── All active vendors for balance cards ──
     all_vendors_result = await db.execute(
-        select(Vendor).where(Vendor.status == "active").order_by(Vendor.name)
+        select(Vendor).where(Vendor.status == "active", Vendor.role == "vendor").order_by(Vendor.name)
     )
     all_vendors = all_vendors_result.scalars().all()
 

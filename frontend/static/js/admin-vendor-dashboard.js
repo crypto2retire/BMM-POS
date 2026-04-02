@@ -287,6 +287,10 @@
         for (var i = 0; i < list.length; i++) {
             if (list[i].id === id) return list[i];
         }
+        var directory = window._adminAccountDirectory || [];
+        for (var j = 0; j < directory.length; j++) {
+            if (directory[j].id === id) return directory[j];
+        }
         return null;
     }
 
@@ -709,6 +713,8 @@
         var v = findVendor(vendorId);
         if (!v) return;
         _editVendorId = vendorId;
+        var title = document.getElementById('edit-account-title');
+        if (title) title.textContent = v.role === 'vendor' ? 'Edit vendor' : 'Edit employee';
         var set = function (id, val) {
             var el = document.getElementById(id);
             if (el) el.value = val != null ? val : '';

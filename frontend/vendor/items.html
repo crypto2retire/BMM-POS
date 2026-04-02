@@ -540,6 +540,7 @@
                 <div class="status-filter-bar" id="status-filter-bar" style="margin-bottom:0">
                     <button class="active" data-status="active" onclick="setStatusFilter('active')">For Sale</button>
                     <button data-status="inactive" onclick="setStatusFilter('inactive')">Not For Sale</button>
+                    <button data-status="archive" onclick="setStatusFilter('archive')">Archive</button>
                     <button data-status="all" onclick="setStatusFilter('all')">All</button>
                 </div>
                 <div style="display:flex;align-items:center;gap:6px">
@@ -1168,9 +1169,24 @@
     }
 
     function toggleItemSelect(id) {
+        var item = allItems.find(function(i) { return i.id === id; });
+        if (!item || !isSelectableItem(item)) {
+            selectedItemIds.delete(id);
+            updateSelectionUI();
+            displayItems();
+            return;
+        }
         if (selectedItemIds.has(id)) selectedItemIds.delete(id);
         else selectedItemIds.add(id);
         updateSelectionUI();
+    }
+
+    function isArchiveStatus(status) {
+        return status === 'sold' || status === 'removed';
+    }
+
+    function isSelectableItem(item) {
+        return !!item && (item.status === 'active' || item.status === 'inactive');
     }
 
     function getVisibleItems() {
@@ -1179,12 +1195,18 @@
             filtered = filtered.filter(function(i) { return i.status === 'active'; });
         } else if (statusFilter === 'inactive') {
             filtered = filtered.filter(function(i) { return i.status === 'inactive'; });
+        } else if (statusFilter === 'archive') {
+            filtered = filtered.filter(function(i) { return isArchiveStatus(i.status); });
         }
         return filtered;
     }
 
+    function getVisibleSelectableItems() {
+        return getVisibleItems().filter(isSelectableItem);
+    }
+
     function toggleSelectAll() {
-        const filtered = getVisibleItems();
+        const filtered = getVisibleSelectableItems();
         if (selectedItemIds.size === filtered.length && filtered.length > 0) {
             selectedItemIds.clear();
         } else {
@@ -1195,9 +1217,9 @@
     }
 
     function selectVisibleItems() {
-        const filtered = getVisibleItems();
+        const filtered = getVisibleSelectableItems();
         if (!filtered.length) {
-            showAlert('alert-container', 'No visible items match the current filters.', 'warning');
+            showAlert('alert-container', 'No visible active or inactive items match the current filters.', 'warning');
             return;
         }
         selectedItemIds.clear();
@@ -1213,6 +1235,10 @@
 
     function updateSelectionUI() {
         const bar = document.getElementById('batch-actions-bar');
+        selectedItemIds.forEach(function(id) {
+            var item = allItems.find(function(entry) { return entry.id === id; });
+            if (!isSelectableItem(item)) selectedItemIds.delete(id);
+        });
         const count = selectedItemIds.size;
         const toolsCount = document.getElementById('sale-tools-selected-count');
         const applyBtn = document.getElementById('sale-tools-apply-btn');
@@ -1930,7 +1956,7 @@
             return;
         }
         selectedItemIds.clear();
-        filtered.forEach(function(item) { selectedItemIds.add(item.id); });
+        filtered.filter(isSelectableItem).forEach(function(item) { selectedItemIds.add(item.id); });
         updateSelectionUI();
         displayItems();
         openBulkSaleModal();
@@ -1997,9 +2023,9 @@
     }
 
     async function clearSaleForVisible() {
-        const filtered = getVisibleItems();
+        const filtered = getVisibleSelectableItems();
         if (!filtered.length) {
-            showAlert('alert-container', 'No visible items match the current filters.', 'warning');
+            showAlert('alert-container', 'No visible active or inactive items match the current filters.', 'warning');
             return;
         }
         if (!confirm(`Clear sale pricing from ${filtered.length} visible item(s)?`)) return;
@@ -2132,16 +2158,20 @@
             filtered = filtered.filter(function(i) { return i.status === 'active'; });
         } else if (statusFilter === 'inactive') {
             filtered = filtered.filter(function(i) { return i.status === 'inactive'; });
+        } else if (statusFilter === 'archive') {
+            filtered = filtered.filter(function(i) { return isArchiveStatus(i.status); });
         }
         const sorted = getSortedItems(filtered);
 
         var activeCount = allItems.filter(function(i) { return i.status === 'active'; }).length;
         var inactiveCount = allItems.filter(function(i) { return i.status === 'inactive'; }).length;
+        var archiveCount = allItems.filter(function(i) { return isArchiveStatus(i.status); }).length;
         var btns = document.querySelectorAll('.status-filter-bar button');
         btns.forEach(function(b) {
             var s = b.getAttribute('data-status');
             if (s === 'active') b.textContent = 'For Sale (' + activeCount + ')';
             else if (s === 'inactive') b.textContent = 'Not For Sale (' + inactiveCount + ')';
+            else if (s === 'archive') b.textContent = 'Archive (' + archiveCount + ')';
             else b.textContent = 'All (' + allItems.length + ')';
         });
         updateUnprintedBanner();
@@ -2206,15 +2236,18 @@
             const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
 
             const selChecked = selectedItemIds.has(item.id) ? 'checked' : '';
+            const canSelect = isSelectableItem(item);
+            const checkboxDisabled = canSelect ? '' : 'disabled';
+            const checkboxTitle = canSelect ? 'Select item' : 'Archived items are view-only';
 
             const isActive = item.status === 'active';
             const cardClass = isActive ? 'item-card' : 'item-card inactive';
 
             return `<div class="${cardClass}">
                 <div class="item-card-top">
-                    <label style="position:absolute;top:6px;left:6px;z-index:2;cursor:pointer" onclick="event.stopPropagation()">
+                    <label style="position:absolute;top:6px;left:6px;z-index:2;cursor:${canSelect ? 'pointer' : 'not-allowed'};opacity:${canSelect ? '1' : '0.45'}" onclick="event.stopPropagation()" title="${checkboxTitle}">
                         <input type="checkbox" class="item-select-cb" data-item-id="${item.id}" ${selChecked}
-                            onchange="toggleItemSelect(${item.id})" style="width:16px;height:16px;accent-color:var(--gold);cursor:pointer">
+                            ${checkboxDisabled} onchange="toggleItemSelect(${item.id})" style="width:16px;height:16px;accent-color:var(--gold);cursor:${canSelect ? 'pointer' : 'not-allowed'}">
                     </label>
                     <div class="item-card-photo">${photoHtml}</div>
                     <div class="item-card-info">
@@ -2318,12 +2351,14 @@
             const style = item.label_style || 'standard';
             const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
             const selChecked = selectedItemIds.has(item.id) ? 'checked' : '';
+            const canSelect = isSelectableItem(item);
+            const checkboxDisabled = canSelect ? '' : 'disabled';
 
             const isActive = item.status === 'active';
             const rowClass = isActive ? '' : ' class="inactive-row"';
 
             html += `<tr${rowClass}>
-                <td style="padding:0 4px"><input type="checkbox" class="item-select-cb" data-item-id="${item.id}" ${selChecked} onchange="toggleItemSelect(${item.id})" style="width:15px;height:15px;accent-color:var(--gold);cursor:pointer"></td>
+                <td style="padding:0 4px"><input type="checkbox" class="item-select-cb" data-item-id="${item.id}" ${selChecked} ${checkboxDisabled} onchange="toggleItemSelect(${item.id})" style="width:15px;height:15px;accent-color:var(--gold);cursor:${canSelect ? 'pointer' : 'not-allowed'};opacity:${canSelect ? '1' : '0.45'}" title="${canSelect ? 'Select item' : 'Archived items are view-only'}"></td>
                 <td>${photoHtml}</td>
                 <td>${item.name}</td>
                 <td class="sku-cell">${item.sku || '&mdash;'}</td>
