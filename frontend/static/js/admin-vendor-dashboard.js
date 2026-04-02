@@ -14,6 +14,18 @@
         return '$' + (parseFloat(v) || 0).toFixed(2);
     }
 
+    /** Coerce API numbers (may be strings) for comparisons and styling */
+    function num(v) {
+        var n = parseFloat(v);
+        return isNaN(n) ? 0 : n;
+    }
+
+    function combinedAmount(v) {
+        if (v == null) return 0;
+        if (v.combined_balance != null && v.combined_balance !== '') return num(v.combined_balance);
+        return num(v.balance);
+    }
+
     function esc(s) {
         if (s == null || s === undefined) return '';
         var d = document.createElement('div');
@@ -111,14 +123,14 @@
                     fmt(v.sales_balance || 0) +
                     '</div>' +
                     '<div style="font-size:0.75rem;color:var(--text-light)">Rent: <span style="color:' +
-                    ((v.rent_balance || 0) < 0 ? 'var(--danger)' : 'var(--text-light)') +
+                    (num(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--text-light)') +
                     '">' +
                     fmt(v.rent_balance || 0) +
                     '</span></div>' +
                     '<div style="font-weight:600;color:' +
-                    ((v.combined_balance || v.balance) < 0 ? 'var(--danger)' : 'var(--success-light)') +
+                    (combinedAmount(v) < 0 ? 'var(--danger)' : 'var(--success-light)') +
                     '">' +
-                    fmt(v.combined_balance || v.balance) +
+                    fmt(combinedAmount(v)) +
                     '</div>' +
                     '</td>' +
                     '<td>' +
@@ -151,14 +163,14 @@
                         fmt(v.sales_balance || 0) +
                         '</div>' +
                         '<div style="font-size:0.7rem;color:' +
-                        ((v.rent_balance || 0) < 0 ? 'var(--danger)' : 'var(--text-light)') +
+                        (num(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--text-light)') +
                         '">Rent: ' +
                         fmt(v.rent_balance || 0) +
                         '</div>' +
                         '<div style="font-weight:600;color:' +
-                        ((v.combined_balance || v.balance) < 0 ? 'var(--danger)' : 'var(--success-light)') +
+                        (combinedAmount(v) < 0 ? 'var(--danger)' : 'var(--success-light)') +
                         '">' +
-                        fmt(v.combined_balance || v.balance) +
+                        fmt(combinedAmount(v)) +
                         '</div>' +
                         '</div></div>' +
                         '<div style="margin-top:0.5rem">' +
@@ -258,15 +270,21 @@
                     var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
                     saleDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
                 }
-                // Get items that belong to this vendor
-                var vendorItems = (sale.items || []).filter(function(si) {
-                    return si.vendor_id === vendorId;
+                // API returns line_items (not items); lines use unit_price / line_total
+                var lines = sale.line_items || sale.items || [];
+                var vid = Number(vendorId);
+                var vendorItems = lines.filter(function(si) {
+                    return Number(si.vendor_id) === vid;
                 });
                 var itemNames = vendorItems.map(function(si) {
                     return (si.item_name || si.name || 'Item') + (si.quantity > 1 ? ' x' + si.quantity : '');
                 }).join(', ') || '—';
                 var vendorTotal = vendorItems.reduce(function(sum, si) {
-                    return sum + (parseFloat(si.price) || 0) * (si.quantity || 1);
+                    if (si.line_total != null && si.line_total !== '') {
+                        return sum + num(si.line_total);
+                    }
+                    var up = si.unit_price != null ? si.unit_price : si.price;
+                    return sum + num(up) * (si.quantity || 1);
                 }, 0);
 
                 html += '<tr style="border-bottom:1px solid var(--border)">' +
@@ -302,14 +320,14 @@
             fmt(v.sales_balance || 0) +
             '</span></div>' +
             '<div style="font-size:0.85rem;color:var(--text-light);margin-bottom:0.25rem">Rent Balance: <span style="color:' +
-            ((v.rent_balance || 0) < 0 ? 'var(--danger)' : 'var(--gold)') +
+            (num(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--gold)') +
             '">' +
             fmt(v.rent_balance || 0) +
             '</span></div>' +
             '<p style="font-size:1.75rem;font-family:EB Garamond,serif;color:' +
-            ((v.combined_balance || v.balance) < 0 ? 'var(--danger)' : 'var(--success-light)') +
+            (combinedAmount(v) < 0 ? 'var(--danger)' : 'var(--success-light)') +
             ';margin:0.25rem 0">Combined: ' +
-            fmt(v.combined_balance || v.balance) +
+            fmt(combinedAmount(v)) +
             '</p></div>' +
             '<div style="font-size:0.82rem;color:var(--text-light);line-height:1.5">' +
             'Gross: ' +
