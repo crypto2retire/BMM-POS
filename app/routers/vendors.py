@@ -13,14 +13,17 @@ from app.schemas.vendor import (
     BalanceAdjustRequest, BalanceAdjustmentResponse,
 )
 from app.routers.auth import get_current_user, require_role, get_password_hash
+from app.routers.settings import role_allows_manage_vendors
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
 
 @router.get("/", response_model=List[VendorResponse])
 async def list_vendors(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_role("admin"))
+    current_user: Vendor = Depends(get_current_user),
 ):
+    if not await role_allows_manage_vendors(db, current_user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to list vendors")
     result = await db.execute(select(Vendor).order_by(Vendor.name))
     vendors = result.scalars().all()
 
@@ -79,9 +82,13 @@ async def list_label_sizes():
 async def get_vendor(
     vendor_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user)
+    current_user: Vendor = Depends(get_current_user),
 ):
-    if current_user.role != "admin" and current_user.id != vendor_id:
+    if current_user.role == "admin" or current_user.id == vendor_id:
+        pass
+    elif await role_allows_manage_vendors(db, current_user):
+        pass
+    else:
         raise HTTPException(status_code=403, detail="Not authorized")
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()

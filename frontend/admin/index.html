@@ -475,7 +475,7 @@
             <a href="/admin/inventory-verify.html">Inventory</a>
             <a href="/admin/studio.html">Studio</a>
             <a href="/vendor/items.html">Items</a>
-            <a href="/admin/settings.html">Settings</a>
+            <a href="/admin/settings.html" class="admin-only-nav">Settings</a>
             <a href="/pos/index.html">POS Terminal</a>
             <a href="#" onclick="handleLogout()">Logout</a>
         </nav>
@@ -490,7 +490,7 @@
     <a href="/admin/inventory-verify.html">Inventory</a>
     <a href="/admin/studio.html">Studio</a>
     <a href="/vendor/items.html">Items</a>
-    <a href="/admin/settings.html">Settings</a>
+    <a href="/admin/settings.html" class="admin-only-nav">Settings</a>
     <a href="/pos/index.html">POS Terminal</a>
     <a href="#" onclick="handleLogout()">Logout</a>
 </div>
@@ -536,9 +536,11 @@
         </div>
         <div class="vendor-action-bar">
             <span id="vh-processed-badge">Already processed this month</span>
+            <span id="vendor-hub-admin-actions" class="admin-only-dash" style="display:inline-flex;flex-wrap:wrap;gap:0.5rem;align-items:center">
             <button type="button" id="vh-process-btn" class="process-btn" onclick="window.confirmProcessPayoutsHub()">Process Payouts</button>
             <button type="button" class="reminder-btn" onclick="window.sendRentRemindersHub()">Send Rent Reminders</button>
             <button type="button" class="reminder-btn reminder-btn--green" onclick="window.sendWeeklyReportsHub()">Send Weekly Reports</button>
+            </span>
         </div>
         <div class="store-summary" style="margin-bottom:1rem">
             <div class="sum-card"><div class="sum-label">Gross balances</div><div class="sum-value" id="vh-stat-gross">&mdash;</div></div>
@@ -630,7 +632,7 @@
 
     <div class="ornament">&loz;</div>
 
-    <div class="section" id="employees-section">
+    <div class="section admin-only-dash" id="employees-section">
         <div class="section-header">
             <h2 class="section-title">Employees</h2>
             <button class="btn btn-primary btn-sm" onclick="openAddEmployee()">+ Add Employee</button>
@@ -660,7 +662,7 @@
 
     <div class="ornament">&loz;</div>
 
-    <div class="section">
+    <div class="section admin-only-dash" id="dash-data-import-section">
         <div class="section-header">
             <h2 class="section-title">Data Import</h2>
         </div>
@@ -724,7 +726,7 @@
 
         <div class="ornament">&loz;</div>
 
-        <div class="rp-action-bar">
+        <div class="rp-action-bar admin-only-dash" id="rp-admin-actions">
             <button type="button" class="process-btn" onclick="openRentFromLedger()" style="background:color-mix(in srgb, var(--success-light) 12%, transparent);color:var(--success-light);border:1px solid color-mix(in srgb, var(--success-light) 30%, transparent);padding:0.55rem 1.2rem;font-size:0.78rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em;min-height:44px">Record Rent Payment</button>
             <button type="button" class="process-btn" onclick="window.confirmProcessPayoutsHub()" style="background:color-mix(in srgb, var(--gold) 12%, transparent);color:var(--gold);border:1px solid color-mix(in srgb, var(--gold) 30%, transparent);padding:0.55rem 1.2rem;font-size:0.78rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em;min-height:44px">Process Payouts</button>
         </div>
@@ -991,7 +993,7 @@
 </nav>
 
 <script src="/static/js/api.js?v=20260402a"></script>
-<script src="/static/js/admin-vendor-dashboard.js?v=20260402a"></script>
+<script src="/static/js/admin-vendor-dashboard.js?v=20260402b"></script>
 <script>
     function toggleMobileNav() {
         document.getElementById('mobile-nav').classList.toggle('open');
@@ -1113,14 +1115,32 @@
         }).join('');
     }
 
+    function applyCashierAdminDashboardUI(isAdmin) {
+        if (isAdmin) return;
+        document.querySelectorAll('.admin-only-dash').forEach(function(el) {
+            el.style.display = 'none';
+        });
+        document.querySelectorAll('.admin-only-nav').forEach(function(el) {
+            el.style.display = 'none';
+        });
+    }
+
     async function loadDashboard() {
         var token = sessionStorage.getItem('bmm_token');
         if (!token) { window.location.href = '/vendor/login.html'; return; }
         var payload = parseToken();
-        if (payload && payload.role !== 'admin') {
+        if (!payload) { window.location.href = '/vendor/login.html'; return; }
+        if (payload.role === 'vendor') {
             window.location.href = '/vendor/dashboard.html';
             return;
         }
+        if (!['admin', 'cashier'].includes(payload.role)) {
+            window.location.href = '/vendor/login.html';
+            return;
+        }
+        var isAdmin = payload.role === 'admin';
+        window._adminDashboardIsAdmin = isAdmin;
+        applyCashierAdminDashboardUI(isAdmin);
         var name = (payload && payload.name) || 'Admin';
         document.getElementById('user-name').textContent = name;
 

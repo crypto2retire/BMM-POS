@@ -30,11 +30,23 @@ from app.services.email_templates import (
     rent_overdue_27day_email,
 )
 from app.routers.notifications import notify_weekly_report
-from app.routers.settings import get_setting
+from app.routers.settings import get_setting, role_allows_manage_vendors
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+async def require_vendor_hub_access(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+) -> Vendor:
+    if await role_allows_manage_vendors(db, current_user):
+        return current_user
+    raise HTTPException(
+        status_code=403,
+        detail="Vendor hub requires the Manage Vendors permission for your role (Settings → User Roles).",
+    )
 
 
 def _admin_display_rent_balance(
@@ -67,7 +79,7 @@ def _rent_status(today: date, last_payment: Optional[RentPayment]) -> str:
 @router.get("/vendor-overview")
 async def vendor_overview(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_admin),
+    current_user: Vendor = Depends(require_vendor_hub_access),
 ):
     """All vendor data for consolidated admin dashboard (balances, rent, payout preview)."""
     today = date.today()

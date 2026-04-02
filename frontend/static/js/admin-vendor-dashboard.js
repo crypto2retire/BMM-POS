@@ -44,6 +44,11 @@
         return d.innerHTML;
     }
 
+    /** Set from admin/index.html; cashiers get read-only vendor hub rows */
+    function isVendorHubAdmin() {
+        return window._adminDashboardIsAdmin !== false;
+    }
+
     function rentBadge(status) {
         var map = {
             current: '<span class="vh-badge vh-badge--ok">CURRENT</span>',
@@ -404,14 +409,17 @@
             '<p style="margin:0.75rem 0 0;font-size:0.8rem">Method: ' +
             esc(v.payout_method) +
             '</p>' +
-            '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem">' +
-            '<button type="button" class="btn btn-sm" style="background:var(--gold);color:var(--charcoal-deep)" onclick="event.stopPropagation();window.openAdjustFromHub(' +
-            v.id +
-            ')">Adjust Balance</button>' +
-            '<button type="button" class="btn btn-sm" onclick="event.stopPropagation();window.openHistoryFromHub(' +
-            v.id +
-            ')">Balance History</button>' +
-            '</div></div>' +
+            (isVendorHubAdmin()
+                ? '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem">' +
+                  '<button type="button" class="btn btn-sm" style="background:var(--gold);color:var(--charcoal-deep)" onclick="event.stopPropagation();window.openAdjustFromHub(' +
+                  v.id +
+                  ')">Adjust Balance</button>' +
+                  '<button type="button" class="btn btn-sm" onclick="event.stopPropagation();window.openHistoryFromHub(' +
+                  v.id +
+                  ')">Balance History</button>' +
+                  '</div>'
+                : '') +
+            '</div>' +
 
             '<div class="vh-detail-col">' +
             '<h4 class="vh-detail-h">Rent</h4>' +
@@ -429,16 +437,19 @@
             '<p style="font-size:0.8rem;color:var(--text-light)">Last payment: ' +
             esc(v.last_rent_date || '—') +
             '</p>' +
-            '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem">' +
-            '<button type="button" class="btn btn-sm" style="background:color-mix(in srgb,var(--success-light) 20%,transparent);color:var(--success-light);border:1px solid color-mix(in srgb,var(--success-light) 35%,transparent)" onclick="event.stopPropagation();window.openRentModalHub(' +
-            v.id +
-            ')">Record Rent Payment</button>' +
-            '<button type="button" class="btn btn-sm" onclick="event.stopPropagation();window.toggleFlagHub(' +
-            v.id +
-            ',this)">' +
-            (v.rent_flagged ? '🚩 Unflag' : '⚑ Flag') +
-            '</button>' +
-            '</div></div>' +
+            (isVendorHubAdmin()
+                ? '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem">' +
+                  '<button type="button" class="btn btn-sm" style="background:color-mix(in srgb,var(--success-light) 20%,transparent);color:var(--success-light);border:1px solid color-mix(in srgb,var(--success-light) 35%,transparent)" onclick="event.stopPropagation();window.openRentModalHub(' +
+                  v.id +
+                  ')">Record Rent Payment</button>' +
+                  '<button type="button" class="btn btn-sm" onclick="event.stopPropagation();window.toggleFlagHub(' +
+                  v.id +
+                  ',this)">' +
+                  (v.rent_flagged ? '🚩 Unflag' : '⚑ Flag') +
+                  '</button>' +
+                  '</div>'
+                : '') +
+            '</div>' +
 
             '<div class="vh-detail-col">' +
             '<h4 class="vh-detail-h">Vendor</h4>' +
@@ -448,9 +459,11 @@
             esc(v.phone || '—') +
             '</p>' +
             '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center">' +
-            '<button type="button" class="btn btn-sm btn-primary" onclick="event.stopPropagation();window.openEditModalHub(' +
-            v.id +
-            ')">Edit Vendor</button>' +
+            (isVendorHubAdmin()
+                ? '<button type="button" class="btn btn-sm btn-primary" onclick="event.stopPropagation();window.openEditModalHub(' +
+                  v.id +
+                  ')">Edit Vendor</button>'
+                : '') +
             '<a href="/vendor/items.html?vendor_id=' +
             v.id +
             '" class="btn btn-sm" style="display:inline-block;text-decoration:none;border:1px solid var(--border);padding:0.45rem 0.75rem;font-size:0.78rem" onclick="event.stopPropagation()">View Items</a>' +

@@ -84,7 +84,7 @@ DEFAULT_SETTINGS = {
     "role_view_reports_vendor": "true",
     "role_view_reports_cashier": "false",
     "role_manage_vendors_vendor": "false",
-    "role_manage_vendors_cashier": "false",
+    "role_manage_vendors_cashier": "true",
     "role_manage_rent_vendor": "false",
     "role_manage_rent_cashier": "false",
     "role_import_data_vendor": "false",
@@ -194,6 +194,16 @@ async def get_tax_rate(db: AsyncSession) -> float:
         except (ValueError, TypeError):
             pass
     return settings.tax_rate
+
+
+async def role_allows_manage_vendors(db: AsyncSession, user: Vendor) -> bool:
+    """User Roles → Manage Vendors: cashier column. Admins always allowed."""
+    if user.role == "admin":
+        return True
+    if user.role != "cashier":
+        return False
+    val = await get_setting(db, "role_manage_vendors_cashier", "false")
+    return str(val).lower() in ("true", "1", "yes")
 
 
 @router.get("")
