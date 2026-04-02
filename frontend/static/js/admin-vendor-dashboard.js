@@ -11,7 +11,9 @@
     var _terminalPollInterval = null;
 
     function fmt(v) {
-        return '$' + (parseFloat(v) || 0).toFixed(2);
+        var n = parseFloat(v);
+        if (isNaN(n)) n = 0;
+        return '$' + n.toFixed(2);
     }
 
     /** Coerce API numbers (may be strings) for comparisons and styling */
@@ -20,8 +22,15 @@
         return isNaN(n) ? 0 : n;
     }
 
+    /** Combined = sales + rent; prefer summing parts so negatives are never dropped by a bad combined_balance */
     function combinedAmount(v) {
         if (v == null) return 0;
+        var hasParts =
+            Object.prototype.hasOwnProperty.call(v, 'sales_balance') ||
+            Object.prototype.hasOwnProperty.call(v, 'rent_balance');
+        if (hasParts) {
+            return Math.round((num(v.sales_balance) + num(v.rent_balance)) * 100) / 100;
+        }
         if (v.combined_balance != null && v.combined_balance !== '') return num(v.combined_balance);
         return num(v.balance);
     }
@@ -120,12 +129,12 @@
                     '</td>' +
                     '<td>' +
                     '<div style="font-size:0.75rem;color:var(--text-light)">Sales: ' +
-                    fmt(v.sales_balance || 0) +
+                    fmt(num(v.sales_balance)) +
                     '</div>' +
                     '<div style="font-size:0.75rem;color:var(--text-light)">Rent: <span style="color:' +
                     (num(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--text-light)') +
                     '">' +
-                    fmt(v.rent_balance || 0) +
+                    fmt(num(v.rent_balance)) +
                     '</span></div>' +
                     '<div style="font-weight:600;color:' +
                     (combinedAmount(v) < 0 ? 'var(--danger)' : 'var(--success-light)') +
@@ -160,12 +169,12 @@
                         '</div></div>' +
                         '<div class="vh-mob-bal">' +
                         '<div style="font-size:0.7rem;color:var(--text-light)">Sales: ' +
-                        fmt(v.sales_balance || 0) +
+                        fmt(num(v.sales_balance)) +
                         '</div>' +
                         '<div style="font-size:0.7rem;color:' +
                         (num(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--text-light)') +
                         '">Rent: ' +
-                        fmt(v.rent_balance || 0) +
+                        fmt(num(v.rent_balance)) +
                         '</div>' +
                         '<div style="font-weight:600;color:' +
                         (combinedAmount(v) < 0 ? 'var(--danger)' : 'var(--success-light)') +
@@ -317,12 +326,12 @@
             '<h4 class="vh-detail-h">Balance &amp; Payout</h4>' +
             '<div style="margin:0.5rem 0">' +
             '<div style="font-size:0.85rem;color:var(--text-light);margin-bottom:0.25rem">Sales Balance: <span style="color:var(--gold)">' +
-            fmt(v.sales_balance || 0) +
+            fmt(num(v.sales_balance)) +
             '</span></div>' +
             '<div style="font-size:0.85rem;color:var(--text-light);margin-bottom:0.25rem">Rent Balance: <span style="color:' +
             (num(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--gold)') +
             '">' +
-            fmt(v.rent_balance || 0) +
+            fmt(num(v.rent_balance)) +
             '</span></div>' +
             '<p style="font-size:1.75rem;font-family:EB Garamond,serif;color:' +
             (combinedAmount(v) < 0 ? 'var(--danger)' : 'var(--success-light)') +
@@ -407,7 +416,11 @@
     window.openAdjustFromHub = function (id) {
         var v = findVendor(id);
         if (v && typeof window.openAdjustModal === 'function') {
-            window.openAdjustModal(id, v.name, v.sales_balance != null ? v.sales_balance : v.balance);
+            window.openAdjustModal(
+                id,
+                v.name,
+                v.sales_balance != null && v.sales_balance !== '' ? num(v.sales_balance) : num(v.balance)
+            );
         }
     };
 
