@@ -232,6 +232,11 @@
             var data = await apiGet('/api/v1/pos/end-of-day/reports?limit=100');
             allReports = data.reports || [];
             renderList();
+            var params = new URLSearchParams(window.location.search);
+            var reportId = params.get('report_id');
+            if (reportId) {
+                viewReport(reportId);
+            }
         } catch (err) {
             document.getElementById('report-list').innerHTML = '<div class="no-reports">Failed to load reports: ' + escHtml(err.message || 'Unknown error') + '</div>';
         }
@@ -264,6 +269,11 @@
 
     async function viewReport(id) {
         try {
+            if (history && history.replaceState) {
+                var params = new URLSearchParams(window.location.search);
+                params.set('report_id', id);
+                history.replaceState({}, '', window.location.pathname + '?' + params.toString());
+            }
             var r = await apiGet('/api/v1/pos/end-of-day/reports/' + id);
             document.getElementById('detail-title').textContent = 'End of Day — ' + fmtDate(r.report_date);
             document.getElementById('detail-subtitle').textContent = 'Submitted by ' + (r.submitted_by_name || 'Unknown') + (r.submitted_at ? ' on ' + new Date(r.submitted_at).toLocaleString() : '');
@@ -333,6 +343,9 @@
     }
 
     function showList() {
+        if (history && history.replaceState) {
+            history.replaceState({}, '', window.location.pathname);
+        }
         document.getElementById('detail-view').classList.remove('active');
         document.getElementById('list-view').style.display = 'block';
     }

@@ -1489,11 +1489,38 @@
                     style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Roboto',sans-serif;font-size:0.8rem;padding:8px;border-radius:3px;resize:vertical;box-sizing:border-box"></textarea>
             </div>
             <div id="eod-submit-status" style="display:none;text-align:center;padding:6px;margin-bottom:8px;border-radius:3px;font-size:0.8rem"></div>
+            <div id="eod-report-link-wrap" style="display:none;margin-bottom:10px;text-align:center">
+                <a id="eod-report-link" href="/admin/eod-reports.html" target="_blank" rel="noopener" class="btn btn-outline" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none">Open Saved EOD Report</a>
+            </div>
         </div>
         <div class="modal-actions">
             <button class="cancel-btn" onclick="document.getElementById('eod-modal').classList.add('hidden')">Close</button>
             <button class="confirm-btn" onclick="printEndOfDay()" style="flex:1">Print Report</button>
             <button class="confirm-btn" id="eod-submit-btn" onclick="submitEndOfDay()" style="flex:1;background:var(--success);border-color:var(--success)">Submit &amp; Close Day</button>
+        </div>
+    </div>
+</div>
+
+<!-- Opening Cash Verification Modal -->
+<div class="pos-modal-overlay hidden" id="opening-cash-modal">
+    <div class="pos-modal" style="max-width:460px">
+        <h2>Verify Opening Drawer</h2>
+        <div style="font-size:0.85rem;color:var(--text-light);margin-bottom:1rem;line-height:1.5">
+            The first person to open the POS each day should confirm the starting cash in the register before sales begin.
+        </div>
+        <div style="background:var(--surface-2);padding:0.75rem 0.9rem;margin-bottom:1rem;border:1px solid var(--border)">
+            <div style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Expected Starting Cash</div>
+            <div id="opening-cash-expected" style="font-family:'EB Garamond',serif;font-size:1.6rem;color:var(--gold)">$150.00</div>
+        </div>
+        <label style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px;font-family:'Roboto',sans-serif">Cash in Drawer</label>
+        <input type="number" id="opening-cash-input" min="0" step="0.01" value="150.00"
+            style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.7rem 0.8rem;font-size:1rem;font-family:'Roboto',sans-serif;box-sizing:border-box;margin-bottom:0.75rem">
+        <div id="opening-cash-helper" style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.75rem">
+            Confirm the drawer amount before continuing into the register.
+        </div>
+        <div id="opening-cash-status" style="display:none;padding:0.7rem 0.8rem;margin-bottom:0.75rem;border-radius:4px;font-size:0.82rem"></div>
+        <div class="modal-actions">
+            <button class="confirm-btn" id="opening-cash-confirm-btn" onclick="submitOpeningCashVerification()" style="flex:1;background:var(--success);border-color:var(--success)">Confirm &amp; Continue</button>
         </div>
     </div>
 </div>
@@ -1579,6 +1606,7 @@
     let cartDiscountType = null;
     let cartDiscountValue = 0;
     const TAX_RATE = 0.05;
+    let startingCashStatus = null;
 
     // ── Display preferences (POS) ─────────────────────────────────────────────
     function toggleDisplayPrefs() {
@@ -1651,19 +1679,83 @@
             userNameId: 'cashier-name',
             title: 'POS Access Restricted',
             message: 'Processing sales is not enabled for your current role.'
-        }).then(function(session) {
+        }).then(async function(session) {
             if (!session) return;
             document.getElementById('cashier-name').textContent = session.name || 'Cashier';
             if (session.role === 'admin') {
                 document.getElementById('admin-link').style.display = 'inline';
             }
             window.loadDisplayPrefs();
-            document.getElementById('barcode-input').focus();
+            await checkStartingCashPrompt();
+            if (document.getElementById('opening-cash-modal').classList.contains('hidden')) {
+                document.getElementById('barcode-input').focus();
+            }
             document.getElementById('barcode-input').addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') { e.preventDefault(); addByBarcode(); }
             });
             checkCameraAvailable();
         });
+    }
+
+    async function checkStartingCashPrompt() {
+        try {
+            startingCashStatus = await apiGet('/api/v1/pos/starting-cash/status');
+            if (startingCashStatus && !startingCashStatus.verified) {
+                openStartingCashModal(startingCashStatus);
+            }
+        } catch (err) {
+            console.warn('Unable to load opening cash status', err);
+        }
+    }
+
+    function openStartingCashModal(status) {
+        var expectedAmount = status && typeof status.starting_balance === 'number'
+            ? status.starting_balance
+            : 150;
+        document.getElementById('opening-cash-expected').textContent = '$' + expectedAmount.toFixed(2);
+        document.getElementById('opening-cash-input').value = expectedAmount.toFixed(2);
+        document.getElementById('opening-cash-status').style.display = 'none';
+        document.getElementById('opening-cash-confirm-btn').disabled = false;
+        document.getElementById('opening-cash-confirm-btn').textContent = 'Confirm & Continue';
+        document.getElementById('opening-cash-modal').classList.remove('hidden');
+        setTimeout(function() {
+            document.getElementById('opening-cash-input').focus();
+            document.getElementById('opening-cash-input').select();
+        }, 50);
+    }
+
+    async function submitOpeningCashVerification() {
+        var input = document.getElementById('opening-cash-input');
+        var statusEl = document.getElementById('opening-cash-status');
+        var btn = document.getElementById('opening-cash-confirm-btn');
+        var amount = parseFloat(input.value);
+
+        if (isNaN(amount) || amount < 0) {
+            statusEl.style.display = 'block';
+            statusEl.style.background = 'var(--danger-dark)';
+            statusEl.style.color = 'color-mix(in srgb, var(--danger) 42%, var(--white))';
+            statusEl.textContent = 'Enter a valid opening cash amount.';
+            input.focus();
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Saving...';
+        statusEl.style.display = 'none';
+
+        try {
+            startingCashStatus = await apiFetch('POST', '/api/v1/pos/starting-cash/verify', { amount: amount });
+            document.getElementById('opening-cash-modal').classList.add('hidden');
+            showToast(startingCashStatus.detail || ('Opening drawer verified at $' + amount.toFixed(2)), 'success');
+            document.getElementById('barcode-input').focus();
+        } catch (err) {
+            statusEl.style.display = 'block';
+            statusEl.style.background = 'var(--danger-dark)';
+            statusEl.style.color = 'color-mix(in srgb, var(--danger) 42%, var(--white))';
+            statusEl.textContent = err.message || 'Unable to verify the opening drawer.';
+            btn.disabled = false;
+            btn.textContent = 'Confirm & Continue';
+        }
     }
 
     function handleLogout() {
@@ -3636,6 +3728,7 @@ table { width: 100%; border-collapse: collapse; }
         document.getElementById('eod-modal').classList.remove('hidden');
         document.getElementById('eod-loading').style.display = 'block';
         document.getElementById('eod-content').style.display = 'none';
+        document.getElementById('eod-report-link-wrap').style.display = 'none';
 
         try {
             eodData = await apiGet('/api/v1/pos/end-of-day');
@@ -3688,6 +3781,19 @@ table { width: 100%; border-collapse: collapse; }
                 bkdn.innerHTML = html;
             } else {
                 bkdn.innerHTML = '';
+            }
+
+            if (eodData.submitted_report) {
+                var statusEl = document.getElementById('eod-submit-status');
+                var submittedBy = eodData.submitted_report.submitted_by_name || 'a staff member';
+                statusEl.style.display = 'block';
+                statusEl.style.background = 'var(--success)';
+                statusEl.style.color = 'var(--success-light)';
+                statusEl.textContent = 'This day was already submitted by ' + submittedBy + '.';
+                document.getElementById('eod-submit-btn').disabled = true;
+                document.getElementById('eod-submit-btn').textContent = 'Already Submitted';
+                document.getElementById('eod-report-link').href = '/admin/eod-reports.html?report_id=' + eodData.submitted_report.id;
+                document.getElementById('eod-report-link-wrap').style.display = 'block';
             }
 
             document.getElementById('eod-loading').style.display = 'none';
@@ -3824,18 +3930,20 @@ table { width: 100%; border-collapse: collapse; }
             var nextMsg = resp.next_day_starting_cash != null
                 ? ' Next day starting drawer: $' + Number(resp.next_day_starting_cash).toFixed(2) + '.'
                 : '';
-            statusEl.textContent = (resp.detail || 'Report submitted successfully!') + nextMsg;
+            statusEl.textContent = (resp.detail || 'Report submitted successfully!') + ' Saved to EOD Reports.' + nextMsg;
             btn.textContent = 'Submitted ✓';
-            document.querySelectorAll('#denom-grid input').forEach(inp => { inp.value = '0'; });
-            document.getElementById('eod-notes').value = '';
-            updateCashCount();
-            eodData = null;
-            setTimeout(function () {
-                document.getElementById('eod-modal').classList.add('hidden');
-                statusEl.style.display = 'none';
-                btn.disabled = false;
-                btn.textContent = 'Submit & Close Day';
-            }, 2800);
+            btn.disabled = true;
+            if (resp.report_url) {
+                document.getElementById('eod-report-link').href = resp.report_url;
+                document.getElementById('eod-report-link-wrap').style.display = 'block';
+            }
+            if (eodData) {
+                eodData.submitted_report = {
+                    id: resp.id,
+                    submitted_by_name: document.getElementById('cashier-name').textContent || 'Current user',
+                    submitted_at: resp.submitted_at || null,
+                };
+            }
         } catch (err) {
             statusEl.style.display = 'block';
             statusEl.style.background = 'var(--danger-dark)';

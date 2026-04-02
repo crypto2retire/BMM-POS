@@ -4,6 +4,7 @@ import os
 import uuid
 import base64
 import io
+import json
 import logging
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
@@ -39,6 +40,42 @@ from app.timezone import STORE_TZ
 
 router = APIRouter(prefix="/pos", tags=["pos"])
 logger = logging.getLogger(__name__)
+
+
+def _starting_cash_key(for_date: date) -> str:
+    return "starting_cash_" + for_date.isoformat()
+
+
+def _starting_cash_verified_key(for_date: date) -> str:
+    return "starting_cash_verified_" + for_date.isoformat()
+
+
+async def _get_store_setting_row(db: AsyncSession, key: str) -> Optional[StoreSetting]:
+    result = await db.execute(select(StoreSetting).where(StoreSetting.key == key))
+    return result.scalar_one_or_none()
+
+
+async def _get_starting_cash_amount(db: AsyncSession, for_date: date) -> Decimal:
+    setting = await _get_store_setting_row(db, _starting_cash_key(for_date))
+    if setting and setting.value:
+        try:
+            return Decimal(setting.value).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        except Exception:
+            pass
+    return Decimal("150.00")
+
+
+async def _get_starting_cash_verification(db: AsyncSession, for_date: date) -> Optional[dict]:
+    setting = await _get_store_setting_row(db, _starting_cash_verified_key(for_date))
+    if not setting or not setting.value:
+        return None
+    try:
+        data = json.loads(setting.value)
+    except Exception:
+        return None
+    if not isinstance(data, dict):
+        return None
+    return data
 
 
 def _format_cst(dt):
@@ -876,17 +913,20 @@ async def end_of_day_report(
         si.quantity for sale in sales if not sale.is_voided for si in sale.items
     )
 
-    starting_balance = Decimal("150.00")
-    sb_result = await db.execute(
-        select(StoreSetting).where(StoreSetting.key == "starting_cash_" + target_date.isoformat())
-    )
-    sb_setting = sb_result.scalar_one_or_none()
-    if sb_setting and sb_setting.value:
-        try:
-            starting_balance = Decimal(sb_setting.value)
-        except Exception:
-            pass
+    starting_balance = await _get_starting_cash_amount(db, target_date)
     expected_cash_in_drawer = (starting_balance + total_cash).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+    submitted_report_result = await db.execute(
+        select(EodReport).where(EodReport.report_date == target_date)
+    )
+    submitted_report = submitted_report_result.scalar_one_or_none()
+    submitted_info = None
+    if submitted_report:
+        submitted_info = {
+            "id": submitted_report.id,
+            "submitted_by_name": submitted_report.submitted_by_name,
+            "submitted_at": submitted_report.submitted_at.isoformat() if submitted_report.submitted_at else None,
+        }
 
     return {
         "date": target_date.isoformat(),
@@ -901,6 +941,7 @@ async def end_of_day_report(
         "card": {"total": float(total_card), "count": card_count},
         "split": {"total": float(total_split), "count": split_count},
         "gift_card": {"total": float(total_gift_card), "count": gift_card_count},
+        "submitted_report": submitted_info,
         "cashier_breakdown": [
             {
                 "cashier_id": cid,
@@ -935,10 +976,9 @@ async def set_starting_cash(
 
     store_tz = STORE_TZ
     today = datetime.now(store_tz).date()
-    key = "starting_cash_" + today.isoformat()
+    key = _starting_cash_key(today)
 
-    result = await db.execute(select(StoreSetting).where(StoreSetting.key == key))
-    setting = result.scalar_one_or_none()
+    setting = await _get_store_setting_row(db, key)
     if setting:
         setting.value = str(amount_dec)
     else:
@@ -955,12 +995,91 @@ async def get_starting_cash(
 ):
     store_tz = STORE_TZ
     today = datetime.now(store_tz).date()
-    key = "starting_cash_" + today.isoformat()
-
-    result = await db.execute(select(StoreSetting).where(StoreSetting.key == key))
-    setting = result.scalar_one_or_none()
-    amount = Decimal(setting.value) if setting and setting.value else Decimal("150.00")
+    amount = await _get_starting_cash_amount(db, today)
     return {"starting_balance": float(amount), "date": today.isoformat()}
+
+
+@router.get("/starting-cash/status")
+async def get_starting_cash_status(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
+):
+    today = datetime.now(STORE_TZ).date()
+    amount = await _get_starting_cash_amount(db, today)
+    verification = await _get_starting_cash_verification(db, today)
+    return {
+        "date": today.isoformat(),
+        "starting_balance": float(amount),
+        "verified": bool(verification),
+        "verified_at": verification.get("verified_at") if verification else None,
+        "verified_by": verification.get("verified_by") if verification else None,
+        "verified_by_name": verification.get("verified_by_name") if verification else None,
+        "verified_amount": float(Decimal(str(verification.get("amount")))) if verification and verification.get("amount") is not None else None,
+        "default_expected_amount": 150.0,
+    }
+
+
+@router.post("/starting-cash/verify")
+async def verify_starting_cash(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
+):
+    body = await request.json()
+    amount = body.get("amount")
+    if amount is None:
+        raise HTTPException(status_code=400, detail="amount is required")
+    try:
+        amount_dec = Decimal(str(amount)).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid amount")
+    if amount_dec < 0:
+        raise HTTPException(status_code=400, detail="Amount cannot be negative")
+
+    today = datetime.now(STORE_TZ).date()
+    amount_key = _starting_cash_key(today)
+    verify_key = _starting_cash_verified_key(today)
+
+    amount_setting = await _get_store_setting_row(db, amount_key)
+    if amount_setting:
+        amount_setting.value = str(amount_dec)
+    else:
+        db.add(
+            StoreSetting(
+                key=amount_key,
+                value=str(amount_dec),
+                description=f"Starting cash for {today.isoformat()}",
+            )
+        )
+
+    verified_payload = {
+        "amount": str(amount_dec),
+        "verified_by": current_user.id,
+        "verified_by_name": current_user.name,
+        "verified_at": datetime.now(timezone.utc).isoformat(),
+    }
+    verify_setting = await _get_store_setting_row(db, verify_key)
+    if verify_setting:
+        verify_setting.value = json.dumps(verified_payload)
+    else:
+        db.add(
+            StoreSetting(
+                key=verify_key,
+                value=json.dumps(verified_payload),
+                description=f"Opening drawer verified for {today.isoformat()}",
+            )
+        )
+
+    await db.commit()
+    return {
+        "date": today.isoformat(),
+        "starting_balance": float(amount_dec),
+        "verified": True,
+        "verified_by": current_user.id,
+        "verified_by_name": current_user.name,
+        "verified_at": verified_payload["verified_at"],
+        "detail": f"Opening drawer verified at ${amount_dec:.2f}.",
+    }
 
 
 @router.post("/end-of-day/submit")
@@ -1045,8 +1164,10 @@ async def submit_eod_report(
     return {
         "id": report.id,
         "detail": f"End of Day report for {report_date.isoformat()} submitted successfully.",
+        "report_url": f"/admin/eod-reports.html?report_id={report.id}",
         "next_day": next_date.isoformat(),
         "next_day_starting_cash": float(next_starting),
+        "submitted_at": report.submitted_at.isoformat() if report.submitted_at else None,
     }
 
 
