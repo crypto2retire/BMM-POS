@@ -139,7 +139,7 @@ frontend/
     index.html         ← Admin dashboard
     vendors.html       ← Vendor management + directory + edit + password reset
     rent.html          ← Rent management
-    customers.html     ← Customer management
+    customers.html     ← Legacy URL; redirects to vendors.html
     reports.html       ← Reporting suite
     settings.html      ← Store settings panel
   shop/
