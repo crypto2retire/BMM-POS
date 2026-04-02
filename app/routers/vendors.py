@@ -2,6 +2,7 @@ from datetime import datetime, date
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -17,6 +18,11 @@ from app.routers.auth import get_current_user, require_role, get_password_hash
 from app.routers.settings import role_allows_manage_vendors, role_feature_allowed, require_staff_feature
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
+
+
+class AssistantSettingsUpdate(BaseModel):
+    assistant_name: Optional[str] = None
+    assistant_enabled: Optional[bool] = None
 
 
 async def _can_access_vendor_directory(db: AsyncSession, user: Vendor) -> bool:
@@ -217,6 +223,35 @@ async def update_assistant_name(
         current_user.assistant_name = name
     await db.commit()
     return {"assistant_name": current_user.assistant_name}
+
+
+@router.patch("/me/assistant-settings")
+async def update_assistant_settings(
+    body: AssistantSettingsUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    import re
+
+    if body.assistant_name is not None:
+        name = body.assistant_name.strip()
+        if not name:
+            current_user.assistant_name = None
+        else:
+            if len(name) > 50:
+                raise HTTPException(status_code=400, detail="Name must be 50 characters or less")
+            if not re.match(r"^[a-zA-Z0-9 '\\-\\.!]+$", name):
+                raise HTTPException(status_code=400, detail="Name can only contain letters, numbers, spaces, and basic punctuation")
+            current_user.assistant_name = name
+
+    if body.assistant_enabled is not None:
+        current_user.assistant_enabled = bool(body.assistant_enabled)
+
+    await db.commit()
+    return {
+        "assistant_name": current_user.assistant_name,
+        "assistant_enabled": getattr(current_user, "assistant_enabled", True),
+    }
 
 @router.patch("/me/label-preference")
 async def update_label_preference(

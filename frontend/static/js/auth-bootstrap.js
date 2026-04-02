@@ -67,6 +67,7 @@
             booth_mode: boothMode,
             is_staff: isStaff,
             permissions: permissions,
+            assistant_enabled: data.assistant_enabled !== false,
             theme_preference: data.theme_preference || 'dark',
             font_size_preference: data.font_size_preference || 'medium',
             canAccessVendorBooth: canAccessVendorBooth,
@@ -81,7 +82,7 @@
             canManageStudio: isStaff && permissions.role_manage_studio,
             canInventoryVerify: isStaff && permissions.role_inventory_verify,
             canChangeSettings: role === 'admin',
-            canUseAiAssistant: permissions.role_view_ai_assistant,
+            canUseAiAssistant: permissions.role_view_ai_assistant && data.assistant_enabled !== false,
             canViewPayouts: isStaff && (permissions.role_manage_rent || permissions.role_view_reports)
         };
     }

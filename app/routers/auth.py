@@ -102,6 +102,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
     booth_number = getattr(user, 'booth_number', None)
 
     assistant_name = getattr(user, 'assistant_name', None)
+    assistant_enabled = getattr(user, 'assistant_enabled', True)
 
     token_data = {
         "sub": user.email,
@@ -111,6 +112,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         "is_vendor": is_vendor,
         "booth_number": booth_number,
         "assistant_name": assistant_name,
+        "assistant_enabled": assistant_enabled,
     }
     access_token = create_access_token(data=token_data)
 
@@ -133,6 +135,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         "redirect": redirect,
         "first_login": first_login,
         "assistant_name": assistant_name,
+        "assistant_enabled": assistant_enabled,
     }
 
 @router.get("/me")
@@ -151,6 +154,7 @@ async def get_me(
         "booth_number": current_user.booth_number,
         "is_vendor": getattr(current_user, 'is_vendor', False),
         "assistant_name": getattr(current_user, 'assistant_name', None),
+        "assistant_enabled": getattr(current_user, 'assistant_enabled', True),
         "theme_preference": current_user.theme_preference,
         "font_size_preference": current_user.font_size_preference,
         "sale_notify_preference": current_user.sale_notify_preference,
@@ -211,6 +215,7 @@ async def refresh_token(current_user: Vendor = Depends(get_current_user)):
             "is_vendor": getattr(current_user, 'is_vendor', False) or False,
             "booth_number": getattr(current_user, 'booth_number', None),
             "assistant_name": getattr(current_user, 'assistant_name', None),
+            "assistant_enabled": getattr(current_user, 'assistant_enabled', True),
         }
     )
     return {"access_token": access_token, "token_type": "bearer"}

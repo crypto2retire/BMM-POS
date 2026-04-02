@@ -168,6 +168,26 @@
             color: #5a554d;
             margin-top: 2px;
         }
+        .login-toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            margin-top: 0.95rem;
+            color: #5a554d;
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.86rem;
+        }
+        .login-toggle-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #C9A84C;
+        }
+        .login-toggle-note {
+            margin-top: 0.25rem;
+            color: #7b7468;
+            font-size: 0.74rem;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
@@ -198,6 +218,11 @@
                     autocomplete="current-password">
             </div>
             <button class="btn btn-primary btn-lg btn-full" type="submit" id="login-btn">Sign In</button>
+            <label class="login-toggle-row" for="assistant-device-enabled">
+                <input type="checkbox" id="assistant-device-enabled" checked>
+                <span>AI assistant on this device</span>
+            </label>
+            <div class="login-toggle-note">This only affects this browser. You can still turn the assistant on or off for your account after login.</div>
             <div style="text-align: center; margin-top: 12px;">
                 <a href="/vendor/forgot-password.html" class="forgot-password-link">Forgot your password?</a>
             </div>
@@ -231,7 +256,20 @@
     </div>
 </div>
 <script src="/static/js/api.js"></script>
+<script src="/static/js/assistant-panel.js"></script>
 <script>
+    (function() {
+        var deviceToggle = document.getElementById('assistant-device-enabled');
+        try {
+            deviceToggle.checked = localStorage.getItem('bmm_assistant_device_disabled') !== '1';
+        } catch (e) {}
+        deviceToggle.addEventListener('change', function() {
+            if (typeof window.bmmSetAssistantDeviceEnabled === 'function') {
+                window.bmmSetAssistantDeviceEnabled(deviceToggle.checked);
+            }
+        });
+    })();
+
     function chooseStaffArea() {
         var target = document.getElementById('choice-admin').dataset.target || '/admin/index.html';
         sessionStorage.removeItem('bmm_booth_mode');
@@ -248,9 +286,13 @@
         const email = document.getElementById("email").value;
         const password = document.getElementById("password").value;
         const btn = document.getElementById("login-btn");
+        const assistantDeviceEnabled = document.getElementById("assistant-device-enabled").checked;
         btn.disabled = true;
         btn.textContent = "Signing In…";
         try {
+            if (typeof window.bmmSetAssistantDeviceEnabled === 'function') {
+                window.bmmSetAssistantDeviceEnabled(assistantDeviceEnabled);
+            }
             const res = await fetch("/api/v1/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },

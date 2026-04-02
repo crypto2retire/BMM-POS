@@ -343,7 +343,15 @@
             <h2 class="section-title">AI Assistant</h2>
         </div>
         <div class="card" style="padding:1.25rem 1.5rem;">
-            <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:0.75rem;">Give your AI assistant a custom name. It will introduce itself by this name when helping you manage items.</p>
+            <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:0.75rem;">Turn the assistant on or off for your account, and optionally give it a custom name.</p>
+            <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin-bottom:0.9rem;">
+                <label for="assistant-enabled-toggle" style="font-size:0.72rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;font-family:'Roboto',sans-serif">Assistant</label>
+                <select id="assistant-enabled-toggle" onchange="saveAssistantEnabled(this.value === 'true')" style="padding:0.5rem 0.75rem;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font-size:0.82rem;font-family:'Roboto',sans-serif;min-height:44px">
+                    <option value="true">On</option>
+                    <option value="false">Off</option>
+                </select>
+                <span style="font-size:0.76rem;color:var(--text-light)">This controls the assistant for your account on all devices.</span>
+            </div>
             <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
                 <input type="text" id="assistant-name-input" placeholder="e.g. Rosie, Max, Sage" maxlength="50"
                     style="flex:1;min-width:0;max-width:280px;padding:0.5rem 0.75rem;font-size:0.85rem;background:var(--surface);border:1px solid var(--border);color:var(--text);font-family:'Roboto',sans-serif;">
@@ -935,8 +943,22 @@
 (function() {
     var decoded = parseToken();
     var current = decoded ? decoded.assistant_name || '' : '';
+    var currentEnabled = !decoded || decoded.assistant_enabled !== false;
     var input = document.getElementById('assistant-name-input');
+    var enabledToggle = document.getElementById('assistant-enabled-toggle');
     if (input) input.value = current;
+    if (enabledToggle) enabledToggle.value = currentEnabled ? 'true' : 'false';
+
+    async function refreshAssistantToken(token) {
+        var refreshResp = await fetch('/api/v1/auth/refresh', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        var refreshData = await refreshResp.json();
+        if (refreshResp.ok && refreshData.access_token) {
+            sessionStorage.setItem('bmm_token', refreshData.access_token);
+        }
+    }
 
     async function doSave(name) {
         var statusEl = document.getElementById('assistant-name-status');
@@ -951,14 +973,7 @@
             var data = await resp.json();
             if (!resp.ok) throw new Error(data.detail || 'Failed to save');
 
-            var refreshResp = await fetch('/api/v1/auth/refresh', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            var refreshData = await refreshResp.json();
-            if (refreshResp.ok && refreshData.access_token) {
-                sessionStorage.setItem('bmm_token', refreshData.access_token);
-            }
+            await refreshAssistantToken(token);
 
             var displayName = data.assistant_name || 'Bowenstreet Assistant';
             statusEl.textContent = 'Saved! Your assistant is now "' + displayName + '."';
@@ -986,6 +1001,36 @@
     window.resetAssistantName = function() {
         document.getElementById('assistant-name-input').value = '';
         doSave('');
+    };
+
+    window.saveAssistantEnabled = async function(enabled) {
+        var statusEl = document.getElementById('assistant-name-status');
+        statusEl.style.display = 'none';
+        try {
+            var token = sessionStorage.getItem('bmm_token');
+            var resp = await fetch('/api/v1/vendors/me/assistant-settings', {
+                method: 'PATCH',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ assistant_enabled: !!enabled })
+            });
+            var data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || 'Failed to save');
+
+            await refreshAssistantToken(token);
+
+            statusEl.textContent = data.assistant_enabled === false
+                ? 'Saved. Your AI assistant is off for this account.'
+                : 'Saved. Your AI assistant is on for this account.';
+            statusEl.style.color = 'var(--success-light)';
+            statusEl.style.display = 'block';
+
+            window.location.reload();
+        } catch (e) {
+            if (enabledToggle) enabledToggle.value = enabled ? 'true' : 'false';
+            statusEl.textContent = e.message || 'Something went wrong.';
+            statusEl.style.color = 'var(--danger)';
+            statusEl.style.display = 'block';
+        }
     };
 })();
 </script>

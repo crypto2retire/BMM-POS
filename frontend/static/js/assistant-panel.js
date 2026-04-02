@@ -1,8 +1,24 @@
 (function () {
     'use strict';
 
+    function deviceAssistantEnabled() {
+        try {
+            return localStorage.getItem('bmm_assistant_device_disabled') !== '1';
+        } catch (e) {
+            return true;
+        }
+    }
+
+    window.bmmSetAssistantDeviceEnabled = function (enabled) {
+        try {
+            if (enabled) localStorage.removeItem('bmm_assistant_device_disabled');
+            else localStorage.setItem('bmm_assistant_device_disabled', '1');
+        } catch (e) {}
+    };
+
     window.initAssistantPanel = function (panelContext, opts) {
         opts = opts || {};
+        window.__bmmAssistantInit = { panelContext: panelContext, opts: opts };
         var buttonBottom = opts.buttonBottom || '80px';
         var isFirstLogin = opts.firstLogin || false;
         var assistantName = opts.assistantName || null;
@@ -454,6 +470,7 @@
             buildPanel();
             return;
         }
+        if (!deviceAssistantEnabled()) return;
         var token = sessionStorage.getItem('bmm_token');
         if (!token) return;
         fetch('/api/v1/auth/me', {
@@ -464,6 +481,7 @@
             .then(function (data) {
                 var perms = data.permissions;
                 if (perms && perms.role_view_ai_assistant === false) return;
+                if (data.assistant_enabled === false) return;
                 buildPanel();
             })
             .catch(function () { buildPanel(); });

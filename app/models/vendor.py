@@ -29,6 +29,7 @@ class Vendor(Base):
     label_preference: Mapped[str] = mapped_column(String(20), default="standard", nullable=False)
     pdf_label_size: Mapped[str] = mapped_column(String(30), default="2.25x1.25", nullable=False)
     assistant_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    assistant_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, server_default=text("true"))
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     theme_preference: Mapped[str] = mapped_column(String(10), default="dark", nullable=False, server_default="dark")
     font_size_preference: Mapped[str] = mapped_column(String(10), default="medium", nullable=False, server_default="medium")

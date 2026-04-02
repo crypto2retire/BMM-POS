@@ -125,6 +125,10 @@ async def lifespan(app: FastAPI):
             ))
             await session.execute(text(
                 "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
+                "assistant_enabled BOOLEAN NOT NULL DEFAULT true"
+            ))
+            await session.execute(text(
+                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
                 "notes TEXT"
             ))
             await session.execute(text(

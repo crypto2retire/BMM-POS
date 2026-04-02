@@ -59,6 +59,7 @@ class VendorResponse(BaseModel):
     label_preference: Optional[str] = "standard"
     pdf_label_size: Optional[str] = "2.25x1.25"
     assistant_name: Optional[str] = None
+    assistant_enabled: Optional[bool] = True
     notes: Optional[str] = None
     theme_preference: Optional[str] = "dark"
     font_size_preference: Optional[str] = "medium"
