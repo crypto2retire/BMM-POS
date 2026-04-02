@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models.vendor import Vendor, VendorBalance, BalanceAdjustment
+from app.models.rent import RentPayment
 from app.schemas.vendor import (
     VendorCreate, VendorUpdate, VendorResponse, VendorBalanceResponse,
     BalanceAdjustRequest, BalanceAdjustmentResponse,
@@ -16,6 +17,23 @@ from app.routers.auth import get_current_user, require_role, get_password_hash, 
 from app.routers.settings import role_allows_manage_vendors, role_feature_allowed
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
+
+
+def _display_rent_balance_for_admin_list(
+    rent_ledger: Decimal,
+    monthly_rent: Decimal,
+    current_month_rent_paid: bool,
+) -> Decimal:
+    """
+    Match admin vendor hub / vendor-overview: when this month's rent is not paid,
+    net monthly_rent from ledger so balance shows negative rent owed (e.g. 0 - 200 = -200).
+    """
+    rl = rent_ledger if rent_ledger is not None else Decimal("0.00")
+    mr = monthly_rent if monthly_rent is not None else Decimal("0.00")
+    if mr > 0 and not current_month_rent_paid:
+        return (rl - mr).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    return rl.quantize(Decimal("0.01"), ROUND_HALF_UP)
+
 
 @router.get("/", response_model=List[VendorResponse])
 async def list_vendors(
@@ -43,12 +61,26 @@ async def list_vendors(
             row.rent_balance if row.rent_balance is not None else Decimal("0.00")
         )
 
+    today = date.today()
+    current_period = date(today.year, today.month, 1)
+    rp_result = await db.execute(
+        select(RentPayment.vendor_id, RentPayment.status).where(
+            RentPayment.period_month == current_period
+        )
+    )
+    paid_rent_vendor_ids = {
+        row.vendor_id for row in rp_result.all() if row.status == "paid"
+    }
+
     for v in vendors:
         sb = balance_map.get(v.id, Decimal("0.00"))
-        rb = rent_balance_map.get(v.id, Decimal("0.00"))
+        rb_ledger = rent_balance_map.get(v.id, Decimal("0.00"))
+        monthly = v.monthly_rent or Decimal("0.00")
+        rent_paid = v.id in paid_rent_vendor_ids
+        rb_disp = _display_rent_balance_for_admin_list(rb_ledger, monthly, rent_paid)
         v.sales_balance = sb
-        v.rent_balance = rb
-        v.current_balance = sb + rb
+        v.rent_balance = rb_disp
+        v.current_balance = (sb + rb_disp).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
     return vendors
 
@@ -107,18 +139,31 @@ async def get_vendor(
         select(VendorBalance).where(VendorBalance.vendor_id == vendor_id)
     )
     bal_row = bal_result.scalar_one_or_none()
-    if bal_row:
-        vendor.sales_balance = (
-            bal_row.balance if bal_row.balance is not None else Decimal("0.00")
+    sb = (
+        bal_row.balance if bal_row and bal_row.balance is not None else Decimal("0.00")
+    )
+    rb_ledger = (
+        bal_row.rent_balance
+        if bal_row and bal_row.rent_balance is not None
+        else Decimal("0.00")
+    )
+
+    today = date.today()
+    current_period = date(today.year, today.month, 1)
+    rp_one = await db.execute(
+        select(RentPayment).where(
+            RentPayment.vendor_id == vendor_id,
+            RentPayment.period_month == current_period,
         )
-        vendor.rent_balance = (
-            bal_row.rent_balance if bal_row.rent_balance is not None else Decimal("0.00")
-        )
-        vendor.current_balance = vendor.sales_balance + vendor.rent_balance
-    else:
-        vendor.sales_balance = Decimal("0.00")
-        vendor.rent_balance = Decimal("0.00")
-        vendor.current_balance = Decimal("0.00")
+    )
+    rp_row = rp_one.scalar_one_or_none()
+    rent_paid = rp_row is not None and rp_row.status == "paid"
+    monthly = vendor.monthly_rent or Decimal("0.00")
+    rb_disp = _display_rent_balance_for_admin_list(rb_ledger, monthly, rent_paid)
+
+    vendor.sales_balance = sb
+    vendor.rent_balance = rb_disp
+    vendor.current_balance = (sb + rb_disp).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
     return vendor
 

@@ -605,6 +605,12 @@
         return `<span class="role-badge ${cls}">${r}</span>`;
     }
 
+    /** API may send negative combined balance as number or string; avoid (x||0) which breaks -0 */
+    function formatBalanceAmount(raw) {
+        const n = parseFloat(raw);
+        return (isNaN(n) ? 0 : n).toFixed(2);
+    }
+
     function toggleBoothFields() {
         const role = document.getElementById('e-role').value;
         const flagRow = document.getElementById('e-vendor-flag-row');
@@ -682,7 +688,7 @@
                 </td>
                 <td>${esc(v.booth_number || '—')}</td>
                 <td>${v.monthly_rent ? '$' + parseFloat(v.monthly_rent).toFixed(2) : '—'}</td>
-                <td><strong>$${parseFloat(v.current_balance || 0).toFixed(2)}</strong></td>
+                <td><strong>$${formatBalanceAmount(v.current_balance)}</strong></td>
                 <td>${roleBadge(v.role)}</td>
                 <td>${statusBadge(v.status)}</td>
                 <td>
@@ -712,7 +718,7 @@
                     </div>
                     <div class="vendor-card-right">
                         ${statusBadge(v.status)}
-                        <span class="vendor-card-balance">$${parseFloat(v.current_balance || 0).toFixed(2)}</span>
+                        <span class="vendor-card-balance">$${formatBalanceAmount(v.current_balance)}</span>
                         <span class="vendor-card-chevron">&rsaquo;</span>
                     </div>
                 </div>
@@ -787,7 +793,7 @@
         editingVendor = v;
 
         document.getElementById('detail-name').textContent = v.name;
-        document.getElementById('detail-balance').textContent = '$' + parseFloat(v.current_balance || 0).toFixed(2);
+        document.getElementById('detail-balance').textContent = '$' + formatBalanceAmount(v.current_balance);
         document.getElementById('detail-since').textContent = v.created_at ? new Date(v.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—';
 
         // Load monthly sales
