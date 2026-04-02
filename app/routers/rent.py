@@ -15,7 +15,7 @@ router = APIRouter(prefix="/vendor", tags=["vendor-rent"])
 
 
 def _has_vendor_booth_access(user: Vendor) -> bool:
-    return user.role in ("vendor", "admin") or bool(getattr(user, "is_vendor", False))
+    return user.role == "vendor" or bool(getattr(user, "is_vendor", False))
 
 
 @router.get("/rent-status")

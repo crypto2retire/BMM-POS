@@ -29,6 +29,18 @@ MAX_PHOTOS = 8
 PHOTO_STALE_DAYS = 60
 
 
+def _has_vendor_booth_access(user: Vendor) -> bool:
+    return user.role == "vendor" or bool(getattr(user, "is_vendor", False))
+
+
+async def require_vendor_booth_user(
+    current_user: Vendor = Depends(get_current_user),
+) -> Vendor:
+    if not _has_vendor_booth_access(current_user):
+        raise HTTPException(status_code=403, detail="Vendor booth access required.")
+    return current_user
+
+
 class ShowcaseResponse(BaseModel):
     id: int
     vendor_id: int
@@ -120,7 +132,7 @@ def _to_response(sc: BoothShowcase, item_count: int = 0) -> dict:
 @router.get("/mine")
 async def get_my_showcase(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_vendor_booth_user),
 ):
     result = await db.execute(
         select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
@@ -171,7 +183,7 @@ async def get_my_showcase(
 async def update_my_showcase(
     data: ShowcaseUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_vendor_booth_user),
 ):
     result = await db.execute(
         select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
@@ -238,7 +250,7 @@ async def update_my_showcase(
 async def upload_showcase_photo(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_vendor_booth_user),
 ):
     result = await db.execute(
         select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
@@ -304,7 +316,7 @@ async def upload_showcase_photo(
 async def delete_showcase_photo(
     photo_url: str = Body(..., embed=True),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_vendor_booth_user),
 ):
     result = await db.execute(
         select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
@@ -346,7 +358,7 @@ async def delete_showcase_photo(
 async def upload_showcase_video(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_vendor_booth_user),
 ):
     result = await db.execute(
         select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
@@ -397,7 +409,7 @@ async def upload_showcase_video(
 @router.delete("/mine/video")
 async def delete_showcase_video(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_vendor_booth_user),
 ):
     result = await db.execute(
         select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
@@ -430,7 +442,7 @@ async def delete_showcase_video(
 @router.post("/mine/ai-description")
 async def generate_ai_description(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_vendor_booth_user),
 ):
     result = await db.execute(
         select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
@@ -575,7 +587,7 @@ async def get_public_showcase(
 @router.get("/stale-check")
 async def check_stale_photos(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_vendor_booth_user),
 ):
     result = await db.execute(
         select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
@@ -602,7 +614,7 @@ RESERVED_SLUGS = {"admin", "pos", "vendor", "shop", "api", "static", "login", "s
 async def update_landing_slug(
     data: LandingSlugUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_vendor_booth_user),
 ):
     slug = data.slug.strip().lower()
     slug = re.sub(r'[^a-z0-9\-]', '', slug)
@@ -763,7 +775,7 @@ async def get_landing_page(
 @router.post("/mine/ai-landing-about")
 async def ai_generate_landing_about(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_vendor_booth_user),
 ):
     result = await db.execute(
         select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)

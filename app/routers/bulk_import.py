@@ -10,8 +10,8 @@ from sqlalchemy import select, func, text
 from app.database import get_db
 from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
-from app.routers.auth import get_current_user, get_password_hash
-from app.routers.settings import role_feature_allowed
+from app.routers.auth import get_password_hash, require_admin
+from app.routers.settings import require_staff_feature
 from app.services.barcode import generate_sku, generate_short_barcode
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -32,16 +32,8 @@ def _clean(val):
 async def bulk_import_vendors(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_import_data")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-    if not await role_feature_allowed(db, current_user, "role_import_data"):
-        raise HTTPException(
-            status_code=403,
-            detail="Bulk import is disabled for your role in Settings → User Roles.",
-        )
-
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Please upload a CSV file")
 
@@ -169,16 +161,8 @@ async def bulk_import_vendors(
 async def bulk_import_inventory(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_import_data")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-    if not await role_feature_allowed(db, current_user, "role_import_data"):
-        raise HTTPException(
-            status_code=403,
-            detail="Bulk import is disabled for your role in Settings → User Roles.",
-        )
-
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Please upload a CSV file")
 
@@ -413,16 +397,8 @@ async def bulk_import_inventory(
 @router.post("/clear-test-data")
 async def clear_test_data(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_admin),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-    if not await role_feature_allowed(db, current_user, "role_import_data"):
-        raise HTTPException(
-            status_code=403,
-            detail="Bulk import is disabled for your role in Settings → User Roles.",
-        )
-
     from app.models.sale import Sale, SaleItem
 
     sale_count_result = await db.execute(select(Sale))
@@ -473,16 +449,8 @@ async def clear_test_data(
 async def fix_barcodes_from_ricochet(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_import_data")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-    if not await role_feature_allowed(db, current_user, "role_import_data"):
-        raise HTTPException(
-            status_code=403,
-            detail="Bulk import is disabled for your role in Settings → User Roles.",
-        )
-
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Please upload a CSV file")
 
@@ -608,16 +576,8 @@ async def fix_barcodes_from_ricochet(
 async def batch_import_items(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_import_data")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-    if not await role_feature_allowed(db, current_user, "role_import_data"):
-        raise HTTPException(
-            status_code=403,
-            detail="Bulk import is disabled for your role in Settings → User Roles.",
-        )
-
     if not file.filename or not file.filename.lower().endswith(".csv"):
         raise HTTPException(status_code=400, detail="Please upload a CSV file")
 
