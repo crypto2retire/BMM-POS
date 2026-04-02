@@ -288,12 +288,113 @@
             padding: 1px 4px;
         }
 
+        .mobile-tool-drawer {
+            margin-bottom: 0.95rem;
+        }
+        .mobile-tool-drawer-toggle {
+            display: none;
+            width: 100%;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.75rem 0.9rem;
+            background: var(--surface);
+            border: 1px solid var(--warm-border);
+            color: var(--text);
+            font-size: 0.74rem;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            cursor: pointer;
+        }
+        .mobile-tool-drawer-toggle span:last-child {
+            color: var(--gold);
+            font-size: 0.9rem;
+            line-height: 1;
+        }
+        .mobile-tool-drawer-body {
+            display: block;
+        }
+
         @media (min-width: 768px) {
             .batch-mobile-only { display: none !important; }
         }
         @media (max-width: 767px) {
             .batch-desktop-only { display: none !important; }
             .batch-actions-inline { gap: 0.5rem; }
+            .page-header {
+                align-items: stretch;
+            }
+            .page-header .btn {
+                width: 100%;
+            }
+            .mobile-tool-drawer-toggle {
+                display: flex;
+            }
+            .mobile-tool-drawer-body {
+                display: none;
+                padding: 0.85rem;
+                background: var(--surface);
+                border: 1px solid var(--border);
+                border-top: none;
+            }
+            .mobile-tool-drawer.open .mobile-tool-drawer-body {
+                display: block;
+            }
+            .mobile-tool-drawer.open .mobile-tool-drawer-toggle span:last-child {
+                transform: rotate(180deg);
+            }
+            #vendor-filter-wrap,
+            #bulk-status-bar,
+            .filter-label-bar {
+                margin-bottom: 0;
+            }
+            .mobile-tool-drawer-body > * + * {
+                margin-top: 0.85rem;
+            }
+            .filter-label-bar {
+                align-items: stretch !important;
+            }
+            .filter-label-bar > div {
+                width: 100%;
+            }
+            .filter-label-bar label {
+                display: block;
+                margin-bottom: 0.35rem;
+            }
+            .filter-label-bar select {
+                width: 100% !important;
+                min-height: 42px;
+            }
+            .status-filter-bar {
+                width: 100%;
+            }
+            .status-filter-bar button {
+                flex: 1 1 0;
+                min-height: 42px;
+            }
+            .items-toolbar {
+                gap: 0.6rem;
+                padding: 0.85rem;
+                background: color-mix(in srgb, var(--surface) 92%, transparent);
+                border: 1px solid var(--border);
+            }
+            .items-toolbar .search-input {
+                order: -2;
+            }
+            .items-toolbar > select {
+                flex: 1 1 calc(50% - 0.3rem);
+                min-height: 42px;
+            }
+            .items-toolbar .view-toggle {
+                width: 100%;
+                margin-left: 0;
+            }
+            .items-toolbar .view-toggle button {
+                flex: 1 1 0;
+                min-height: 42px;
+            }
         }
     </style>
 </head>
@@ -326,14 +427,6 @@
 
     <div class="ornament">&loz;</div>
 
-    <!-- vendor filter (admin/cashier) -->
-    <div id="vendor-filter-wrap" class="vendor-filter-bar" style="display:none">
-        <label>Vendor:</label>
-        <select class="form-control" id="vendor-filter" onchange="onVendorChange()" style="max-width:260px">
-            <option value="">All Vendors</option>
-        </select>
-    </div>
-
     <!-- batch actions bar -->
     <div id="batch-actions-bar" style="display:none; align-items:center; gap:0.75rem; margin-bottom:1rem; padding:0.75rem 1rem; background:var(--surface); border:1px solid var(--warm-border); flex-wrap:wrap">
         <span style="font-size:0.8rem; color:var(--text)"><strong id="selected-count">0</strong> selected</span>
@@ -365,28 +458,44 @@
         <button class="btn btn-primary" style="font-size:0.72rem; padding:0.3rem 0.8rem; margin-left:auto">Select &amp; Print</button>
     </div>
 
-    <div id="bulk-status-bar" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap">
-        <button class="btn btn-outline" onclick="bulkSetStatus('active')" style="font-size:0.72rem; padding:0.35rem 0.8rem">Mark All For Sale</button>
-        <button class="btn btn-outline" onclick="bulkSetStatus('inactive')" style="font-size:0.72rem; padding:0.35rem 0.8rem">Mark All Not For Sale</button>
-    </div>
+    <div class="mobile-tool-drawer" id="mobile-tool-drawer">
+        <button type="button" class="mobile-tool-drawer-toggle" id="mobile-tool-drawer-toggle" onclick="toggleMobileToolDrawer()" aria-expanded="false">
+            <span>Filters, labels &amp; bulk tools</span>
+            <span>⌄</span>
+        </button>
+        <div class="mobile-tool-drawer-body" id="mobile-tool-drawer-body">
+            <!-- vendor filter (admin/cashier) -->
+            <div id="vendor-filter-wrap" class="vendor-filter-bar" style="display:none">
+                <label>Vendor:</label>
+                <select class="form-control" id="vendor-filter" onchange="onVendorChange()" style="max-width:260px">
+                    <option value="">All Vendors</option>
+                </select>
+            </div>
 
-    <div class="filter-label-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem">
-        <div class="status-filter-bar" id="status-filter-bar" style="margin-bottom:0">
-            <button class="active" data-status="active" onclick="setStatusFilter('active')">For Sale</button>
-            <button data-status="inactive" onclick="setStatusFilter('inactive')">Not For Sale</button>
-            <button data-status="all" onclick="setStatusFilter('all')">All</button>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px">
-            <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Label Type:</label>
-            <select id="label-pref-select" class="form-control" onchange="saveLabelPref()" style="width:auto;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
-                <option value="standard">Standard PDF</option>
-                <option value="dymo">Dymo LabelWriter</option>
-            </select>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px" id="label-size-container">
-            <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Label Size:</label>
-            <select id="label-size-select" class="form-control" onchange="saveLabelSize()" style="width:auto;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
-            </select>
+            <div id="bulk-status-bar" style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem; flex-wrap:wrap">
+                <button class="btn btn-outline" onclick="bulkSetStatus('active')" style="font-size:0.72rem; padding:0.35rem 0.8rem">Mark All For Sale</button>
+                <button class="btn btn-outline" onclick="bulkSetStatus('inactive')" style="font-size:0.72rem; padding:0.35rem 0.8rem">Mark All Not For Sale</button>
+            </div>
+
+            <div class="filter-label-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem">
+                <div class="status-filter-bar" id="status-filter-bar" style="margin-bottom:0">
+                    <button class="active" data-status="active" onclick="setStatusFilter('active')">For Sale</button>
+                    <button data-status="inactive" onclick="setStatusFilter('inactive')">Not For Sale</button>
+                    <button data-status="all" onclick="setStatusFilter('all')">All</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px">
+                    <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Label Type:</label>
+                    <select id="label-pref-select" class="form-control" onchange="saveLabelPref()" style="width:auto;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
+                        <option value="standard">Standard PDF</option>
+                        <option value="dymo">Dymo LabelWriter</option>
+                    </select>
+                </div>
+                <div style="display:flex;align-items:center;gap:6px" id="label-size-container">
+                    <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Label Size:</label>
+                    <select id="label-size-select" class="form-control" onchange="saveLabelSize()" style="width:auto;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
+                    </select>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -754,11 +863,37 @@
     function toggleNav() {
         document.getElementById('main-nav').classList.toggle('open');
     }
+    function toggleMobileToolDrawer(forceOpen) {
+        const drawer = document.getElementById('mobile-tool-drawer');
+        const button = document.getElementById('mobile-tool-drawer-toggle');
+        if (!drawer || !button || window.innerWidth >= 768) return;
+        const shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !drawer.classList.contains('open');
+        drawer.classList.toggle('open', shouldOpen);
+        button.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+    }
     document.addEventListener('click', function(e) {
         const nav = document.getElementById('main-nav');
         const btn = document.getElementById('hamburger-btn');
         if (nav && btn && !nav.contains(e.target) && !btn.contains(e.target)) {
             nav.classList.remove('open');
+        }
+        const drawer = document.getElementById('mobile-tool-drawer');
+        const drawerBtn = document.getElementById('mobile-tool-drawer-toggle');
+        if (
+            drawer && drawerBtn && window.innerWidth < 768 &&
+            drawer.classList.contains('open') &&
+            !drawer.contains(e.target) &&
+            !drawerBtn.contains(e.target)
+        ) {
+            toggleMobileToolDrawer(false);
+        }
+    });
+    window.addEventListener('resize', function() {
+        if (window.innerWidth >= 768) {
+            const drawer = document.getElementById('mobile-tool-drawer');
+            const button = document.getElementById('mobile-tool-drawer-toggle');
+            if (drawer) drawer.classList.remove('open');
+            if (button) button.setAttribute('aria-expanded', 'false');
         }
     });
 

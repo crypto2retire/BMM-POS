@@ -25,6 +25,39 @@
         .rent-badge--paid { background: var(--success); color: var(--white); }
         .rent-badge--pending { background: var(--warning); color: #1a1a1d; }
         .rent-badge--unpaid { background: var(--danger); color: var(--white); }
+        .vendor-quick-actions {
+            display: none;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        .vendor-quick-link {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            padding: 0.9rem 1rem;
+            background: var(--surface);
+            border: 1px solid var(--warm-border);
+            color: var(--text);
+            text-decoration: none;
+            min-height: 88px;
+            justify-content: center;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+        }
+        .vendor-quick-link strong {
+            font-size: 0.78rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-family: 'Roboto', sans-serif;
+            color: var(--gold);
+        }
+        .vendor-quick-link span {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            line-height: 1.4;
+        }
         @media (max-width: 767px) {
             .rent-card-layout {
                 flex-direction: column !important;
@@ -32,6 +65,8 @@
                 gap: 1rem !important;
             }
             .rent-card-layout .btn { width: 100%; }
+            .vendor-quick-actions { display: grid; }
+            #mobile-add-btn { display: none !important; }
         }
     </style>
 </head>
@@ -66,6 +101,25 @@
         style="display:none; margin-bottom:1rem; font-size:1rem; letter-spacing:0.08em">
         + Add New Item
     </a>
+
+    <div class="vendor-quick-actions" id="mobile-quick-actions">
+        <a href="/vendor/items.html" class="vendor-quick-link">
+            <strong>Add Item</strong>
+            <span>List inventory fast from your phone.</span>
+        </a>
+        <a href="/vendor/booth-showcase.html" class="vendor-quick-link">
+            <strong>My Booth</strong>
+            <span>Refresh your showcase photos and description.</span>
+        </a>
+        <button type="button" class="vendor-quick-link" onclick="scrollToDashSection('pay-rent-section')">
+            <strong>Rent</strong>
+            <span>Jump straight to your monthly status and payment link.</span>
+        </button>
+        <button type="button" class="vendor-quick-link" onclick="scrollToDashSection('assistant-section')">
+            <strong>AI Help</strong>
+            <span>Set your assistant name and jump into item help.</span>
+        </button>
+    </div>
 
     <div class="page-header">
         <div>
@@ -132,7 +186,7 @@
 
     <div class="ornament">&loz;</div>
 
-    <div class="dash-section" style="margin-bottom:1.5rem">
+    <div class="dash-section" id="display-settings-section" style="margin-bottom:1.5rem">
         <div class="dash-section-title" style="font-family:'EB Garamond',Georgia,serif; font-size:1.15rem; font-weight:500; color:var(--text); margin-bottom:1rem">Display Settings</div>
         <div style="display:flex; gap:1.5rem; flex-wrap:wrap; align-items:flex-start">
             <div>
@@ -166,7 +220,7 @@
         </div>
     </div>
 
-    <div class="section">
+    <div class="section" id="assistant-section">
         <div class="section-header">
             <h2 class="section-title">AI Assistant</h2>
         </div>
@@ -262,6 +316,12 @@
         window.bmmAuth.logout();
     }
 
+    function scrollToDashSection(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     function toggleNav() {
         document.getElementById('main-nav').classList.toggle('open');
     }
@@ -338,18 +398,21 @@
         const cardsEl = document.getElementById('items-cards');
         const tableWrap = document.getElementById('items-table-wrap');
         const mobileBtn = document.getElementById('mobile-add-btn');
+        const mobileQuickActions = document.getElementById('mobile-quick-actions');
         const desktopBtn = document.getElementById('desktop-manage-btn');
 
         if (mobile) {
             cardsEl.style.display = 'block';
             tableWrap.style.display = 'none';
-            mobileBtn.style.display = 'flex';
+            mobileBtn.style.display = 'none';
+            mobileQuickActions.style.display = 'grid';
             desktopBtn.style.display = 'none';
             cardsEl.innerHTML = `<div class="item-cards-grid">${renderItemCards(items)}</div>`;
         } else {
             cardsEl.style.display = 'none';
             tableWrap.style.display = 'block';
             mobileBtn.style.display = 'none';
+            mobileQuickActions.style.display = 'none';
             desktopBtn.style.display = '';
             document.getElementById('items-table-body').innerHTML = renderItemTable(items);
         }

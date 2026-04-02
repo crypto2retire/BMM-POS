@@ -22,6 +22,36 @@
             color: var(--text-light);
             margin-bottom: 1.25rem;
         }
+        .dashboard-quick-links {
+            display: none;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1.1rem;
+        }
+        .dashboard-quick-link {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 0.2rem;
+            padding: 0.9rem 1rem;
+            background: var(--surface);
+            border: 1px solid var(--warm-border);
+            color: var(--text);
+            text-decoration: none;
+            min-height: 88px;
+        }
+        .dashboard-quick-link strong {
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-family: 'Roboto', sans-serif;
+            color: var(--gold);
+        }
+        .dashboard-quick-link span {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            line-height: 1.4;
+        }
 
         .period-tabs {
             display: flex;
@@ -263,6 +293,31 @@
 
         .vendor-hub-section { margin-bottom: 1.75rem; }
         .vendor-action-bar { display: flex; flex-wrap: wrap; gap: 0.65rem; align-items: center; margin-bottom: 1rem; }
+        .vendor-action-primary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            align-items: center;
+        }
+        .vendor-action-secondary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            align-items: center;
+        }
+        .vendor-action-more {
+            display: none;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            padding: 0.55rem 1rem;
+            font-size: 0.74rem;
+            font-family: 'Roboto', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            min-height: 44px;
+            cursor: pointer;
+        }
         .vendor-action-bar .process-btn {
             background: color-mix(in srgb, var(--success-light) 12%, transparent);
             color: var(--success-light);
@@ -343,8 +398,25 @@
             .vh-detail-grid { grid-template-columns: 1fr; }
             #vendor-hub-table-wrap { display: none; }
             .vendor-hub-cards-mobile { display: flex; }
-            .vendor-action-bar { flex-direction: column; align-items: stretch; }
+            .dashboard-quick-links { display: grid; }
+            .vendor-action-bar { align-items: stretch; }
+            .vendor-action-primary {
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .vendor-action-secondary {
+                width: 100%;
+                display: none;
+                flex-direction: column;
+                align-items: stretch;
+                padding-top: 0.1rem;
+            }
+            .vendor-action-bar.open .vendor-action-secondary {
+                display: flex;
+            }
             .vendor-action-bar button { width: 100%; text-align: center; }
+            .vendor-action-more { display: inline-flex; align-items: center; justify-content: center; width: 100%; }
             #tab-rent-payouts .table-wrapper {
                 display: block;
                 overflow-x: auto;
@@ -500,6 +572,24 @@
 
     <div class="dash-greeting" id="greeting">Welcome back</div>
     <div class="dash-sub" id="dash-sub">Here's how things are going so far today</div>
+    <div class="dashboard-quick-links">
+        <a href="/admin/vendors.html" class="dashboard-quick-link">
+            <strong>Vendors</strong>
+            <span>Jump into vendor accounts, balances, and roles.</span>
+        </a>
+        <a href="/pos/index.html" class="dashboard-quick-link">
+            <strong>POS</strong>
+            <span>Open the register and in-store sales tools.</span>
+        </a>
+        <a href="/admin/reports.html" class="dashboard-quick-link">
+            <strong>Reports</strong>
+            <span>Check store performance and end-of-day history.</span>
+        </a>
+        <a href="/admin/rent.html" class="dashboard-quick-link">
+            <strong>Rent</strong>
+            <span>Review rent status and payouts in one tap.</span>
+        </a>
+    </div>
 
     <div class="main-tabs">
         <button type="button" class="main-tab active" onclick="switchMainTab('dashboard',this)">Dashboard</button>
@@ -534,13 +624,16 @@
             <h2 class="section-title" style="margin:0"><span id="vendor-period-label">Vendor operations</span></h2>
             <a href="/admin/vendors.html" class="btn btn-outline btn-sm" style="font-size:0.78rem;text-decoration:none">Manage vendors &amp; roles</a>
         </div>
-        <div class="vendor-action-bar">
-            <span id="vh-processed-badge">Already processed this month</span>
-            <span id="vendor-hub-admin-actions" style="display:inline-flex;flex-wrap:wrap;gap:0.5rem;align-items:center">
-            <button type="button" id="vh-process-btn" class="process-btn" onclick="window.confirmProcessPayoutsHub()">Process Payouts</button>
-            <button type="button" class="reminder-btn" onclick="window.sendRentRemindersHub()">Send Rent Reminders</button>
-            <button type="button" class="reminder-btn reminder-btn--green" onclick="window.sendWeeklyReportsHub()">Send Weekly Reports</button>
-            </span>
+        <div class="vendor-action-bar" id="vendor-action-bar">
+            <div class="vendor-action-primary">
+                <span id="vh-processed-badge">Already processed this month</span>
+                <button type="button" id="vh-process-btn" class="process-btn" onclick="window.confirmProcessPayoutsHub()">Process Payouts</button>
+            </div>
+            <button type="button" class="vendor-action-more" id="vendor-action-more" onclick="toggleVendorActionMore()" aria-expanded="false">More Vendor Actions</button>
+            <div class="vendor-action-secondary" id="vendor-hub-admin-actions">
+                <button type="button" class="reminder-btn" id="vh-rent-reminders-btn" onclick="window.sendRentRemindersHub()">Send Rent Reminders</button>
+                <button type="button" class="reminder-btn reminder-btn--green" id="vh-weekly-reports-btn" onclick="window.sendWeeklyReportsHub()">Send Weekly Reports</button>
+            </div>
         </div>
         <div class="store-summary" style="margin-bottom:1rem">
             <div class="sum-card"><div class="sum-label">Gross balances</div><div class="sum-value" id="vh-stat-gross">&mdash;</div></div>
@@ -618,7 +711,7 @@
             <h2 class="section-title">Online Orders <span id="pending-orders-badge" style="display:none;background:var(--danger);color:var(--white);font-size:0.7rem;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle">0 new</span></h2>
         </div>
         <div class="card">
-            <div style="display:flex;gap:8px;margin-bottom:1rem;padding:0.75rem">
+            <div style="display:flex;gap:8px;margin-bottom:1rem;padding:0.75rem;flex-wrap:wrap">
                 <button onclick="loadAdminOrders('pending')" class="btn btn-sm" id="admin-filter-pending" style="background:color-mix(in srgb, var(--warning) 55%, var(--bg));color:var(--charcoal-deep)">Pending</button>
                 <button onclick="loadAdminOrders('ready')" class="btn btn-sm" id="admin-filter-ready">Ready</button>
                 <button onclick="loadAdminOrders('completed')" class="btn btn-sm" id="admin-filter-completed">Completed</button>
@@ -999,6 +1092,34 @@
     function toggleMobileNav() {
         document.getElementById('mobile-nav').classList.toggle('open');
     }
+
+    function toggleVendorActionMore(forceOpen) {
+        var bar = document.getElementById('vendor-action-bar');
+        var btn = document.getElementById('vendor-action-more');
+        if (!bar || !btn || window.innerWidth >= 768) return;
+        var shouldOpen = typeof forceOpen === 'boolean' ? forceOpen : !bar.classList.contains('open');
+        bar.classList.toggle('open', shouldOpen);
+        btn.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+    }
+
+    function syncVendorActionVisibility(session) {
+        var processBtn = document.getElementById('vh-process-btn');
+        var rentReminderBtn = document.getElementById('vh-rent-reminders-btn');
+        var weeklyReportsBtn = document.getElementById('vh-weekly-reports-btn');
+        var moreBtn = document.getElementById('vendor-action-more');
+
+        if (processBtn) processBtn.style.display = session.canManageRent ? '' : 'none';
+        if (rentReminderBtn) rentReminderBtn.style.display = session.canManageRent ? '' : 'none';
+        if (weeklyReportsBtn) weeklyReportsBtn.style.display = session.canViewReports ? '' : 'none';
+
+        if (moreBtn) {
+            var hasSecondaryActions =
+                (rentReminderBtn && rentReminderBtn.style.display !== 'none') ||
+                (weeklyReportsBtn && weeklyReportsBtn.style.display !== 'none');
+            moreBtn.style.display = hasSecondaryActions && window.innerWidth < 768 ? 'inline-flex' : 'none';
+            if (!hasSecondaryActions) toggleVendorActionMore(false);
+        }
+    }
     document.addEventListener('click', function(e) {
         var nav = document.getElementById('mobile-nav');
         var btn = document.getElementById('hamburger-btn');
@@ -1143,6 +1264,8 @@
         var isStaffManager = session.role === 'admin' || session.role === 'cashier';
         window._adminDashboardIsAdmin = isStaffManager;
         applyCashierAdminDashboardUI(isAdmin);
+        window._adminDashboardSession = session;
+        syncVendorActionVisibility(session);
         var name = session.name || 'Admin';
         document.getElementById('user-name').textContent = name;
 
@@ -1159,6 +1282,11 @@
     }
 
     loadDashboard();
+    window.addEventListener('resize', function() {
+        if (window._adminDashboardSession) {
+            syncVendorActionVisibility(window._adminDashboardSession);
+        }
+    });
 
     async function loadAdminOrders(statusFilter) {
         var list = document.getElementById('admin-orders-list');
