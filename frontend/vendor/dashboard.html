@@ -345,6 +345,14 @@
                     <option value="monthly">Monthly Summary</option>
                 </select>
             </div>
+            <div>
+                <label style="font-size:0.72rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.1em; display:block; margin-bottom:0.3rem; font-family:'Roboto',sans-serif">Payout Preference</label>
+                <select id="auto-payout-select" onchange="setAutoPayoutPref(this.value)" style="padding:0.5rem 0.75rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text); font-size:0.82rem; font-family:'Roboto',sans-serif; min-height:44px">
+                    <option value="true">Receive monthly payouts</option>
+                    <option value="false">Carry my balance forward</option>
+                </select>
+                <div style="font-size:0.76rem;color:var(--text-light);margin-top:0.35rem;max-width:320px;">Carry forward keeps your post-rent sales balance on your account instead of paying it out each month.</div>
+            </div>
         </div>
     </div>
 
@@ -944,6 +952,27 @@
         });
     };
 
+    window.setAutoPayoutPref = function(val) {
+        fetch('/api/v1/auth/me/preferences', {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + sessionStorage.getItem('bmm_token'),
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ auto_payout_enabled: val === 'true' }),
+        })
+        .then(function(res) {
+            if (!res.ok) throw new Error('Failed to save');
+            var sel = document.getElementById('auto-payout-select');
+            var origBorder = sel.style.borderColor;
+            sel.style.borderColor = 'var(--success-light)';
+            setTimeout(function() { sel.style.borderColor = origBorder; }, 1500);
+        })
+        .catch(function() {
+            alert('Failed to save payout preference');
+        });
+    };
+
     window.updateThemeButtons = function(theme) {
         var darkBtn = document.getElementById('theme-dark-btn');
         var lightBtn = document.getElementById('theme-light-btn');
@@ -979,6 +1008,8 @@
                 var notifyPref = data.sale_notify_preference || 'instant';
                 var notifySel = document.getElementById('sale-notify-select');
                 if (notifySel) notifySel.value = notifyPref;
+                var payoutSel = document.getElementById('auto-payout-select');
+                if (payoutSel) payoutSel.value = data.auto_payout_enabled === false ? 'false' : 'true';
             })
             .catch(function() {});
     };

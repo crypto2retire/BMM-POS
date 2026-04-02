@@ -103,6 +103,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
 
     assistant_name = getattr(user, 'assistant_name', None)
     assistant_enabled = getattr(user, 'assistant_enabled', True)
+    auto_payout_enabled = getattr(user, 'auto_payout_enabled', True)
 
     token_data = {
         "sub": user.email,
@@ -113,6 +114,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         "booth_number": booth_number,
         "assistant_name": assistant_name,
         "assistant_enabled": assistant_enabled,
+        "auto_payout_enabled": auto_payout_enabled,
     }
     access_token = create_access_token(data=token_data)
 
@@ -136,6 +138,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         "first_login": first_login,
         "assistant_name": assistant_name,
         "assistant_enabled": assistant_enabled,
+        "auto_payout_enabled": auto_payout_enabled,
     }
 
 @router.get("/me")
@@ -155,6 +158,7 @@ async def get_me(
         "is_vendor": getattr(current_user, 'is_vendor', False),
         "assistant_name": getattr(current_user, 'assistant_name', None),
         "assistant_enabled": getattr(current_user, 'assistant_enabled', True),
+        "auto_payout_enabled": getattr(current_user, 'auto_payout_enabled', True),
         "theme_preference": current_user.theme_preference,
         "font_size_preference": current_user.font_size_preference,
         "sale_notify_preference": current_user.sale_notify_preference,
@@ -166,6 +170,7 @@ class DisplayPreferencesUpdate(BaseModel):
     theme_preference: Optional[str] = None
     font_size_preference: Optional[str] = None
     sale_notify_preference: Optional[str] = None
+    auto_payout_enabled: Optional[bool] = None
 
 
 @router.put("/me/preferences")
@@ -194,12 +199,16 @@ async def update_preferences(
             raise HTTPException(status_code=400, detail=f"Invalid notification preference. Must be one of: {valid_notify_prefs}")
         current_user.sale_notify_preference = prefs.sale_notify_preference
 
+    if prefs.auto_payout_enabled is not None:
+        current_user.auto_payout_enabled = bool(prefs.auto_payout_enabled)
+
     await db.commit()
 
     return {
         "theme_preference": current_user.theme_preference,
         "font_size_preference": current_user.font_size_preference,
         "sale_notify_preference": current_user.sale_notify_preference,
+        "auto_payout_enabled": getattr(current_user, 'auto_payout_enabled', True),
         "detail": "Preferences updated.",
     }
 
@@ -216,6 +225,7 @@ async def refresh_token(current_user: Vendor = Depends(get_current_user)):
             "booth_number": getattr(current_user, 'booth_number', None),
             "assistant_name": getattr(current_user, 'assistant_name', None),
             "assistant_enabled": getattr(current_user, 'assistant_enabled', True),
+            "auto_payout_enabled": getattr(current_user, 'auto_payout_enabled', True),
         }
     )
     return {"access_token": access_token, "token_type": "bearer"}

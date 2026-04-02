@@ -663,10 +663,17 @@ async def payout_preview(
             rent_to_deduct = rent
 
         if gross >= rent_to_deduct:
-            net = round(gross - rent_to_deduct, 2)
+            remaining_after_rent = round(gross - rent_to_deduct, 2)
+            if getattr(v, "auto_payout_enabled", True):
+                net = remaining_after_rent
+                carry_forward = 0.0
+            else:
+                net = 0.0
+                carry_forward = remaining_after_rent
             shortfall = 0.0
         else:
             net = 0.0
+            carry_forward = 0.0
             shortfall = round(rent_to_deduct - gross, 2)
 
         rows.append({
@@ -679,8 +686,10 @@ async def payout_preview(
             "rent_already_paid": rent_already_paid,
             "rent_to_deduct": round(rent_to_deduct, 2),
             "net_payout": net,
+            "carry_forward": carry_forward,
             "shortfall": shortfall,
             "payout_method": v.payout_method or "—",
+            "auto_payout_enabled": bool(getattr(v, "auto_payout_enabled", True)),
         })
 
     return {
@@ -692,6 +701,7 @@ async def payout_preview(
             "gross_sales": round(sum(r["gross_sales"] for r in rows), 2),
             "rent_deducted": round(sum(r["rent_to_deduct"] for r in rows), 2),
             "net_payouts": round(sum(r["net_payout"] for r in rows), 2),
+            "carry_forward": round(sum(r["carry_forward"] for r in rows), 2),
             "shortfalls": round(sum(r["shortfall"] for r in rows), 2),
         },
     }
@@ -744,8 +754,14 @@ async def process_payouts(
             sales -= transfer
             rent_covered_from_sales = transfer
 
-        # ── Step 3: Remaining sales_balance = payout amount ──
-        net = sales.quantize(Decimal("0.01"), ROUND_HALF_UP) if sales > 0 else Decimal("0")
+        # ── Step 3: Remaining sales_balance is either paid out or carried ──
+        carry_balance = not bool(getattr(v, "auto_payout_enabled", True))
+        if carry_balance:
+            carry_forward = sales.quantize(Decimal("0.01"), ROUND_HALF_UP) if sales > 0 else Decimal("0")
+            net = Decimal("0.00")
+        else:
+            net = sales.quantize(Decimal("0.01"), ROUND_HALF_UP) if sales > 0 else Decimal("0")
+            carry_forward = Decimal("0.00")
 
         # Track shortfall (rent still owed after sales applied)
         shortfall = abs(rent_bal).quantize(Decimal("0.01"), ROUND_HALF_UP) if rent_bal < 0 else Decimal("0")
@@ -763,8 +779,12 @@ async def process_payouts(
             net_payout=net,
             payout_method=v.payout_method,
             zelle_handle=v.zelle_handle if hasattr(v, 'zelle_handle') else None,
-            status="pending",
-            notes=f"Processed by {current_user.name}" + (f" | Shortfall: ${float(shortfall):.2f}" if shortfall > 0 else ""),
+            status="carried" if carry_balance else "pending",
+            notes=(
+                f"Processed by {current_user.name}"
+                + (" | Balance carried forward" if carry_balance and carry_forward > 0 else "")
+                + (f" | Shortfall: ${float(shortfall):.2f}" if shortfall > 0 else "")
+            ),
         )
         db.add(payout)
 
@@ -782,7 +802,7 @@ async def process_payouts(
 
         # ── Step 4: Update balances ──
         if bal:
-            bal.balance = Decimal("0")  # sales always reset to 0
+            bal.balance = carry_forward if carry_balance else Decimal("0")
             bal.rent_balance = rent_bal.quantize(Decimal("0.01"), ROUND_HALF_UP)  # carries forward (may be negative)
 
         total_net += net
@@ -801,7 +821,7 @@ async def process_payouts(
                         db=db,
                     )
                     await send_email_safe(v.email, subj, html, plain)
-                elif net > 0 and payout_emails_on:
+                elif net > 0 and payout_emails_on and not carry_balance:
                     subj, html, plain = await payout_with_rent_email(
                         vendor_name=v.name or "Vendor",
                         gross_sales=float(gross),

@@ -14,6 +14,7 @@ class VendorCreate(BaseModel):
     monthly_rent: Decimal = Decimal("200.00")
     commission_rate: Decimal = Decimal("0.10")
     payout_method: Optional[str] = "check"
+    auto_payout_enabled: bool = True
     zelle_handle: Optional[str] = None
     notes: Optional[str] = None
 
@@ -35,6 +36,7 @@ class VendorUpdate(BaseModel):
     monthly_rent: Optional[Decimal] = None
     commission_rate: Optional[Decimal] = None
     payout_method: Optional[str] = None
+    auto_payout_enabled: Optional[bool] = None
     zelle_handle: Optional[str] = None
     status: Optional[str] = None
     rent_flagged: Optional[bool] = None
@@ -55,6 +57,7 @@ class VendorResponse(BaseModel):
     status: Optional[str] = "active"
     rent_flagged: Optional[bool] = False
     payout_method: Optional[str] = None
+    auto_payout_enabled: Optional[bool] = True
     zelle_handle: Optional[str] = None
     label_preference: Optional[str] = "standard"
     pdf_label_size: Optional[str] = "2.25x1.25"

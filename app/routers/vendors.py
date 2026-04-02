@@ -171,6 +171,9 @@ async def create_vendor(
         is_vendor=vendor.is_vendor,
         monthly_rent=vendor.monthly_rent,
         commission_rate=vendor.commission_rate,
+        payout_method=vendor.payout_method,
+        zelle_handle=vendor.zelle_handle,
+        auto_payout_enabled=vendor.auto_payout_enabled,
     )
     db.add(db_vendor)
     await db.commit()

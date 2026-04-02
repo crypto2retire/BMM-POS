@@ -18,6 +18,7 @@ class Vendor(Base):
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(20), default="vendor")
     payout_method: Mapped[Optional[str]] = mapped_column(String(50), nullable=True, default="check")
+    auto_payout_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, server_default=text("true"))
     zelle_handle: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="active")
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default="now()", nullable=False)
