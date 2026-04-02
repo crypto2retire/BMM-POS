@@ -923,7 +923,7 @@
             <input
                 type="text"
                 id="search-input"
-                placeholder="Search by item name or SKU (3+ characters)…"
+                placeholder="Search by item name or SKU…"
                 autocomplete="off"
                 oninput="onSearchInput(this.value)"
             >
@@ -1955,21 +1955,27 @@
 
     // ─── Name / SKU search ────────────────────────────────────────────────────
     let searchTimer = null;
+    let searchRequestSeq = 0;
 
     function onSearchInput(val) {
         clearTimeout(searchTimer);
-        if (val.trim().length < 2) {
+        const query = val.trim();
+        if (query.length < 2) {
             hideSearchResults();
             return;
         }
-        searchTimer = setTimeout(() => searchItems(val.trim()), 280);
+        searchTimer = setTimeout(() => searchItems(query), 180);
     }
 
     async function searchItems(q) {
+        const requestSeq = ++searchRequestSeq;
         try {
             const results = await apiGet(`/api/v1/pos/search?q=${encodeURIComponent(q)}`);
+            if (requestSeq !== searchRequestSeq) return;
+            if (document.getElementById('search-input').value.trim() !== q) return;
             renderSearchResults(results);
         } catch (err) {
+            if (requestSeq !== searchRequestSeq) return;
             hideSearchResults();
         }
     }
@@ -2006,6 +2012,7 @@
         box.classList.add('hidden');
         box.innerHTML = '';
         box._items = null;
+        searchRequestSeq += 1;
     }
 
     function addFromSearch(itemId) {

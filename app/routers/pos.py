@@ -11,7 +11,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func, cast, Date
+from sqlalchemy import select, or_, and_, func, cast, Date, case
 from sqlalchemy.orm import selectinload
 import httpx
 from app.database import get_db
@@ -132,17 +132,43 @@ async def pos_search(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
-    term = f"%{q}%"
+    raw_query = (q or "").strip()
+    if not raw_query:
+        return []
+
+    tokens = [token for token in raw_query.split() if token]
+    exact_barcode = func.upper(Item.barcode) == raw_query.upper()
+    exact_sku = func.upper(func.coalesce(Item.sku, "")) == raw_query.upper()
+    prefix_name = Item.name.ilike(f"{raw_query}%")
+    prefix_sku = Item.sku.ilike(f"{raw_query}%")
+
+    token_filters = []
+    for token in tokens:
+        token_term = f"%{token}%"
+        token_filters.append(
+            or_(
+                Item.name.ilike(token_term),
+                Item.sku.ilike(token_term),
+                Item.barcode.ilike(token_term),
+            )
+        )
+
+    search_filter = and_(*token_filters) if token_filters else or_(
+        Item.name.ilike(f"%{raw_query}%"),
+        Item.sku.ilike(f"%{raw_query}%"),
+        Item.barcode.ilike(f"%{raw_query}%"),
+    )
+
     query = (
         select(Item)
         .options(selectinload(Item.vendor))
         .where(
             Item.status == "active",
-            or_(
-                Item.name.ilike(term),
-                Item.barcode == q,
-                Item.sku.ilike(term),
-            ),
+            search_filter,
+        )
+        .order_by(
+            case((exact_barcode, 0), (exact_sku, 1), (prefix_name, 2), (prefix_sku, 3), else_=4),
+            Item.name.asc(),
         )
         .limit(limit)
     )
