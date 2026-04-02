@@ -106,8 +106,20 @@
                     '<td>' +
                     esc(v.booth_number) +
                     '</td>' +
-                    '<td style="color:' + (v.balance < 0 ? 'var(--danger)' : 'var(--success-light)') + ';font-weight:600">' +
-                    fmt(v.balance) +
+                    '<td>' +
+                    '<div style="font-size:0.75rem;color:var(--text-light)">Sales: ' +
+                    fmt(v.sales_balance || 0) +
+                    '</div>' +
+                    '<div style="font-size:0.75rem;color:var(--text-light)">Rent: <span style="color:' +
+                    ((v.rent_balance || 0) < 0 ? 'var(--danger)' : 'var(--text-light)') +
+                    '">' +
+                    fmt(v.rent_balance || 0) +
+                    '</span></div>' +
+                    '<div style="font-weight:600;color:' +
+                    ((v.combined_balance || v.balance) < 0 ? 'var(--danger)' : 'var(--success-light)') +
+                    '">' +
+                    fmt(v.combined_balance || v.balance) +
+                    '</div>' +
                     '</td>' +
                     '<td>' +
                     rentBadge(v.rent_status) +
@@ -134,8 +146,20 @@
                         '<div class="vh-mob-sub">Booth ' +
                         esc(v.booth_number) +
                         '</div></div>' +
-                        '<div class="vh-mob-bal" style="color:' + (v.balance < 0 ? 'var(--danger)' : '') + '">' +
-                        fmt(v.balance) +
+                        '<div class="vh-mob-bal">' +
+                        '<div style="font-size:0.7rem;color:var(--text-light)">Sales: ' +
+                        fmt(v.sales_balance || 0) +
+                        '</div>' +
+                        '<div style="font-size:0.7rem;color:' +
+                        ((v.rent_balance || 0) < 0 ? 'var(--danger)' : 'var(--text-light)') +
+                        '">Rent: ' +
+                        fmt(v.rent_balance || 0) +
+                        '</div>' +
+                        '<div style="font-weight:600;color:' +
+                        ((v.combined_balance || v.balance) < 0 ? 'var(--danger)' : 'var(--success-light)') +
+                        '">' +
+                        fmt(v.combined_balance || v.balance) +
+                        '</div>' +
                         '</div></div>' +
                         '<div style="margin-top:0.5rem">' +
                         rentBadge(v.rent_status) +
@@ -273,9 +297,20 @@
             '<div class="vh-detail-grid">' +
             '<div class="vh-detail-col">' +
             '<h4 class="vh-detail-h">Balance &amp; Payout</h4>' +
-            '<p style="font-size:1.75rem;font-family:EB Garamond,serif;color:' + (v.balance < 0 ? 'var(--danger)' : 'var(--success-light)') + ';margin:0.25rem 0">' +
-            fmt(v.balance) +
-            '</p>' +
+            '<div style="margin:0.5rem 0">' +
+            '<div style="font-size:0.85rem;color:var(--text-light);margin-bottom:0.25rem">Sales Balance: <span style="color:var(--gold)">' +
+            fmt(v.sales_balance || 0) +
+            '</span></div>' +
+            '<div style="font-size:0.85rem;color:var(--text-light);margin-bottom:0.25rem">Rent Balance: <span style="color:' +
+            ((v.rent_balance || 0) < 0 ? 'var(--danger)' : 'var(--gold)') +
+            '">' +
+            fmt(v.rent_balance || 0) +
+            '</span></div>' +
+            '<p style="font-size:1.75rem;font-family:EB Garamond,serif;color:' +
+            ((v.combined_balance || v.balance) < 0 ? 'var(--danger)' : 'var(--success-light)') +
+            ';margin:0.25rem 0">Combined: ' +
+            fmt(v.combined_balance || v.balance) +
+            '</p></div>' +
             '<div style="font-size:0.82rem;color:var(--text-light);line-height:1.5">' +
             'Gross: ' +
             fmt(pp.gross) +
@@ -289,7 +324,6 @@
             shortHtml +
             '<p style="margin:0.75rem 0 0;font-size:0.8rem">Method: ' +
             esc(v.payout_method) +
-            '' +
             '</p>' +
             '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem">' +
             '<button type="button" class="btn btn-sm" style="background:var(--gold);color:var(--charcoal-deep)" onclick="event.stopPropagation();window.openAdjustFromHub(' +
@@ -355,7 +389,7 @@
     window.openAdjustFromHub = function (id) {
         var v = findVendor(id);
         if (v && typeof window.openAdjustModal === 'function') {
-            window.openAdjustModal(id, v.name, v.balance);
+            window.openAdjustModal(id, v.name, v.sales_balance != null ? v.sales_balance : v.balance);
         }
     };
 

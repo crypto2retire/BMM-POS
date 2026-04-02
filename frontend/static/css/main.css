@@ -565,6 +565,7 @@ a:hover { color: var(--gold-light); }
 }
 .card-value.green { color: var(--success); }
 .card-value.teal  { color: var(--gold); }
+.card-value.red   { color: var(--danger); }
 
 .stats-grid {
     display: grid;

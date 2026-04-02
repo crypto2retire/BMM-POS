@@ -556,7 +556,7 @@
                         <tr>
                             <th>Vendor</th>
                             <th>Booth</th>
-                            <th>Balance</th>
+                            <th>Balances</th>
                             <th>Rent</th>
                             <th>Payout method</th>
                         </tr>
@@ -697,7 +697,15 @@
             <div class="sum-card"><div class="sum-label">Rent Outstanding</div><div class="sum-value" id="rp-rent-outstanding">&mdash;</div></div>
             <div class="sum-card"><div class="sum-label">Payouts Processed</div><div class="sum-value green" id="rp-payouts-processed">&mdash;</div></div>
             <div class="sum-card"><div class="sum-label">Payouts Pending</div><div class="sum-value white" id="rp-payouts-pending">&mdash;</div></div>
-            <div class="sum-card"><div class="sum-label">Total Vendor Balances</div><div class="sum-value" id="rp-total-balances">&mdash;</div></div>
+            <div class="sum-card">
+                <div class="sum-label">All vendor balances</div>
+                <div style="font-size:0.68rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-top:0.35rem">Sales total</div>
+                <div class="sum-value white" style="font-size:1.15rem;margin-top:0.2rem;line-height:1.2" id="rp-total-sales-balances">&mdash;</div>
+                <div style="font-size:0.68rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-top:0.4rem">Rent total</div>
+                <div class="sum-value" style="font-size:1.15rem;margin-top:0.2rem;line-height:1.2" id="rp-total-rent-balances">&mdash;</div>
+                <div style="font-size:0.68rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-top:0.4rem">Combined</div>
+                <div class="sum-value green" style="font-size:1.35rem;margin-top:0.2rem;line-height:1.2" id="rp-total-balances">&mdash;</div>
+            </div>
         </div>
 
         <div class="ornament">&loz;</div>
@@ -973,8 +981,8 @@
     <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
 </nav>
 
-<script src="/static/js/api.js?v=20260401b"></script>
-<script src="/static/js/admin-vendor-dashboard.js?v=20260401b"></script>
+<script src="/static/js/api.js?v=20260401d"></script>
+<script src="/static/js/admin-vendor-dashboard.js?v=20260401d"></script>
 <script>
     function toggleMobileNav() {
         document.getElementById('mobile-nav').classList.toggle('open');
@@ -1613,7 +1621,9 @@
         set('rp-rent-outstanding', s.rent_outstanding);
         set('rp-payouts-processed', s.total_payouts_processed);
         set('rp-payouts-pending', s.total_payouts_pending);
-        set('rp-total-balances', s.total_vendor_balances);
+        set('rp-total-sales-balances', s.total_sales_balances != null ? s.total_sales_balances : 0);
+        set('rp-total-rent-balances', s.total_rent_balances != null ? s.total_rent_balances : 0);
+        set('rp-total-balances', s.total_vendor_balances != null ? s.total_vendor_balances : 0);
     }
 
     function renderRPVendorCards() {
@@ -1622,13 +1632,21 @@
         container.innerHTML = '';
         var cards = _rpData.vendor_cards || [];
         cards.forEach(function (v) {
-            var color = v.balance > 0 ? 'var(--gold)' : v.balance < 0 ? 'var(--danger)' : 'var(--text-light)';
+            var combined = v.combined_balance != null && v.combined_balance !== undefined ? v.combined_balance : v.balance;
+            var combColor =
+                combined > 0 ? 'var(--success-light)' : combined < 0 ? 'var(--danger)' : 'var(--text-light)';
             var card = document.createElement('div');
             card.className = 'rp-vendor-card';
             card.innerHTML =
                 '<div style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">' + escapeHtml(v.booth_number || '—') + '</div>' +
                 '<div style="font-family:\'EB Garamond\',serif;font-size:0.95rem;color:var(--text);margin-top:0.15rem">' + escapeHtml(v.name) + '</div>' +
-                '<div style="font-family:\'EB Garamond\',serif;font-size:1.25rem;color:' + color + ';margin-top:0.25rem">' + rpFmt(v.balance) + '</div>';
+                '<div style="margin-top:0.35rem">' +
+                '<div style="font-size:0.75rem;color:var(--text-light)">Sales: ' + rpFmt(v.sales_balance) + '</div>' +
+                '<div style="font-size:0.75rem;color:var(--text-light)">Rent: <span style="color:' +
+                ((v.rent_balance || 0) < 0 ? 'var(--danger)' : 'var(--text-light)') +
+                '">' + rpFmt(v.rent_balance) + '</span></div>' +
+                '<div style="font-size:1.1rem;font-weight:600;color:' + combColor + ';margin-top:0.2rem">' + rpFmt(combined) + '</div>' +
+                '</div>';
             container.appendChild(card);
         });
     }

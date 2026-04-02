@@ -77,7 +77,15 @@
 
     <div class="stats-grid">
         <div class="card">
-            <div class="card-title">Current Balance</div>
+            <div class="card-title">Sales Balance</div>
+            <div class="card-value green" id="sales-balance">—</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Rent Balance</div>
+            <div class="card-value green" id="rent-balance">—</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Combined Balance</div>
             <div class="card-value green" id="balance">—</div>
         </div>
         <div class="card">
@@ -375,7 +383,18 @@
         try {
             const vendor = await apiGet(`/api/v1/vendors/${payload.vendor_id}`);
             document.getElementById("booth-number").textContent = vendor.booth_number || "N/A";
-            document.getElementById("balance").textContent = `$${parseFloat(vendor.current_balance || 0).toFixed(2)}`;
+            const salesBal = parseFloat(vendor.sales_balance != null ? vendor.sales_balance : 0);
+            const rentBal = parseFloat(vendor.rent_balance != null ? vendor.rent_balance : 0);
+            const combinedBal = parseFloat(vendor.current_balance != null ? vendor.current_balance : 0);
+            const salesEl = document.getElementById("sales-balance");
+            salesEl.textContent = `$${salesBal.toFixed(2)}`;
+            salesEl.className = "card-value " + (salesBal < 0 ? "red" : "green");
+            const rentEl = document.getElementById("rent-balance");
+            rentEl.textContent = `$${rentBal.toFixed(2)}`;
+            rentEl.className = "card-value " + (rentBal < 0 ? "red" : "green");
+            const balEl = document.getElementById("balance");
+            balEl.textContent = `$${combinedBal.toFixed(2)}`;
+            balEl.className = "card-value " + (combinedBal < 0 ? "red" : "green");
             const rent = parseFloat(vendor.monthly_rent || 0);
             document.getElementById("rent-amount").textContent = `$${rent.toFixed(2)}/mo`;
             if (rent <= 0) {
