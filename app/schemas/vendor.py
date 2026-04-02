@@ -67,6 +67,10 @@ class VendorResponse(BaseModel):
     current_balance: Optional[Decimal] = Decimal("0.00")
     sales_balance: Optional[Decimal] = Decimal("0.00")
     rent_balance: Optional[Decimal] = Decimal("0.00")
+    actual_balance: Optional[Decimal] = Decimal("0.00")
+    projected_balance_after_rent: Optional[Decimal] = Decimal("0.00")
+    upcoming_rent_due: Optional[Decimal] = Decimal("0.00")
+    upcoming_rent_due_date: Optional[str] = None
 
     class Config:
         from_attributes = True

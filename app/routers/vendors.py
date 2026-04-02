@@ -57,6 +57,57 @@ def _display_rent_balance_for_admin_list(
     return rl.quantize(Decimal("0.01"), ROUND_HALF_UP)
 
 
+def _vendor_actual_balance(
+    sales_balance: Decimal,
+    rent_ledger: Decimal,
+) -> Decimal:
+    sb = sales_balance if sales_balance is not None else Decimal("0.00")
+    rl = rent_ledger if rent_ledger is not None else Decimal("0.00")
+    return (sb + rl).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+
+def _next_rent_due_date(
+    today: date,
+    rent_due_day: int,
+    current_month_rent_paid: bool,
+) -> date:
+    due_day = max(1, min(int(rent_due_day or 1), 28))
+    year = today.year
+    month = today.month
+    if current_month_rent_paid:
+        if month == 12:
+            year += 1
+            month = 1
+        else:
+            month += 1
+    return date(year, month, due_day)
+
+
+def _hydrate_vendor_balance_fields(
+    vendor: Vendor,
+    sales_balance: Decimal,
+    rent_ledger: Decimal,
+    current_month_rent_paid: bool,
+):
+    monthly = vendor.monthly_rent or Decimal("0.00")
+    actual_balance = _vendor_actual_balance(sales_balance, rent_ledger)
+    projected_balance = (
+        actual_balance if monthly <= 0 else (actual_balance - monthly).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    )
+
+    vendor.sales_balance = sales_balance.quantize(Decimal("0.01"), ROUND_HALF_UP)
+    vendor.rent_balance = _display_rent_balance_for_admin_list(rent_ledger, monthly, current_month_rent_paid)
+    vendor.current_balance = vendor.rent_balance + vendor.sales_balance
+    vendor.actual_balance = actual_balance
+    vendor.projected_balance_after_rent = projected_balance
+    vendor.upcoming_rent_due = monthly.quantize(Decimal("0.01"), ROUND_HALF_UP)
+    vendor.upcoming_rent_due_date = _next_rent_due_date(
+        date.today(),
+        vendor.rent_due_day or 1,
+        current_month_rent_paid,
+    ).isoformat()
+
+
 @router.get("/", response_model=List[VendorResponse])
 async def list_vendors(
     db: AsyncSession = Depends(get_db),
@@ -95,12 +146,8 @@ async def list_vendors(
     for v in vendors:
         sb = balance_map.get(v.id, Decimal("0.00"))
         rb_ledger = rent_balance_map.get(v.id, Decimal("0.00"))
-        monthly = v.monthly_rent or Decimal("0.00")
         rent_paid = v.id in paid_rent_vendor_ids
-        rb_disp = _display_rent_balance_for_admin_list(rb_ledger, monthly, rent_paid)
-        v.sales_balance = sb
-        v.rent_balance = rb_disp
-        v.current_balance = (sb + rb_disp).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        _hydrate_vendor_balance_fields(v, sb, rb_ledger, rent_paid)
 
     return vendors
 
@@ -176,12 +223,7 @@ async def get_vendor(
     )
     rp_row = rp_one.scalar_one_or_none()
     rent_paid = rp_row is not None and rp_row.status == "paid"
-    monthly = vendor.monthly_rent or Decimal("0.00")
-    rb_disp = _display_rent_balance_for_admin_list(rb_ledger, monthly, rent_paid)
-
-    vendor.sales_balance = sb
-    vendor.rent_balance = rb_disp
-    vendor.current_balance = (sb + rb_disp).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    _hydrate_vendor_balance_fields(vendor, sb, rb_ledger, rent_paid)
 
     return vendor
 

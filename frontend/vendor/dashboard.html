@@ -253,12 +253,16 @@
             <div class="card-value green" id="sales-balance">—</div>
         </div>
         <div class="card">
-            <div class="card-title">Rent Balance</div>
+            <div class="card-title">Rent Credit / Owed</div>
             <div class="card-value green" id="rent-balance">—</div>
         </div>
         <div class="card">
-            <div class="card-title">Combined Balance</div>
+            <div class="card-title">Current Balance</div>
             <div class="card-value green" id="balance">—</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Next Rent Due</div>
+            <div class="card-value" id="next-rent-due">—</div>
         </div>
         <div class="card">
             <div class="card-title">Active Items</div>
@@ -295,6 +299,7 @@
                     <div id="pay-rent-error" style="color:var(--danger);font-size:0.85rem;margin-top:6px;display:none;"></div>
                 </div>
             </div>
+            <div id="next-rent-summary" style="margin-top:0.9rem;color:var(--text-light);font-size:0.84rem;display:none;"></div>
             <div id="rent-history-section" style="display:none;margin-top:1.25rem;border-top:1px solid var(--warm-border);padding-top:1rem;">
                 <div class="card-title" style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Payment History</div>
                 <div id="rent-history-list" style="font-size:0.85rem;"></div>
@@ -737,8 +742,13 @@
             const vendor = await apiGet(`/api/v1/vendors/${session.vendor_id}`);
             document.getElementById("booth-number").textContent = vendor.booth_number || "N/A";
             const salesBal = parseFloat(vendor.sales_balance != null ? vendor.sales_balance : 0);
-            const rentBal = parseFloat(vendor.rent_balance != null ? vendor.rent_balance : 0);
-            const combinedBal = parseFloat(vendor.current_balance != null ? vendor.current_balance : 0);
+            const actualBal = parseFloat(
+                vendor.actual_balance != null
+                    ? vendor.actual_balance
+                    : (vendor.current_balance != null ? vendor.current_balance : 0)
+            );
+            const rentBal = actualBal - salesBal;
+            const nextRentDue = parseFloat(vendor.upcoming_rent_due != null ? vendor.upcoming_rent_due : 0);
             const salesEl = document.getElementById("sales-balance");
             salesEl.textContent = `$${salesBal.toFixed(2)}`;
             salesEl.className = "card-value " + (salesBal < 0 ? "red" : "green");
@@ -746,10 +756,24 @@
             rentEl.textContent = `$${rentBal.toFixed(2)}`;
             rentEl.className = "card-value " + (rentBal < 0 ? "red" : "green");
             const balEl = document.getElementById("balance");
-            balEl.textContent = `$${combinedBal.toFixed(2)}`;
-            balEl.className = "card-value " + (combinedBal < 0 ? "red" : "green");
+            balEl.textContent = `$${actualBal.toFixed(2)}`;
+            balEl.className = "card-value " + (actualBal < 0 ? "red" : "green");
+            const nextRentEl = document.getElementById("next-rent-due");
+            nextRentEl.textContent = `$${nextRentDue.toFixed(2)}`;
+            nextRentEl.className = "card-value " + (nextRentDue > 0 ? "gold" : "");
             const rent = parseFloat(vendor.monthly_rent || 0);
             document.getElementById("rent-amount").textContent = `$${rent.toFixed(2)}/mo`;
+            const nextSummaryEl = document.getElementById('next-rent-summary');
+            if (nextRentDue > 0) {
+                var dueDateLabel = formatRentDueDate(vendor.upcoming_rent_due_date);
+                nextSummaryEl.style.display = 'block';
+                nextSummaryEl.textContent = dueDateLabel
+                    ? `Upcoming rent due ${dueDateLabel}: $${nextRentDue.toFixed(2)}. This is shown separately until it is actually charged.`
+                    : `Upcoming rent due: $${nextRentDue.toFixed(2)}. This is shown separately until it is actually charged.`;
+            } else {
+                nextSummaryEl.style.display = 'none';
+                nextSummaryEl.textContent = '';
+            }
             if (rent <= 0) {
                 document.getElementById("pay-rent-btn").style.display = 'none';
                 document.getElementById("rent-status-badge").textContent = 'No rent configured';
@@ -826,6 +850,13 @@
             }
         } catch (err) {
         }
+    }
+
+    function formatRentDueDate(isoDate) {
+        if (!isoDate) return '';
+        const value = new Date(isoDate + 'T12:00:00');
+        if (Number.isNaN(value.getTime())) return '';
+        return value.toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
     }
 
     async function checkRentReturn() {
