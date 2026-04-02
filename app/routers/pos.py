@@ -14,7 +14,6 @@ from sqlalchemy import select, or_, func, cast, Date
 from sqlalchemy.orm import selectinload
 import httpx
 from app.database import get_db
-from app.routers.auth import require_cashier_or_admin
 from app.models.store_setting import StoreSetting
 from app.routers.settings import require_staff_feature, role_feature_allowed
 from app.models.vendor import Vendor, VendorBalance
@@ -1055,7 +1054,7 @@ async def list_eod_reports(
     limit: int = Query(30, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_cashier_or_admin),
+    _: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     count_result = await db.execute(select(func.count(EodReport.id)))
     total = count_result.scalar()
@@ -1093,7 +1092,7 @@ async def list_eod_reports(
 async def get_eod_report(
     report_id: int,
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_cashier_or_admin),
+    _: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     result = await db.execute(select(EodReport).where(EodReport.id == report_id))
     report = result.scalar_one_or_none()

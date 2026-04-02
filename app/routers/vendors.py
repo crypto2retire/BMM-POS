@@ -13,8 +13,8 @@ from app.schemas.vendor import (
     VendorCreate, VendorUpdate, VendorResponse, VendorBalanceResponse,
     BalanceAdjustRequest, BalanceAdjustmentResponse,
 )
-from app.routers.auth import get_current_user, require_role, get_password_hash, require_cashier_or_admin
-from app.routers.settings import role_allows_manage_vendors, role_feature_allowed
+from app.routers.auth import get_current_user, require_role, get_password_hash
+from app.routers.settings import role_allows_manage_vendors, role_feature_allowed, require_staff_feature
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
 
@@ -172,7 +172,7 @@ async def update_vendor(
     vendor_id: int,
     vendor_update: VendorUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_vendors")),
 ):
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -366,7 +366,7 @@ async def adjust_vendor_balance(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    if current_user.role == "admin" or current_user.role == "cashier":
+    if current_user.role == "admin":
         pass
     elif not await role_feature_allowed(db, current_user, "role_balance_adjustments"):
         raise HTTPException(
@@ -444,7 +444,7 @@ async def get_balance_history(
 ):
     if current_user.id == vendor_id:
         pass
-    elif current_user.role in ("admin", "cashier"):
+    elif current_user.role == "admin":
         pass
     elif (
         await role_feature_allowed(db, current_user, "role_balance_adjustments")
