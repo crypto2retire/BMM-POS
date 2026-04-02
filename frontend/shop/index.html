@@ -794,47 +794,768 @@
     background: var(--danger);
     color: var(--white);
   }
+
+  /* ── 2026 STOREFRONT REFRESH ───────────────────────── */
+  body {
+    background:
+      radial-gradient(circle at top, rgba(214, 188, 123, 0.12), transparent 34%),
+      linear-gradient(180deg, #141210 0%, #191612 12%, #f4efe6 12%, #f7f2ea 100%);
+    color: #231e19;
+  }
+
+  .site-header {
+    position: relative;
+    overflow: clip;
+    padding: clamp(2.5rem, 4vw, 4rem) 1.5rem clamp(2.5rem, 5vw, 4.5rem);
+    border-top: none;
+    border-bottom: 1px solid rgba(214, 188, 123, 0.22);
+    background:
+      radial-gradient(circle at 85% 18%, rgba(214, 188, 123, 0.22), transparent 24%),
+      radial-gradient(circle at 78% 60%, rgba(255, 246, 224, 0.08), transparent 28%),
+      linear-gradient(135deg, #181410 0%, #201a14 48%, #16120f 100%);
+  }
+
+  .site-header::before,
+  .site-header::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+    border-radius: 999px;
+    filter: blur(2px);
+  }
+
+  .site-header::before {
+    inset: 14% auto auto 60%;
+    width: min(38vw, 440px);
+    height: min(38vw, 440px);
+    background: radial-gradient(circle, rgba(214, 188, 123, 0.18), rgba(214, 188, 123, 0));
+  }
+
+  .site-header::after {
+    inset: auto auto -20% -8%;
+    width: min(42vw, 520px);
+    height: min(42vw, 520px);
+    background: radial-gradient(circle, rgba(247, 242, 234, 0.06), rgba(247, 242, 234, 0));
+  }
+
+  .hero-grid {
+    position: relative;
+    z-index: 1;
+    max-width: 1360px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(320px, 0.95fr);
+    gap: clamp(2rem, 4vw, 4rem);
+    align-items: center;
+  }
+
+  .hero-copy {
+    max-width: 700px;
+    text-align: left;
+  }
+
+  .hero-kicker,
+  .section-kicker,
+  .highlight-kicker {
+    font-size: 0.72rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: rgba(247, 242, 234, 0.78);
+    margin-bottom: 0.9rem;
+  }
+
+  .hero-copy h1 {
+    font-family: 'EB Garamond', serif;
+    font-style: normal;
+    font-size: clamp(3rem, 6vw, 5.8rem);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 0.93;
+    color: #f8f3ea;
+    max-width: 10ch;
+    text-wrap: balance;
+  }
+
+  .header-ornament {
+    width: fit-content;
+    margin: 1.25rem 0 0.85rem;
+    color: rgba(214, 188, 123, 0.75);
+    letter-spacing: 0.45em;
+  }
+
+  .hero-lead {
+    max-width: 56ch;
+    color: rgba(247, 242, 234, 0.78);
+    font-size: 1rem;
+    line-height: 1.8;
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    margin: 1.8rem 0 1.5rem;
+  }
+
+  .hero-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 0.8rem 1.2rem;
+    border: 1px solid transparent;
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.72rem;
+    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  }
+
+  .hero-btn:hover,
+  .hero-btn:focus-visible {
+    transform: translateY(-1px);
+  }
+
+  .hero-btn-primary {
+    background: #dcc084;
+    color: #17120f;
+    border-color: #dcc084;
+  }
+
+  .hero-btn-primary:hover,
+  .hero-btn-primary:focus-visible {
+    background: #ead6a8;
+    color: #17120f;
+  }
+
+  .hero-btn-secondary {
+    border-color: rgba(247, 242, 234, 0.18);
+    color: #f7f2ea;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .hero-btn-secondary:hover,
+  .hero-btn-secondary:focus-visible {
+    border-color: rgba(220, 192, 132, 0.44);
+    color: #f7f2ea;
+    background: rgba(220, 192, 132, 0.06);
+  }
+
+  .store-meta {
+    justify-content: flex-start;
+    margin-top: 0;
+    color: rgba(247, 242, 234, 0.72);
+    gap: 0.4rem 1.2rem;
+  }
+
+  .header-rule {
+    width: 88px;
+    height: 1px;
+    margin: 1.5rem 0 1rem;
+    background: linear-gradient(90deg, rgba(214, 188, 123, 0.9), rgba(214, 188, 123, 0));
+  }
+
+  .shop-subnav {
+    justify-content: flex-start;
+    margin-top: 0;
+  }
+
+  .shop-subnav a {
+    color: rgba(247, 242, 234, 0.72);
+  }
+
+  .hero-visual {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-self: stretch;
+  }
+
+  .hero-mosaic {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: minmax(92px, 1fr);
+    gap: 0.85rem;
+    min-height: 420px;
+  }
+
+  .hero-tile {
+    position: relative;
+    border: 1px solid rgba(214, 188, 123, 0.18);
+    background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+    overflow: hidden;
+    min-height: 92px;
+    cursor: pointer;
+    transition: transform 0.22s ease, border-color 0.22s ease, filter 0.22s ease;
+  }
+
+  .hero-tile:hover,
+  .hero-tile:focus-visible {
+    transform: translateY(-2px);
+    border-color: rgba(220, 192, 132, 0.4);
+    filter: brightness(1.03);
+  }
+
+  .hero-tile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .hero-tile::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(10, 8, 6, 0) 32%, rgba(10, 8, 6, 0.78) 100%);
+  }
+
+  .hero-placeholder::after {
+    background: linear-gradient(145deg, rgba(220, 192, 132, 0.14), rgba(255,255,255,0.02));
+  }
+
+  .hero-tile-large {
+    grid-column: span 2;
+    grid-row: span 2;
+  }
+
+  .hero-tile-copy {
+    position: absolute;
+    left: 1rem;
+    right: 1rem;
+    bottom: 0.9rem;
+    z-index: 1;
+    color: #fff8ef;
+  }
+
+  .hero-tile-booth {
+    display: block;
+    font-size: 0.66rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(255, 248, 239, 0.72);
+    margin-bottom: 0.35rem;
+  }
+
+  .hero-tile-name {
+    display: block;
+    font-family: 'EB Garamond', serif;
+    font-size: 1.1rem;
+    line-height: 1.1;
+  }
+
+  .hero-caption {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    color: rgba(247, 242, 234, 0.76);
+  }
+
+  .hero-caption-count {
+    font-family: 'EB Garamond', serif;
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    color: #f8f3ea;
+    line-height: 1;
+  }
+
+  .pickup-notice {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.75rem 1.5rem;
+    background: #efe3c3;
+    color: #5f4a25;
+    border-bottom: 1px solid rgba(169, 138, 72, 0.16);
+    font-size: 0.7rem;
+    padding: 0.9rem 1.5rem;
+  }
+
+  .pickup-notice span {
+    position: relative;
+    white-space: nowrap;
+  }
+
+  .pickup-notice span:not(:last-child)::after {
+    content: "•";
+    position: absolute;
+    right: -0.95rem;
+    color: rgba(95, 74, 37, 0.45);
+  }
+
+  .market-highlights,
+  main,
+  footer .footer-inner {
+    max-width: 1360px;
+  }
+
+  .market-highlights {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    margin: -2.2rem auto 0;
+    padding: 0 1.5rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  .highlight-card {
+    background: rgba(255, 251, 245, 0.92);
+    border: 1px solid rgba(214, 188, 123, 0.22);
+    padding: 1.35rem 1.35rem 1.5rem;
+    box-shadow: 0 18px 44px rgba(20, 17, 13, 0.08);
+  }
+
+  .highlight-kicker {
+    color: rgba(85, 64, 30, 0.72);
+    margin-bottom: 0.55rem;
+  }
+
+  .highlight-card h2 {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.5rem;
+    line-height: 1.08;
+    margin-bottom: 0.75rem;
+    color: #1f1813;
+  }
+
+  .highlight-card p {
+    color: #5f5448;
+    font-size: 0.92rem;
+    line-height: 1.7;
+  }
+
+  main {
+    padding-top: 3rem;
+  }
+
+  .collection-intro {
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+    align-items: end;
+    margin-bottom: 1.5rem;
+  }
+
+  .section-kicker {
+    color: #7f6741;
+  }
+
+  .collection-intro h2 {
+    font-family: 'EB Garamond', serif;
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    line-height: 0.98;
+    color: #201914;
+    max-width: 12ch;
+  }
+
+  .collection-copy {
+    max-width: 46ch;
+    color: #665c51;
+    font-size: 0.96rem;
+  }
+
+  .workspace-panel {
+    position: sticky;
+    top: 0;
+    z-index: 15;
+    margin-bottom: 2rem;
+    padding: 1rem 1.15rem 1.1rem;
+    background: rgba(247, 242, 234, 0.92);
+    border: 1px solid rgba(214, 188, 123, 0.22);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 12px 30px rgba(20, 17, 13, 0.06);
+  }
+
+  .search-wrap {
+    max-width: none;
+    margin: 0 0 1rem;
+    padding: 0;
+  }
+
+  .search-wrap form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.7rem;
+  }
+
+  .search-wrap input,
+  .shop-sort {
+    min-height: 50px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(146, 126, 83, 0.18);
+    color: #241d18;
+  }
+
+  .search-wrap button,
+  .search-clear,
+  .chip,
+  .view-toggle button,
+  .btn-primary,
+  .btn-ghost,
+  .btn-reserve {
+    min-height: 46px;
+  }
+
+  .search-wrap button {
+    background: #241d18;
+    border-color: #241d18;
+    color: #f7f2ea;
+    box-shadow: none;
+  }
+
+  .search-wrap button:hover {
+    background: #30261f;
+  }
+
+  .search-clear {
+    background: rgba(255,255,255,0.65);
+    color: #6b5a46;
+  }
+
+  .shop-toolbar {
+    margin-bottom: 1rem;
+    gap: 1rem;
+  }
+
+  .filter-chips {
+    gap: 0.55rem;
+  }
+
+  .chip {
+    padding: 0.55rem 0.95rem;
+    background: rgba(255,255,255,0.6);
+    border-color: rgba(146, 126, 83, 0.14);
+    color: #5c4f43;
+  }
+
+  .chip.active {
+    background: #221c17;
+    color: #f7f2ea;
+    border-color: #221c17;
+  }
+
+  .shop-controls {
+    gap: 0.75rem;
+  }
+
+  .view-toggle button.active {
+    background: #dcc084;
+    color: #17120f;
+    border-color: #dcc084;
+  }
+
+  .status-bar {
+    min-height: 0;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0;
+    color: #6d6255;
+  }
+
+  .collection-meta {
+    color: #8b7c6a;
+  }
+
+  .item-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .item-card {
+    border: 1px solid rgba(214, 188, 123, 0.2);
+    background: rgba(255, 251, 245, 0.9);
+    box-shadow: 0 14px 34px rgba(20, 17, 13, 0.06);
+  }
+
+  .item-card:hover {
+    border-color: rgba(214, 188, 123, 0.45);
+    box-shadow: 0 18px 40px rgba(20, 17, 13, 0.11);
+    transform: translateY(-4px);
+  }
+
+  .card-image {
+    aspect-ratio: 4 / 4.6;
+    background: linear-gradient(160deg, rgba(245, 235, 218, 0.96), rgba(229, 221, 207, 0.66));
+  }
+
+  .card-image img {
+    transition: transform 0.35s ease;
+  }
+
+  .item-card:hover .card-image img {
+    transform: scale(1.03);
+  }
+
+  .card-body {
+    gap: 0.7rem;
+    padding: 1.1rem 1.1rem 0.95rem;
+  }
+
+  .card-name {
+    font-size: 1.38rem;
+    line-height: 1.08;
+  }
+
+  .card-vendor {
+    color: #8b7862;
+  }
+
+  .card-tax,
+  .list-vendor,
+  .list-desc {
+    color: #7a7065;
+  }
+
+  .card-footer {
+    padding: 0 1.1rem 1.1rem;
+  }
+
+  .btn-reserve {
+    background: #221c17;
+    border-color: #221c17;
+    color: #f7f2ea;
+    font-size: 0.7rem;
+  }
+
+  .btn-reserve:hover:not(:disabled) {
+    background: #dcc084;
+    color: #17120f;
+    border-color: #dcc084;
+  }
+
+  .btn-reserve.reserved {
+    background: rgba(122, 152, 122, 0.1);
+    border-color: rgba(122, 152, 122, 0.24);
+    color: #4d6f4d;
+  }
+
+  .item-grid.list-view {
+    gap: 0.85rem;
+  }
+
+  .item-list-row {
+    border: 1px solid rgba(214, 188, 123, 0.18);
+    border-bottom: 1px solid rgba(214, 188, 123, 0.18);
+    background: rgba(255, 251, 245, 0.88);
+    box-shadow: 0 10px 26px rgba(20, 17, 13, 0.05);
+  }
+
+  .item-list-row:hover {
+    background: rgba(255, 248, 238, 0.96);
+  }
+
+  footer {
+    padding-top: 3rem;
+  }
+
+  .footer-inner {
+    padding: 0 1.5rem;
+  }
+
+  @media (max-width: 1100px) {
+    .hero-grid,
+    .collection-intro {
+      grid-template-columns: 1fr;
+      display: grid;
+    }
+
+    .collection-intro h2 {
+      max-width: none;
+    }
+
+    .collection-copy {
+      max-width: none;
+    }
+
+    .market-highlights {
+      grid-template-columns: 1fr;
+      margin-top: -1.5rem;
+    }
+  }
+
+  @media (max-width: 900px) {
+    .hero-mosaic {
+      grid-auto-rows: 84px;
+      min-height: 320px;
+    }
+
+    .hero-tile-large {
+      grid-column: span 2;
+      grid-row: span 2;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .site-header {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .hero-copy h1 {
+      max-width: none;
+    }
+
+    .pickup-notice span:not(:last-child)::after {
+      display: none;
+    }
+
+    .workspace-panel {
+      position: static;
+      padding: 0.95rem;
+    }
+
+    .search-wrap form {
+      grid-template-columns: 1fr;
+    }
+
+    .shop-toolbar {
+      align-items: stretch;
+    }
+
+    .shop-controls {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .filter-chips {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      padding-bottom: 0.2rem;
+      scrollbar-width: thin;
+    }
+
+    .chip {
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+  }
+
+  @media (max-width: 540px) {
+    main {
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .market-highlights {
+      padding: 0 1rem;
+    }
+
+    .hero-actions {
+      flex-direction: column;
+    }
+
+    .hero-btn {
+      width: 100%;
+    }
+
+    .hero-mosaic {
+      grid-template-columns: repeat(2, 1fr);
+      grid-auto-rows: 110px;
+      min-height: 0;
+    }
+
+    .hero-tile-large {
+      grid-column: span 2;
+      grid-row: span 2;
+    }
+
+    .card-image {
+      aspect-ratio: 4 / 4.2;
+    }
+  }
 </style>
 </head>
 <body>
 <script src="/static/js/theme-loader.js"></script>
 
 <header class="site-header">
-  <h1>Bowenstreet Market</h1>
-  <div class="header-ornament">&loz;&nbsp;&nbsp;&loz;&nbsp;&nbsp;&loz;</div>
-  <p class="tagline">Handcrafted &nbsp;&middot;&nbsp; Vintage &nbsp;&middot;&nbsp; Antique</p>
-  <div class="store-meta">
-    <span>2837 Bowen St, Oshkosh, WI 54901</span>
-    <span>Tue&ndash;Sat 10am&ndash;6pm &nbsp;|&nbsp; Sun 11am&ndash;4pm</span>
-    <span>(920) 555-0100</span>
+  <div class="hero-grid">
+    <div class="hero-copy">
+      <p class="hero-kicker">Bowenstreet Market online pickup shop</p>
+      <h1>Reserve market finds without losing the thrill of discovery.</h1>
+      <div class="header-ornament">&loz;&nbsp;&nbsp;&loz;&nbsp;&nbsp;&loz;</div>
+      <p class="hero-lead">Browse photographed pieces from the market floor, pay online, and pick up in store. The inventory moves fast because it is tied to the same live booths your vendors use every day.</p>
+      <div class="hero-actions">
+        <a href="#collection-start" class="hero-btn hero-btn-primary">Shop current inventory</a>
+        <a href="/shop/booths.html" class="hero-btn hero-btn-secondary">Browse vendor booths</a>
+      </div>
+      <div class="store-meta">
+        <span>2837 Bowen St, Oshkosh, WI 54901</span>
+        <span>Tue&ndash;Sat 10am&ndash;6pm &nbsp;|&nbsp; Sun 11am&ndash;4pm</span>
+        <span>(920) 555-0100</span>
+      </div>
+      <div class="header-rule"></div>
+      <nav class="shop-subnav" aria-label="Shop sections">
+        <a href="/shop/index.html" class="active">Shop</a>
+        <a href="/shop/booths.html">Booths</a>
+        <a href="/shop/classes.html">Classes</a>
+      </nav>
+    </div>
+    <div class="hero-visual">
+      <div class="hero-mosaic" id="hero-mosaic" aria-label="Featured inventory preview">
+        <div class="hero-tile hero-placeholder hero-tile-large"></div>
+        <div class="hero-tile hero-placeholder"></div>
+        <div class="hero-tile hero-placeholder"></div>
+        <div class="hero-tile hero-placeholder"></div>
+        <div class="hero-tile hero-placeholder"></div>
+      </div>
+      <div class="hero-caption">
+        <span class="hero-caption-count" id="hero-count">Loading…</span>
+        <span id="hero-subcopy">photographed items currently available for pickup</span>
+      </div>
+    </div>
   </div>
-  <div class="header-rule"></div>
-  <nav class="shop-subnav" aria-label="Shop sections">
-    <a href="/shop/index.html" class="active">Shop</a>
-    <a href="/shop/booths.html">Booths</a>
-    <a href="/shop/classes.html">Classes</a>
-  </nav>
 </header>
 
 <div class="pickup-notice">
-  In-store pickup only &nbsp;&middot;&nbsp; No shipping &nbsp;&middot;&nbsp; All sales are final. No returns or refunds.
+  <span>In-store pickup only</span>
+  <span>No shipping</span>
+  <span>Live market inventory</span>
+  <span>All sales final</span>
 </div>
 
-<div class="search-wrap">
-  <form id="search-form">
-    <input
-      type="search"
-      id="search-input"
-      placeholder="Search items&#8230;"
-      autocomplete="off"
-      aria-label="Search items"
-    >
-    <button type="submit">Search</button>
-    <button type="button" class="search-clear" id="search-clear">&#10005; Clear</button>
-  </form>
-</div>
+<section class="market-highlights" aria-label="Shop highlights">
+  <article class="highlight-card">
+    <p class="highlight-kicker">Live inventory</p>
+    <h2>What you see online is pulled from the same booth inventory used at the register.</h2>
+    <p>Online reservations stay grounded in the real store, so availability changes with the floor.</p>
+  </article>
+  <article class="highlight-card">
+    <p class="highlight-kicker">Pickup flow</p>
+    <h2>Pay online, then pick up your piece at Bowenstreet Market.</h2>
+    <p>Use search and booth browsing to narrow the selection, then reserve directly from the product card.</p>
+  </article>
+  <article class="highlight-card">
+    <p class="highlight-kicker">Why it feels better</p>
+    <h2>More editorial, less cluttered.</h2>
+    <p>The goal is a calmer storefront that makes the inventory the focus instead of burying it under dated marketplace chrome.</p>
+  </article>
+</section>
 
-<main>
+<main id="collection-start">
+  <section class="collection-intro">
+    <div>
+      <p class="section-kicker">Current inventory</p>
+      <h2>Browse photographed pieces from across the market.</h2>
+    </div>
+    <p class="collection-copy">Search by name, booth, category, or price band. Reserve online and pick up in store after payment is confirmed.</p>
+  </section>
+
+  <section class="workspace-panel" aria-label="Storefront tools">
+    <div class="search-wrap">
+      <form id="search-form">
+        <input
+          type="search"
+          id="search-input"
+          placeholder="Search market inventory, booth styles, or keywords"
+          autocomplete="off"
+          aria-label="Search items"
+        >
+        <button type="submit">Search</button>
+        <button type="button" class="search-clear" id="search-clear">&#10005; Clear</button>
+      </form>
+    </div>
+
   <div class="shop-toolbar">
       <div class="filter-chips" id="filter-chips">
           <button class="chip active" data-filter="all">All</button>
@@ -860,7 +1581,9 @@
   </div>
   <div class="status-bar">
     <span id="status-text"></span>
+    <span id="collection-meta" class="collection-meta">Loading current inventory…</span>
   </div>
+  </section>
   <div class="item-grid" id="item-grid">
     <div class="state-msg"><span class="spinner"></span> Loading items&#8230;</div>
   </div>
@@ -958,6 +1681,72 @@
   let activeFilters = new Set(['all']);
   let currentSort   = 'name-az';
   const STOREFRONT_PAGE_SIZE = 100;
+  let lastSearchTerm = '';
+
+  function updateHeroShowcase(items) {
+    const mosaic = document.getElementById('hero-mosaic');
+    const countEl = document.getElementById('hero-count');
+    const subcopyEl = document.getElementById('hero-subcopy');
+    if (!mosaic || !countEl || !subcopyEl) return;
+
+    countEl.textContent = Number(items.length || 0).toLocaleString();
+    subcopyEl.textContent = items.length
+      ? 'photographed items currently available for pickup'
+      : 'items currently visible in the storefront';
+
+    const featured = items
+      .filter(function (item) { return Boolean(item.image_path || item.photo_url); })
+      .slice(0, 5);
+
+    if (!featured.length) {
+      mosaic.innerHTML = [
+        '<div class="hero-tile hero-placeholder hero-tile-large"></div>',
+        '<div class="hero-tile hero-placeholder"></div>',
+        '<div class="hero-tile hero-placeholder"></div>',
+        '<div class="hero-tile hero-placeholder"></div>',
+        '<div class="hero-tile hero-placeholder"></div>'
+      ].join('');
+      return;
+    }
+
+    mosaic.innerHTML = featured.map(function (item, index) {
+      const imgSrc = item.image_path || item.photo_url;
+      const classes = ['hero-tile'];
+      if (index === 0) classes.push('hero-tile-large');
+      return `
+        <button class="${classes.join(' ')}" type="button" data-hero-item="${item.id}">
+          <img src="${escAttr(imgSrc)}" alt="${escAttr(item.name)}" loading="lazy">
+          <span class="hero-tile-copy">
+            <span class="hero-tile-booth">${item.booth_number ? 'Booth ' + escHtml(item.booth_number) : 'Market find'}</span>
+            <span class="hero-tile-name">${escHtml(item.name)}</span>
+          </span>
+        </button>
+      `;
+    }).join('');
+
+    mosaic.querySelectorAll('[data-hero-item]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        const itemId = parseInt(this.getAttribute('data-hero-item'), 10);
+        const item = allItems.find(function (entry) { return entry.id === itemId; });
+        if (item) openItemDetail(item);
+      });
+    });
+  }
+
+  function updateCollectionSummary(filteredItems) {
+    const metaEl = document.getElementById('collection-meta');
+    if (!metaEl) return;
+    const total = allItems.length;
+    const visible = filteredItems.length;
+    const saleCount = filteredItems.filter(function (item) { return hasActiveSale(item); }).length;
+    const searchNote = lastSearchTerm ? ' for "' + lastSearchTerm + '"' : '';
+    if (!visible) {
+      metaEl.textContent = 'No photographed items match the current search or filters' + searchNote + '.';
+      return;
+    }
+    const saleNote = saleCount ? ' · ' + saleCount + ' marked on sale' : '';
+    metaEl.textContent = visible.toLocaleString() + ' visible now from ' + total.toLocaleString() + ' available pieces' + saleNote + '.';
+  }
 
   // ── Load items ────────────────────────────────────────────────────
   async function loadTaxRate() {
@@ -995,6 +1784,7 @@
   async function loadItems(search) {
     const grid   = document.getElementById('item-grid');
     const status = document.getElementById('status-text');
+    lastSearchTerm = search || '';
 
     grid.innerHTML = '<div class="state-msg"><span class="spinner"></span> Loading items\u2026</div>';
     status.textContent = '';
@@ -1017,9 +1807,11 @@
       }
 
       allItems = data;
+      updateHeroShowcase(allItems);
       applyFiltersAndRender();
     } catch (err) {
       grid.innerHTML = '<div class="state-msg">Could not load items. Please try again.</div>';
+      updateCollectionSummary([]);
     }
   }
 
@@ -1063,10 +1855,12 @@
       grid.className = 'item-grid';
       grid.innerHTML = '<div class="state-msg">No items match your filters.</div>';
       status.textContent = allItems.length + ' item' + (allItems.length === 1 ? '' : 's') + ' available';
+      updateCollectionSummary(items);
       return;
     }
 
     status.textContent = items.length + ' item' + (items.length === 1 ? '' : 's') + (items.length < allItems.length ? ' (filtered)' : ' available');
+    updateCollectionSummary(items);
 
     if (currentView === 'list') {
       grid.className = 'item-grid list-view';
