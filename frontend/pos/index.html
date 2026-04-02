@@ -2290,8 +2290,8 @@
             receiptDateTime = sale.created_at_display;
         } else {
             const now = new Date(sale.created_at || Date.now());
-            const dateStr = bmmFormatDate(now, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
-            const timeStr = bmmFormatTime(now, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+            const dateStr = window.bmmFormatDate(now, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+            const timeStr = window.bmmFormatTime(now, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
             receiptDateTime = dateStr + ' at ' + timeStr;
         }
 
@@ -2439,8 +2439,8 @@
             receiptDateTime = sale.created_at_display;
         } else {
             const now = new Date(sale.created_at || Date.now());
-            const dateStr = bmmFormatDate(now, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
-            const timeStr = bmmFormatTime(now, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+            const dateStr = window.bmmFormatDate(now, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+            const timeStr = window.bmmFormatTime(now, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
             receiptDateTime = dateStr + ' at ' + timeStr;
         }
 
@@ -2783,7 +2783,7 @@ table { width: 100%; border-collapse: collapse; }
         if (cart.length === 0) return;
         const held = {
             id: Date.now(),
-            time: bmmFormatTime(new Date(), { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }),
+            time: window.bmmFormatTime(new Date(), { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' }),
             items: JSON.parse(JSON.stringify(cart)),
             itemCount: cart.reduce((s, c) => s + c.quantity, 0),
         };
@@ -2892,8 +2892,8 @@ table { width: 100%; border-collapse: collapse; }
                 html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:6px">Transaction History</div>';
                 html += data.transactions.slice(0, 10).map(function(t) {
                     var d = new Date(t.created_at);
-                    var dateStr = bmmFormatDate(d, { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
-                    var timeStr = bmmFormatTime(d, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+                    var dateStr = window.bmmFormatDate(d, { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
+                    var timeStr = window.bmmFormatTime(d, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
                     var color = t.type === 'load' ? 'var(--success-light)' : 'var(--danger)';
                     var sign = t.type === 'load' ? '+' : '-';
                     return '<div style="display:flex;justify-content:space-between;padding:4px 6px;background:var(--surface-2);margin-bottom:2px;font-size:0.82rem">'
@@ -3361,9 +3361,9 @@ table { width: 100%; border-collapse: collapse; }
             var sales = await apiGet(url);
             var d1 = new Date(dateFrom + 'T00:00:00');
             var d2 = new Date(dateTo + 'T00:00:00');
-            var rangeLabel = bmmFormatDate(d1, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+            var rangeLabel = window.bmmFormatDate(d1, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
             if (dateFrom !== dateTo) {
-                rangeLabel += ' – ' + bmmFormatDate(d2, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+                rangeLabel += ' – ' + window.bmmFormatDate(d2, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
             }
             renderReceiptResults(sales, rangeLabel);
         } catch (err) {
@@ -3391,7 +3391,7 @@ table { width: 100%; border-collapse: collapse; }
                 when = s.created_at_display.replace(/\s+(CST|CDT)$/i, '').replace(/\s+at\s+/i, ' ');
             } else {
                 var d = new Date(s.created_at);
-                when = bmmFormatDate(d, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) + ' ' + bmmFormatTime(d, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+                when = window.bmmFormatDate(d, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) + ' ' + window.bmmFormatTime(d, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
             }
             var itemCount = (s.line_items || []).reduce(function(sum, li){ return sum + li.quantity; }, 0);
             var voidTag = s.is_voided ? ' · <span style="color:var(--danger);font-weight:700">VOIDED</span>' : '';
@@ -3417,8 +3417,8 @@ table { width: 100%; border-collapse: collapse; }
                 receiptDateTime = sale.created_at_display;
             } else {
                 const now = new Date(sale.created_at);
-                const dateStr = bmmFormatDate(now, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
-                const timeStr = bmmFormatTime(now, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+                const dateStr = window.bmmFormatDate(now, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+                const timeStr = window.bmmFormatTime(now, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
                 receiptDateTime = dateStr + ' at ' + timeStr;
             }
 
@@ -3541,8 +3541,8 @@ table { width: 100%; border-collapse: collapse; }
             }
             list.innerHTML = orders.map(o => {
                 const d = new Date(o.date || o.created_at);
-                const dateStr = bmmFormatDate(d, { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
-                const timeStr = bmmFormatTime(d, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+                const dateStr = window.bmmFormatDate(d, { month: 'short', day: 'numeric', timeZone: 'America/Chicago' });
+                const timeStr = window.bmmFormatTime(d, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
                 const statusColor = o.status === 'pending' ? 'color-mix(in srgb, var(--warning) 38%, var(--white))' : o.status === 'ready' ? 'color-mix(in srgb, var(--info) 48%, var(--white))' : o.status === 'completed' ? 'var(--success-light)' : 'var(--border)';
                 const statusBg = o.status === 'pending' ? 'color-mix(in srgb, var(--warning) 58%, var(--bg))' : o.status === 'ready' ? 'color-mix(in srgb, var(--info) 42%, var(--bg))' : o.status === 'completed' ? 'var(--success)' : 'var(--text-light)';
                 var actionBtns = '';
@@ -3640,7 +3640,7 @@ table { width: 100%; border-collapse: collapse; }
         try {
             eodData = await apiGet('/api/v1/pos/end-of-day');
             const d = new Date(eodData.date + 'T12:00:00');
-            document.getElementById('eod-date-label').textContent = bmmFormatDate(d, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+            document.getElementById('eod-date-label').textContent = window.bmmFormatDate(d, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
             document.getElementById('eod-total-revenue').textContent = '$' + eodData.total_revenue.toFixed(2);
             document.getElementById('eod-total-txns').textContent = eodData.total_transactions;
             document.getElementById('eod-cash-total').textContent = '$' + eodData.cash.total.toFixed(2);
@@ -3849,7 +3849,7 @@ table { width: 100%; border-collapse: collapse; }
     function printEndOfDay() {
         if (!eodData) return;
         const d = new Date(eodData.date + 'T12:00:00');
-        const dateLabel = bmmFormatDate(d, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+        const dateLabel = window.bmmFormatDate(d, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
         const countedCash = document.getElementById('eod-counted-cash').textContent;
         const variance = document.getElementById('eod-variance').textContent;
         const deposit = document.getElementById('eod-deposit').textContent;

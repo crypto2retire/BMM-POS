@@ -222,7 +222,7 @@
 
     function fmtDate(iso) {
         var d = new Date(iso + 'T12:00:00');
-        return bmmFormatDate(d, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        return window.bmmFormatDate(d, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
     }
 
     var allReports = [];

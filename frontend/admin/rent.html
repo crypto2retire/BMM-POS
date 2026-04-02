@@ -734,7 +734,7 @@
                 document.getElementById('detail-payments').innerHTML = '<p class="no-payments">No rent payments recorded yet.</p>';
             } else {
                 document.getElementById('detail-payments').innerHTML = `<ul class="payment-list">${payments.map(p => {
-                    const d = p.processed_at ? bmmFormatDate(p.processed_at, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '—';
+                    const d = p.processed_at ? window.bmmFormatDate(p.processed_at, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '—';
                     const badgeCls = p.status === 'paid' ? 'paid' : 'pending';
                     return `<li class="payment-item">
                         <div>

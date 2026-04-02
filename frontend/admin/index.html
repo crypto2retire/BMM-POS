@@ -1323,8 +1323,8 @@
             }
             list.innerHTML = orders.map(function(o) {
                 var d = new Date(o.date || o.created_at);
-                var dateStr = bmmFormatDate(d, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
-                var timeStr = bmmFormatTime(d, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+                var dateStr = window.bmmFormatDate(d, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+                var timeStr = window.bmmFormatTime(d, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
                 var statusColor = o.status === 'pending' ? 'var(--charcoal-deep)' : o.status === 'ready' ? 'var(--text)' : 'var(--success-light)';
                 var statusBg = o.status === 'pending' ? 'color-mix(in srgb, var(--warning) 55%, var(--bg))' : o.status === 'ready' ? 'color-mix(in srgb, var(--info) 50%, var(--bg))' : 'color-mix(in srgb, var(--success) 45%, var(--bg))';
                 var actionBtns = '';
@@ -1390,7 +1390,7 @@
             }
 
             tbody.innerHTML = employees.map(function(e) {
-                var created = bmmFormatDate(e.created_at, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+                var created = window.bmmFormatDate(e.created_at, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
                 return '<tr><td><strong>' + e.name + '</strong></td><td>' + e.email + '</td>'
                     + '<td>' + roleBadge(e.role) + '</td>'
                     + '<td>' + statusBadge(e.status || 'active') + '</td>'
@@ -1696,7 +1696,7 @@
                 var d = new Date(a.created_at);
                 var typeClass = a.adjustment_type === 'credit' ? 'color:var(--success-light)' : 'color:var(--danger)';
                 return '<tr>'
-                    + '<td style="font-size:0.78rem">' + bmmFormatDate(d, { timeZone: 'America/Chicago' }) + ' ' + bmmFormatTime(d, { hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago' }) + '</td>'
+                    + '<td style="font-size:0.78rem">' + window.bmmFormatDate(d, { timeZone: 'America/Chicago' }) + ' ' + window.bmmFormatTime(d, { hour: '2-digit', minute: '2-digit', timeZone: 'America/Chicago' }) + '</td>'
                     + '<td style="' + typeClass + ';font-weight:600;font-size:0.78rem;text-transform:uppercase">' + a.adjustment_type + '</td>'
                     + '<td style="font-size:0.78rem;font-weight:600">' + fmt(parseFloat(a.amount)) + '</td>'
                     + '<td style="font-size:0.78rem">' + escapeHtml(a.reason) + '</td>'

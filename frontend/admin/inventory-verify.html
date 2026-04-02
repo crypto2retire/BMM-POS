@@ -1309,7 +1309,7 @@ async function archiveUnverified() {
         var res = await fetch(API + '/inventory-verify/archive-unverified', { method: 'POST', headers: headers });
         var data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Archive failed');
-        showAlert('Archived ' + data.archived + ' unverified Ricochet items. Expires: ' + bmmFormatDate(data.expires_at), 'success');
+        showAlert('Archived ' + data.archived + ' unverified Ricochet items. Expires: ' + window.bmmFormatDate(data.expires_at), 'success');
         loadStatus();
         loadPending();
     } catch (e) {
@@ -1339,7 +1339,7 @@ async function loadPending() {
         table.style.display = 'table';
 
         tbody.innerHTML = data.vendors.map(function(v) {
-            var expiry = v.earliest_expiry ? bmmFormatDate(v.earliest_expiry) : '—';
+            var expiry = v.earliest_expiry ? window.bmmFormatDate(v.earliest_expiry) : '—';
             return '<tr>' +
                 '<td style="color:var(--text); font-weight:500">' + esc(v.vendor_name) + '</td>' +
                 '<td>' + esc(v.booth_number || '—') + '</td>' +

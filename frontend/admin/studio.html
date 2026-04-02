@@ -453,7 +453,7 @@
             else { badge = `${c.spots_left} spots`; badgeCls = 'badge-open'; }
 
             const d = new Date(c.class_date + 'T12:00:00');
-            const dateStr = bmmFormatDate(d, { weekday: 'short', month: 'short', day: 'numeric' });
+            const dateStr = window.bmmFormatDate(d, { weekday: 'short', month: 'short', day: 'numeric' });
             const timeStr = `${c.start_time.slice(0,5)} - ${c.end_time.slice(0,5)}`;
 
             return `<div class="list-item">

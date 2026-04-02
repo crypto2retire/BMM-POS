@@ -794,7 +794,7 @@
 
         document.getElementById('detail-name').textContent = v.name;
         document.getElementById('detail-balance').textContent = '$' + formatBalanceAmount(v.current_balance);
-        document.getElementById('detail-since').textContent = v.created_at ? bmmFormatDate(v.created_at, { month: 'short', year: 'numeric' }) : '—';
+        document.getElementById('detail-since').textContent = v.created_at ? window.bmmFormatDate(v.created_at, { month: 'short', year: 'numeric' }) : '—';
 
         // Load monthly sales
         document.getElementById('detail-sales').textContent = '...';
