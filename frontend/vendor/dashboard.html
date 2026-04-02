@@ -304,6 +304,11 @@
                 <div class="card-title" style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Payment History</div>
                 <div id="rent-history-list" style="font-size:0.85rem;"></div>
             </div>
+            <div id="legacy-rent-history-section" style="display:none;margin-top:1.25rem;border-top:1px solid var(--warm-border);padding-top:1rem;">
+                <div class="card-title" style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Legacy Rent Reference</div>
+                <div style="color:var(--text-light);font-size:0.78rem;margin-bottom:0.6rem;">Imported from Ricochet for reference only. These entries do not change your current rent status in BMM-POS.</div>
+                <div id="legacy-rent-history-list" style="font-size:0.85rem;"></div>
+            </div>
         </div>
     </div>
 
@@ -847,6 +852,24 @@
                         + '</div>';
                 });
                 document.getElementById('rent-history-list').innerHTML = html;
+            }
+
+            if (data.legacy_history && data.legacy_history.length > 0) {
+                document.getElementById('legacy-rent-history-section').style.display = 'block';
+                var legacyHtml = '';
+                data.legacy_history.forEach(function(entry) {
+                    var when = entry.entry_date
+                        ? window.bmmFormatDate(entry.entry_date, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' })
+                        : 'Pre-BMM-POS';
+                    legacyHtml += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);gap:1rem">'
+                        + '<div style="min-width:0">'
+                        + '<div style="color:var(--text)">' + escHtml(entry.description || 'Imported legacy rent reference') + '</div>'
+                        + '<div style="color:var(--text-light);font-size:0.78rem">' + escHtml(entry.source_system || 'ricochet') + ' · ' + escHtml(when) + '</div>'
+                        + '</div>'
+                        + '<span style="color:var(--gold);font-weight:600;white-space:nowrap">$' + Number(entry.amount || 0).toFixed(2) + '</span>'
+                        + '</div>';
+                });
+                document.getElementById('legacy-rent-history-list').innerHTML = legacyHtml;
             }
         } catch (err) {
         }

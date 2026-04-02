@@ -9,9 +9,28 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.vendor import Vendor
 from app.models.rent import RentPayment
+from app.models.legacy_history import LegacyFinancialHistory
 from app.routers.auth import get_current_user
 
 router = APIRouter(prefix="/vendor", tags=["vendor-rent"])
+
+
+def _serialize_legacy_entry(entry: LegacyFinancialHistory) -> dict:
+    return {
+        "id": entry.id,
+        "entry_type": entry.entry_type,
+        "source_system": entry.source_system,
+        "reference_kind": entry.reference_kind,
+        "amount": float(entry.amount or 0),
+        "entry_date": entry.entry_date.isoformat() if entry.entry_date else None,
+        "period_month": entry.period_month.isoformat() if entry.period_month else None,
+        "description": entry.description,
+        "source_name": entry.source_name,
+        "source_email": entry.source_email,
+        "source_reference": entry.source_reference,
+        "import_batch": entry.import_batch,
+        "imported_at": entry.imported_at.isoformat() if entry.imported_at else None,
+    }
 
 
 def _has_vendor_booth_access(user: Vendor) -> bool:
@@ -46,6 +65,20 @@ async def rent_status(
     )
     history = history_result.scalars().all()
 
+    legacy_result = await db.execute(
+        select(LegacyFinancialHistory)
+        .where(
+            LegacyFinancialHistory.vendor_id == vendor.id,
+            LegacyFinancialHistory.entry_type == "rent",
+        )
+        .order_by(
+            LegacyFinancialHistory.entry_date.desc().nullslast(),
+            LegacyFinancialHistory.imported_at.desc(),
+        )
+        .limit(24)
+    )
+    legacy_history = legacy_result.scalars().all()
+
     return {
         "monthly_rent": float(vendor.monthly_rent or 0),
         "current_month": today.strftime("%B %Y"),
@@ -61,6 +94,7 @@ async def rent_status(
             }
             for p in history
         ],
+        "legacy_history": [_serialize_legacy_entry(entry) for entry in legacy_history],
     }
 
 

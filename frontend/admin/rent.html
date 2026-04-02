@@ -352,6 +352,47 @@
         .rent-mob-row { display: flex; justify-content: space-between; font-size: 0.82rem; margin-top: 0.4rem; }
         .rent-mob-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
 
+        .legacy-ref-controls {
+            display: flex;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+            align-items: end;
+            margin-bottom: 1rem;
+        }
+        .legacy-ref-controls label {
+            display: block;
+            font-size: 0.62rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-light);
+            margin-bottom: 0.25rem;
+            font-family: 'Roboto', sans-serif;
+        }
+        .legacy-ref-controls input,
+        .legacy-ref-controls select {
+            min-height: 42px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem 0.7rem;
+            font-size: 0.88rem;
+            font-family: 'Roboto', sans-serif;
+        }
+        .legacy-ref-summary {
+            color: var(--text-light);
+            font-size: 0.82rem;
+            margin-bottom: 0.75rem;
+        }
+        .legacy-type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 0.56rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border: 1px solid var(--border);
+            color: var(--gold);
+        }
+
         @media (max-width: 767px) {
             .rent-stat-value { font-size: 1.9rem; }
             .main-content { padding-bottom: 70px; }
@@ -361,6 +402,9 @@
             .search-bar { flex-direction: column; }
             .search-bar input { max-width: 100%; min-height: 44px; font-size: 16px; }
             .search-bar { flex-wrap: wrap; }
+            .legacy-ref-controls > div { width: 100%; }
+            .legacy-ref-controls input,
+            .legacy-ref-controls select { width: 100%; }
         }
     </style>
 </head>
@@ -461,6 +505,56 @@
         </div>
         <div class="rent-cards-mobile" id="rent-cards-mobile"></div>
     </div>
+
+    <div class="section">
+        <div class="section-header">
+            <h2 class="section-title">Legacy Reference History</h2>
+        </div>
+        <div class="card" style="padding:1.2rem 1.25rem;">
+            <div style="color:var(--text-light);font-size:0.84rem;margin-bottom:1rem;">Imported Ricochet reference records. View only. Current BMM-POS rent accounting and payouts are not changed by these entries.</div>
+            <div class="legacy-ref-controls">
+                <div>
+                    <label for="legacy-type-filter">Type</label>
+                    <select id="legacy-type-filter" onchange="loadLegacyReferenceHistory()">
+                        <option value="rent">Rent</option>
+                        <option value="payout">Payout</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="legacy-vendor-filter">Vendor</label>
+                    <select id="legacy-vendor-filter" onchange="loadLegacyReferenceHistory()">
+                        <option value="">All vendors</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="legacy-date-from">From date</label>
+                    <input type="date" id="legacy-date-from" onchange="loadLegacyReferenceHistory()">
+                </div>
+                <div>
+                    <label for="legacy-date-to">To date</label>
+                    <input type="date" id="legacy-date-to" onchange="loadLegacyReferenceHistory()">
+                </div>
+            </div>
+            <div class="legacy-ref-summary" id="legacy-summary">Loading…</div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Vendor</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Entry Date</th>
+                            <th>Description</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody id="legacy-reference-body">
+                        <tr><td colspan="6" class="loading">Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="detail-overlay" id="detail-overlay" onclick="closeVendorDetail()"></div>
@@ -548,6 +642,7 @@
 <script src="/static/js/auth-bootstrap.js"></script>
 <script>
     let allVendors = [];
+    let legacyReferenceEntries = [];
 
     function handleLogout() {
         window.bmmAuth.logout();
@@ -696,10 +791,71 @@
             document.getElementById('stat-overdue').textContent  = allVendors.filter(v => v.status === 'overdue').length;
 
             renderRows(allVendors);
+            populateLegacyVendorFilter();
+            loadLegacyReferenceHistory();
         } catch (err) {
             showAlert('alert-container', err.message, 'error');
             document.getElementById('rent-table-body').innerHTML =
                 '<tr><td colspan="6" class="empty-state">Failed to load rent data.</td></tr>';
+        }
+    }
+
+    function populateLegacyVendorFilter() {
+        var sel = document.getElementById('legacy-vendor-filter');
+        if (!sel) return;
+        var current = sel.value || '';
+        sel.innerHTML = '<option value="">All vendors</option>' + allVendors.map(function(v) {
+            return '<option value="' + v.id + '">' + escHtml(v.name) + ' — Booth ' + escHtml(v.booth_number || '—') + '</option>';
+        }).join('');
+        sel.value = current;
+    }
+
+    function renderLegacyReferenceRows(entries) {
+        var body = document.getElementById('legacy-reference-body');
+        if (!entries.length) {
+            body.innerHTML = '<tr><td colspan="6" class="empty-state">No matching legacy reference entries found.</td></tr>';
+            return;
+        }
+        body.innerHTML = entries.map(function(entry) {
+            var when = entry.entry_date
+                ? window.bmmFormatDate(entry.entry_date, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' })
+                : 'Pre-BMM-POS';
+            return '<tr>'
+                + '<td>' + escHtml(entry.vendor_name || 'Unknown vendor') + '</td>'
+                + '<td><span class="legacy-type-badge">' + escHtml(entry.entry_type || 'reference') + '</span></td>'
+                + '<td>$' + Number(entry.amount || 0).toFixed(2) + '</td>'
+                + '<td>' + escHtml(when) + '</td>'
+                + '<td>' + escHtml(entry.description || 'Imported legacy reference') + '</td>'
+                + '<td>' + escHtml(entry.source_system || 'ricochet') + '</td>'
+                + '</tr>';
+        }).join('');
+    }
+
+    async function loadLegacyReferenceHistory() {
+        var type = document.getElementById('legacy-type-filter').value || 'rent';
+        var vendorId = document.getElementById('legacy-vendor-filter').value;
+        var dateFrom = document.getElementById('legacy-date-from').value;
+        var dateTo = document.getElementById('legacy-date-to').value;
+        var qs = new URLSearchParams();
+        qs.set('entry_type', type);
+        if (vendorId) qs.set('vendor_id', vendorId);
+        if (dateFrom) qs.set('date_from', dateFrom);
+        if (dateTo) qs.set('date_to', dateTo);
+
+        document.getElementById('legacy-summary').textContent = 'Loading legacy reference history…';
+        document.getElementById('legacy-reference-body').innerHTML = '<tr><td colspan="6" class="loading">Loading…</td></tr>';
+
+        try {
+            var data = await apiGet('/api/v1/admin/reference-history?' + qs.toString());
+            legacyReferenceEntries = data.entries || [];
+            renderLegacyReferenceRows(legacyReferenceEntries);
+            document.getElementById('legacy-summary').textContent =
+                (data.summary.count || 0) + ' entr' + ((data.summary.count || 0) === 1 ? 'y' : 'ies')
+                + ' · total $' + Number(data.summary.total_amount || 0).toFixed(2)
+                + (type === 'rent' ? ' in imported rent history' : ' in imported payout history');
+        } catch (err) {
+            document.getElementById('legacy-summary').textContent = err.message || 'Failed to load legacy reference history.';
+            document.getElementById('legacy-reference-body').innerHTML = '<tr><td colspan="6" class="empty-state">Failed to load legacy reference history.</td></tr>';
         }
     }
 
@@ -730,6 +886,7 @@
             `;
 
             const payments = data.payments;
+            const legacyEntries = data.legacy_entries || [];
             if (payments.length === 0) {
                 document.getElementById('detail-payments').innerHTML = '<p class="no-payments">No rent payments recorded yet.</p>';
             } else {
@@ -744,6 +901,20 @@
                         <div class="payment-amount">$${p.amount.toFixed(2)}</div>
                     </li>`;
                 }).join('')}</ul>`;
+            }
+            if (legacyEntries.length > 0) {
+                document.getElementById('detail-payments').innerHTML += '<div class="payment-history-title">Legacy Reference</div><ul class="payment-list">' + legacyEntries.map(function(entry) {
+                    var when = entry.entry_date
+                        ? window.bmmFormatDate(entry.entry_date, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' })
+                        : 'Pre-BMM-POS';
+                    return '<li class="payment-item">'
+                        + '<div>'
+                        + '<div class="payment-period">' + escHtml(entry.description || 'Imported legacy rent reference') + '</div>'
+                        + '<div class="payment-meta">' + escHtml(when) + ' · ' + escHtml(entry.source_system || 'ricochet') + '</div>'
+                        + '</div>'
+                        + '<div class="payment-amount">$' + Number(entry.amount || 0).toFixed(2) + '</div>'
+                        + '</li>';
+                }).join('') + '</ul>';
             }
         } catch (err) {
             document.getElementById('detail-vendor-name').textContent = 'Error';

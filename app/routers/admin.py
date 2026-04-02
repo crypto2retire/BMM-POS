@@ -7,6 +7,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select, func, text, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models.vendor import Vendor, VendorBalance, BalanceAdjustment
@@ -14,6 +15,7 @@ from app.models.item import Item
 from app.models.sale import Sale, SaleItem
 from app.models.rent import RentPayment
 from app.models.payout import Payout
+from app.models.legacy_history import LegacyFinancialHistory
 from app.models.gift_card import GiftCard, GiftCardTransaction
 from app.models.reservation import Reservation
 from app.models.studio_class import StudioClass
@@ -40,6 +42,26 @@ from app.routers.settings import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+def _serialize_legacy_entry(entry: LegacyFinancialHistory) -> dict:
+    return {
+        "id": entry.id,
+        "vendor_id": entry.vendor_id,
+        "vendor_name": entry.vendor.name if getattr(entry, "vendor", None) else None,
+        "entry_type": entry.entry_type,
+        "source_system": entry.source_system,
+        "reference_kind": entry.reference_kind,
+        "amount": float(entry.amount or 0),
+        "entry_date": entry.entry_date.isoformat() if entry.entry_date else None,
+        "period_month": entry.period_month.isoformat() if entry.period_month else None,
+        "description": entry.description,
+        "source_name": entry.source_name,
+        "source_email": entry.source_email,
+        "source_reference": entry.source_reference,
+        "import_batch": entry.import_batch,
+        "imported_at": entry.imported_at.isoformat() if entry.imported_at else None,
+    }
 
 
 async def require_vendor_hub_access(
@@ -345,6 +367,19 @@ async def vendor_rent_history(
     )
     payments = payments_result.scalars().all()
 
+    legacy_result = await db.execute(
+        select(LegacyFinancialHistory)
+        .where(
+            LegacyFinancialHistory.vendor_id == vendor_id,
+            LegacyFinancialHistory.entry_type == "rent",
+        )
+        .order_by(
+            LegacyFinancialHistory.entry_date.desc().nullslast(),
+            LegacyFinancialHistory.imported_at.desc(),
+        )
+    )
+    legacy_entries = legacy_result.scalars().all()
+
     today = date.today()
     latest = payments[0] if payments else None
     status = _rent_status(today, latest)
@@ -374,6 +409,55 @@ async def vendor_rent_history(
             }
             for p in payments
         ],
+        "legacy_entries": [_serialize_legacy_entry(entry) for entry in legacy_entries],
+    }
+
+
+@router.get("/reference-history")
+async def reference_history(
+    vendor_id: Optional[int] = None,
+    entry_type: str = "rent",
+    date_from: Optional[date] = None,
+    date_to: Optional[date] = None,
+    limit: int = 500,
+    db: AsyncSession = Depends(get_db),
+    _: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
+):
+    if entry_type not in ("rent", "payout"):
+        raise HTTPException(status_code=400, detail="entry_type must be 'rent' or 'payout'")
+    limit = max(1, min(limit, 2000))
+
+    query = (
+        select(LegacyFinancialHistory)
+        .options(selectinload(LegacyFinancialHistory.vendor))
+        .where(LegacyFinancialHistory.entry_type == entry_type)
+    )
+    if vendor_id:
+        query = query.where(LegacyFinancialHistory.vendor_id == vendor_id)
+    if date_from:
+        query = query.where(LegacyFinancialHistory.entry_date >= date_from)
+    if date_to:
+        query = query.where(LegacyFinancialHistory.entry_date <= date_to)
+    query = query.order_by(
+        LegacyFinancialHistory.entry_date.desc().nullslast(),
+        LegacyFinancialHistory.imported_at.desc(),
+    ).limit(limit)
+
+    result = await db.execute(query)
+    entries = result.scalars().all()
+
+    return {
+        "entries": [_serialize_legacy_entry(entry) for entry in entries],
+        "entry_type": entry_type,
+        "filters": {
+            "vendor_id": vendor_id,
+            "date_from": date_from.isoformat() if date_from else None,
+            "date_to": date_to.isoformat() if date_to else None,
+        },
+        "summary": {
+            "count": len(entries),
+            "total_amount": round(sum(float(entry.amount or 0) for entry in entries), 2),
+        },
     }
 
 
