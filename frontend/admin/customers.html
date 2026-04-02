@@ -88,6 +88,7 @@
         <span id="user-name">Loading...</span>
         <nav class="navbar-nav" id="nav-links">
             <a href="/admin/index.html">Dashboard</a>
+            <a href="/admin/vendors.html">Vendors</a>
             <a href="/admin/reports.html">Reports</a>
             <a href="/admin/eod-reports.html">EOD Reports</a>
             <a href="/admin/inventory-verify.html">Inventory</a>
@@ -103,6 +104,7 @@
 </nav>
 <div class="mobile-nav-dropdown" id="mobile-nav">
     <a href="/admin/index.html">Dashboard</a>
+    <a href="/admin/vendors.html">Vendors</a>
     <a href="/admin/reports.html">Reports</a>
     <a href="/admin/eod-reports.html">EOD Reports</a>
     <a href="/admin/inventory-verify.html">Inventory</a>
@@ -302,6 +304,9 @@
             <tr class="vendor-expand" id="exp-${v.id}">
                 <td colspan="7">
                     <div class="expand-inner">
+                        <p style="margin:0 0 0.75rem 0">
+                            <a class="btn btn-primary btn-sm" href="/admin/vendors.html?vendor_id=${v.id}" onclick="event.stopPropagation()">Full account &amp; access (role, rent, password)</a>
+                        </p>
                         <div class="expand-tabs">
                             <button class="expand-tab active" id="tab-${v.id}-items" onclick="event.stopPropagation();switchTab(${v.id},'items')">Items</button>
                             <button class="expand-tab" id="tab-${v.id}-sales" onclick="event.stopPropagation();switchTab(${v.id},'sales')">Recent Sales</button>
@@ -327,6 +332,9 @@
                     </div>
                 </div>
                 <div class="vendor-mob-detail">
+                    <p style="margin:0 0 0.75rem 0">
+                        <a class="btn btn-primary btn-sm" href="/admin/vendors.html?vendor_id=${v.id}" onclick="event.stopPropagation()">Full account &amp; access</a>
+                    </p>
                     <div style="display:flex;gap:1.5rem;flex-wrap:wrap;font-size:0.85rem;margin-bottom:0.5rem">
                         <span><label style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Email</label><br>${v.email}</span>
                         <span><label style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Phone</label><br>${v.phone || '—'}</span>
@@ -357,6 +365,7 @@
         if (role === 'admin') {
             document.getElementById('nav-links').innerHTML = `
                 <a href="/admin/index.html">Dashboard</a>
+                <a href="/admin/vendors.html">Vendors</a>
                 <a href="/admin/reports.html">Reports</a>
                 <a href="/admin/inventory-verify.html">Inventory</a>
                 <a href="/vendor/items.html">Items</a>
