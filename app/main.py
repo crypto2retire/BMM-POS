@@ -1,6 +1,7 @@
 import os
 import sys
 import traceback
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -10,6 +11,35 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, PlainTextResponse, Response, FileResponse, HTMLResponse
 from pathlib import Path
 from sqlalchemy import text
+
+logger = logging.getLogger("bmm-startup")
+_startup_checks: list[dict] = []
+
+
+def _record_startup_ok(task: str) -> None:
+    _startup_checks.append({"task": task, "status": "ok"})
+
+
+def _record_startup_failure(task: str, exc: Exception, *, critical: bool = False) -> None:
+    _startup_checks.append(
+        {
+            "task": task,
+            "status": "failed",
+            "critical": critical,
+            "error_type": type(exc).__name__,
+        }
+    )
+    logger.exception("Startup task failed: %s", task)
+
+
+def _startup_health_payload() -> dict:
+    failed = [check["task"] for check in _startup_checks if check["status"] == "failed"]
+    return {
+        "status": "degraded" if failed else "ok",
+        "startup_failure_count": len(failed),
+        "startup_failed_tasks": failed,
+    }
+
 
 try:
     print("BMM-POS: importing database...", file=sys.stderr, flush=True)
@@ -26,6 +56,8 @@ except Exception as _import_err:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _startup_checks.clear()
+
     # Ensure all models are registered with Base.metadata before create_all
     import app.models  # noqa: F401
 
@@ -34,8 +66,10 @@ async def lifespan(app: FastAPI):
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         print("BMM-POS: database schema OK", file=sys.stderr, flush=True)
+        _record_startup_ok("database_schema")
     except Exception as e:
         print(f"BMM-POS: schema create_all FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("database_schema", e, critical=True)
 
     # Add columns that create_all won't add to existing tables
     try:
@@ -279,8 +313,10 @@ async def lifespan(app: FastAPI):
                 "ALTER TABLE eod_reports ADD COLUMN IF NOT EXISTS denomination_counts JSONB"
             ))
             await session.commit()
+            _record_startup_ok("column_migrations")
     except Exception as e:
         print(f"BMM-POS: column migration FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("column_migrations", e, critical=True)
 
     # ── PRIORITY: Force-clear ALL consignment flags ──
     try:
@@ -297,8 +333,10 @@ async def lifespan(app: FastAPI):
                 print(f"BMM-POS: CLEARED consignment flags on {count} items", file=sys.stderr, flush=True)
             else:
                 print("BMM-POS: consignment check OK — no items flagged", file=sys.stderr, flush=True)
+            _record_startup_ok("consignment_cleanup")
     except Exception as e:
         print(f"BMM-POS: CRITICAL — consignment cleanup failed: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("consignment_cleanup", e)
 
     # ── Force ALL vendors to payout_method = 'check' ──
     try:
@@ -311,8 +349,10 @@ async def lifespan(app: FastAPI):
             count = result.rowcount
             if count > 0:
                 print(f"BMM-POS: Set payout_method to 'check' for {count} vendors", file=sys.stderr, flush=True)
+            _record_startup_ok("vendor_payout_method_default")
     except Exception as e:
         print(f"BMM-POS: payout_method default note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("vendor_payout_method_default", e)
 
     # ── Add rent_balance column if missing ──
     try:
@@ -323,8 +363,10 @@ async def lifespan(app: FastAPI):
             ))
             await session.commit()
             print("BMM-POS: rent_balance column OK", file=sys.stderr, flush=True)
+            _record_startup_ok("rent_balance_column")
     except Exception as e:
         print(f"BMM-POS: rent_balance column note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("rent_balance_column", e)
 
     # ── Ensure every vendor has a vendor_balances row ──
     try:
@@ -340,8 +382,10 @@ async def lifespan(app: FastAPI):
             count = result.rowcount
             if count > 0:
                 print(f"BMM-POS: Created missing vendor_balances rows for {count} vendors", file=sys.stderr, flush=True)
+            _record_startup_ok("vendor_balances_backfill")
     except Exception as e:
         print(f"BMM-POS: vendor_balances backfill note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("vendor_balances_backfill", e)
 
     # ── Migrate existing rent payments to rent_balance (one-time) ──
     # Credits rent_balance for any rent_payment where rent_balance hasn't been credited yet
@@ -368,16 +412,20 @@ async def lifespan(app: FastAPI):
             count = result.rowcount
             if count > 0:
                 print(f"BMM-POS: Migrated rent payments to rent_balance for {count} vendors", file=sys.stderr, flush=True)
+            _record_startup_ok("rent_balance_migration")
     except Exception as e:
         print(f"BMM-POS: rent_balance migration note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("rent_balance_migration", e)
 
     # Verify connectivity
     try:
         async with AsyncSessionLocal() as session:
             await session.execute(text("SELECT 1"))
         print("BMM-POS: database connection OK", file=sys.stderr, flush=True)
+        _record_startup_ok("database_connection")
     except Exception as e:
         print(f"BMM-POS: DATABASE CONNECTION FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("database_connection", e, critical=True)
 
     # Auto-seed essential accounts if database is empty
     try:
@@ -463,8 +511,21 @@ async def lifespan(app: FastAPI):
             else:
                 total = await session.execute(text("SELECT COUNT(*) FROM vendors"))
                 print(f"BMM-POS: {total.scalar()} vendors OK", file=sys.stderr, flush=True)
+            _record_startup_ok("auto_seed_accounts")
     except Exception as e:
         print(f"BMM-POS: auto-seed FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("auto_seed_accounts", e)
+
+    startup_summary = _startup_health_payload()
+    if startup_summary["startup_failure_count"]:
+        print(
+            "BMM-POS: startup completed with warnings — failed tasks: "
+            + ", ".join(startup_summary["startup_failed_tasks"]),
+            file=sys.stderr,
+            flush=True,
+        )
+    else:
+        print("BMM-POS: startup checks all passed", file=sys.stderr, flush=True)
 
     yield
 
@@ -542,7 +603,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    return _startup_health_payload()
 
 
 app.include_router(auth.router, prefix="/api/v1")
