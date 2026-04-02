@@ -1813,7 +1813,8 @@
                 '<div style="font-size:0.75rem;color:var(--text-light)">Rent: <span style="color:' +
                 (parseFloat(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--text-light)') +
                 '">' + rpFmt(v.rent_balance) + '</span></div>' +
-                '<div style="font-size:1.1rem;font-weight:600;color:' + combColor + ';margin-top:0.2rem">' + rpFmt(combinedRaw) + '</div>' +
+                '<div style="font-size:0.7rem;color:var(--text-light);margin-top:0.2rem">After next rent</div>' +
+                '<div style="font-size:1.1rem;font-weight:600;color:' + combColor + ';margin-top:0.05rem">' + rpFmt(combinedRaw) + '</div>' +
                 '</div>';
             container.appendChild(card);
         });

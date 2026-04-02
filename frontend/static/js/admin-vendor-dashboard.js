@@ -24,18 +24,17 @@
         return isNaN(n) ? 0 : n;
     }
 
-    /** Prefer server combined_balance; else sum sales + display rent so negatives are preserved */
+    /** Prefer server combined_balance; fallback preserves the server's projected post-rent intent. */
     function combinedAmount(v) {
         if (v == null) return 0;
         if (v.combined_balance != null && v.combined_balance !== '') {
             var c = num(v.combined_balance);
             if (!isNaN(c)) return c;
         }
-        var hasParts =
-            Object.prototype.hasOwnProperty.call(v, 'sales_balance') ||
-            Object.prototype.hasOwnProperty.call(v, 'rent_balance');
+        var hasParts = Object.prototype.hasOwnProperty.call(v, 'sales_balance') ||
+            Object.prototype.hasOwnProperty.call(v, 'monthly_rent');
         if (hasParts) {
-            return Math.round((num(v.sales_balance) + num(v.rent_balance)) * 100) / 100;
+            return Math.round((num(v.sales_balance) - num(v.monthly_rent)) * 100) / 100;
         }
         return num(v.balance);
     }
@@ -411,7 +410,7 @@
                 : combinedAmount(v) > 0
                   ? 'var(--success-light)'
                   : 'var(--text-light)') +
-            ';margin:0.25rem 0">Combined: ' +
+            ';margin:0.25rem 0">After Next Rent: ' +
             fmt(combinedAmount(v)) +
             '</p></div>' +
             '<div style="font-size:0.82rem;color:var(--text-light);line-height:1.5">' +
