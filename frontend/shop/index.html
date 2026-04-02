@@ -293,21 +293,21 @@
     letter-spacing: 0.02em;
   }
 
-  .price-original {
+  .shop-price {
     font-family: 'EB Garamond', serif;
     font-size: 1.2rem;
     color: var(--text);
     font-weight: 400;
   }
 
-  .price-original.struck {
+  .shop-price--compare {
     text-decoration: line-through;
     color: var(--text-dim);
     font-size: 0.95rem;
     font-family: 'Roboto', sans-serif;
   }
 
-  .price-sale {
+  .shop-price--sale {
     font-family: 'EB Garamond', serif;
     font-size: 1.3rem;
     color: var(--gold);
@@ -689,6 +689,9 @@
       font-size: 0.78rem;
       padding: 0.45rem 0.75rem;
       cursor: pointer;
+  }
+  .shop-category {
+      min-width: 170px;
   }
   .view-toggle { display: flex; gap: 0; }
   .view-toggle button {
@@ -1260,12 +1263,33 @@
   .item-grid {
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 1.5rem;
+    align-items: start;
   }
 
   .item-card {
     border: 1px solid rgba(214, 188, 123, 0.2);
     background: rgba(255, 251, 245, 0.9);
     box-shadow: 0 14px 34px rgba(20, 17, 13, 0.06);
+  }
+
+  .item-card.card-feature {
+    grid-column: span 2;
+  }
+
+  .item-card.card-feature .card-image {
+    aspect-ratio: 5 / 4.1;
+  }
+
+  .item-card.card-tall .card-image {
+    aspect-ratio: 4 / 5.8;
+  }
+
+  .item-card.card-wide .card-image {
+    aspect-ratio: 5 / 3.6;
+  }
+
+  .item-card.card-compact .card-image {
+    aspect-ratio: 1 / 1.02;
   }
 
   .item-card:hover {
@@ -1305,6 +1329,21 @@
   .list-vendor,
   .list-desc {
     color: #7a7065;
+  }
+
+  .card-category-tag {
+    width: fit-content;
+    max-width: 100%;
+    padding: 0.28rem 0.6rem;
+    border: 1px solid rgba(146, 126, 83, 0.16);
+    background: rgba(220, 192, 132, 0.08);
+    color: #7a6545;
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .card-footer {
@@ -1416,6 +1455,7 @@
     .shop-controls {
       width: 100%;
       justify-content: space-between;
+      flex-wrap: wrap;
     }
 
     .filter-chips {
@@ -1428,6 +1468,10 @@
     .chip {
       white-space: nowrap;
       flex: 0 0 auto;
+    }
+
+    .item-card.card-feature {
+      grid-column: span 1;
     }
   }
 
@@ -1566,6 +1610,9 @@
           <button class="chip" data-filter="over100">Over $100</button>
       </div>
       <div class="shop-controls">
+          <select id="category-select" class="shop-sort shop-category" aria-label="Filter by category">
+              <option value="">All categories</option>
+          </select>
           <select id="sort-select" class="shop-sort">
               <option value="name-az">Name A–Z</option>
               <option value="name-za">Name Z–A</option>
@@ -1682,8 +1729,32 @@
   let currentView   = 'grid';
   let activeFilters = new Set(['all']);
   let currentSort   = 'name-az';
+  let currentCategory = '';
   const STOREFRONT_PAGE_SIZE = 100;
   let lastSearchTerm = '';
+
+  function getCardVariant(index) {
+    const cycle = ['card-feature', 'card-standard', 'card-tall', 'card-standard', 'card-wide', 'card-standard', 'card-compact', 'card-standard'];
+    return cycle[index % cycle.length];
+  }
+
+  function updateCategoryOptions(items) {
+    const select = document.getElementById('category-select');
+    if (!select) return;
+    const categories = Array.from(new Set(
+      items
+        .map(function (item) { return (item.category || '').trim(); })
+        .filter(Boolean)
+    )).sort(function (a, b) { return a.localeCompare(b); });
+
+    const options = ['<option value="">All categories</option>'].concat(
+      categories.map(function (category) {
+        const selected = category === currentCategory ? ' selected' : '';
+        return '<option value="' + escAttr(category) + '"' + selected + '>' + escHtml(category) + '</option>';
+      })
+    );
+    select.innerHTML = options.join('');
+  }
 
   function updateHeroShowcase(items) {
     const mosaic = document.getElementById('hero-mosaic');
@@ -1742,12 +1813,13 @@
     const visible = filteredItems.length;
     const saleCount = filteredItems.filter(function (item) { return hasActiveSale(item); }).length;
     const searchNote = lastSearchTerm ? ' for "' + lastSearchTerm + '"' : '';
+    const categoryNote = currentCategory ? ' in ' + currentCategory : '';
     if (!visible) {
-      metaEl.textContent = 'No photographed items match the current search or filters' + searchNote + '.';
+      metaEl.textContent = 'No photographed items match the current search or filters' + searchNote + categoryNote + '.';
       return;
     }
     const saleNote = saleCount ? ' · ' + saleCount + ' marked on sale' : '';
-    metaEl.textContent = visible.toLocaleString() + ' visible now from ' + total.toLocaleString() + ' available pieces' + saleNote + '.';
+    metaEl.textContent = visible.toLocaleString() + ' visible now from ' + total.toLocaleString() + ' available pieces' + categoryNote + saleNote + '.';
   }
 
   // ── Load items ────────────────────────────────────────────────────
@@ -1809,10 +1881,12 @@
       }
 
       allItems = data;
+      updateCategoryOptions(allItems);
       updateHeroShowcase(allItems);
       applyFiltersAndRender();
     } catch (err) {
       grid.innerHTML = '<div class="state-msg">Could not load items. Please try again.</div>';
+      updateCategoryOptions([]);
       updateCollectionSummary([]);
     }
   }
@@ -1820,6 +1894,12 @@
   // ── Filter, sort, render ───────────────────────────────────────────
   function applyFiltersAndRender() {
     let items = [...allItems];
+
+    if (currentCategory) {
+      items = items.filter(function (item) {
+        return (item.category || '').trim() === currentCategory;
+      });
+    }
 
     // Apply filters
     if (!activeFilters.has('all')) {
@@ -1871,14 +1951,14 @@
     } else {
       grid.className = 'item-grid';
       grid.innerHTML = '';
-      items.forEach(function (item) { grid.appendChild(buildCard(item)); });
+      items.forEach(function (item, index) { grid.appendChild(buildCard(item, index)); });
     }
   }
 
   // ── Build card ────────────────────────────────────────────────────
-  function buildCard(item) {
+  function buildCard(item, index) {
     const card = document.createElement('div');
-    card.className = 'item-card';
+    card.className = 'item-card ' + getCardVariant(index);
     card.setAttribute('itemscope', '');
     card.setAttribute('itemtype', 'https://schema.org/Product');
 
@@ -1890,10 +1970,10 @@
     const taxPct     = (SHOP_TAX_RATE * 100).toFixed(2).replace(/\.?0+$/, '');
 
     const priceHtml = hasSale
-      ? `<span class="price-original struck">$${fmt(item.price)}</span>
-         <span class="price-sale">$${fmt(item.sale_price)}</span>
+      ? `<span class="shop-price shop-price--compare">$${fmt(item.price)}</span>
+         <span class="shop-price--sale">$${fmt(item.sale_price)}</span>
          <span class="sale-badge">SALE</span>`
-      : `<span class="price-original">$${fmt(item.price)}</span>`;
+      : `<span class="shop-price">$${fmt(item.price)}</span>`;
 
     const btnClass  = isReserved ? 'btn-reserve reserved' : 'btn-reserve';
     const btnLabel  = isReserved ? 'Reserved \u2713' : 'Pay &amp; Reserve';
@@ -1911,6 +1991,7 @@
         <div class="card-vendor">
           ${item.booth_number ? 'Booth ' + escHtml(item.booth_number) : ''}
         </div>
+        ${item.category ? `<div class="card-category-tag">${escHtml(item.category)}</div>` : ''}
         <div class="card-pricing">${priceHtml}</div>
         <div class="card-tax">+ ${taxPct}% tax &nbsp;·&nbsp; Total: $${fmt(totalPrice)}</div>
         <meta itemprop="price" content="${fmt(basePrice)}">
@@ -1953,8 +2034,8 @@
       : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;opacity:0.15">\uD83C\uDFF7\uFE0F</div>`;
 
     const priceHtml = hasSale
-      ? `<span class="price-original struck" style="font-size:0.85rem">$${fmt(item.price)}</span><br><span class="price-sale" style="font-size:1.1rem">$${fmt(item.sale_price)}</span>`
-      : `<span class="price-original" style="font-size:1.1rem">$${fmt(item.price)}</span>`;
+      ? `<span class="shop-price shop-price--compare" style="font-size:0.85rem">$${fmt(item.price)}</span><br><span class="shop-price--sale" style="font-size:1.1rem">$${fmt(item.sale_price)}</span>`
+      : `<span class="shop-price" style="font-size:1.1rem">$${fmt(item.price)}</span>`;
 
     const btnClass    = isReserved ? 'btn-reserve reserved' : 'btn-reserve';
     const btnLabel    = isReserved ? 'Reserved \u2713' : 'Pay &amp; Reserve';
@@ -2191,6 +2272,11 @@
   // ── Toolbar: sort ──────────────────────────────────────────────────
   document.getElementById('sort-select').addEventListener('change', function () {
     currentSort = this.value;
+    applyFiltersAndRender();
+  });
+
+  document.getElementById('category-select').addEventListener('change', function () {
+    currentCategory = this.value;
     applyFiltersAndRender();
   });
 
