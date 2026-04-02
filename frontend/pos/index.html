@@ -2173,6 +2173,16 @@
     }
 
     // ─── Cash Payment Modal ────────────────────────────────────────────────────
+    function resetCashModalState() {
+        const btn = document.getElementById('complete-sale-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Complete Sale';
+        }
+        const errorEl = document.getElementById('cash-error');
+        if (errorEl) errorEl.textContent = '';
+    }
+
     function openCashModal() {
         if (cart.length === 0) return;
         const { total } = calcTotals();
@@ -2180,14 +2190,14 @@
         document.getElementById('tendered-input').value = '';
         document.getElementById('change-display').textContent = 'Change: $0.00';
         document.getElementById('change-display').className = 'change-display zero';
-        document.getElementById('cash-error').textContent = '';
-        document.getElementById('complete-sale-btn').disabled = true;
+        resetCashModalState();
         document.getElementById('cash-modal').classList.remove('hidden');
         setTimeout(() => document.getElementById('tendered-input').focus(), 100);
     }
 
     function closeCashModal() {
         document.getElementById('cash-modal').classList.add('hidden');
+        resetCashModalState();
         document.getElementById('barcode-input').focus();
     }
 
@@ -2229,7 +2239,7 @@
         try {
             const payload = buildSalePayload('cash');
             payload.cash_tendered = tendered;
-            const sale = await apiPost('/api/v1/sales/', payload);
+            const sale = await apiPost('/api/v1/pos/sale', payload);
             currentSale = sale;
             closeCashModal();
             showReceiptModal(sale);
