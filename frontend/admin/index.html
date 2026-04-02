@@ -536,7 +536,7 @@
         </div>
         <div class="vendor-action-bar">
             <span id="vh-processed-badge">Already processed this month</span>
-            <span id="vendor-hub-admin-actions" class="admin-only-dash" style="display:inline-flex;flex-wrap:wrap;gap:0.5rem;align-items:center">
+            <span id="vendor-hub-admin-actions" style="display:inline-flex;flex-wrap:wrap;gap:0.5rem;align-items:center">
             <button type="button" id="vh-process-btn" class="process-btn" onclick="window.confirmProcessPayoutsHub()">Process Payouts</button>
             <button type="button" class="reminder-btn" onclick="window.sendRentRemindersHub()">Send Rent Reminders</button>
             <button type="button" class="reminder-btn reminder-btn--green" onclick="window.sendWeeklyReportsHub()">Send Weekly Reports</button>
@@ -726,7 +726,7 @@
 
         <div class="ornament">&loz;</div>
 
-        <div class="rp-action-bar admin-only-dash" id="rp-admin-actions">
+        <div class="rp-action-bar" id="rp-admin-actions">
             <button type="button" class="process-btn" onclick="openRentFromLedger()" style="background:color-mix(in srgb, var(--success-light) 12%, transparent);color:var(--success-light);border:1px solid color-mix(in srgb, var(--success-light) 30%, transparent);padding:0.55rem 1.2rem;font-size:0.78rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em;min-height:44px">Record Rent Payment</button>
             <button type="button" class="process-btn" onclick="window.confirmProcessPayoutsHub()" style="background:color-mix(in srgb, var(--gold) 12%, transparent);color:var(--gold);border:1px solid color-mix(in srgb, var(--gold) 30%, transparent);padding:0.55rem 1.2rem;font-size:0.78rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em;min-height:44px">Process Payouts</button>
         </div>
@@ -1012,7 +1012,11 @@
         var el = document.getElementById('vcard-detail-' + id);
         if (el) el.classList.toggle('collapsed');
     }
-    function fmt(v) { return '$' + (v || 0).toFixed(2); }
+    function fmt(v) {
+        var n = typeof v === 'number' ? v : parseFloat(v);
+        if (isNaN(n)) n = 0;
+        return '$' + n.toFixed(2);
+    }
 
     var currentPeriod = 'today';
 
@@ -1139,7 +1143,8 @@
             return;
         }
         var isAdmin = payload.role === 'admin';
-        window._adminDashboardIsAdmin = isAdmin;
+        var isStaffManager = payload.role === 'admin' || payload.role === 'cashier';
+        window._adminDashboardIsAdmin = isStaffManager;
         applyCashierAdminDashboardUI(isAdmin);
         var name = (payload && payload.name) || 'Admin';
         document.getElementById('user-name').textContent = name;
@@ -1597,7 +1602,9 @@
     var _rpData = null;
 
     function rpFmt(n) {
-        return '$' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        var x = typeof n === 'number' ? n : parseFloat(n);
+        if (isNaN(x)) x = 0;
+        return '$' + x.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function rpDateFmt(iso) {

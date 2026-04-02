@@ -24,16 +24,19 @@
         return isNaN(n) ? 0 : n;
     }
 
-    /** Combined = sales + rent; prefer summing parts so negatives are never dropped by a bad combined_balance */
+    /** Prefer server combined_balance; else sum sales + display rent so negatives are preserved */
     function combinedAmount(v) {
         if (v == null) return 0;
+        if (v.combined_balance != null && v.combined_balance !== '') {
+            var c = num(v.combined_balance);
+            if (!isNaN(c)) return c;
+        }
         var hasParts =
             Object.prototype.hasOwnProperty.call(v, 'sales_balance') ||
             Object.prototype.hasOwnProperty.call(v, 'rent_balance');
         if (hasParts) {
             return Math.round((num(v.sales_balance) + num(v.rent_balance)) * 100) / 100;
         }
-        if (v.combined_balance != null && v.combined_balance !== '') return num(v.combined_balance);
         return num(v.balance);
     }
 
@@ -44,7 +47,7 @@
         return d.innerHTML;
     }
 
-    /** Set from admin/index.html; cashiers get read-only vendor hub rows */
+    /** Set from admin/index.html; admin and cashiers get full vendor hub actions */
     function isVendorHubAdmin() {
         return window._adminDashboardIsAdmin !== false;
     }
@@ -192,7 +195,11 @@
                     fmt(num(v.rent_balance)) +
                     '</span></div>' +
                     '<div style="font-weight:600;color:' +
-                    (combinedAmount(v) < 0 ? 'var(--danger)' : 'var(--success-light)') +
+                    (combinedAmount(v) < 0
+                        ? 'var(--danger)'
+                        : combinedAmount(v) > 0
+                          ? 'var(--success-light)'
+                          : 'var(--text-light)') +
                     '">' +
                     fmt(combinedAmount(v)) +
                     '</div>' +
@@ -232,7 +239,11 @@
                         fmt(num(v.rent_balance)) +
                         '</div>' +
                         '<div style="font-weight:600;color:' +
-                        (combinedAmount(v) < 0 ? 'var(--danger)' : 'var(--success-light)') +
+                        (combinedAmount(v) < 0
+                            ? 'var(--danger)'
+                            : combinedAmount(v) > 0
+                              ? 'var(--success-light)'
+                              : 'var(--text-light)') +
                         '">' +
                         fmt(combinedAmount(v)) +
                         '</div>' +
@@ -391,7 +402,11 @@
             fmt(num(v.rent_balance)) +
             '</span></div>' +
             '<p style="font-size:1.75rem;font-family:EB Garamond,serif;color:' +
-            (combinedAmount(v) < 0 ? 'var(--danger)' : 'var(--success-light)') +
+            (combinedAmount(v) < 0
+                ? 'var(--danger)'
+                : combinedAmount(v) > 0
+                  ? 'var(--success-light)'
+                  : 'var(--text-light)') +
             ';margin:0.25rem 0">Combined: ' +
             fmt(combinedAmount(v)) +
             '</p></div>' +

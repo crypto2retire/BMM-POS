@@ -21,7 +21,7 @@ from app.models.studio_image import StudioImage
 from app.models.class_registration import ClassRegistration
 from app.models.item_image import ItemImage
 from app.models.booth_showcase import BoothShowcase
-from app.routers.auth import get_current_user, require_admin
+from app.routers.auth import get_current_user, require_admin, require_cashier_or_admin
 from app.services.email import send_email_safe
 from app.services.email_templates import (
     payout_with_rent_email,
@@ -41,11 +41,13 @@ async def require_vendor_hub_access(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ) -> Vendor:
+    if current_user.role in ("admin", "cashier"):
+        return current_user
     if await role_allows_manage_vendors(db, current_user):
         return current_user
     raise HTTPException(
         status_code=403,
-        detail="Vendor hub requires the Manage Vendors permission for your role (Settings → User Roles).",
+        detail="Vendor hub requires staff access or the Manage Vendors permission (Settings → User Roles).",
     )
 
 
@@ -281,7 +283,7 @@ async def rent_status(
 async def toggle_vendor_flag(
     vendor_id: int,
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_admin),
+    _: Vendor = Depends(require_cashier_or_admin),
 ):
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -353,7 +355,7 @@ async def record_rent_payment(
     vendor_id: int,
     body: dict = Body(...),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_admin),
+    current_user: Vendor = Depends(require_cashier_or_admin),
 ):
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -443,7 +445,7 @@ async def rent_charge_card(
     vendor_id: int,
     body: dict = Body(...),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_admin),
+    current_user: Vendor = Depends(require_cashier_or_admin),
 ):
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -493,7 +495,7 @@ async def rent_charge_card(
 @router.get("/rent-charge-status/{poynt_order_id}")
 async def rent_charge_status(
     poynt_order_id: str,
-    current_user: Vendor = Depends(require_admin),
+    current_user: Vendor = Depends(require_cashier_or_admin),
 ):
     try:
         from app.services.poynt import get_transaction_for_order
@@ -511,7 +513,7 @@ async def rent_charge_status(
 @router.get("/payout-preview")
 async def payout_preview(
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_admin),
+    _: Vendor = Depends(require_cashier_or_admin),
 ):
     today = date.today()
     period = date(today.year, today.month, 1)
@@ -587,7 +589,7 @@ async def payout_preview(
 @router.post("/process-payouts")
 async def process_payouts(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_admin),
+    current_user: Vendor = Depends(require_cashier_or_admin),
 ):
     today = date.today()
     period = date(today.year, today.month, 1)
@@ -716,7 +718,7 @@ async def process_payouts(
 @router.post("/send-rent-reminders")
 async def send_rent_reminders(
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_admin),
+    _: Vendor = Depends(require_cashier_or_admin),
 ):
     rent_emails_on = (await get_setting(db, "notify_rent_due")) == "true"
     if not rent_emails_on:
@@ -801,7 +803,7 @@ async def send_rent_reminders(
 @router.post("/send-weekly-reports")
 async def send_weekly_reports(
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_admin),
+    _: Vendor = Depends(require_cashier_or_admin),
 ):
     today = date.today()
     week_start = today - timedelta(days=7)

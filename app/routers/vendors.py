@@ -12,7 +12,7 @@ from app.schemas.vendor import (
     VendorCreate, VendorUpdate, VendorResponse, VendorBalanceResponse,
     BalanceAdjustRequest, BalanceAdjustmentResponse,
 )
-from app.routers.auth import get_current_user, require_role, get_password_hash
+from app.routers.auth import get_current_user, require_role, get_password_hash, require_cashier_or_admin
 from app.routers.settings import role_allows_manage_vendors, role_feature_allowed
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
@@ -22,7 +22,9 @@ async def list_vendors(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    if not await role_allows_manage_vendors(db, current_user):
+    if current_user.role not in ("admin", "cashier") and not await role_allows_manage_vendors(
+        db, current_user
+    ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to list vendors")
     result = await db.execute(select(Vendor).order_by(Vendor.name))
     vendors = result.scalars().all()
@@ -34,8 +36,12 @@ async def list_vendors(
     balance_map = {}
     rent_balance_map = {}
     for row in bal_result.all():
-        balance_map[row.vendor_id] = row.balance or Decimal("0.00")
-        rent_balance_map[row.vendor_id] = row.rent_balance or Decimal("0.00")
+        balance_map[row.vendor_id] = (
+            row.balance if row.balance is not None else Decimal("0.00")
+        )
+        rent_balance_map[row.vendor_id] = (
+            row.rent_balance if row.rent_balance is not None else Decimal("0.00")
+        )
 
     for v in vendors:
         sb = balance_map.get(v.id, Decimal("0.00"))
@@ -86,6 +92,8 @@ async def get_vendor(
 ):
     if current_user.role == "admin" or current_user.id == vendor_id:
         pass
+    elif current_user.role == "cashier":
+        pass
     elif await role_allows_manage_vendors(db, current_user):
         pass
     else:
@@ -100,8 +108,12 @@ async def get_vendor(
     )
     bal_row = bal_result.scalar_one_or_none()
     if bal_row:
-        vendor.sales_balance = bal_row.balance or Decimal("0.00")
-        vendor.rent_balance = bal_row.rent_balance or Decimal("0.00")
+        vendor.sales_balance = (
+            bal_row.balance if bal_row.balance is not None else Decimal("0.00")
+        )
+        vendor.rent_balance = (
+            bal_row.rent_balance if bal_row.rent_balance is not None else Decimal("0.00")
+        )
         vendor.current_balance = vendor.sales_balance + vendor.rent_balance
     else:
         vendor.sales_balance = Decimal("0.00")
@@ -115,7 +127,7 @@ async def update_vendor(
     vendor_id: int,
     vendor_update: VendorUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_role("admin"))
+    current_user: Vendor = Depends(require_cashier_or_admin),
 ):
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -293,9 +305,12 @@ async def get_vendor_balance(
         await db.refresh(balance)
     return {
         "vendor_id": balance.vendor_id,
-        "balance": balance.balance or Decimal("0.00"),
-        "rent_balance": balance.rent_balance or Decimal("0.00"),
-        "combined_balance": (balance.balance or Decimal("0.00")) + (balance.rent_balance or Decimal("0.00")),
+        "balance": balance.balance if balance.balance is not None else Decimal("0.00"),
+        "rent_balance": balance.rent_balance if balance.rent_balance is not None else Decimal("0.00"),
+        "combined_balance": (
+            (balance.balance if balance.balance is not None else Decimal("0.00"))
+            + (balance.rent_balance if balance.rent_balance is not None else Decimal("0.00"))
+        ),
     }
 
 
@@ -306,9 +321,9 @@ async def adjust_vendor_balance(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-    if not await role_feature_allowed(db, current_user, "role_balance_adjustments"):
+    if current_user.role == "admin" or current_user.role == "cashier":
+        pass
+    elif not await role_feature_allowed(db, current_user, "role_balance_adjustments"):
         raise HTTPException(
             status_code=403,
             detail="Balance adjustments are disabled for your role in Settings → User Roles.",
@@ -384,9 +399,9 @@ async def get_balance_history(
 ):
     if current_user.id == vendor_id:
         pass
-    elif current_user.role == "admin":
+    elif current_user.role in ("admin", "cashier"):
         pass
-    elif current_user.role == "cashier" and (
+    elif (
         await role_feature_allowed(db, current_user, "role_balance_adjustments")
         or await role_feature_allowed(db, current_user, "role_manage_vendors")
     ):
