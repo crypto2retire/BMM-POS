@@ -11,9 +11,9 @@ from app.models.sale import Sale, SaleItem
 from app.models.item import Item
 from app.models.vendor import Vendor, VendorBalance
 from app.schemas.sale import SaleCreate, SaleResponse, SaleItemResponse
-from app.routers.auth import get_current_user, require_cashier_or_admin
+from app.routers.auth import get_current_user
 from app.config import settings
-from app.routers.settings import get_tax_rate
+from app.routers.settings import get_tax_rate, require_staff_feature, role_feature_allowed
 from app.timezone import STORE_TZ as _STORE_TZ
 
 router = APIRouter(prefix="/sales", tags=["sales"])
@@ -106,7 +106,7 @@ def sale_to_response(sale: Sale) -> SaleResponse:
 async def create_sale(
     data: SaleCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
     if not data.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
@@ -231,6 +231,12 @@ async def list_sales(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
+    if not await role_feature_allowed(db, current_user, "role_view_sales"):
+        raise HTTPException(
+            status_code=403,
+            detail="Sales history is disabled for your role in Settings → User Roles.",
+        )
+
     def _parse_date(s, label="date"):
         try:
             return date.fromisoformat(s)
@@ -300,11 +306,8 @@ async def list_sales(
 @router.get("/summary/today")
 async def sales_summary_today(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_view_sales")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-
     today = datetime.now(_STORE_TZ).date()
     start_local = datetime(today.year, today.month, today.day, tzinfo=_STORE_TZ)
     end_local = start_local + timedelta(days=1)
@@ -349,6 +352,12 @@ async def get_sale(
     sale = result.scalar_one_or_none()
     if not sale:
         raise HTTPException(status_code=404, detail="Sale not found")
+
+    if not await role_feature_allowed(db, current_user, "role_view_sales"):
+        raise HTTPException(
+            status_code=403,
+            detail="Sales history is disabled for your role in Settings → User Roles.",
+        )
 
     if current_user.role not in ("admin", "cashier"):
         vendor_ids = {si.vendor_id for si in sale.items}

@@ -12,7 +12,7 @@ from app.database import get_db
 from app.models.vendor import Vendor
 from app.models.item import Item
 from app.models.booth_showcase import BoothShowcase
-from app.routers.auth import get_current_user
+from app.routers.settings import require_role_feature
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +219,7 @@ async def call_ai(system_prompt: str, user_prompt: str) -> str:
 async def ai_write(
     req: AIWriteRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_role_feature("role_view_ai_assistant")),
 ):
     tone_key = req.tone if req.tone in TONES else DEFAULT_TONE
     tone_instruction = TONES[tone_key]

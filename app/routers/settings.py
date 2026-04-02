@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Optional, Callable, Awaitable
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,7 +8,7 @@ from app.config import settings
 from app.database import get_db
 from app.models.store_setting import StoreSetting
 from app.models.vendor import Vendor
-from app.routers.auth import require_admin
+from app.routers.auth import require_admin, require_cashier_or_admin, get_current_user
 
 router = APIRouter(prefix="/admin/settings", tags=["settings"])
 
@@ -99,6 +99,8 @@ DEFAULT_SETTINGS = {
     "role_view_ai_assistant_cashier": "true",
     "role_manage_studio_vendor": "false",
     "role_manage_studio_cashier": "false",
+    "role_inventory_verify_vendor": "false",
+    "role_inventory_verify_cashier": "true",
     "email_tpl_product_sold_subject": "",
     "email_tpl_product_sold_greeting": "",
     "email_tpl_product_sold_body": "",
@@ -196,14 +198,106 @@ async def get_tax_rate(db: AsyncSession) -> float:
     return settings.tax_rate
 
 
-async def role_allows_manage_vendors(db: AsyncSession, user: Vendor) -> bool:
-    """User Roles → Manage Vendors: cashier column. Admins always allowed."""
+def _truthy_setting(val: Optional[str]) -> bool:
+    if val is None:
+        return False
+    return str(val).lower() in ("true", "1", "yes")
+
+
+# Base keys matching Settings → User Roles (suffix _vendor / _cashier in DB)
+ROLE_FEATURE_SLUGS = (
+    "role_view_dashboard",
+    "role_manage_items",
+    "role_view_sales",
+    "role_process_sales",
+    "role_void_sales",
+    "role_manage_gift_cards",
+    "role_view_reports",
+    "role_manage_vendors",
+    "role_manage_rent",
+    "role_import_data",
+    "role_change_settings",
+    "role_balance_adjustments",
+    "role_print_labels",
+    "role_view_ai_assistant",
+    "role_manage_studio",
+    "role_inventory_verify",
+)
+
+
+async def role_feature_allowed(db: AsyncSession, user: Vendor, feature_slug: str) -> bool:
+    """
+    Resolve User Roles checkbox for the logged-in user.
+    Admins always allowed; vendor/cashier use role_{slug}_{role} in store_settings.
+    """
     if user.role == "admin":
         return True
-    if user.role != "cashier":
+    if user.role not in ("vendor", "cashier"):
         return False
-    val = await get_setting(db, "role_manage_vendors_cashier", "false")
-    return str(val).lower() in ("true", "1", "yes")
+    key = f"{feature_slug}_{user.role}"
+    default = DEFAULT_SETTINGS.get(key, "false")
+    val = await get_setting(db, key, default)
+    return _truthy_setting(val)
+
+
+async def collect_role_permissions(db: AsyncSession, user: Vendor) -> dict[str, bool]:
+    return {slug: await role_feature_allowed(db, user, slug) for slug in ROLE_FEATURE_SLUGS}
+
+
+def require_role_feature(feature_slug: str) -> Callable[..., Awaitable[Vendor]]:
+    """Any authenticated role (vendor/cashier/admin) must have the User Roles permission."""
+
+    async def _checker(
+        db: AsyncSession = Depends(get_db),
+        user: Vendor = Depends(get_current_user),
+    ) -> Vendor:
+        if not await role_feature_allowed(db, user, feature_slug):
+            raise HTTPException(
+                status_code=403,
+                detail="This feature is disabled for your role in Settings → User Roles.",
+            )
+        return user
+
+    return _checker
+
+
+def require_staff_feature(feature_slug: str) -> Callable[..., Awaitable[Vendor]]:
+    """Admin or cashier only, plus the given User Roles permission (vendors never pass staff gate)."""
+
+    async def _checker(
+        db: AsyncSession = Depends(get_db),
+        user: Vendor = Depends(require_cashier_or_admin),
+    ) -> Vendor:
+        if not await role_feature_allowed(db, user, feature_slug):
+            raise HTTPException(
+                status_code=403,
+                detail="This feature is disabled for your role in Settings → User Roles.",
+            )
+        return user
+
+    return _checker
+
+
+def require_any_staff_feature(*feature_slugs: str) -> Callable[..., Awaitable[Vendor]]:
+    """Cashier/admin must have at least one of the listed permissions (admin always passes)."""
+
+    async def _checker(
+        db: AsyncSession = Depends(get_db),
+        user: Vendor = Depends(require_cashier_or_admin),
+    ) -> Vendor:
+        for slug in feature_slugs:
+            if await role_feature_allowed(db, user, slug):
+                return user
+        raise HTTPException(
+            status_code=403,
+            detail="This feature is not enabled for your role in Settings → User Roles.",
+        )
+
+    return _checker
+
+
+async def role_allows_manage_vendors(db: AsyncSession, user: Vendor) -> bool:
+    return await role_feature_allowed(db, user, "role_manage_vendors")
 
 
 @router.get("")

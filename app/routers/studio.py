@@ -16,6 +16,7 @@ from app.models.studio_image import StudioImage
 from app.models.class_registration import ClassRegistration
 from app.models.vendor import Vendor
 from app.routers.auth import get_current_user
+from app.routers.settings import role_feature_allowed
 from app.schemas.class_registration import ClassRegistrationCreate, ClassRegistrationResponse
 
 STUDIO_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "static", "images", "studio")
@@ -81,8 +82,11 @@ async def list_classes(
     q = select(StudioClass).order_by(StudioClass.class_date, StudioClass.start_time)
 
     is_staff = current_user and current_user.role in ("admin", "cashier")
+    can_manage_studio = False
+    if is_staff and current_user:
+        can_manage_studio = await role_feature_allowed(db, current_user, "role_manage_studio")
 
-    if not published_only and is_staff:
+    if not published_only and can_manage_studio:
         pass
     else:
         q = q.where(StudioClass.is_published == True)
@@ -111,7 +115,10 @@ async def get_class(
 ):
     q = select(StudioClass).where(StudioClass.id == class_id)
     is_staff = current_user and current_user.role in ("admin", "cashier")
-    if not is_staff:
+    can_manage_studio = False
+    if is_staff and current_user:
+        can_manage_studio = await role_feature_allowed(db, current_user, "role_manage_studio")
+    if not can_manage_studio:
         q = q.where(StudioClass.is_published == True)
 
     result = await db.execute(q)
@@ -129,6 +136,11 @@ async def create_class(
 ):
     if current_user.role not in ("admin", "cashier"):
         raise HTTPException(status_code=403, detail="Admin or cashier access required")
+    if not await role_feature_allowed(db, current_user, "role_manage_studio"):
+        raise HTTPException(
+            status_code=403,
+            detail="Studio management is disabled for your role in Settings → User Roles.",
+        )
 
     from app.schemas.studio_class import StudioClassCreate
     parsed = StudioClassCreate(**data)
@@ -164,6 +176,11 @@ async def update_class(
 ):
     if current_user.role not in ("admin", "cashier"):
         raise HTTPException(status_code=403, detail="Admin or cashier access required")
+    if not await role_feature_allowed(db, current_user, "role_manage_studio"):
+        raise HTTPException(
+            status_code=403,
+            detail="Studio management is disabled for your role in Settings → User Roles.",
+        )
 
     result = await db.execute(select(StudioClass).where(StudioClass.id == class_id))
     c = result.scalar_one_or_none()
@@ -189,6 +206,11 @@ async def delete_class(
 ):
     if current_user.role not in ("admin", "cashier"):
         raise HTTPException(status_code=403, detail="Admin or cashier access required")
+    if not await role_feature_allowed(db, current_user, "role_manage_studio"):
+        raise HTTPException(
+            status_code=403,
+            detail="Studio management is disabled for your role in Settings → User Roles.",
+        )
 
     result = await db.execute(select(StudioClass).where(StudioClass.id == class_id))
     c = result.scalar_one_or_none()
@@ -208,6 +230,11 @@ async def upload_class_image(
 ):
     if current_user.role not in ("admin", "cashier"):
         raise HTTPException(status_code=403, detail="Admin or cashier access required")
+    if not await role_feature_allowed(db, current_user, "role_manage_studio"):
+        raise HTTPException(
+            status_code=403,
+            detail="Studio management is disabled for your role in Settings → User Roles.",
+        )
 
     result = await db.execute(select(StudioClass).where(StudioClass.id == class_id))
     c = result.scalar_one_or_none()
@@ -293,6 +320,11 @@ async def delete_class_image(
 ):
     if current_user.role not in ("admin", "cashier"):
         raise HTTPException(status_code=403, detail="Admin or cashier access required")
+    if not await role_feature_allowed(db, current_user, "role_manage_studio"):
+        raise HTTPException(
+            status_code=403,
+            detail="Studio management is disabled for your role in Settings → User Roles.",
+        )
 
     result = await db.execute(select(StudioClass).where(StudioClass.id == class_id))
     c = result.scalar_one_or_none()
@@ -394,6 +426,11 @@ async def list_registrations(
 ):
     if current_user.role not in ("admin", "cashier"):
         raise HTTPException(status_code=403, detail="Admin or cashier access required")
+    if not await role_feature_allowed(db, current_user, "role_manage_studio"):
+        raise HTTPException(
+            status_code=403,
+            detail="Studio management is disabled for your role in Settings → User Roles.",
+        )
 
     result = await db.execute(
         select(ClassRegistration)
@@ -412,6 +449,11 @@ async def cancel_registration(
 ):
     if current_user.role not in ("admin", "cashier"):
         raise HTTPException(status_code=403, detail="Admin or cashier access required")
+    if not await role_feature_allowed(db, current_user, "role_manage_studio"):
+        raise HTTPException(
+            status_code=403,
+            detail="Studio management is disabled for your role in Settings → User Roles.",
+        )
 
     result = await db.execute(
         select(ClassRegistration).where(ClassRegistration.id == reg_id)

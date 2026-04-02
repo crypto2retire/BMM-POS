@@ -16,6 +16,9 @@
 
         if (document.getElementById('bmm-assistant-btn')) return;
 
+        function buildPanel() {
+            if (document.getElementById('bmm-assistant-btn')) return;
+
         var PANEL_CONTEXT = panelContext || '';
 
         // ── Inject styles ──────────────────────────────────────────────
@@ -445,5 +448,24 @@
                 sendMessage('FIRST_LOGIN_WALKTHROUGH: I just logged in for the first time. Can you show me around?');
             }, 800);
         }
+        }
+
+        if (opts.forceShowAssistant === true) {
+            buildPanel();
+            return;
+        }
+        var token = sessionStorage.getItem('bmm_token');
+        if (!token) return;
+        fetch('/api/v1/auth/me', {
+            headers: { 'Authorization': 'Bearer ' + token },
+            credentials: 'same-origin'
+        })
+            .then(function (r) { return r.ok ? r.json() : {}; })
+            .then(function (data) {
+                var perms = data.permissions;
+                if (perms && perms.role_view_ai_assistant === false) return;
+                buildPanel();
+            })
+            .catch(function () { buildPanel(); });
     };
 })();

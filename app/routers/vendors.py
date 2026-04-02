@@ -13,7 +13,7 @@ from app.schemas.vendor import (
     BalanceAdjustRequest, BalanceAdjustmentResponse,
 )
 from app.routers.auth import get_current_user, require_role, get_password_hash
-from app.routers.settings import role_allows_manage_vendors
+from app.routers.settings import role_allows_manage_vendors, role_feature_allowed
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
 
@@ -306,8 +306,13 @@ async def adjust_vendor_balance(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier access required")
+    if not await role_feature_allowed(db, current_user, "role_balance_adjustments"):
+        raise HTTPException(
+            status_code=403,
+            detail="Balance adjustments are disabled for your role in Settings → User Roles.",
+        )
 
     vendor = await db.get(Vendor, vendor_id)
     if not vendor:
@@ -377,7 +382,16 @@ async def get_balance_history(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    if current_user.role != "admin" and current_user.id != vendor_id:
+    if current_user.id == vendor_id:
+        pass
+    elif current_user.role == "admin":
+        pass
+    elif current_user.role == "cashier" and (
+        await role_feature_allowed(db, current_user, "role_balance_adjustments")
+        or await role_feature_allowed(db, current_user, "role_manage_vendors")
+    ):
+        pass
+    else:
         raise HTTPException(status_code=403, detail="Not authorized")
 
     result = await db.execute(

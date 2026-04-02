@@ -134,7 +134,13 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
     }
 
 @router.get("/me")
-async def get_me(current_user: Vendor = Depends(get_current_user)):
+async def get_me(
+    current_user: Vendor = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.routers.settings import collect_role_permissions
+
+    permissions = await collect_role_permissions(db, current_user)
     return {
         "id": current_user.id,
         "name": current_user.name,
@@ -146,6 +152,7 @@ async def get_me(current_user: Vendor = Depends(get_current_user)):
         "theme_preference": current_user.theme_preference,
         "font_size_preference": current_user.font_size_preference,
         "sale_notify_preference": current_user.sale_notify_preference,
+        "permissions": permissions,
     }
 
 

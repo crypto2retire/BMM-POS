@@ -14,7 +14,8 @@ from sqlalchemy import select, or_, func, cast, Date
 from sqlalchemy.orm import selectinload
 import httpx
 from app.database import get_db
-from app.routers.auth import get_current_user
+from app.routers.auth import require_admin
+from app.routers.settings import require_staff_feature, role_feature_allowed
 from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
 from app.models.eod_report import EodReport
@@ -90,11 +91,8 @@ def _item_to_pos_dict(item: Item) -> dict:
 async def pos_search(
     q: str = Query(..., min_length=1, description="Search term"),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Cashier or admin access required")
-
     term = f"%{q}%"
     query = (
         select(Item)
@@ -118,11 +116,8 @@ async def pos_search(
 async def pos_barcode_lookup(
     barcode: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Cashier or admin access required")
-
     result = await db.execute(
         select(Item)
         .options(selectinload(Item.vendor))
@@ -138,11 +133,8 @@ async def pos_barcode_lookup(
 async def pos_manual_item(
     body: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Cashier or admin access required")
-
     vendor_id = body.get("vendor_id")
     name = body.get("name", "").strip()
     price = body.get("price")
@@ -191,11 +183,8 @@ async def pos_manual_item(
 async def pos_create_sale(
     data: SaleCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-
     if not data.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
@@ -207,6 +196,13 @@ async def pos_create_sale(
             raise HTTPException(
                 status_code=400,
                 detail="Card transaction ID is required for card payments. Confirm payment on the terminal first.",
+            )
+
+    if data.payment_method in ("gift_card", "split") and data.gift_card_barcode:
+        if not await role_feature_allowed(db, current_user, "role_manage_gift_cards"):
+            raise HTTPException(
+                status_code=403,
+                detail="Gift card payments are disabled for your role in Settings → User Roles.",
             )
 
     resolved_lines = []
@@ -518,11 +514,8 @@ async def void_sale(
     sale_id: int,
     data: VoidSaleRequest = VoidSaleRequest(),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_void_sales")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Not authorized to void sales")
-
     lock_result = await db.execute(
         select(Sale).where(Sale.id == sale_id).with_for_update()
     )
@@ -667,10 +660,8 @@ async def poynt_charge(
     request: Request,
     data: PoyntChargeRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
     amount_cents = math.ceil(data.amount * 100)
     reference_id = f"BMM-{uuid.uuid4().hex[:12]}"
 
@@ -701,11 +692,8 @@ async def poynt_charge(
 async def poynt_status(
     reference_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-
     result = await db.execute(
         select(PoyntPayment).where(PoyntPayment.reference_id == reference_id)
     )
@@ -783,11 +771,8 @@ async def poynt_callback(
 async def end_of_day_report(
     report_date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format, defaults to today"),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Cashier or admin access required")
-
     store_tz = STORE_TZ
 
     if report_date:
@@ -931,11 +916,8 @@ async def end_of_day_report(
 async def set_starting_cash(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Cashier or admin access required")
-
     body = await request.json()
     amount = body.get("amount")
     if amount is None:
@@ -966,11 +948,8 @@ async def set_starting_cash(
 @router.get("/starting-cash")
 async def get_starting_cash(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Cashier or admin access required")
-
     from app.models.store_setting import StoreSetting
     store_tz = STORE_TZ
     today = datetime.now(store_tz).date()
@@ -986,11 +965,8 @@ async def get_starting_cash(
 async def submit_eod_report(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Cashier or admin access required")
-
     body = await request.json()
     required = ["report_date", "starting_balance", "counted_cash", "expected_cash",
                 "variance", "deposit", "total_revenue", "total_tax",
@@ -1045,11 +1021,8 @@ async def list_eod_reports(
     limit: int = Query(30, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    _admin: Vendor = Depends(require_admin),
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-
     count_result = await db.execute(select(func.count(EodReport.id)))
     total = count_result.scalar()
 
@@ -1086,11 +1059,8 @@ async def list_eod_reports(
 async def get_eod_report(
     report_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    _admin: Vendor = Depends(require_admin),
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin access required")
-
     result = await db.execute(select(EodReport).where(EodReport.id == report_id))
     report = result.scalar_one_or_none()
     if not report:
@@ -1128,11 +1098,8 @@ async def get_eod_report(
 async def image_search(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Cashier or admin access required")
-
     contents = await file.read()
     if len(contents) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Image must be under 5MB")
@@ -1243,11 +1210,8 @@ Respond with ONLY valid JSON, no markdown.
 async def activate_gift_card(
     data: GiftCardActivate,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_gift_cards")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-
     if data.initial_balance < Decimal("0"):
         raise HTTPException(status_code=400, detail="Balance cannot be negative")
 
@@ -1286,11 +1250,8 @@ async def activate_gift_card(
 async def get_gift_card_balance(
     barcode: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_gift_cards")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-
     result = await db.execute(
         select(GiftCard).where(GiftCard.barcode == barcode)
     )
@@ -1304,11 +1265,8 @@ async def get_gift_card_balance(
 async def check_gift_card_balance(
     barcode: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_gift_cards")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-
     result = await db.execute(
         select(GiftCard).where(GiftCard.barcode == barcode)
     )
@@ -1323,11 +1281,8 @@ async def load_gift_card(
     barcode: str,
     data: GiftCardLoad,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_gift_cards")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-
     if data.amount <= 0:
         raise HTTPException(status_code=400, detail="Load amount must be positive")
 
@@ -1364,11 +1319,8 @@ async def redeem_gift_card(
     barcode: str,
     data: GiftCardRedeem,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_gift_cards")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-
     if data.amount <= 0:
         raise HTTPException(status_code=400, detail="Redeem amount must be positive")
 
@@ -1410,11 +1362,8 @@ async def redeem_gift_card(
 async def gift_card_history(
     barcode: str,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_gift_cards")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Admin or cashier access required")
-
     result = await db.execute(
         select(GiftCard).where(GiftCard.barcode == barcode)
     )
@@ -1458,11 +1407,8 @@ async def gift_card_history(
 @router.get("/rent/vendors")
 async def rent_vendor_list(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_rent")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Cashier or admin access required")
-
     from app.models.rent import RentPayment
     from datetime import date as dt_date
     today = dt_date.today()
@@ -1499,11 +1445,8 @@ async def rent_vendor_list(
 async def pos_rent_payment(
     body: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_rent")),
 ):
-    if current_user.role not in ("admin", "cashier"):
-        raise HTTPException(status_code=403, detail="Cashier or admin access required")
-
     from app.models.rent import RentPayment
     from datetime import date as dt_date
 

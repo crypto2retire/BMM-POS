@@ -13,7 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.item import Item
 from app.models.vendor import Vendor
-from app.routers.auth import get_current_user, get_password_hash
+from app.routers.auth import get_password_hash
+from app.routers.settings import require_role_feature
 from app.schemas.assistant import AssistantChatRequest, AssistantChatResponse
 from app.services.barcode import generate_sku
 
@@ -618,7 +619,7 @@ async def _call_openrouter(
 @router.post("/chat", response_model=AssistantChatResponse)
 async def chat(
     data: AssistantChatRequest,
-    current_user: Vendor = Depends(get_current_user),
+    current_user: Vendor = Depends(require_role_feature("role_view_ai_assistant")),
     db: AsyncSession = Depends(get_db),
 ):
     api_key = _get_api_key()

@@ -14,7 +14,8 @@ from app.models.rent import RentPayment
 from app.models.payout import Payout
 from app.models.reservation import Reservation
 from app.models.item import Item
-from app.routers.auth import require_cashier_or_admin, require_admin
+from app.routers.auth import require_admin
+from app.routers.settings import require_staff_feature
 from app.timezone import STORE_TZ
 
 router = APIRouter(prefix="/admin/reports", tags=["reports"])
@@ -51,7 +52,7 @@ def _parse_dates(from_date, to_date):
 async def dashboard_stats(
     period: Optional[str] = Query("today"),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     today = _local_today()
 
@@ -209,7 +210,7 @@ async def report_daily_sales(
     start: Optional[str] = Query(None),
     end: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     start_dt, end_dt = _parse_dates(from_date or start, to_date or end)
 
@@ -260,7 +261,7 @@ async def report_sales(
     start: Optional[str] = Query(None),
     end: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     start_dt, end_dt = _parse_dates(from_date or start, to_date or end)
 
@@ -307,7 +308,7 @@ async def report_vendor_performance(
     start: Optional[str] = Query(None),
     end: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     start_dt, end_dt = _parse_dates(from_date or start, to_date or end)
 
@@ -357,7 +358,7 @@ async def report_vendors(
     start: Optional[str] = Query(None),
     end: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     start_dt, end_dt = _parse_dates(from_date or start, to_date or end)
 
@@ -398,7 +399,7 @@ async def report_top_items(
     from_date: Optional[str] = Query(None, alias="from_date"),
     to_date: Optional[str] = Query(None, alias="to_date"),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     start_dt, end_dt = _parse_dates(from_date, to_date)
 
@@ -447,7 +448,7 @@ async def report_hourly_sales(
     from_date: Optional[str] = Query(None, alias="from_date"),
     to_date: Optional[str] = Query(None, alias="to_date"),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     start_dt, end_dt = _parse_dates(from_date, to_date)
 
@@ -490,7 +491,7 @@ async def report_payment_methods(
     from_date: Optional[str] = Query(None, alias="from_date"),
     to_date: Optional[str] = Query(None, alias="to_date"),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     start_dt, end_dt = _parse_dates(from_date, to_date)
 
@@ -533,7 +534,7 @@ async def report_vendor_balances(
     from_date: Optional[str] = Query(None, alias="from_date"),
     to_date: Optional[str] = Query(None, alias="to_date"),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     result = await db.execute(
         select(Vendor)
@@ -571,7 +572,7 @@ async def report_vendor_balances(
 async def report_rent(
     month: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     try:
         if month:
@@ -638,7 +639,7 @@ async def report_rent(
 @router.get("/payouts")
 async def report_payouts(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     result = await db.execute(
         select(Payout)
@@ -664,7 +665,7 @@ async def report_payouts(
 @router.get("/reservations")
 async def report_reservations(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     result = await db.execute(
         select(Reservation)
@@ -693,7 +694,7 @@ async def report_reservations(
 async def mark_reservation_ready(
     reservation_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     from sqlalchemy.orm import selectinload
     result = await db.execute(
@@ -763,7 +764,7 @@ async def mark_reservation_ready(
 async def mark_reservation_pickup(
     reservation_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_cashier_or_admin),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     result = await db.execute(
         select(Reservation).where(Reservation.id == reservation_id)

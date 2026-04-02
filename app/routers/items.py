@@ -16,6 +16,7 @@ from app.models.item_image import ItemImage
 from app.models.vendor import Vendor
 from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse
 from app.routers.auth import get_current_user
+from app.routers.settings import role_feature_allowed, get_setting
 from app.services.barcode import generate_sku, generate_short_barcode
 from app.services.labels import generate_label_pdf, generate_label_sheet, generate_dymo_xml
 from app.models.store_setting import StoreSetting
@@ -27,6 +28,14 @@ ALLOWED_IMAGE_TYPES = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_IMAGE_DIMENSION = 800
 
 router = APIRouter(prefix="/items", tags=["items"])
+
+
+async def _require_manage_items(db: AsyncSession, user: Vendor) -> None:
+    if not await role_feature_allowed(db, user, "role_manage_items"):
+        raise HTTPException(
+            status_code=403,
+            detail="Item management is disabled for your role in Settings → User Roles.",
+        )
 
 
 def item_to_response(item: Item) -> ItemResponse:
@@ -70,6 +79,8 @@ async def list_items(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
+    await _require_manage_items(db, current_user)
+
     query = select(Item).options(selectinload(Item.vendor))
     if current_user.role not in ("admin", "cashier"):
         query = query.where(Item.vendor_id == current_user.id)
@@ -103,6 +114,8 @@ async def create_item(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
+    await _require_manage_items(db, current_user)
+
     if current_user.role == "vendor":
         vendor_id = current_user.id
     else:
@@ -177,6 +190,12 @@ async def get_item_by_barcode(
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
+    if current_user.role in ("admin", "cashier"):
+        await _require_manage_items(db, current_user)
+    else:
+        if item.vendor_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Access denied")
+        await _require_manage_items(db, current_user)
     return item_to_response(item)
 
 
@@ -212,6 +231,12 @@ async def get_batch_labels(
         for item in items:
             if item.vendor_id != current_user.id:
                 raise HTTPException(status_code=403, detail="Access denied")
+
+    if not await role_feature_allowed(db, current_user, "role_print_labels"):
+        raise HTTPException(
+            status_code=403,
+            detail="Label printing is disabled for your role in Settings → User Roles.",
+        )
 
     id_order = {iid: idx for idx, iid in enumerate(item_ids)}
     items_sorted = sorted(items, key=lambda it: id_order.get(it.id, 0))
@@ -253,6 +278,12 @@ async def get_item_label(
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
+    if not await role_feature_allowed(db, current_user, "role_print_labels"):
+        raise HTTPException(
+            status_code=403,
+            detail="Label printing is disabled for your role in Settings → User Roles.",
+        )
+
     size = label_size or getattr(current_user, "pdf_label_size", None) or "2.25x1.25"
     pdf_bytes = generate_label_pdf(item, label_size=size)
 
@@ -282,7 +313,12 @@ async def get_dymo_label(
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    from app.routers.settings import get_setting
+    if not await role_feature_allowed(db, current_user, "role_print_labels"):
+        raise HTTPException(
+            status_code=403,
+            detail="Label printing is disabled for your role in Settings → User Roles.",
+        )
+
     dymo_size = await get_setting(db, "dymo_label_size") or "30347"
     xml = generate_dymo_xml(item, label_size=dymo_size)
 
@@ -311,6 +347,8 @@ async def get_item(
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
+    await _require_manage_items(db, current_user)
+
     return item_to_response(item)
 
 
@@ -330,6 +368,8 @@ async def update_item(
 
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
+
+    await _require_manage_items(db, current_user)
 
     update_data = data.model_dump(exclude_none=True)
     if update_data.get("is_online"):
@@ -382,6 +422,8 @@ async def upload_item_photo(
         raise HTTPException(status_code=404, detail="Item not found")
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
+
+    await _require_manage_items(db, current_user)
 
     allowed = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
     ext = os.path.splitext(file.filename or "photo.jpg")[1].lower() or ".jpg"
@@ -450,6 +492,8 @@ async def delete_item_photo(
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
+    await _require_manage_items(db, current_user)
+
     urls = [u for u in (item.photo_urls or []) if u != photo_url]
     item.photo_urls = urls if urls else None
 
@@ -481,6 +525,8 @@ async def upload_item_image(
         raise HTTPException(status_code=404, detail="Item not found")
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
+
+    await _require_manage_items(db, current_user)
 
     ext = os.path.splitext(file.filename or "photo.jpg")[1].lower()
     if ext not in ALLOWED_IMAGE_TYPES:
@@ -571,6 +617,8 @@ async def bulk_set_item_status(
     if current_user.role not in ("admin", "cashier") and vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
+    await _require_manage_items(db, current_user)
+
     opposite = "inactive" if target_status == "active" else "active"
     result = await db.execute(
         select(Item).where(Item.vendor_id == vendor_id, Item.status == opposite)
@@ -595,6 +643,8 @@ async def bulk_apply_sale(
     current_user: Vendor = Depends(get_current_user),
 ):
     """Apply a percentage-off sale to multiple items at once."""
+    await _require_manage_items(db, current_user)
+
     item_ids = body.get("item_ids", [])
     percent_off = body.get("percent_off")
     sale_start = body.get("sale_start")
@@ -638,6 +688,8 @@ async def bulk_clear_sale(
     current_user: Vendor = Depends(get_current_user),
 ):
     """Remove sale pricing from multiple items at once."""
+    await _require_manage_items(db, current_user)
+
     item_ids = body.get("item_ids", [])
     if not item_ids:
         raise HTTPException(status_code=400, detail="No items selected")
@@ -672,6 +724,9 @@ async def toggle_item_status(
         raise HTTPException(status_code=404, detail="Item not found")
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
+
+    await _require_manage_items(db, current_user)
+
     if item.status not in ("active", "inactive"):
         raise HTTPException(status_code=409, detail=f"Cannot toggle status of {item.status} items")
     item.status = "inactive" if item.status == "active" else "active"
@@ -693,6 +748,8 @@ async def delete_item(
 
     if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
+
+    await _require_manage_items(db, current_user)
 
     item.status = "removed"
     await db.commit()

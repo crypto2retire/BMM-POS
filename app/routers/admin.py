@@ -21,7 +21,7 @@ from app.models.studio_image import StudioImage
 from app.models.class_registration import ClassRegistration
 from app.models.item_image import ItemImage
 from app.models.booth_showcase import BoothShowcase
-from app.routers.auth import get_current_user, require_admin, require_cashier_or_admin
+from app.routers.auth import get_current_user, require_admin
 from app.services.email import send_email_safe
 from app.services.email_templates import (
     payout_with_rent_email,
@@ -30,7 +30,7 @@ from app.services.email_templates import (
     rent_overdue_27day_email,
 )
 from app.routers.notifications import notify_weekly_report
-from app.routers.settings import get_setting, role_allows_manage_vendors
+from app.routers.settings import get_setting, role_allows_manage_vendors, require_any_staff_feature
 
 logger = logging.getLogger(__name__)
 
@@ -225,7 +225,7 @@ async def vendor_overview(
 @router.get("/rent-status")
 async def rent_status(
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_cashier_or_admin),
+    _: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
 ):
     vendors_result = await db.execute(
         select(Vendor).where(
@@ -302,7 +302,7 @@ async def toggle_vendor_flag(
 async def vendor_rent_history(
     vendor_id: int,
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_cashier_or_admin),
+    _: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
 ):
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -928,7 +928,7 @@ async def reset_data(
 @router.get("/rent-payout-ledger")
 async def rent_payout_ledger(
     db: AsyncSession = Depends(get_db),
-    _: Vendor = Depends(require_cashier_or_admin),
+    _: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
 ):
     """
     Returns a combined list of all rent payments and payouts,

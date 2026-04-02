@@ -11,6 +11,7 @@ from app.database import get_db
 from app.models.item import Item
 from app.models.vendor import Vendor
 from app.routers.auth import get_current_user, require_role
+from app.routers.settings import require_staff_feature
 from app.services.barcode import generate_sku, generate_short_barcode
 
 router = APIRouter(prefix="/inventory-verify", tags=["inventory-verify"])
@@ -36,7 +37,7 @@ def _ricochet_filter():
 @router.get("/status")
 async def verification_status(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_role("admin", "cashier")),
+    current_user: Vendor = Depends(require_staff_feature("role_inventory_verify")),
 ):
     """Get verification progress per vendor. Only counts Ricochet-imported items."""
     result = await db.execute(
@@ -639,7 +640,7 @@ async def list_unverified_items(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=10, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_role("admin", "cashier")),
+    current_user: Vendor = Depends(require_staff_feature("role_inventory_verify")),
 ):
     """List active Ricochet items for a vendor that have NOT been verified."""
     # Get vendor name
@@ -745,7 +746,7 @@ async def archive_vendor_unverified(
 async def manually_verify_item(
     item_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_role("admin", "cashier")),
+    current_user: Vendor = Depends(require_staff_feature("role_inventory_verify")),
 ):
     """Manually mark a single item as verified (keep it active)."""
     result = await db.execute(select(Item).where(Item.id == item_id))
@@ -807,7 +808,7 @@ async def archive_unverified_items(
 @router.get("/pending-delete")
 async def list_pending_delete(
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_role("admin", "cashier")),
+    current_user: Vendor = Depends(require_staff_feature("role_inventory_verify")),
 ):
     """List items pending deletion, grouped by vendor."""
     result = await db.execute(
@@ -910,7 +911,7 @@ async def get_review_queue(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=10, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_role("admin", "cashier")),
+    current_user: Vendor = Depends(require_staff_feature("role_inventory_verify")),
 ):
     """
     Get items in pending_review status. Cashiers and admins can view.
@@ -999,7 +1000,7 @@ async def approve_review_items(
     item_ids: list[int] = Body(default=[]),
     approve_all_vendor: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_role("admin", "cashier")),
+    current_user: Vendor = Depends(require_staff_feature("role_inventory_verify")),
 ):
     """
     Approve pending_review items → set status to active.
@@ -1052,7 +1053,7 @@ async def reject_review_items(
     item_ids: list[int] = Body(default=[]),
     reject_all_vendor: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_role("admin", "cashier")),
+    current_user: Vendor = Depends(require_staff_feature("role_inventory_verify")),
 ):
     """
     Reject pending_review items → hard delete them.
