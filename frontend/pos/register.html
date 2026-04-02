@@ -907,7 +907,7 @@
 
         document.getElementById('receipt-items').innerHTML = items.map(li =>
             `<div class="receipt-item">
-                <span>${escHtml(li.item_name)} × ${li.quantity}</span>
+                <span>${escHtml(li.item_name)} × ${li.quantity}${li.booth_number ? `<div style="font-size:0.78rem;color:var(--text-light)">Booth ${escHtml(li.booth_number)}</div>` : ''}</span>
                 <span>${fmt(li.line_total)}</span>
             </div>`
         ).join('');
