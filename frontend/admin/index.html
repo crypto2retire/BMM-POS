@@ -549,7 +549,14 @@
             <div class="sum-card"><div class="sum-label">Vendors</div><div class="sum-value white" id="vh-stat-count">&mdash;</div></div>
         </div>
         <div style="margin-bottom:0.75rem">
-            <input type="search" id="vendor-search-input" class="form-control" placeholder="Search by vendor name or booth&hellip;" oninput="window.filterVendorHub()" style="max-width:28rem;width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.75rem;font-size:0.88rem;box-sizing:border-box">
+            <input type="search" id="vendor-search-input" class="form-control" placeholder="Search by name, email, or booth&hellip;" oninput="window.filterVendorHub()" style="max-width:28rem;width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.75rem;font-size:0.88rem;box-sizing:border-box">
+        </div>
+        <div id="vendor-hub-pagination" style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;margin-bottom:0.75rem;flex-wrap:wrap;font-size:0.78rem;color:var(--text-light)">
+            <span id="vendor-hub-page-info"></span>
+            <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+                <button type="button" id="vendor-hub-prev" class="btn btn-sm" style="min-height:40px" onclick="window.vendorHubPage(-1)">Previous</button>
+                <button type="button" id="vendor-hub-next" class="btn btn-sm" style="min-height:40px" onclick="window.vendorHubPage(1)">Next</button>
+            </div>
         </div>
         <div class="card" style="padding:0;overflow:hidden">
             <div id="vendor-hub-table-wrap" class="table-wrapper">
@@ -983,8 +990,8 @@
     <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
 </nav>
 
-<script src="/static/js/api.js?v=20260401f"></script>
-<script src="/static/js/admin-vendor-dashboard.js?v=20260401f"></script>
+<script src="/static/js/api.js?v=20260402a"></script>
+<script src="/static/js/admin-vendor-dashboard.js?v=20260402a"></script>
 <script>
     function toggleMobileNav() {
         document.getElementById('mobile-nav').classList.toggle('open');

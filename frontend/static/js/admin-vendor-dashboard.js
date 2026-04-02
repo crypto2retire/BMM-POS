@@ -9,6 +9,8 @@
     var _payVendorId = null;
     var _editVendorId = null;
     var _terminalPollInterval = null;
+    var _vhPageSize = 10;
+    var _vhCurrentPage = 1;
 
     function fmt(v) {
         var n = parseFloat(v);
@@ -62,7 +64,8 @@
             if (el) el.textContent = 'Vendor operations — ' + data.period;
 
             renderVendorStats(data.totals, data.already_processed);
-            renderVendorRows(_filtered);
+            _vhCurrentPage = 1;
+            renderVendorRows();
             _expandedId = null;
         } catch (e) {
             showAlert('alert-container', 'Vendor overview: ' + (e.message || e), 'error');
@@ -96,7 +99,41 @@
         }
     }
 
-    function renderVendorRows(vendors) {
+    function updateVendorHubPagination(total, start, count, pages) {
+        var info = document.getElementById('vendor-hub-page-info');
+        var prev = document.getElementById('vendor-hub-prev');
+        var next = document.getElementById('vendor-hub-next');
+        if (info) {
+            if (total === 0) {
+                info.textContent = '';
+            } else {
+                info.textContent =
+                    'Showing ' + (start + 1) + '–' + (start + count) + ' of ' + total;
+            }
+        }
+        if (prev) {
+            prev.disabled = total === 0 || _vhCurrentPage <= 1;
+        }
+        if (next) {
+            next.disabled = total === 0 || _vhCurrentPage >= pages;
+        }
+    }
+
+    window.vendorHubPage = function vendorHubPage(delta) {
+        var total = (_filtered || []).length;
+        var pages = Math.max(1, Math.ceil(total / _vhPageSize));
+        _vhCurrentPage += delta;
+        if (_vhCurrentPage < 1) _vhCurrentPage = 1;
+        if (_vhCurrentPage > pages) _vhCurrentPage = pages;
+        _expandedId = null;
+        document.querySelectorAll('.vendor-detail-tr').forEach(function (r) {
+            r.remove();
+        });
+        renderVendorRows();
+    };
+
+    function renderVendorRows() {
+        var vendorsFull = _filtered || [];
         var tbody = document.getElementById('vendor-hub-tbody');
         var mob = document.getElementById('vendor-hub-cards-mobile');
         if (!tbody) return;
@@ -105,11 +142,24 @@
             r.remove();
         });
 
-        if (!vendors || !vendors.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No vendors found.</td></tr>';
+        var total = vendorsFull.length;
+        var pages = Math.max(1, Math.ceil(total / _vhPageSize));
+        if (_vhCurrentPage > pages) _vhCurrentPage = pages;
+        if (_vhCurrentPage < 1) _vhCurrentPage = 1;
+        var start = (_vhCurrentPage - 1) * _vhPageSize;
+        var vendors = vendorsFull.slice(start, start + _vhPageSize);
+
+        if (!vendors.length) {
+            tbody.innerHTML =
+                '<tr><td colspan="5" class="empty-state">' +
+                (total === 0 ? 'No vendors found.' : 'No vendors on this page.') +
+                '</td></tr>';
             if (mob) mob.innerHTML = '<div class="empty-state">No vendors.</div>';
+            updateVendorHubPagination(total, start, 0, pages);
             return;
         }
+
+        updateVendorHubPagination(total, start, vendors.length, pages);
 
         tbody.innerHTML = vendors
             .map(function (v) {
@@ -201,6 +251,7 @@
             _filtered = _vendorData.vendors.filter(function (v) {
                 return (
                     (v.name && v.name.toLowerCase().includes(q)) ||
+                    (v.email && v.email.toLowerCase().includes(q)) ||
                     String(v.booth_number || '')
                         .toLowerCase()
                         .includes(q)
@@ -208,10 +259,11 @@
             });
         }
         _expandedId = null;
+        _vhCurrentPage = 1;
         document.querySelectorAll('.vendor-detail-tr').forEach(function (r) {
             r.remove();
         });
-        renderVendorRows(_filtered);
+        renderVendorRows();
     };
 
     function findVendor(id) {
