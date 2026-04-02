@@ -26,12 +26,20 @@ async def list_vendors(
 
     # Fetch all balances in one query
     bal_result = await db.execute(
-        select(VendorBalance.vendor_id, VendorBalance.balance)
+        select(VendorBalance.vendor_id, VendorBalance.balance, VendorBalance.rent_balance)
     )
-    balance_map = {row.vendor_id: row.balance for row in bal_result.all()}
+    balance_map = {}
+    rent_balance_map = {}
+    for row in bal_result.all():
+        balance_map[row.vendor_id] = row.balance or Decimal("0.00")
+        rent_balance_map[row.vendor_id] = row.rent_balance or Decimal("0.00")
 
     for v in vendors:
-        v.current_balance = balance_map.get(v.id, Decimal("0.00"))
+        sb = balance_map.get(v.id, Decimal("0.00"))
+        rb = rent_balance_map.get(v.id, Decimal("0.00"))
+        v.sales_balance = sb
+        v.rent_balance = rb
+        v.current_balance = sb + rb
 
     return vendors
 
@@ -81,10 +89,17 @@ async def get_vendor(
         raise HTTPException(status_code=404, detail="Vendor not found")
 
     bal_result = await db.execute(
-        select(VendorBalance.balance).where(VendorBalance.vendor_id == vendor_id)
+        select(VendorBalance).where(VendorBalance.vendor_id == vendor_id)
     )
-    bal = bal_result.scalar_one_or_none()
-    vendor.current_balance = bal if bal is not None else Decimal("0.00")
+    bal_row = bal_result.scalar_one_or_none()
+    if bal_row:
+        vendor.sales_balance = bal_row.balance or Decimal("0.00")
+        vendor.rent_balance = bal_row.rent_balance or Decimal("0.00")
+        vendor.current_balance = vendor.sales_balance + vendor.rent_balance
+    else:
+        vendor.sales_balance = Decimal("0.00")
+        vendor.rent_balance = Decimal("0.00")
+        vendor.current_balance = Decimal("0.00")
 
     return vendor
 
@@ -269,7 +284,12 @@ async def get_vendor_balance(
         db.add(balance)
         await db.commit()
         await db.refresh(balance)
-    return balance
+    return {
+        "vendor_id": balance.vendor_id,
+        "balance": balance.balance or Decimal("0.00"),
+        "rent_balance": balance.rent_balance or Decimal("0.00"),
+        "combined_balance": (balance.balance or Decimal("0.00")) + (balance.rent_balance or Decimal("0.00")),
+    }
 
 
 @router.post("/{vendor_id}/balance/adjust", response_model=BalanceAdjustmentResponse)

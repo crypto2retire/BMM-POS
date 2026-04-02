@@ -65,8 +65,12 @@ async def vendor_overview(
     )
     vendors = vendors_result.scalars().all()
 
-    bal_result = await db.execute(select(VendorBalance.vendor_id, VendorBalance.balance))
-    balance_map = {row.vendor_id: float(row.balance or 0) for row in bal_result.all()}
+    bal_result = await db.execute(select(VendorBalance.vendor_id, VendorBalance.balance, VendorBalance.rent_balance))
+    balance_map = {}
+    rent_balance_map = {}
+    for row in bal_result.all():
+        balance_map[row.vendor_id] = float(row.balance or 0)
+        rent_balance_map[row.vendor_id] = float(row.rent_balance or 0)
 
     rent_result = await db.execute(
         select(RentPayment).where(RentPayment.period_month == current_period)
@@ -111,7 +115,9 @@ async def vendor_overview(
     totals = {"gross": 0.0, "rent_due": 0.0, "rent_collected": 0.0, "net": 0.0, "shortfalls": 0.0}
 
     for v in vendors:
-        balance = balance_map.get(v.id, 0.0)
+        sales_balance = balance_map.get(v.id, 0.0)
+        rent_bal = rent_balance_map.get(v.id, 0.0)
+        combined_balance = round(sales_balance + rent_bal, 2)
         rent = float(v.monthly_rent or 0)
         rent_info = rent_map.get(v.id)
         rent_paid = rent_info is not None and rent_info["paid"]
@@ -129,14 +135,14 @@ async def vendor_overview(
                 rent_status = "due"
 
         rent_to_deduct = 0.0 if rent_paid else rent
-        if balance >= rent_to_deduct:
-            net_payout = round(balance - rent_to_deduct, 2)
+        if sales_balance >= rent_to_deduct:
+            net_payout = round(sales_balance - rent_to_deduct, 2)
             shortfall = 0.0
         else:
             net_payout = 0.0
-            shortfall = round(rent_to_deduct - balance, 2)
+            shortfall = round(rent_to_deduct - sales_balance, 2)
 
-        totals["gross"] += balance
+        totals["gross"] += sales_balance
         totals["rent_due"] += rent if not rent_paid else 0.0
         totals["rent_collected"] += rent_info["amount"] if rent_info and rent_paid else 0.0
         totals["net"] += net_payout
@@ -149,7 +155,10 @@ async def vendor_overview(
             "phone": v.phone or "",
             "booth_number": v.booth_number or "—",
             "monthly_rent": rent,
-            "balance": round(balance, 2),
+            "balance": combined_balance,
+            "sales_balance": round(sales_balance, 2),
+            "rent_balance": round(rent_bal, 2),
+            "combined_balance": combined_balance,
             "rent_status": rent_status,
             "rent_paid": rent_paid,
             "rent_paid_method": rent_info["method"] if rent_info else None,
@@ -157,14 +166,13 @@ async def vendor_overview(
             "rent_flagged": v.rent_flagged,
             "last_rent_date": last_rent_date.strftime("%m/%d/%Y") if last_rent_date else None,
             "payout_preview": {
-                "gross": round(balance, 2),
+                "gross": round(sales_balance, 2),
                 "rent_deducted": round(rent_to_deduct, 2),
                 "net": net_payout,
                 "shortfall": shortfall,
             },
             "payout_processed": payout_info is not None,
             "payout_method": v.payout_method or "—",
-            "zelle_handle": v.zelle_handle or "",
             "commission_rate": float(v.commission_rate or 0),
             "role": v.role,
             "status": v.status,
@@ -373,12 +381,25 @@ async def record_rent_payment(
         notes=notes or f"Recorded by admin ({current_user.name})",
     )
     db.add(payment)
+
+    # Credit rent_balance (prepaid rent)
+    bal_result = await db.execute(
+        select(VendorBalance).where(VendorBalance.vendor_id == vendor_id)
+    )
+    bal = bal_result.scalar_one_or_none()
+    if bal:
+        bal.rent_balance = (Decimal(str(bal.rent_balance or 0)) + amount).quantize(
+            Decimal("0.01"), ROUND_HALF_UP
+        )
+    else:
+        db.add(VendorBalance(vendor_id=vendor_id, balance=Decimal("0"), rent_balance=amount))
+
     await db.commit()
     await db.refresh(payment)
 
     return {
         "success": True,
-        "message": f"Rent payment of ${float(amount):.2f} recorded for {vendor.name} — {period.strftime('%B %Y')}.",
+        "message": f"Rent payment of ${float(amount):.2f} recorded for {vendor.name} — {period.strftime('%B %Y')}. Credited to rent balance.",
         "payment": {
             "id": payment.id,
             "amount": float(payment.amount),
@@ -567,61 +588,61 @@ async def process_payouts(
             select(VendorBalance).where(VendorBalance.vendor_id == v.id)
         )
         bal = bal_result.scalar_one_or_none()
-        gross = Decimal(str(bal.balance)) if bal and bal.balance else Decimal("0")
+        sales = Decimal(str(bal.balance)) if bal and bal.balance else Decimal("0")
+        rent_bal = Decimal(str(bal.rent_balance)) if bal and bal.rent_balance else Decimal("0")
         rent = Decimal(str(v.monthly_rent or 0))
 
-        rent_paid_result = await db.execute(
-            select(RentPayment).where(
-                RentPayment.vendor_id == v.id,
-                RentPayment.period_month == period,
-            )
-        )
-        rent_already_paid = rent_paid_result.scalar_one_or_none() is not None
+        # ── Step 1: Deduct this month's rent from rent_balance ──
+        rent_bal -= rent  # can go negative
 
-        rent_to_deduct = Decimal("0") if rent_already_paid else rent
+        # ── Step 2: If rent_balance is negative, cover from sales_balance ──
+        rent_covered_from_sales = Decimal("0")
+        if rent_bal < 0 and sales > 0:
+            transfer = min(sales, abs(rent_bal))
+            rent_bal += transfer
+            sales -= transfer
+            rent_covered_from_sales = transfer
 
-        if gross >= rent_to_deduct:
-            net = (gross - rent_to_deduct).quantize(Decimal("0.01"), ROUND_HALF_UP)
-        else:
-            net = Decimal("0")
+        # ── Step 3: Remaining sales_balance = payout amount ──
+        net = sales.quantize(Decimal("0.01"), ROUND_HALF_UP) if sales > 0 else Decimal("0")
 
-        shortfall = Decimal("0")
-        if gross < rent_to_deduct:
-            shortfall = (rent_to_deduct - gross).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        # Track shortfall (rent still owed after sales applied)
+        shortfall = abs(rent_bal).quantize(Decimal("0.01"), ROUND_HALF_UP) if rent_bal < 0 else Decimal("0")
+        if shortfall > 0:
             shortfall_count += 1
+
+        # Total rent actually deducted from sales for the payout record
+        total_rent_deducted = rent_covered_from_sales.quantize(Decimal("0.01"), ROUND_HALF_UP)
 
         payout = Payout(
             vendor_id=v.id,
             period_month=period,
-            gross_sales=gross.quantize(Decimal("0.01"), ROUND_HALF_UP),
-            rent_deducted=min(gross, rent_to_deduct).quantize(Decimal("0.01"), ROUND_HALF_UP),
+            gross_sales=Decimal(str(bal.balance if bal else 0)).quantize(Decimal("0.01"), ROUND_HALF_UP),
+            rent_deducted=total_rent_deducted,
             net_payout=net,
             payout_method=v.payout_method,
             zelle_handle=v.zelle_handle if hasattr(v, 'zelle_handle') else None,
             status="pending",
-            notes=f"Processed by {current_user.name}",
+            notes=f"Processed by {current_user.name}" + (f" | Shortfall: ${float(shortfall):.2f}" if shortfall > 0 else ""),
         )
         db.add(payout)
 
-        if not rent_already_paid and rent > 0:
-            rent_amount_paid = min(gross, rent_to_deduct)
-            if rent_amount_paid > 0:
-                rent_payment = RentPayment(
-                    vendor_id=v.id,
-                    amount=rent_amount_paid,
-                    period_month=period,
-                    method="balance",
-                    status="paid",
-                    notes=f"Deducted from sales by {current_user.name}",
-                )
-                db.add(rent_payment)
+        # Record rent deduction from balance as a rent payment if any was taken from sales
+        if rent_covered_from_sales > 0:
+            rent_payment = RentPayment(
+                vendor_id=v.id,
+                amount=rent_covered_from_sales,
+                period_month=period,
+                method="balance",
+                status="paid",
+                notes=f"Deducted from sales by {current_user.name}",
+            )
+            db.add(rent_payment)
 
+        # ── Step 4: Update balances ──
         if bal:
-            if shortfall > 0:
-                # Vendor owes more rent than they earned — carry negative balance
-                bal.balance = -shortfall
-            else:
-                bal.balance = Decimal("0")
+            bal.balance = Decimal("0")  # sales always reset to 0
+            bal.rent_balance = rent_bal.quantize(Decimal("0.01"), ROUND_HALF_UP)  # carries forward (may be negative)
 
         total_net += net
         processed += 1
@@ -914,7 +935,11 @@ async def rent_payout_ledger(
 
     # ── All vendor balances ──
     bal_result = await db.execute(select(VendorBalance))
-    balances = {b.vendor_id: float(b.balance) for b in bal_result.scalars().all()}
+    balances = {}
+    rent_balances = {}
+    for b in bal_result.scalars().all():
+        balances[b.vendor_id] = float(b.balance or 0)
+        rent_balances[b.vendor_id] = float(b.rent_balance or 0)
 
     # ── All active vendors for balance cards ──
     all_vendors_result = await db.execute(
@@ -978,16 +1003,22 @@ async def rent_payout_ledger(
     )
 
     # Total vendor balances
-    total_balances = sum(balances.get(v.id, 0.0) for v in all_vendors)
+    total_sales_balances = sum(balances.get(v.id, 0.0) for v in all_vendors)
+    total_rent_balances = sum(rent_balances.get(v.id, 0.0) for v in all_vendors)
+    total_balances = round(total_sales_balances + total_rent_balances, 2)
 
     # ── Per-vendor balance cards ──
     vendor_cards = []
     for v in all_vendors:
+        sb = balances.get(v.id, 0.0)
+        rb = rent_balances.get(v.id, 0.0)
         vendor_cards.append({
             "id": v.id,
             "name": v.name,
             "booth_number": v.booth_number or "—",
-            "balance": balances.get(v.id, 0.0),
+            "balance": round(sb + rb, 2),
+            "sales_balance": round(sb, 2),
+            "rent_balance": round(rb, 2),
         })
 
     return {
@@ -998,6 +1029,8 @@ async def rent_payout_ledger(
             "total_payouts_processed": round(total_payouts_processed, 2),
             "total_payouts_pending": round(total_payouts_pending, 2),
             "total_vendor_balances": round(total_balances, 2),
+            "total_sales_balances": round(total_sales_balances, 2),
+            "total_rent_balances": round(total_rent_balances, 2),
             "month_label": today.strftime("%B %Y"),
         },
         "vendor_cards": vendor_cards,

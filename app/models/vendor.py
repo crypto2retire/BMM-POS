@@ -44,7 +44,8 @@ class VendorBalance(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     vendor_id: Mapped[int] = mapped_column(Integer, ForeignKey("vendors.id"))
-    balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))  # sales balance
+    rent_balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))  # prepaid rent credit (negative = owes rent)
     last_updated: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default="now()")
 
 

@@ -64,6 +64,8 @@ class VendorResponse(BaseModel):
     font_size_preference: Optional[str] = "medium"
     created_at: datetime
     current_balance: Optional[Decimal] = Decimal("0.00")
+    sales_balance: Optional[Decimal] = Decimal("0.00")
+    rent_balance: Optional[Decimal] = Decimal("0.00")
 
     class Config:
         from_attributes = True
@@ -71,6 +73,8 @@ class VendorResponse(BaseModel):
 class VendorBalanceResponse(BaseModel):
     vendor_id: int
     balance: Decimal
+    rent_balance: Decimal = Decimal("0.00")
+    combined_balance: Decimal = Decimal("0.00")
 
     class Config:
         from_attributes = True

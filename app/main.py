@@ -311,12 +311,24 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"BMM-POS: payout_method default note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
 
+    # ── Add rent_balance column if missing ──
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(text(
+                "ALTER TABLE vendor_balances ADD COLUMN IF NOT EXISTS "
+                "rent_balance NUMERIC(10,2) NOT NULL DEFAULT 0.00"
+            ))
+            await session.commit()
+            print("BMM-POS: rent_balance column OK", file=sys.stderr, flush=True)
+    except Exception as e:
+        print(f"BMM-POS: rent_balance column note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
     # ── Ensure every vendor has a vendor_balances row ──
     try:
         async with AsyncSessionLocal() as session:
             result = await session.execute(text("""
-                INSERT INTO vendor_balances (vendor_id, balance)
-                SELECT v.id, 0.00
+                INSERT INTO vendor_balances (vendor_id, balance, rent_balance)
+                SELECT v.id, 0.00, 0.00
                 FROM vendors v
                 LEFT JOIN vendor_balances vb ON vb.vendor_id = v.id
                 WHERE vb.id IS NULL
@@ -327,6 +339,34 @@ async def lifespan(app: FastAPI):
                 print(f"BMM-POS: Created missing vendor_balances rows for {count} vendors", file=sys.stderr, flush=True)
     except Exception as e:
         print(f"BMM-POS: vendor_balances backfill note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
+    # ── Migrate existing rent payments to rent_balance (one-time) ──
+    # Credits rent_balance for any rent_payment where rent_balance hasn't been credited yet
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(text("""
+                UPDATE vendor_balances vb
+                SET rent_balance = rent_balance + sub.total_paid
+                FROM (
+                    SELECT rp.vendor_id, SUM(rp.amount) as total_paid
+                    FROM rent_payments rp
+                    WHERE rp.status = 'paid'
+                      AND rp.method != 'balance'
+                      AND rp.processed_at >= CURRENT_DATE
+                      AND NOT EXISTS (
+                          SELECT 1 FROM vendor_balances vb2
+                          WHERE vb2.vendor_id = rp.vendor_id AND vb2.rent_balance != 0
+                      )
+                    GROUP BY rp.vendor_id
+                ) sub
+                WHERE vb.vendor_id = sub.vendor_id
+            """))
+            await session.commit()
+            count = result.rowcount
+            if count > 0:
+                print(f"BMM-POS: Migrated rent payments to rent_balance for {count} vendors", file=sys.stderr, flush=True)
+    except Exception as e:
+        print(f"BMM-POS: rent_balance migration note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
 
     # Verify connectivity
     try:
