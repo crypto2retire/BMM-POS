@@ -398,6 +398,9 @@ async def update_item(
     for field, value in update_data.items():
         setattr(item, field, value)
 
+    if item.status == "sold" and (item.quantity or 0) > 0:
+        item.status = "active"
+
     await db.commit()
 
     result = await db.execute(

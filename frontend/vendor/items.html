@@ -833,6 +833,7 @@
 <script>(function(){ var d = parseToken(); initAssistantPanel('The vendor is managing their inventory items at Bowenstreet Market.', { assistantName: d ? d.assistant_name : null }); })();</script>
 <script>
     let editingId = null;
+    let deepLinkItemId = null;
     let pendingPhotoFile = null;
     let pendingPhotoBase64 = null;
     let pendingPhotoMime = null;
@@ -1351,6 +1352,28 @@
         setTimeout(() => document.getElementById('f-name').focus(), 100);
     }
 
+    async function openItemFromQueryParam() {
+        var itemId = new URLSearchParams(window.location.search).get('item_id');
+        if (!itemId) return;
+        var parsedId = parseInt(itemId, 10);
+        if (!parsedId || deepLinkItemId === parsedId) return;
+        deepLinkItemId = parsedId;
+        try {
+            var item = await apiGet('/api/v1/items/' + parsedId);
+            openModal(item);
+        } catch (err) {
+            showAlert('alert-container', err.message || 'Unable to open that item.', 'error');
+        }
+    }
+
+    function clearItemQueryParam() {
+        var url = new URL(window.location.href);
+        if (!url.searchParams.has('item_id')) return;
+        url.searchParams.delete('item_id');
+        history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+        deepLinkItemId = null;
+    }
+
     function closeModal() {
         document.getElementById('modal-overlay').classList.add('hidden');
         editingId = null;
@@ -1362,6 +1385,7 @@
         document.getElementById('mini-chat-body').style.display = 'none';
         document.getElementById('mini-chat-arrow').textContent = '▾';
         miniChatOpen = false;
+        clearItemQueryParam();
     }
 
     // ── AI Description Writer ─────────────────────────────────────────
@@ -2308,6 +2332,7 @@
         document.getElementById('sort-order').value = sortDirection;
         setView(currentView);
         await loadItems();
+        await openItemFromQueryParam();
     }
 
     async function loadLabelSizes() {

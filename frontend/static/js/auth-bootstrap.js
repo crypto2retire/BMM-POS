@@ -72,6 +72,7 @@
             canAccessVendorBooth: canAccessVendorBooth,
             canViewVendorDashboard: canAccessVendorBooth && permissions.role_view_dashboard,
             canManageItems: isStaff || (canAccessVendorBooth && permissions.role_manage_items),
+            canViewSales: (isStaff && permissions.role_view_sales) || (canAccessVendorBooth && permissions.role_view_sales),
             canAccessAdminDashboard: isStaff && permissions.role_view_dashboard,
             canProcessSales: isStaff && permissions.role_process_sales,
             canManageRent: isStaff && permissions.role_manage_rent,

@@ -73,6 +73,28 @@ class SaleResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class VendorSoldItemSummary(BaseModel):
+    item_id: int
+    item_name: str
+    sku: Optional[str] = None
+    category: Optional[str] = None
+    status: Optional[str] = None
+    quantity_on_hand: int = 0
+    qty_sold: int
+    gross_sales: Decimal
+    sale_count: int
+    last_sold_at: Optional[datetime] = None
+    last_sold_at_display: Optional[str] = None
+    image_path: Optional[str] = None
+
+
+class VendorSoldItemsResponse(BaseModel):
+    period: str
+    period_label: str
+    total_items: int
+    items: List[VendorSoldItemSummary]
+
+
 class VoidSaleRequest(BaseModel):
     reason: Optional[str] = None
 

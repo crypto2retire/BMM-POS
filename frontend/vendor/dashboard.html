@@ -58,6 +58,122 @@
             color: var(--text-light);
             line-height: 1.4;
         }
+        .sales-period-tabs {
+            display: flex;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        .sales-period-tabs button {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            padding: 0.45rem 0.9rem;
+            min-height: 40px;
+            cursor: pointer;
+            font: 600 0.72rem/1 'Roboto', sans-serif;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+        .sales-period-tabs button.active {
+            background: var(--gold-glow);
+            border-color: var(--gold-dim);
+            color: var(--gold);
+        }
+        .sold-items-summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            margin-bottom: 0.9rem;
+            flex-wrap: wrap;
+        }
+        .sold-items-summary .eyebrow {
+            font: 600 0.7rem/1.4 'Roboto', sans-serif;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-light);
+        }
+        .sold-items-table a,
+        .sold-item-card a {
+            color: var(--gold);
+            text-decoration: none;
+        }
+        .sold-items-table a:hover,
+        .sold-item-card a:hover {
+            text-decoration: underline;
+        }
+        .sold-items-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .sold-items-table th,
+        .sold-items-table td {
+            padding: 0.8rem 0.7rem;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        .sold-items-table th {
+            font: 600 0.68rem/1.4 'Roboto', sans-serif;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-light);
+            text-align: left;
+        }
+        .sold-item-name {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .sold-item-thumb {
+            width: 48px;
+            height: 48px;
+            border: 1px solid var(--border);
+            object-fit: cover;
+            background: var(--surface-2);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+            flex-shrink: 0;
+        }
+        .sold-items-cards {
+            display: none;
+            gap: 0.85rem;
+        }
+        .sold-item-card {
+            border: 1px solid var(--warm-border);
+            background: var(--surface);
+            padding: 1rem;
+        }
+        .sold-item-card-header {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
+            margin-bottom: 0.8rem;
+        }
+        .sold-item-card-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.7rem;
+            margin-bottom: 0.9rem;
+        }
+        .sold-item-card-grid .metric-label {
+            font: 600 0.66rem/1.4 'Roboto', sans-serif;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-light);
+            margin-bottom: 0.2rem;
+        }
+        .sold-item-card-grid .metric-value {
+            font-size: 0.88rem;
+            color: var(--text);
+        }
+        .sold-items-empty {
+            color: var(--text-light);
+            font-style: italic;
+        }
         @media (max-width: 767px) {
             .rent-card-layout {
                 flex-direction: column !important;
@@ -67,6 +183,8 @@
             .rent-card-layout .btn { width: 100%; }
             .vendor-quick-actions { display: grid; }
             #mobile-add-btn { display: none !important; }
+            .sold-items-table-wrap { display: none !important; }
+            .sold-items-cards { display: grid; }
         }
     </style>
 </head>
@@ -233,6 +351,53 @@
                 <button class="btn btn-outline btn-sm" onclick="resetAssistantName()">Reset to Default</button>
             </div>
             <div id="assistant-name-status" style="font-size:0.78rem;color:var(--text-light);margin-top:0.4rem;display:none;"></div>
+        </div>
+    </div>
+
+    <div class="ornament">&loz;</div>
+
+    <div class="section" id="sold-items-section" style="display:none;">
+        <div class="section-header">
+            <h2 class="section-title">Sold Items</h2>
+            <a href="/vendor/items.html" class="btn btn-outline btn-sm" id="sold-items-manage-link">Manage Inventory</a>
+        </div>
+        <div class="card">
+            <div class="sales-period-tabs" id="sold-items-tabs">
+                <button type="button" data-period="day" onclick="changeSoldItemsPeriod('day')">Day</button>
+                <button type="button" data-period="week" onclick="changeSoldItemsPeriod('week')">Week</button>
+                <button type="button" data-period="month" onclick="changeSoldItemsPeriod('month')">Month</button>
+                <button type="button" data-period="year" onclick="changeSoldItemsPeriod('year')">Year</button>
+            </div>
+            <div class="sold-items-summary">
+                <div>
+                    <div class="eyebrow">Time Range</div>
+                    <div id="sold-items-period-label">Loading…</div>
+                </div>
+                <div>
+                    <div class="eyebrow">Items Sold</div>
+                    <div id="sold-items-total">—</div>
+                </div>
+            </div>
+            <div id="sold-items-feedback" class="sold-items-empty">Loading sold items…</div>
+            <div class="sold-items-table-wrap" id="sold-items-table-wrap" style="display:none;">
+                <div class="table-wrapper">
+                    <table class="sold-items-table">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Qty Sold</th>
+                                <th>Gross Sales</th>
+                                <th>Last Sold</th>
+                                <th>Status</th>
+                                <th>On Hand</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="sold-items-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="sold-items-cards" id="sold-items-cards"></div>
         </div>
     </div>
 
@@ -420,11 +585,114 @@
 
     let cachedItems = [];
     var itemsPageUrl = '/vendor/items.html';
+    var soldItemsPeriod = 'month';
+    var soldItemsSession = null;
 
     function updateItemLinks() {
         document.querySelectorAll('a[href="/vendor/items.html"]').forEach(function(a) {
             a.href = itemsPageUrl;
         });
+    }
+
+    function editItemUrl(itemId) {
+        return itemsPageUrl + (itemsPageUrl.indexOf('?') === -1 ? '?' : '&') + 'item_id=' + encodeURIComponent(itemId);
+    }
+
+    function soldItemThumb(item) {
+        if (item.image_path) {
+            return '<img src="' + item.image_path + '" alt="" class="sold-item-thumb" width="48" height="48" loading="lazy">';
+        }
+        return '<span class="sold-item-thumb" aria-hidden="true">&#127991;</span>';
+    }
+
+    function renderSoldItemsTable(items) {
+        if (!items.length) return '';
+        return items.map(function(item) {
+            return '<tr>' +
+                '<td><div class="sold-item-name">' +
+                    soldItemThumb(item) +
+                    '<div>' +
+                        '<div><a href="' + editItemUrl(item.item_id) + '">' + escHtml(item.item_name) + '</a></div>' +
+                        '<div style="font-size:0.74rem;color:var(--text-light)">' + escHtml(item.sku || 'No SKU') + (item.category ? ' · ' + escHtml(item.category) : '') + '</div>' +
+                    '</div>' +
+                '</div></td>' +
+                '<td>' + item.qty_sold + '</td>' +
+                '<td>$' + Number(item.gross_sales || 0).toFixed(2) + '</td>' +
+                '<td>' + escHtml(item.last_sold_at_display || '—') + '</td>' +
+                '<td>' + statusBadge(item.status || 'active') + '</td>' +
+                '<td>' + (item.quantity_on_hand ?? 0) + '</td>' +
+                '<td><a class="btn btn-outline btn-sm" href="' + editItemUrl(item.item_id) + '">Edit</a></td>' +
+            '</tr>';
+        }).join('');
+    }
+
+    function renderSoldItemsCards(items) {
+        if (!items.length) return '';
+        return items.map(function(item) {
+            return '<div class="sold-item-card">' +
+                '<div class="sold-item-card-header">' +
+                    soldItemThumb(item) +
+                    '<div style="min-width:0">' +
+                        '<div style="font-size:0.96rem;font-weight:600"><a href="' + editItemUrl(item.item_id) + '">' + escHtml(item.item_name) + '</a></div>' +
+                        '<div style="font-size:0.76rem;color:var(--text-light)">' + escHtml(item.sku || 'No SKU') + (item.category ? ' · ' + escHtml(item.category) : '') + '</div>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="sold-item-card-grid">' +
+                    '<div><div class="metric-label">Qty Sold</div><div class="metric-value">' + item.qty_sold + '</div></div>' +
+                    '<div><div class="metric-label">On Hand</div><div class="metric-value">' + (item.quantity_on_hand ?? 0) + '</div></div>' +
+                    '<div><div class="metric-label">Gross Sales</div><div class="metric-value">$' + Number(item.gross_sales || 0).toFixed(2) + '</div></div>' +
+                    '<div><div class="metric-label">Status</div><div class="metric-value">' + escHtml(item.status || 'active') + '</div></div>' +
+                    '<div style="grid-column:1/-1"><div class="metric-label">Last Sold</div><div class="metric-value">' + escHtml(item.last_sold_at_display || '—') + '</div></div>' +
+                '</div>' +
+                '<a class="btn btn-outline btn-full" href="' + editItemUrl(item.item_id) + '">Edit Item</a>' +
+            '</div>';
+        }).join('');
+    }
+
+    function setSoldItemsTabState(period) {
+        document.querySelectorAll('#sold-items-tabs button').forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-period') === period);
+        });
+    }
+
+    async function loadSoldItems(period) {
+        if (!soldItemsSession || !soldItemsSession.canViewSales) return;
+
+        soldItemsPeriod = period || soldItemsPeriod;
+        setSoldItemsTabState(soldItemsPeriod);
+
+        var feedback = document.getElementById('sold-items-feedback');
+        var tableWrap = document.getElementById('sold-items-table-wrap');
+        var tableBody = document.getElementById('sold-items-table-body');
+        var cards = document.getElementById('sold-items-cards');
+
+        feedback.style.display = '';
+        feedback.textContent = 'Loading sold items…';
+        tableWrap.style.display = 'none';
+        tableBody.innerHTML = '';
+        cards.innerHTML = '';
+
+        try {
+            var data = await apiGet('/api/v1/sales/vendor-sold-items?period=' + encodeURIComponent(soldItemsPeriod));
+            document.getElementById('sold-items-period-label').textContent = data.period_label || soldItemsPeriod;
+            document.getElementById('sold-items-total').textContent = data.total_items || 0;
+
+            if (!data.items || !data.items.length) {
+                feedback.textContent = 'No sold items in this period.';
+                return;
+            }
+
+            feedback.style.display = 'none';
+            tableWrap.style.display = '';
+            tableBody.innerHTML = renderSoldItemsTable(data.items);
+            cards.innerHTML = renderSoldItemsCards(data.items);
+        } catch (err) {
+            feedback.textContent = err.message || 'Failed to load sold items.';
+        }
+    }
+
+    function changeSoldItemsPeriod(period) {
+        loadSoldItems(period);
     }
 
     async function loadDashboard() {
@@ -435,11 +703,14 @@
             message: 'Vendor dashboard access is not enabled for this account right now.'
         });
         if (!session) return;
+        soldItemsSession = session;
 
         if (session.role !== 'vendor' && session.vendor_id) {
             itemsPageUrl = '/vendor/items.html?vendor_id=' + session.vendor_id;
         }
         updateItemLinks();
+        var soldManageLink = document.getElementById('sold-items-manage-link');
+        if (soldManageLink) soldManageLink.href = itemsPageUrl;
 
         try {
             const vendor = await apiGet(`/api/v1/vendors/${session.vendor_id}`);
@@ -471,6 +742,14 @@
             document.getElementById("total-items").textContent = items.length;
             cachedItems = items;
             applyLayout(items);
+
+            var soldSection = document.getElementById('sold-items-section');
+            if (session.canViewSales) {
+                soldSection.style.display = '';
+                loadSoldItems(soldItemsPeriod);
+            } else {
+                soldSection.style.display = 'none';
+            }
 
             try {
                 var staleData = await apiGet('/api/v1/booth-showcase/stale-check');

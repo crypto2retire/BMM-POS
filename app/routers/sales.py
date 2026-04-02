@@ -10,7 +10,13 @@ from app.database import get_db
 from app.models.sale import Sale, SaleItem
 from app.models.item import Item
 from app.models.vendor import Vendor, VendorBalance
-from app.schemas.sale import SaleCreate, SaleResponse, SaleItemResponse
+from app.schemas.sale import (
+    SaleCreate,
+    SaleResponse,
+    SaleItemResponse,
+    VendorSoldItemSummary,
+    VendorSoldItemsResponse,
+)
 from app.routers.auth import get_current_user
 from app.config import settings
 from app.routers.settings import get_tax_rate, require_staff_feature, role_feature_allowed
@@ -41,6 +47,35 @@ def get_active_price(item: Item) -> Decimal:
     ):
         return Decimal(str(item.sale_price))
     return Decimal(str(item.price))
+
+
+def _current_period_window(period: str):
+    today = datetime.now(_STORE_TZ).date()
+    if period == "day":
+        start_local = datetime(today.year, today.month, today.day, tzinfo=_STORE_TZ)
+        end_local = start_local + timedelta(days=1)
+        label = today.strftime("%b %-d, %Y")
+    elif period == "week":
+        week_start = today - timedelta(days=today.weekday())
+        start_local = datetime(week_start.year, week_start.month, week_start.day, tzinfo=_STORE_TZ)
+        end_local = start_local + timedelta(days=7)
+        week_end = end_local.date() - timedelta(days=1)
+        label = f"{week_start.strftime('%b %-d')} - {week_end.strftime('%b %-d, %Y')}"
+    elif period == "month":
+        start_local = datetime(today.year, today.month, 1, tzinfo=_STORE_TZ)
+        if today.month == 12:
+            end_local = datetime(today.year + 1, 1, 1, tzinfo=_STORE_TZ)
+        else:
+            end_local = datetime(today.year, today.month + 1, 1, tzinfo=_STORE_TZ)
+        label = today.strftime("%B %Y")
+    elif period == "year":
+        start_local = datetime(today.year, 1, 1, tzinfo=_STORE_TZ)
+        end_local = datetime(today.year + 1, 1, 1, tzinfo=_STORE_TZ)
+        label = today.strftime("%Y")
+    else:
+        raise HTTPException(status_code=400, detail="period must be one of: day, week, month, year")
+
+    return start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc), label
 
 
 def sale_to_response(sale: Sale) -> SaleResponse:
@@ -331,6 +366,85 @@ async def sales_summary_today(
         "total_revenue": float(row.total_revenue),
         "total_tax": float(row.total_tax),
     }
+
+
+@router.get("/vendor-sold-items", response_model=VendorSoldItemsResponse)
+async def vendor_sold_items(
+    period: str = Query("month"),
+    limit: int = Query(100, ge=1, le=250),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if not await role_feature_allowed(db, current_user, "role_view_sales"):
+        raise HTTPException(
+            status_code=403,
+            detail="Sales history is disabled for your role in Settings → User Roles.",
+        )
+
+    if current_user.role not in ("vendor", "admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Vendor sales access is not available for this account")
+    if current_user.role in ("admin", "cashier") and not current_user.is_vendor:
+        raise HTTPException(status_code=403, detail="Vendor sales access is not available for this account")
+
+    start_utc, end_utc, period_label = _current_period_window(period)
+    result = await db.execute(
+        select(
+            SaleItem.item_id.label("item_id"),
+            Item.name.label("item_name"),
+            Item.sku.label("sku"),
+            Item.category.label("category"),
+            Item.status.label("status"),
+            Item.quantity.label("quantity_on_hand"),
+            Item.image_path.label("image_path"),
+            func.coalesce(func.sum(SaleItem.quantity), 0).label("qty_sold"),
+            func.coalesce(func.sum(SaleItem.line_total), 0).label("gross_sales"),
+            func.count(func.distinct(Sale.id)).label("sale_count"),
+            func.max(Sale.created_at).label("last_sold_at"),
+        )
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .join(Item, Item.id == SaleItem.item_id)
+        .where(
+            SaleItem.vendor_id == current_user.id,
+            Sale.is_voided.is_(False),
+            Sale.created_at >= start_utc,
+            Sale.created_at < end_utc,
+        )
+        .group_by(
+            SaleItem.item_id,
+            Item.name,
+            Item.sku,
+            Item.category,
+            Item.status,
+            Item.quantity,
+            Item.image_path,
+        )
+        .order_by(func.max(Sale.created_at).desc(), func.sum(SaleItem.quantity).desc())
+        .limit(limit)
+    )
+    rows = result.all()
+    items = [
+        VendorSoldItemSummary(
+            item_id=row.item_id,
+            item_name=row.item_name,
+            sku=row.sku,
+            category=row.category,
+            status=row.status,
+            quantity_on_hand=int(row.quantity_on_hand or 0),
+            qty_sold=int(row.qty_sold or 0),
+            gross_sales=Decimal(str(row.gross_sales or 0)).quantize(Decimal("0.01"), ROUND_HALF_UP),
+            sale_count=int(row.sale_count or 0),
+            last_sold_at=row.last_sold_at,
+            last_sold_at_display=_format_cst(row.last_sold_at),
+            image_path=row.image_path,
+        )
+        for row in rows
+    ]
+    return VendorSoldItemsResponse(
+        period=period,
+        period_label=period_label,
+        total_items=len(items),
+        items=items,
+    )
 
 
 @router.get("/{sale_id}", response_model=SaleResponse)
