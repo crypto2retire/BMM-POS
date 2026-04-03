@@ -1115,6 +1115,10 @@
     <div class="pos-modal" style="max-width:420px">
         <h2>Manual Item Entry</h2>
         <div class="manual-form-group">
+            <label for="manual-vendor-search">Search Vendor</label>
+            <input type="text" id="manual-vendor-search" placeholder="Type vendor name, booth, or email…" autocomplete="off" oninput="renderManualVendors(this.value)">
+        </div>
+        <div class="manual-form-group">
             <label for="manual-vendor">Vendor / Booth</label>
             <select id="manual-vendor"></select>
         </div>
@@ -1874,9 +1878,44 @@
 
     // ─── Manual Entry ─────────────────────────────────────────────────────────
     let manualVendorsLoaded = false;
+    let manualVendors = [];
+
+    function manualVendorSortValue(v) {
+        const booth = (v.booth_number || '').trim();
+        const name = (v.name || '').trim();
+        if (booth && name) return booth.toLowerCase() + ' ' + name.toLowerCase();
+        if (booth) return booth.toLowerCase();
+        return name.toLowerCase();
+    }
+
+    function renderManualVendors(term) {
+        const sel = document.getElementById('manual-vendor');
+        if (!sel) return;
+        const query = (term || '').trim().toLowerCase();
+        const filtered = !query
+            ? manualVendors
+            : manualVendors.filter(function(v) {
+                return (v.name || '').toLowerCase().includes(query)
+                    || (v.email || '').toLowerCase().includes(query)
+                    || (v.booth_number || '').toLowerCase().includes(query);
+            });
+
+        sel.innerHTML = '<option value="">— Select vendor —</option>';
+        filtered.forEach(function(v) {
+            const booth = v.booth_number ? `Booth ${v.booth_number}` : 'No Booth';
+            const type = v.role === 'vendor' ? 'Vendor' : 'Staff Booth';
+            sel.innerHTML += `<option value="${v.id}">${booth} — ${v.name} (${type})</option>`;
+        });
+
+        if (!filtered.length) {
+            sel.innerHTML = '<option value="">No matching vendors</option>';
+        }
+    }
 
     async function openManualEntry() {
         document.getElementById('manual-modal').classList.remove('hidden');
+        document.getElementById('manual-vendor-search').value = '';
+        document.getElementById('manual-vendor').value = '';
         document.getElementById('manual-name').value = '';
         document.getElementById('manual-price').value = '';
         document.getElementById('manual-qty').value = '1';
@@ -1889,27 +1928,24 @@
         if (!manualVendorsLoaded) {
             try {
                 const vendors = await apiGet('/api/v1/vendors/');
-                const sel = document.getElementById('manual-vendor');
-                sel.innerHTML = '<option value="">— Select vendor —</option>';
-                vendors
+                manualVendors = vendors
                     .filter(v => (v.status || 'active') === 'active' && (v.role === 'vendor' || v.is_vendor))
                     .sort(function(a, b) {
                         const boothA = (a.booth_number || '').toLowerCase();
                         const boothB = (b.booth_number || '').toLowerCase();
                         if (boothA && boothB && boothA !== boothB) return boothA.localeCompare(boothB, undefined, { numeric: true });
-                        return (a.name || '').localeCompare(b.name || '');
-                    })
-                    .forEach(v => {
-                        const booth = v.booth_number ? `Booth ${v.booth_number}` : 'No Booth';
-                        const type = v.role === 'vendor' ? 'Vendor' : 'Staff Booth';
-                        sel.innerHTML += `<option value="${v.id}">${v.name} — ${booth} (${type})</option>`;
+                        if (boothA || boothB) return boothA ? -1 : 1;
+                        return manualVendorSortValue(a).localeCompare(manualVendorSortValue(b), undefined, { numeric: true });
                     });
+                renderManualVendors('');
                 manualVendorsLoaded = true;
             } catch (e) {
                 document.getElementById('manual-error').textContent = 'Could not load vendors';
             }
+        } else {
+            renderManualVendors('');
         }
-        setTimeout(() => document.getElementById('manual-vendor').focus(), 100);
+        setTimeout(() => document.getElementById('manual-vendor-search').focus(), 100);
     }
 
     function resetManualEntryState() {
