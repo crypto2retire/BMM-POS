@@ -1644,8 +1644,8 @@ async def pos_rent_payment(
 
     if not vendor_id or not isinstance(vendor_id, int):
         raise HTTPException(status_code=400, detail="Valid vendor_id required")
-    if method not in ("cash", "card"):
-        raise HTTPException(status_code=400, detail="Method must be cash or card")
+    if method not in ("cash", "check", "card"):
+        raise HTTPException(status_code=400, detail="Method must be cash, check, or card")
 
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -1692,8 +1692,8 @@ async def pos_rent_payment(
         vendor=vendor,
         amount=amount,
         requested_period=period,
-        method="cash",
-        notes=f"POS cash payment received by {current_user.name}. {notes}".strip(),
+        method=method,
+        notes=f"POS {method} payment received by {current_user.name}. {notes}".strip(),
     )
     await db.commit()
 
@@ -1706,9 +1706,9 @@ async def pos_rent_payment(
 
     return {
         "success": True,
-        "method": "cash",
+        "method": method,
         "message": (
-            f"Cash rent payment of ${amount:.2f} recorded for {vendor.name}. "
+            f"{method.capitalize()} rent payment of ${amount:.2f} recorded for {vendor.name}. "
             f"Applied to {period_summary}."
         ),
         "applied_periods": [p.isoformat() for p in applied_periods],
