@@ -347,7 +347,7 @@ async def reset_vendor_password(
     vendor_id: int,
     body: dict = Body(...),
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_role("admin"))
+    current_user: Vendor = Depends(require_staff_feature("role_manage_vendors"))
 ):
     new_password = body.get("new_password")
     if not new_password or len(new_password) < 6:
@@ -357,6 +357,12 @@ async def reset_vendor_password(
     vendor = result.scalar_one_or_none()
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if current_user.role != "admin" and vendor.role != "vendor":
+        raise HTTPException(
+            status_code=403,
+            detail="Cashiers can only reset vendor passwords.",
+        )
 
     vendor.password_hash = get_password_hash(new_password)
     await db.commit()
