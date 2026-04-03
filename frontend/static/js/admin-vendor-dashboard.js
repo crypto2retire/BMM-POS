@@ -783,6 +783,11 @@
         // zelle removed
         set('edit-v-status', v.status || 'active');
         set('edit-v-notes', v.notes);
+        set('edit-v-new-password', '');
+        var passwordStatus = document.getElementById('edit-v-password-status');
+        if (passwordStatus) passwordStatus.textContent = '';
+        var passwordBlock = document.getElementById('edit-v-password-block');
+        if (passwordBlock) passwordBlock.style.display = v.role === 'vendor' ? 'block' : 'none';
         window.onEditPayoutChange();
         var o = document.getElementById('edit-vendor-overlay');
         if (o) o.style.display = 'flex';
@@ -795,7 +800,55 @@
     window.closeEditModalHub = function () {
         var o = document.getElementById('edit-vendor-overlay');
         if (o) o.style.display = 'none';
+        var passwordInput = document.getElementById('edit-v-new-password');
+        if (passwordInput) passwordInput.value = '';
+        var passwordStatus = document.getElementById('edit-v-password-status');
+        if (passwordStatus) passwordStatus.textContent = '';
         _editVendorId = null;
+    };
+
+    window.resetVendorPasswordHub = async function () {
+        if (!_editVendorId) return;
+        var vendor = findVendor(_editVendorId);
+        if (!vendor || vendor.role !== 'vendor') return;
+        var input = document.getElementById('edit-v-new-password');
+        var status = document.getElementById('edit-v-password-status');
+        var btn = document.getElementById('edit-v-reset-password-btn');
+        var newPassword = ((input || {}).value || '').trim();
+        if (!newPassword || newPassword.length < 6) {
+            if (status) {
+                status.textContent = 'Password must be at least 6 characters.';
+                status.style.color = 'var(--danger)';
+            }
+            return;
+        }
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Resetting…';
+        }
+        if (status) {
+            status.textContent = '';
+        }
+        try {
+            await apiPost('/api/v1/vendors/' + _editVendorId + '/reset-password', {
+                new_password: newPassword,
+            });
+            if (input) input.value = '';
+            if (status) {
+                status.textContent = 'Password reset successfully.';
+                status.style.color = 'var(--success-light)';
+            }
+        } catch (e) {
+            if (status) {
+                status.textContent = e.message || 'Password reset failed.';
+                status.style.color = 'var(--danger)';
+            }
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Reset Password';
+            }
+        }
     };
 
     window.submitEditModalHub = async function () {
