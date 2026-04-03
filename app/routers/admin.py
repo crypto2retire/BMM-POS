@@ -25,6 +25,7 @@ from app.models.item_image import ItemImage
 from app.models.booth_showcase import BoothShowcase
 from app.routers.auth import get_current_user, require_admin, require_cashier_or_admin
 from app.services.email import send_email_safe
+from app.services.rent_payments import apply_rent_payment
 from app.services.email_templates import (
     payout_with_rent_email,
     rent_shortfall_email,
@@ -501,53 +502,42 @@ async def record_rent_payment(
 
     notes = body.get("notes", "")
 
-    existing = await db.execute(
-        select(RentPayment).where(
-            RentPayment.vendor_id == vendor_id,
-            RentPayment.period_month == period,
-        )
-    )
-    if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=409,
-            detail=f"Rent for {period.strftime('%B %Y')} is already recorded.",
-        )
-
-    payment = RentPayment(
-        vendor_id=vendor_id,
+    allocation = await apply_rent_payment(
+        db=db,
+        vendor=vendor,
         amount=amount,
-        period_month=period,
+        requested_period=period,
         method=method,
-        status="paid",
         notes=notes or f"Recorded by admin ({current_user.name})",
     )
-    db.add(payment)
+    await db.commit()
 
-    # Credit rent_balance (prepaid rent)
-    bal_result = await db.execute(
-        select(VendorBalance).where(VendorBalance.vendor_id == vendor_id)
-    )
-    bal = bal_result.scalar_one_or_none()
-    if bal:
-        bal.rent_balance = (Decimal(str(bal.rent_balance or 0)) + amount).quantize(
-            Decimal("0.01"), ROUND_HALF_UP
+    applied_periods = allocation["applied_periods"]
+    credit_remainder = allocation["credit_remainder"]
+    period_labels = ", ".join(p.strftime("%B %Y") for p in applied_periods)
+    if applied_periods and credit_remainder > 0:
+        message = (
+            f"Recorded ${float(amount):.2f} for {vendor.name}. "
+            f"Applied to {period_labels}. "
+            f"Remaining credit ${float(credit_remainder):.2f} stays on the rent account."
+        )
+    elif applied_periods:
+        message = (
+            f"Recorded ${float(amount):.2f} for {vendor.name}. "
+            f"Applied to {period_labels}."
         )
     else:
-        db.add(VendorBalance(vendor_id=vendor_id, balance=Decimal("0"), rent_balance=amount))
-
-    await db.commit()
-    await db.refresh(payment)
+        message = (
+            f"Recorded ${float(amount):.2f} for {vendor.name}. "
+            f"No full month was covered yet; the full amount remains as rent credit."
+        )
 
     return {
         "success": True,
-        "message": f"Rent payment of ${float(amount):.2f} recorded for {vendor.name} — {period.strftime('%B %Y')}. Credited to rent balance.",
-        "payment": {
-            "id": payment.id,
-            "amount": float(payment.amount),
-            "period_month": payment.period_month.strftime("%B %Y"),
-            "method": payment.method,
-            "status": payment.status,
-        },
+        "message": message,
+        "applied_periods": [p.isoformat() for p in applied_periods],
+        "credit_remainder": float(credit_remainder),
+        "rent_balance_after": float(allocation["rent_balance_after"]),
     }
 
 

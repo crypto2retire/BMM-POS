@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -7,10 +8,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.vendor import Vendor
+from app.models.vendor import Vendor, VendorBalance
 from app.models.rent import RentPayment
 from app.models.legacy_history import LegacyFinancialHistory
 from app.routers.auth import get_current_user
+from app.services.rent_payments import apply_rent_payment
 
 router = APIRouter(prefix="/vendor", tags=["vendor-rent"])
 
@@ -79,11 +81,18 @@ async def rent_status(
     )
     legacy_history = legacy_result.scalars().all()
 
+    balance_result = await db.execute(
+        select(VendorBalance).where(VendorBalance.vendor_id == vendor.id)
+    )
+    balance = balance_result.scalar_one_or_none()
+    rent_credit = float(balance.rent_balance or 0) if balance and balance.rent_balance is not None else 0.0
+
     return {
         "monthly_rent": float(vendor.monthly_rent or 0),
         "current_month": today.strftime("%B %Y"),
         "paid_this_month": current_payment is not None and current_payment.status == "paid",
         "pending_this_month": current_payment is not None and current_payment.status == "pending",
+        "rent_credit": rent_credit,
         "history": [
             {
                 "period": p.period_month.strftime("%B %Y"),
@@ -100,10 +109,18 @@ async def rent_status(
 
 class RentConfirmRequest(BaseModel):
     square_payment_id: Optional[str] = None
+    amount: Optional[Decimal] = None
+    period: Optional[str] = None
+
+
+class VendorRentRequest(BaseModel):
+    amount: Optional[Decimal] = None
+    period: Optional[str] = None
 
 
 @router.post("/pay-rent")
 async def pay_rent(
+    body: VendorRentRequest,
     db: AsyncSession = Depends(get_db),
     current_vendor: Vendor = Depends(get_current_user),
 ):
@@ -111,16 +128,33 @@ async def pay_rent(
         raise HTTPException(status_code=403, detail="Vendor access required.")
 
     vendor = current_vendor
-    rent_amount = float(vendor.monthly_rent or 0)
-    if rent_amount <= 0:
+    configured_rent = Decimal(str(vendor.monthly_rent or 0))
+    if configured_rent <= 0:
         raise HTTPException(status_code=400, detail="No rent amount configured for this vendor.")
 
-    price_cents = round(rent_amount * 100)
-    today = date.today()
-    month_label = today.strftime("%B %Y")
+    try:
+        amount = Decimal(str(body.amount if body.amount is not None else configured_rent))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid amount.")
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Invalid amount.")
+
+    if body.period:
+        try:
+            parts = body.period.split("-")
+            period = date(int(parts[0]), int(parts[1]), 1)
+        except (ValueError, IndexError):
+            raise HTTPException(status_code=400, detail="Invalid period. Use YYYY-MM.")
+    else:
+        today = date.today()
+        period = date(today.year, today.month, 1)
+
+    price_cents = round(float(amount) * 100)
+    month_label = period.strftime("%B %Y")
     redirect_url = (
         f"https://www.bowenstreetmm.com/vendor/dashboard.html"
         f"?rent_paid=success&vendor_id={vendor.id}"
+        f"&rent_amount={float(amount):.2f}&rent_period={period.isoformat()}"
     )
 
     try:
@@ -154,30 +188,50 @@ async def rent_confirmed(
         raise HTTPException(status_code=403, detail="Vendor access required.")
 
     vendor = current_vendor
-    today = date.today()
-    period = date(today.year, today.month, 1)
+    try:
+        amount = Decimal(str(body.amount if body.amount is not None else vendor.monthly_rent))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid amount.")
 
-    existing = await db.execute(
-        select(RentPayment).where(
-            RentPayment.vendor_id == vendor.id,
-            RentPayment.period_month == period,
-        )
-    )
-    if existing.scalar_one_or_none():
-        return {"success": True, "message": "Rent for this month already recorded."}
+    if body.period:
+        try:
+            parts = body.period.split("-")
+            period = date(int(parts[0]), int(parts[1]), 1)
+        except (ValueError, IndexError):
+            raise HTTPException(status_code=400, detail="Invalid period. Use YYYY-MM.")
+    else:
+        today = date.today()
+        period = date(today.year, today.month, 1)
 
-    payment = RentPayment(
-        vendor_id=vendor.id,
-        amount=vendor.monthly_rent,
-        period_month=period,
+    allocation = await apply_rent_payment(
+        db=db,
+        vendor=vendor,
+        amount=amount,
+        requested_period=period,
         method="square",
-        status="paid",
         notes=body.square_payment_id or "Square online payment",
     )
-    db.add(payment)
     await db.commit()
+
+    applied_periods = allocation["applied_periods"]
+    credit_remainder = allocation["credit_remainder"]
+    if applied_periods and credit_remainder > 0:
+        message = (
+            f"Rent payment recorded. Applied to {', '.join(p.strftime('%B %Y') for p in applied_periods)}. "
+            f"Remaining credit ${float(credit_remainder):.2f} stays on your rent account."
+        )
+    elif applied_periods:
+        message = (
+            f"Rent payment recorded for {', '.join(p.strftime('%B %Y') for p in applied_periods)}."
+        )
+    else:
+        message = (
+            f"Rent payment recorded. The full amount remains as rent credit until a full month is covered."
+        )
 
     return {
         "success": True,
-        "message": f"Rent payment of ${float(vendor.monthly_rent):.2f} recorded for {period.strftime('%B %Y')}.",
+        "message": message,
+        "applied_periods": [p.isoformat() for p in applied_periods],
+        "credit_remainder": float(credit_remainder),
     }
