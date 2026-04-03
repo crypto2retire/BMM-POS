@@ -50,6 +50,26 @@
         .sum-value.green { color: var(--success-light); }
         .sum-value.red { color: var(--danger); }
         .sum-value.amber { color: var(--warning); }
+        .import-disabled-note {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.25rem 1.35rem;
+            margin-bottom: 1.25rem;
+        }
+        .import-disabled-note h2 {
+            margin: 0 0 0.35rem;
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 1.3rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+        .import-disabled-note p {
+            margin: 0.35rem 0 0;
+            color: var(--text-light);
+            line-height: 1.5;
+            font-size: 0.88rem;
+        }
+        .import-disabled-hide { display: none !important; }
 
         /* ── Tabs ──────────────────────────────────────── */
         .verify-tabs {
@@ -450,7 +470,6 @@
             <a href="/admin/index.html">Dashboard</a>
             <a href="/admin/reports.html">Reports</a>
             <a href="/admin/eod-reports.html">EOD Reports</a>
-            <a href="/admin/inventory-verify.html" class="active">Inventory</a>
             <a href="/admin/studio.html">Studio</a>
             <a href="/vendor/items.html">Items</a>
             <a href="/admin/settings.html">Settings</a>
@@ -465,7 +484,6 @@
     <a href="/admin/index.html">Dashboard</a>
     <a href="/admin/reports.html">Reports</a>
     <a href="/admin/eod-reports.html">EOD Reports</a>
-    <a href="/admin/inventory-verify.html" class="active">Inventory</a>
     <a href="/admin/studio.html">Studio</a>
     <a href="/vendor/items.html">Items</a>
     <a href="/admin/settings.html">Settings</a>
@@ -475,15 +493,20 @@
 
 <div class="main-content">
     <div id="alert-container"></div>
+    <div class="import-disabled-note">
+        <h2>Data Import Is Disabled</h2>
+        <p>The import UI has been removed from the staff front end. Backend import routes remain available for future reconnection if needed.</p>
+        <p>Use the main admin workspace, reports, rent, payouts, and items pages for current store operations.</p>
+    </div>
 
-    <h1 class="page-title" style="font-family:'EB Garamond',Georgia,serif; font-size:1.75rem; font-weight:500; color:var(--text); margin-bottom:0">
+    <h1 class="page-title import-disabled-hide" style="font-family:'EB Garamond',Georgia,serif; font-size:1.75rem; font-weight:500; color:var(--text); margin-bottom:0">
         Inventory Verification
     </h1>
-    <p class="page-subtitle">Verify Ricochet-imported inventory — BMM-POS native items are not affected</p>
-    <div class="ornament">&#9830; &nbsp; &#9830; &nbsp; &#9830;</div>
+    <p class="page-subtitle import-disabled-hide">Verify Ricochet-imported inventory — BMM-POS native items are not affected</p>
+    <div class="ornament import-disabled-hide">&#9830; &nbsp; &#9830; &nbsp; &#9830;</div>
 
     <!-- Summary cards -->
-    <div class="verify-summary" id="summary-cards">
+    <div class="verify-summary import-disabled-hide" id="summary-cards">
         <div class="sum-card">
             <div class="sum-label">Total Vendors</div>
             <div class="sum-value white" id="sum-vendors">—</div>
@@ -511,7 +534,7 @@
     </div>
 
     <!-- Tabs -->
-    <div class="verify-tabs">
+    <div class="verify-tabs import-disabled-hide">
         <button class="verify-tab admin-only active" onclick="switchTab('upload', this)">Upload</button>
         <button class="verify-tab admin-only" onclick="switchTab('progress', this)">Progress</button>
         <button class="verify-tab" onclick="switchTab('review', this)">Review Queue <span class="tab-badge" id="review-badge" style="display:none">0</span></button>
@@ -519,7 +542,7 @@
     </div>
 
     <!-- TAB 1: Upload (admin only) -->
-    <div id="tab-upload" class="tab-panel admin-only">
+    <div id="tab-upload" class="tab-panel admin-only import-disabled-hide">
         <div class="upload-section" style="border-bottom:1px solid var(--warm-border); padding-bottom:1.5rem; margin-bottom:1.5rem">
             <h3>Upload Full Inventory (All Vendors)</h3>
             <p style="font-size:0.75rem; color:var(--text-light); margin:0.35rem 0 0.75rem; opacity:0.85">
@@ -615,7 +638,7 @@
     </div>
 
     <!-- TAB 2: Progress (admin only) -->
-    <div id="tab-progress" class="tab-panel admin-only" style="display:none">
+    <div id="tab-progress" class="tab-panel admin-only import-disabled-hide" style="display:none">
         <div style="display:flex; gap:0.75rem; margin-bottom:1rem; flex-wrap:wrap; align-items:center">
             <input type="text" id="progress-search" placeholder="Filter vendors&hellip;" oninput="filterProgress()" style="flex:1; max-width:340px; background:var(--surface-2); border:1px solid var(--border); color:var(--text); padding:0.55rem 0.85rem; font-size:0.875rem; font-family:'Roboto',sans-serif; min-height:44px">
             <select id="progress-filter" onchange="filterProgress()" style="padding:0.4rem 0.6rem; background:var(--surface-2); border:1px solid var(--border); color:var(--text-light); font-size:0.78rem; font-family:'Roboto',sans-serif; min-height:44px">
@@ -647,7 +670,7 @@
     </div>
 
     <!-- TAB 3: Review Queue (admin + cashier) -->
-    <div id="tab-review" class="tab-panel" style="display:none">
+    <div id="tab-review" class="tab-panel import-disabled-hide" style="display:none">
         <div class="panel-section">
             <h3>Items Needing Review</h3>
             <p style="font-size:0.78rem; color:var(--text-light); margin-bottom:1rem; opacity:0.8">
@@ -696,7 +719,7 @@
     </div>
 
     <!-- TAB 4: Archive & Delete (admin only) -->
-    <div id="tab-archive" class="tab-panel admin-only" style="display:none">
+    <div id="tab-archive" class="tab-panel admin-only import-disabled-hide" style="display:none">
         <div class="action-bar">
             <button class="btn-warning" onclick="archiveUnverified()">
                 &#9888; Archive All Unverified Ricochet Items
@@ -727,7 +750,7 @@
     </div>
 
     <!-- Unverified items modal -->
-    <div class="modal-overlay" id="unverified-modal">
+    <div class="modal-overlay import-disabled-hide" id="unverified-modal">
         <div class="modal-box">
             <button type="button" class="modal-close" onclick="closeUnverifiedModal()" aria-label="Close unverified items dialog">&times;</button>
             <h3>Unverified Items — <span id="unverified-vendor-name"></span></h3>
@@ -815,15 +838,6 @@ async function detectRole() {
         headers = { 'Authorization': 'Bearer ' + token };
         jsonHeaders = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
         userRole = session.role;
-
-        if (userRole === 'admin') {
-            document.querySelectorAll('.admin-only').forEach(function(el) {
-                el.classList.remove('admin-only');
-            });
-        } else {
-            // Cashier: default to review tab
-            switchTab('review', document.querySelector('.verify-tab:not(.admin-only)'));
-        }
     } catch (e) {
         window.location.href = '/vendor/login.html';
     }
@@ -1497,10 +1511,7 @@ async function archiveVendorUnverified() {
 }
 
 // ── Init ───────────────────────────────────────────
-detectRole().then(function() {
-    loadVendors();
-    loadStatus();
-});
+detectRole();
 </script>
 
 </body>
