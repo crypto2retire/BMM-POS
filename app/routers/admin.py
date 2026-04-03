@@ -100,6 +100,19 @@ def _admin_display_rent_balance(
     return round(rent_ledger, 2)
 
 
+def _admin_effective_balance(
+    sales_balance: float,
+    rent_ledger: float,
+) -> float:
+    """
+    Admin UI headline balance:
+    - include current sales balance
+    - include past-due rent only when the rent ledger is negative
+    - do not add positive/prepaid rent credit into the main balance
+    """
+    return round(sales_balance + min(rent_ledger, 0.0), 2)
+
+
 def _rent_status(today: date, last_payment: Optional[RentPayment]) -> str:
     if last_payment is None:
         return "overdue"
@@ -211,6 +224,8 @@ async def vendor_overview(
         totals["net"] += net_payout
         totals["shortfalls"] += shortfall
 
+        effective_balance = _admin_effective_balance(sales_balance, rent_bal)
+
         rows.append({
             "id": v.id,
             "name": v.name,
@@ -218,7 +233,7 @@ async def vendor_overview(
             "phone": v.phone or "",
             "booth_number": v.booth_number or "—",
             "monthly_rent": rent,
-            "balance": round(sales_balance, 2),
+            "balance": effective_balance,
             "sales_balance": round(sales_balance, 2),
             "rent_balance": rent_display,
             "rent_balance_ledger": round(rent_bal, 2),
@@ -1149,7 +1164,10 @@ async def rent_payout_ledger(
         sum(_admin_display_rent_balance(rent_balances.get(v.id, 0.0), float(v.monthly_rent or 0), v.id in paid_current_period) for v in all_vendors),
         2,
     )
-    total_balances = round(total_sales_balances, 2)
+    total_balances = round(
+        sum(_admin_effective_balance(balances.get(v.id, 0.0), rent_balances.get(v.id, 0.0)) for v in all_vendors),
+        2,
+    )
 
     # ── Per-vendor balance cards ──
     vendor_cards = []
@@ -1162,7 +1180,7 @@ async def rent_payout_ledger(
             "id": v.id,
             "name": v.name,
             "booth_number": v.booth_number or "—",
-            "balance": round(sb, 2),
+            "balance": _admin_effective_balance(sb, rb),
             "sales_balance": round(sb, 2),
             "rent_balance": rb_disp,
         })
