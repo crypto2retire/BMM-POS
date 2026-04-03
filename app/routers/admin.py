@@ -28,6 +28,7 @@ from app.routers.auth import get_current_user, require_admin, require_cashier_or
 from app.services.email import send_email_safe
 from app.services.rent_payments import apply_rent_payment, display_rent_notes, extract_rent_reference
 from app.services.email_templates import (
+    payout_processed_email,
     payout_with_rent_email,
     rent_shortfall_email,
     rent_overdue_15day_email,
@@ -836,7 +837,7 @@ async def process_payouts(
                 if shortfall > 0 and rent_emails_on:
                     subj, html, plain = await rent_shortfall_email(
                         vendor_name=v.name or "Vendor",
-                        gross_sales=float(gross),
+                        gross_sales=float((bal.balance if bal and bal.balance else Decimal("0")).quantize(Decimal("0.01"), ROUND_HALF_UP)),
                         rent_amount=float(rent),
                         shortfall=float(shortfall),
                         booth=v.booth_number or "—",
@@ -845,15 +846,24 @@ async def process_payouts(
                     )
                     await send_email_safe(v.email, subj, html, plain)
                 elif net > 0 and payout_emails_on and not carry_balance:
-                    subj, html, plain = await payout_with_rent_email(
-                        vendor_name=v.name or "Vendor",
-                        gross_sales=float(gross),
-                        rent_deducted=float(min(gross, rent_to_deduct)),
-                        net_payout=float(net),
-                        period=period_label,
-                        method=v.payout_method or "TBD",
-                        db=db,
-                    )
+                    if rent_emails_on and total_rent_deducted > 0:
+                        subj, html, plain = await payout_with_rent_email(
+                            vendor_name=v.name or "Vendor",
+                            gross_sales=float((bal.balance if bal and bal.balance else Decimal("0")).quantize(Decimal("0.01"), ROUND_HALF_UP)),
+                            rent_deducted=float(total_rent_deducted),
+                            net_payout=float(net),
+                            period=period_label,
+                            method=v.payout_method or "TBD",
+                            db=db,
+                        )
+                    else:
+                        subj, html, plain = await payout_processed_email(
+                            vendor_name=v.name or "Vendor",
+                            payout_amount=float(net),
+                            period=period_label,
+                            method=v.payout_method or "TBD",
+                            db=db,
+                        )
                     await send_email_safe(v.email, subj, html, plain)
             except Exception as e:
                 logger.warning(f"Failed to send payout email to {v.email}: {e}")
