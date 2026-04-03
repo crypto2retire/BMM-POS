@@ -33,6 +33,7 @@ from app.schemas.gift_card import (
     GiftCardResponse, GiftCardDetailResponse, GiftCardTransactionResponse,
 )
 from app.services import poynt
+from app.services.rent_payments import apply_rent_payment
 from app.config import settings
 from app.routers.notifications import bg_notify_product_sold, bg_notify_order_confirmation
 from app.routers.settings import get_tax_rate
@@ -1651,29 +1652,17 @@ async def pos_rent_payment(
     if not vendor:
         raise HTTPException(status_code=404, detail="Vendor not found")
 
-    amount = float(amount_override) if amount_override else float(vendor.monthly_rent or 0)
+    amount = Decimal(str(amount_override if amount_override is not None else (vendor.monthly_rent or 0))).quantize(Decimal("0.01"), ROUND_HALF_UP)
     if amount <= 0:
         raise HTTPException(status_code=400, detail="No rent amount configured for this vendor")
 
     today = dt_date.today()
     period = dt_date(today.year, today.month, 1)
 
-    existing = await db.execute(
-        select(RentPayment).where(
-            RentPayment.vendor_id == vendor.id,
-            RentPayment.period_month == period,
-        )
-    )
-    if existing.scalar_one_or_none():
-        raise HTTPException(
-            status_code=400,
-            detail=f"Rent for {period.strftime('%B %Y')} already recorded for {vendor.name}"
-        )
-
     if method == "card":
         try:
             from app.services.square import create_payment_link
-            price_cents = round(amount * 100)
+            price_cents = int((amount * 100).to_integral_value(rounding=ROUND_HALF_UP))
             result_link = await create_payment_link(
                 name=f"Rent - {vendor.name} - {today.strftime('%B %Y')}",
                 price_cents=price_cents,
@@ -1698,19 +1687,31 @@ async def pos_rent_payment(
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Card payment failed: {str(exc)[:100]}")
 
-    payment = RentPayment(
-        vendor_id=vendor.id,
+    allocation = await apply_rent_payment(
+        db=db,
+        vendor=vendor,
         amount=amount,
-        period_month=period,
+        requested_period=period,
         method="cash",
-        status="paid",
         notes=f"POS cash payment received by {current_user.name}. {notes}".strip(),
     )
-    db.add(payment)
     await db.commit()
+
+    applied_periods = allocation["applied_periods"]
+    period_summary = ", ".join(p.strftime("%b %Y") for p in applied_periods[:4])
+    if len(applied_periods) > 4:
+        period_summary += f", +{len(applied_periods) - 4} more"
+    if not period_summary:
+        period_summary = "rent credit only"
 
     return {
         "success": True,
         "method": "cash",
-        "message": f"Cash rent payment of ${amount:.2f} recorded for {vendor.name} ({period.strftime('%B %Y')})",
+        "message": (
+            f"Cash rent payment of ${amount:.2f} recorded for {vendor.name}. "
+            f"Applied to {period_summary}."
+        ),
+        "applied_periods": [p.isoformat() for p in applied_periods],
+        "credit_remainder": float(allocation["credit_remainder"]),
+        "rent_balance_after": float(allocation["rent_balance_after"]),
     }
