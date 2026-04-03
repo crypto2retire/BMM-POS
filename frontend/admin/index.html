@@ -1798,11 +1798,11 @@
         container.innerHTML = '';
         var cards = _rpData.vendor_cards || [];
         cards.forEach(function (v) {
-            var combinedRaw = v.combined_balance != null && v.combined_balance !== undefined ? v.combined_balance : v.balance;
-            var combined = parseFloat(combinedRaw);
-            if (isNaN(combined)) combined = 0;
+            var balanceRaw = v.balance != null && v.balance !== undefined ? v.balance : v.sales_balance;
+            var balance = parseFloat(balanceRaw);
+            if (isNaN(balance)) balance = 0;
             var combColor =
-                combined > 0 ? 'var(--success-light)' : combined < 0 ? 'var(--danger)' : 'var(--text-light)';
+                balance > 0 ? 'var(--success-light)' : balance < 0 ? 'var(--danger)' : 'var(--text-light)';
             var card = document.createElement('div');
             card.className = 'rp-vendor-card';
             card.innerHTML =
@@ -1813,8 +1813,8 @@
                 '<div style="font-size:0.75rem;color:var(--text-light)">Rent: <span style="color:' +
                 (parseFloat(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--text-light)') +
                 '">' + rpFmt(v.rent_balance) + '</span></div>' +
-                '<div style="font-size:0.7rem;color:var(--text-light);margin-top:0.2rem">After next rent</div>' +
-                '<div style="font-size:1.1rem;font-weight:600;color:' + combColor + ';margin-top:0.05rem">' + rpFmt(combinedRaw) + '</div>' +
+                '<div style="font-size:0.7rem;color:var(--text-light);margin-top:0.2rem">Current sales balance</div>' +
+                '<div style="font-size:1.1rem;font-weight:600;color:' + combColor + ';margin-top:0.05rem">' + rpFmt(balanceRaw) + '</div>' +
                 '</div>';
             container.appendChild(card);
         });

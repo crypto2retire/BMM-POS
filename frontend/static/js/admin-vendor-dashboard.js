@@ -24,19 +24,15 @@
         return isNaN(n) ? 0 : n;
     }
 
-    /** Prefer server combined_balance; fallback preserves the server's projected post-rent intent. */
-    function combinedAmount(v) {
+    function displayBalance(v) {
         if (v == null) return 0;
-        if (v.combined_balance != null && v.combined_balance !== '') {
-            var c = num(v.combined_balance);
-            if (!isNaN(c)) return c;
+        if (v.balance != null && v.balance !== '') {
+            return num(v.balance);
         }
-        var hasParts = Object.prototype.hasOwnProperty.call(v, 'sales_balance') ||
-            Object.prototype.hasOwnProperty.call(v, 'monthly_rent');
-        if (hasParts) {
-            return Math.round((num(v.sales_balance) - num(v.monthly_rent)) * 100) / 100;
+        if (Object.prototype.hasOwnProperty.call(v, 'sales_balance')) {
+            return num(v.sales_balance);
         }
-        return num(v.balance);
+        return 0;
     }
 
     function esc(s) {
@@ -194,13 +190,13 @@
                     fmt(num(v.rent_balance)) +
                     '</span></div>' +
                     '<div style="font-weight:600;color:' +
-                    (combinedAmount(v) < 0
+                    (displayBalance(v) < 0
                         ? 'var(--danger)'
-                        : combinedAmount(v) > 0
+                        : displayBalance(v) > 0
                           ? 'var(--success-light)'
                           : 'var(--text-light)') +
                     '">' +
-                    fmt(combinedAmount(v)) +
+                    fmt(displayBalance(v)) +
                     '</div>' +
                     '</td>' +
                     '<td>' +
@@ -238,13 +234,13 @@
                         fmt(num(v.rent_balance)) +
                         '</div>' +
                         '<div style="font-weight:600;color:' +
-                        (combinedAmount(v) < 0
+                        (displayBalance(v) < 0
                             ? 'var(--danger)'
-                            : combinedAmount(v) > 0
+                            : displayBalance(v) > 0
                               ? 'var(--success-light)'
                               : 'var(--text-light)') +
                         '">' +
-                        fmt(combinedAmount(v)) +
+                        fmt(displayBalance(v)) +
                         '</div>' +
                         '</div></div>' +
                         '<div style="margin-top:0.5rem">' +
@@ -405,13 +401,13 @@
             fmt(num(v.rent_balance)) +
             '</span></div>' +
             '<p style="font-size:1.75rem;font-family:EB Garamond,serif;color:' +
-            (combinedAmount(v) < 0
+            (displayBalance(v) < 0
                 ? 'var(--danger)'
-                : combinedAmount(v) > 0
+                : displayBalance(v) > 0
                   ? 'var(--success-light)'
                   : 'var(--text-light)') +
-            ';margin:0.25rem 0">After Next Rent: ' +
-            fmt(combinedAmount(v)) +
+            ';margin:0.25rem 0">Current Sales Balance: ' +
+            fmt(displayBalance(v)) +
             '</p></div>' +
             '<div style="font-size:0.82rem;color:var(--text-light);line-height:1.5">' +
             'Gross: ' +
