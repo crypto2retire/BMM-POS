@@ -12,6 +12,7 @@
     var _vhPageSize = 10;
     var _vhCurrentPage = 1;
     var _inspectorRequestSeq = 0;
+    var _inspectorPages = { sales: 1, rent: 1, payout: 1 };
 
     function fmt(v) {
         var n = parseFloat(v);
@@ -252,10 +253,22 @@
     }
 
     window.selectVendorWorkspace = function selectVendorWorkspace(vendorId) {
+        if (_selectedVendorId !== vendorId) {
+            _inspectorPages = { sales: 1, rent: 1, payout: 1 };
+        }
         _selectedVendorId = vendorId;
         var v = findVendor(vendorId);
         if (!v) return;
         renderVendorRows();
+    };
+
+    window.vendorInspectorPage = function vendorInspectorPage(section, delta) {
+        if (!_selectedVendorId) return;
+        var current = _inspectorPages[section] || 1;
+        current += delta;
+        if (current < 1) current = 1;
+        _inspectorPages[section] = current;
+        loadVendorInspectorData(_selectedVendorId);
     };
 
     function renderVendorInspector(v) {
@@ -372,10 +385,11 @@
         if (rentPanel) rentPanel.textContent = 'Loading rent history…';
         if (payoutPanel) payoutPanel.textContent = 'Loading payout history…';
 
-        var salesPromise = apiGet('/api/v1/sales/?vendor_id=' + vendorId + '&limit=20');
+        var salesOffset = (_inspectorPages.sales - 1) * 10;
+        var salesPromise = apiGet('/api/v1/sales/?vendor_id=' + vendorId + '&limit=11&offset=' + salesOffset);
         var balancePromise = apiGet('/api/v1/vendors/' + vendorId + '/balance/history?limit=20');
         var rentPromise = apiGet('/api/v1/admin/vendors/' + vendorId + '/rent-history');
-        var payoutPromise = apiGet('/api/v1/admin/reference-history?vendor_id=' + vendorId + '&entry_type=payout&limit=20');
+        var payoutPromise = apiGet('/api/v1/admin/reference-history?vendor_id=' + vendorId + '&entry_type=payout&limit=200');
 
         var results = await Promise.allSettled([salesPromise, balancePromise, rentPromise, payoutPromise]);
         if (requestSeq !== _inspectorRequestSeq || vendorId !== _selectedVendorId) return;
@@ -407,6 +421,20 @@
         return '<div class="vendor-history-list">' + rows.join('') + '</div>';
     }
 
+    function renderPager(section, page, hasMore, emptyLabel, rowCount, pageSize) {
+        if (!rowCount && page <= 1) return '';
+        var status = rowCount
+            ? ('Showing ' + (((page - 1) * pageSize) + 1) + '–' + (((page - 1) * pageSize) + rowCount))
+            : emptyLabel;
+        return '<div class="vendor-history-controls">' +
+            '<div class="pager-status">' + esc(status) + '</div>' +
+            '<div class="pager-buttons">' +
+            '<button type="button" class="btn btn-sm" onclick="window.vendorInspectorPage(\'' + section + '\', -1)"' + (page <= 1 ? ' disabled' : '') + '>Previous</button>' +
+            '<button type="button" class="btn btn-sm" onclick="window.vendorInspectorPage(\'' + section + '\', 1)"' + (!hasMore ? ' disabled' : '') + '>Next</button>' +
+            '</div>' +
+            '</div>';
+    }
+
     function renderVendorSalesPanel(vendorId, result, container) {
         if (!container) return;
         if (result.status !== 'fulfilled') {
@@ -414,8 +442,10 @@
             return;
         }
         var sales = result.value || [];
+        var hasMore = sales.length > 10;
+        if (hasMore) sales = sales.slice(0, 10);
         if (!sales.length) {
-            container.innerHTML = '<div class="vendor-inline-empty">No sales recorded yet.</div>';
+            container.innerHTML = '<div class="vendor-inline-empty">No sales recorded yet.</div>' + renderPager('sales', _inspectorPages.sales, false, 'No older sales', 0, 10);
             return;
         }
         var rows = sales.map(function (sale) {
@@ -435,7 +465,7 @@
                 '<div class="vendor-history-amount">' + fmt(vendorTotal) + '</div>' +
                 '</div>';
         });
-        container.innerHTML = renderHistoryRows(rows);
+        container.innerHTML = renderHistoryRows(rows) + renderPager('sales', _inspectorPages.sales, hasMore, 'No older sales', rows.length, 10);
     }
 
     function renderBalanceHistoryPanel(result, container) {
@@ -463,24 +493,38 @@
             return;
         }
         var data = result.value || {};
-        var rows = [];
-        (data.payments || []).slice(0, 8).forEach(function (p) {
-            rows.push('<div class="vendor-history-row">' +
+        var entries = [];
+        (data.payments || []).forEach(function (p) {
+            entries.push({
+                sortDate: p.processed_at || ((p.period_month || '') + '-01'),
+                html: '<div class="vendor-history-row">' +
                 '<div class="vendor-history-main">' + esc(p.period_month || 'Rent payment') +
                 '<div class="vendor-history-sub">' + shortDateTime(p.processed_at) + ' · ' + esc((p.method || '—').toUpperCase()) + (p.notes ? ' · ' + esc(p.notes) : '') + '</div>' +
                 '</div>' +
                 '<div class="vendor-history-amount">' + fmt(p.amount) + '</div>' +
-                '</div>');
+                '</div>'
+            });
         });
-        (data.legacy_entries || []).slice(0, 6).forEach(function (entry) {
-            rows.push('<div class="vendor-history-row">' +
+        (data.legacy_entries || []).forEach(function (entry) {
+            entries.push({
+                sortDate: entry.entry_date || entry.imported_at,
+                html: '<div class="vendor-history-row">' +
                 '<div class="vendor-history-main">' + esc(entry.description || 'Legacy rent record') +
                 '<div class="vendor-history-sub">' + shortDate(entry.entry_date) + ' · Ricochet reference</div>' +
                 '</div>' +
                 '<div class="vendor-history-amount">' + fmt(entry.amount) + '</div>' +
-                '</div>');
+                '</div>'
+            });
         });
-        container.innerHTML = renderHistoryRows(rows);
+        entries.sort(function (a, b) {
+            return new Date(b.sortDate || 0) - new Date(a.sortDate || 0);
+        });
+        var page = _inspectorPages.rent || 1;
+        var pageSize = 3;
+        var start = (page - 1) * pageSize;
+        var visible = entries.slice(start, start + pageSize).map(function (entry) { return entry.html; });
+        var hasMore = entries.length > (start + pageSize);
+        container.innerHTML = renderHistoryRows(visible) + renderPager('rent', page, hasMore, 'No older rent entries', visible.length, pageSize);
     }
 
     function renderPayoutHistoryPanel(result, container) {
@@ -491,7 +535,11 @@
         }
         var data = result.value || {};
         var entries = data.entries || [];
-        var rows = entries.map(function (entry) {
+        var page = _inspectorPages.payout || 1;
+        var pageSize = 3;
+        var start = (page - 1) * pageSize;
+        var visibleEntries = entries.slice(start, start + pageSize);
+        var rows = visibleEntries.map(function (entry) {
             return '<div class="vendor-history-row">' +
                 '<div class="vendor-history-main">' + esc(entry.description || 'Payout') +
                 '<div class="vendor-history-sub">' + shortDate(entry.entry_date) + ' · ' + esc(entry.source_system || 'Reference') + '</div>' +
@@ -499,7 +547,8 @@
                 '<div class="vendor-history-amount">' + fmt(entry.amount) + '</div>' +
                 '</div>';
         });
-        container.innerHTML = renderHistoryRows(rows);
+        var hasMore = entries.length > (start + pageSize);
+        container.innerHTML = renderHistoryRows(rows) + renderPager('payout', page, hasMore, 'No older payout entries', rows.length, pageSize);
     }
 
     window.openAdjustFromHub = function (id) {

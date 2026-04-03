@@ -251,7 +251,7 @@ async def vendor_overview(
             },
             "payout_processed": payout_info is not None,
             "payout_method": v.payout_method or "—",
-            "commission_rate": float(v.commission_rate or 0),
+            "commission_rate": 0.0,
             "role": v.role,
             "status": v.status,
             "notes": v.notes or "",

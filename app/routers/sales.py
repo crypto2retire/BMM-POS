@@ -260,6 +260,7 @@ async def create_sale(
 async def list_sales(
     vendor_id: Optional[int] = Query(None),
     limit: Optional[int] = Query(200, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     search_date: Optional[str] = Query(None),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
@@ -315,6 +316,7 @@ async def list_sales(
         if vendor_id:
             q = q.join(SaleItem, SaleItem.sale_id == Sale.id).where(SaleItem.vendor_id == vendor_id).distinct()
         q = _apply_date_filters(q)
+        q = q.offset(offset)
         q = q.limit(limit)
         result = await db.execute(q)
         sales = result.scalars().all()
@@ -332,6 +334,7 @@ async def list_sales(
             .distinct()
         )
         vq = _apply_date_filters(vq)
+        vq = vq.offset(offset)
         result = await db.execute(vq)
         sales = result.scalars().all()
 
