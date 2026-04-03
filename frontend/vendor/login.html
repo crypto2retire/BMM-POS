@@ -309,6 +309,9 @@
                 sessionStorage.setItem("bmm_first_login", "1");
             }
             const payload = JSON.parse(atob(token.split(".")[1]));
+            if (payload.role === "admin") {
+                sessionStorage.removeItem("bmm_booth_mode");
+            }
 
             if (data.redirect === "choose") {
                 document.getElementById("login-form").style.display = "none";

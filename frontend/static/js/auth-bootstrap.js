@@ -34,6 +34,12 @@
         }
     }
 
+    function _clearBoothMode() {
+        try {
+            sessionStorage.removeItem('bmm_booth_mode');
+        } catch (e) {}
+    }
+
     function _normalizePermissions(role, permissions) {
         var normalized = {};
         permissions = permissions || {};
@@ -54,6 +60,10 @@
         var isStaff = role === 'admin' || role === 'cashier';
         var isVendor = !!data.is_vendor || role === 'vendor';
         var boothMode = _getBoothMode();
+        if (role === 'admin' && boothMode) {
+            _clearBoothMode();
+            boothMode = false;
+        }
         var canAccessVendorBooth = role === 'vendor' || (isVendor && boothMode);
 
         return {
@@ -101,6 +111,9 @@
     }
 
     function _homeHref(session) {
+        if (session.role === 'admin') {
+            return '/admin/index.html';
+        }
         if (session.canAccessVendorBooth && session.booth_mode) {
             return '/vendor/dashboard.html';
         }
