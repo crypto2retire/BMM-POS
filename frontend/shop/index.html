@@ -2354,6 +2354,10 @@
 
   // ── Init ──────────────────────────────────────────────────────────
   handlePaymentReturn();
+  var initialParams = new URLSearchParams(window.location.search);
+  currentCategory = initialParams.get('category') || '';
+  var categorySelect = document.getElementById('category-select');
+  if (categorySelect) categorySelect.value = currentCategory;
   loadTaxRate().then(function () {
     loadItems(null).then(function () {
       var params = new URLSearchParams(window.location.search);
