@@ -15,6 +15,7 @@ from app.models.legacy_history import LegacyFinancialHistory
 from app.models.sale import Sale, SaleItem
 from app.models.item import Item
 from app.routers.auth import get_current_user
+from app.routers.settings import role_feature_allowed
 from app.services.rent_payments import apply_rent_payment, display_rent_notes, extract_rent_reference, stamp_rent_notes
 from app.timezone import STORE_TZ
 
@@ -158,13 +159,30 @@ class VendorRentRequest(BaseModel):
 @router.get("/monthly-report")
 async def monthly_report(
     month: Optional[str] = None,
+    vendor_id: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
     current_vendor: Vendor = Depends(get_current_user),
 ):
-    if not _has_vendor_booth_access(current_vendor):
-        raise HTTPException(status_code=403, detail="Vendor access required.")
+    is_staff = current_vendor.role in ("admin", "cashier")
+    if is_staff:
+        allowed = (
+            current_vendor.role == "admin"
+            or await role_feature_allowed(db, current_vendor, "role_manage_vendors")
+            or await role_feature_allowed(db, current_vendor, "role_manage_rent")
+            or await role_feature_allowed(db, current_vendor, "role_view_reports")
+        )
+        if not allowed:
+            raise HTTPException(status_code=403, detail="Staff access required.")
+        target_vendor_id = vendor_id or current_vendor.id
+        result = await db.execute(select(Vendor).where(Vendor.id == target_vendor_id))
+        vendor = result.scalar_one_or_none()
+        if not vendor or vendor.role != "vendor":
+            raise HTTPException(status_code=404, detail="Vendor not found.")
+    else:
+        if not _has_vendor_booth_access(current_vendor):
+            raise HTTPException(status_code=403, detail="Vendor access required.")
+        vendor = current_vendor
 
-    vendor = current_vendor
     start_local, end_local, start_utc, end_utc = _month_window(month)
 
     balance_result = await db.execute(

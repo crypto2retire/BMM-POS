@@ -43,7 +43,7 @@
             <input type="month" id="report-month" class="form-control" style="min-width:180px;">
         </div>
         <div class="report-actions">
-            <a href="/vendor/dashboard.html" class="btn btn-outline">Back to Dashboard</a>
+            <a href="/vendor/dashboard.html" class="btn btn-outline" id="report-back-link">Back to Dashboard</a>
             <button type="button" class="btn btn-outline" onclick="loadReport()">Refresh</button>
             <button type="button" class="btn btn-primary" onclick="window.print()">Print Report</button>
         </div>
@@ -120,18 +120,28 @@
 <script>
 async function loadReport() {
     const session = await window.bmmAuth.requirePageAccess({
-        access: 'canViewVendorDashboard',
+        access: function(session) {
+            return !!(session.canViewVendorDashboard || session.canManageVendors || session.canManageRent || session.canViewReports);
+        },
         title: 'Vendor Report Restricted',
-        message: 'Monthly report access is not enabled for this account right now.'
+        message: 'Monthly report access is not enabled for your account right now.'
     });
     if (!session) return;
 
     const monthInput = document.getElementById('report-month');
     const params = new URLSearchParams(window.location.search);
+    const vendorId = params.get('vendor_id');
     const month = monthInput.value || params.get('month') || new Date().toISOString().slice(0, 7);
     monthInput.value = month;
+    const backLink = document.getElementById('report-back-link');
+    if (backLink) {
+        backLink.href = (session.is_staff && vendorId) ? '/admin/index.html' : '/vendor/dashboard.html';
+        backLink.textContent = (session.is_staff && vendorId) ? 'Back to Admin Dashboard' : 'Back to Dashboard';
+    }
 
-    const data = await apiGet('/api/v1/vendor/monthly-report?month=' + encodeURIComponent(month));
+    let query = '/api/v1/vendor/monthly-report?month=' + encodeURIComponent(month);
+    if (vendorId) query += '&vendor_id=' + encodeURIComponent(vendorId);
+    const data = await apiGet(query);
     document.getElementById('report-subtitle').textContent = data.month_label + ' · ' + data.period_start + ' to ' + data.period_end;
     document.getElementById('report-vendor-meta').textContent = data.vendor.name + ' · Booth ' + (data.vendor.booth_number || '—') + ' · ' + data.vendor.email;
     document.getElementById('metric-gross').textContent = '$' + Number(data.summary.gross_sales || 0).toFixed(2);
@@ -176,7 +186,9 @@ async function loadReport() {
         }).join('');
     }
 
-    const nextUrl = '/vendor/monthly-report.html?month=' + encodeURIComponent(month) + (params.get('print') === '1' ? '&print=1' : '');
+    let nextUrl = '/vendor/monthly-report.html?month=' + encodeURIComponent(month);
+    if (vendorId) nextUrl += '&vendor_id=' + encodeURIComponent(vendorId);
+    if (params.get('print') === '1') nextUrl += '&print=1';
     history.replaceState({}, '', nextUrl);
     if (params.get('print') === '1' && !window.__reportPrintedOnce) {
         window.__reportPrintedOnce = true;

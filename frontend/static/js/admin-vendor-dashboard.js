@@ -295,6 +295,8 @@
             actions += '<button type="button" class="btn btn-sm" style="background:color-mix(in srgb,var(--success-light) 20%,transparent);color:var(--success-light);border:1px solid color-mix(in srgb,var(--success-light) 35%,transparent)" onclick="window.openRentModalHub(' + v.id + ')">Record Rent</button>';
             actions += '<button type="button" class="btn btn-sm" onclick="window.toggleFlagHub(' + v.id + ', this)">' + (v.rent_flagged ? 'Unflag Rent' : 'Flag Rent') + '</button>';
         }
+        actions += '<button type="button" class="btn btn-sm" onclick="window.openMonthlyVendorReport(' + v.id + ', false)">Open Report</button>';
+        actions += '<button type="button" class="btn btn-sm" onclick="window.openMonthlyVendorReport(' + v.id + ', true)">Print Report</button>';
         actions += '<a href="/vendor/items.html?vendor_id=' + v.id + '" class="btn btn-sm" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">View Items</a>';
         actions += '<a href="/admin/vendors.html?vendor_id=' + v.id + '" class="btn btn-sm" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">Open Vendor Page</a>';
 
@@ -560,6 +562,13 @@
                 displayBalance(v)
             );
         }
+    };
+
+    window.openMonthlyVendorReport = function (id, printMode) {
+        var month = new Date().toISOString().slice(0, 7);
+        var url = '/vendor/monthly-report.html?vendor_id=' + encodeURIComponent(id) + '&month=' + encodeURIComponent(month);
+        if (printMode) url += '&print=1';
+        window.open(url, '_blank');
     };
 
     window.openHistoryFromHub = function (id) {
