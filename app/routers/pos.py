@@ -1,6 +1,7 @@
 import asyncio
 import math
 import os
+import secrets
 import uuid
 import base64
 import io
@@ -33,7 +34,7 @@ from app.schemas.gift_card import (
     GiftCardResponse, GiftCardDetailResponse, GiftCardTransactionResponse,
 )
 from app.services import poynt
-from app.services.rent_payments import apply_rent_payment
+from app.services.rent_payments import apply_rent_payment, stamp_rent_notes
 from app.config import settings
 from app.routers.notifications import bg_notify_product_sold, bg_notify_order_confirmation
 from app.routers.settings import get_tax_rate
@@ -1688,22 +1689,40 @@ async def pos_rent_payment(
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Card payment failed: {str(exc)[:100]}")
 
+    reference_tag = secrets.token_hex(4)
+    base_notes = f"POS {method} payment received by {current_user.name}. {notes}".strip()
     allocation = await apply_rent_payment(
         db=db,
         vendor=vendor,
         amount=amount,
         requested_period=period,
         method=method,
-        notes=f"POS {method} payment received by {current_user.name}. {notes}".strip(),
+        notes=base_notes,
+        reference_tag=reference_tag,
     )
-    await db.commit()
-
     applied_periods = allocation["applied_periods"]
+    credit_remainder = allocation["credit_remainder"]
     period_summary = ", ".join(p.strftime("%b %Y") for p in applied_periods[:4])
     if len(applied_periods) > 4:
         period_summary += f", +{len(applied_periods) - 4} more"
     if not period_summary:
         period_summary = "rent credit only"
+
+    receipt_notes = base_notes
+    if applied_periods:
+        receipt_notes = f"{receipt_notes} Applied to {period_summary}."
+    if credit_remainder > 0:
+        receipt_notes = f"{receipt_notes} Remaining rent credit ${float(credit_remainder):.2f}."
+
+    db.add(RentPayment(
+        vendor_id=vendor.id,
+        amount=amount,
+        period_month=period,
+        method=method,
+        status="received",
+        notes=stamp_rent_notes(receipt_notes, reference_tag),
+    ))
+    await db.commit()
 
     return {
         "success": True,
@@ -1713,6 +1732,6 @@ async def pos_rent_payment(
             f"Applied to {period_summary}."
         ),
         "applied_periods": [p.isoformat() for p in applied_periods],
-        "credit_remainder": float(allocation["credit_remainder"]),
+        "credit_remainder": float(credit_remainder),
         "rent_balance_after": float(allocation["rent_balance_after"]),
     }

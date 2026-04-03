@@ -886,7 +886,7 @@
             } else {
                 document.getElementById('detail-payments').innerHTML = `<ul class="payment-list">${payments.map(p => {
                     const d = p.processed_at ? window.bmmFormatDate(p.processed_at, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '—';
-                    const badgeCls = p.status === 'paid' ? 'paid' : 'pending';
+                    const badgeCls = (p.status === 'paid' || p.status === 'received') ? 'paid' : 'pending';
                     return `<li class="payment-item">
                         <div>
                             <div class="payment-period">${p.period_month}</div>

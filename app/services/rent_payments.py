@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
+import re
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +21,31 @@ def _next_month(period: date) -> date:
     return date(period.year, period.month + 1, 1)
 
 
+_REF_RE = re.compile(r"^\[rent-ref:([A-Za-z0-9_-]+)\]\s*")
+
+
+def stamp_rent_notes(notes: str | None, reference_tag: str | None) -> str | None:
+    clean = (notes or "").strip()
+    if not reference_tag:
+        return clean or None
+    if clean:
+        return f"[rent-ref:{reference_tag}] {clean}"
+    return f"[rent-ref:{reference_tag}]"
+
+
+def extract_rent_reference(notes: str | None) -> str | None:
+    if not notes:
+        return None
+    match = _REF_RE.match(notes)
+    return match.group(1) if match else None
+
+
+def display_rent_notes(notes: str | None) -> str | None:
+    if not notes:
+        return None
+    return _REF_RE.sub("", notes).strip() or None
+
+
 async def apply_rent_payment(
     db: AsyncSession,
     vendor: Vendor,
@@ -27,6 +53,7 @@ async def apply_rent_payment(
     requested_period: date,
     method: str,
     notes: str | None = None,
+    reference_tag: str | None = None,
 ) -> dict:
     amount = _money(amount)
     monthly_rent = _money(vendor.monthly_rent)
@@ -70,7 +97,7 @@ async def apply_rent_payment(
                 period_month=period,
                 method=method,
                 status="paid",
-                notes=notes,
+                notes=stamp_rent_notes(notes, reference_tag),
             )
             db.add(payment)
             applied_periods.append(period)

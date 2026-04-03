@@ -1,3 +1,4 @@
+import secrets
 from datetime import date
 from decimal import Decimal
 from typing import Optional
@@ -12,7 +13,7 @@ from app.models.vendor import Vendor, VendorBalance
 from app.models.rent import RentPayment
 from app.models.legacy_history import LegacyFinancialHistory
 from app.routers.auth import get_current_user
-from app.services.rent_payments import apply_rent_payment
+from app.services.rent_payments import apply_rent_payment, display_rent_notes, extract_rent_reference, stamp_rent_notes
 
 router = APIRouter(prefix="/vendor", tags=["vendor-rent"])
 
@@ -37,6 +38,21 @@ def _serialize_legacy_entry(entry: LegacyFinancialHistory) -> dict:
 
 def _has_vendor_booth_access(user: Vendor) -> bool:
     return user.role == "vendor" or bool(getattr(user, "is_vendor", False))
+
+
+def _visible_rent_history_rows(payments: list[RentPayment]) -> list[RentPayment]:
+    receipt_refs = {
+        extract_rent_reference(p.notes)
+        for p in payments
+        if p.status == "received" and extract_rent_reference(p.notes)
+    }
+    visible: list[RentPayment] = []
+    for p in payments:
+        ref = extract_rent_reference(p.notes)
+        if p.status == "paid" and ref and ref in receipt_refs:
+            continue
+        visible.append(p)
+    return visible
 
 
 @router.get("/rent-status")
@@ -65,7 +81,7 @@ async def rent_status(
         .order_by(RentPayment.period_month.desc())
         .limit(12)
     )
-    history = history_result.scalars().all()
+    history = _visible_rent_history_rows(history_result.scalars().all())
 
     legacy_result = await db.execute(
         select(LegacyFinancialHistory)
@@ -100,6 +116,7 @@ async def rent_status(
                 "method": p.method,
                 "status": p.status,
                 "date": p.processed_at.strftime("%m/%d/%Y") if p.processed_at else None,
+                "notes": display_rent_notes(p.notes),
             }
             for p in history
         ],
@@ -203,18 +220,34 @@ async def rent_confirmed(
         today = date.today()
         period = date(today.year, today.month, 1)
 
+    reference_tag = secrets.token_hex(4)
+    base_notes = body.square_payment_id or "Square online payment"
     allocation = await apply_rent_payment(
         db=db,
         vendor=vendor,
         amount=amount,
         requested_period=period,
         method="square",
-        notes=body.square_payment_id or "Square online payment",
+        notes=base_notes,
+        reference_tag=reference_tag,
     )
-    await db.commit()
-
     applied_periods = allocation["applied_periods"]
     credit_remainder = allocation["credit_remainder"]
+    period_labels = ", ".join(p.strftime('%B %Y') for p in applied_periods)
+    receipt_notes = base_notes
+    if applied_periods:
+        receipt_notes = f"{receipt_notes} Applied to {period_labels}."
+    if credit_remainder > 0:
+        receipt_notes = f"{receipt_notes} Remaining rent credit ${float(credit_remainder):.2f}."
+    db.add(RentPayment(
+        vendor_id=vendor.id,
+        amount=amount,
+        period_month=period,
+        method="square",
+        status="received",
+        notes=stamp_rent_notes(receipt_notes, reference_tag),
+    ))
+    await db.commit()
     if applied_periods and credit_remainder > 0:
         message = (
             f"Rent payment recorded. Applied to {', '.join(p.strftime('%B %Y') for p in applied_periods)}. "

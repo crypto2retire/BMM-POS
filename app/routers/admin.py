@@ -1,4 +1,5 @@
 import logging
+import secrets
 from datetime import date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
@@ -25,7 +26,7 @@ from app.models.item_image import ItemImage
 from app.models.booth_showcase import BoothShowcase
 from app.routers.auth import get_current_user, require_admin, require_cashier_or_admin
 from app.services.email import send_email_safe
-from app.services.rent_payments import apply_rent_payment
+from app.services.rent_payments import apply_rent_payment, display_rent_notes, extract_rent_reference
 from app.services.email_templates import (
     payout_with_rent_email,
     rent_shortfall_email,
@@ -63,6 +64,21 @@ def _serialize_legacy_entry(entry: LegacyFinancialHistory) -> dict:
         "import_batch": entry.import_batch,
         "imported_at": entry.imported_at.isoformat() if entry.imported_at else None,
     }
+
+
+def _visible_rent_history_rows(payments: list[RentPayment]) -> list[RentPayment]:
+    receipt_refs = {
+        extract_rent_reference(p.notes)
+        for p in payments
+        if p.status == "received" and extract_rent_reference(p.notes)
+    }
+    visible: list[RentPayment] = []
+    for p in payments:
+        ref = extract_rent_reference(p.notes)
+        if p.status == "paid" and ref and ref in receipt_refs:
+            continue
+        visible.append(p)
+    return visible
 
 
 async def require_vendor_hub_access(
@@ -367,7 +383,7 @@ async def vendor_rent_history(
         .where(RentPayment.vendor_id == vendor_id)
         .order_by(RentPayment.period_month.desc())
     )
-    payments = payments_result.scalars().all()
+    payments = _visible_rent_history_rows(payments_result.scalars().all())
 
     legacy_result = await db.execute(
         select(LegacyFinancialHistory)
@@ -406,7 +422,7 @@ async def vendor_rent_history(
                 "period_month": p.period_month.strftime("%B %Y"),
                 "method": p.method,
                 "status": p.status,
-                "notes": p.notes,
+                "notes": display_rent_notes(p.notes),
                 "processed_at": p.processed_at.isoformat() if p.processed_at else None,
             }
             for p in payments
@@ -503,19 +519,35 @@ async def record_rent_payment(
 
     notes = body.get("notes", "")
 
+    reference_tag = secrets.token_hex(4)
+    base_notes = (notes or f"Recorded by admin ({current_user.name})").strip()
     allocation = await apply_rent_payment(
         db=db,
         vendor=vendor,
         amount=amount,
         requested_period=period,
         method=method,
-        notes=notes or f"Recorded by admin ({current_user.name})",
+        notes=base_notes,
+        reference_tag=reference_tag,
     )
-    await db.commit()
-
     applied_periods = allocation["applied_periods"]
     credit_remainder = allocation["credit_remainder"]
     period_labels = ", ".join(p.strftime("%B %Y") for p in applied_periods)
+    receipt_notes = base_notes
+    if applied_periods:
+        receipt_notes = f"{receipt_notes} Applied to {period_labels}."
+    if credit_remainder > 0:
+        receipt_notes = f"{receipt_notes} Remaining rent credit ${float(credit_remainder):.2f}."
+    db.add(RentPayment(
+        vendor_id=vendor.id,
+        amount=amount,
+        period_month=period,
+        method=method,
+        status="received",
+        notes=f"[rent-ref:{reference_tag}] {receipt_notes}".strip(),
+    ))
+    await db.commit()
+
     if applied_periods and credit_remainder > 0:
         message = (
             f"Recorded ${float(amount):.2f} for {vendor.name}. "
@@ -1071,6 +1103,7 @@ async def rent_payout_ledger(
         .order_by(RentPayment.processed_at.desc())
     )
     rent_payments = rent_result.scalars().all()
+    visible_rent_payments = _visible_rent_history_rows(rent_payments)
 
     # ── Payouts (all time) ──
     payout_result = await db.execute(
@@ -1109,7 +1142,7 @@ async def rent_payout_ledger(
     # ── Build combined transactions list ──
     transactions = []
 
-    for rp in rent_payments:
+    for rp in visible_rent_payments:
         transactions.append({
             "type": "rent",
             "date": rp.processed_at.isoformat() if rp.processed_at else None,
@@ -1119,7 +1152,7 @@ async def rent_payout_ledger(
             "method": rp.method or "",
             "period": rp.period_month.strftime("%Y-%m") if rp.period_month else "",
             "status": rp.status,
-            "notes": rp.notes or "",
+            "notes": display_rent_notes(rp.notes) or "",
         })
 
     for p in payouts:

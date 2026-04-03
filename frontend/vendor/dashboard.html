@@ -888,7 +888,7 @@
                 document.getElementById('rent-history-section').style.display = 'block';
                 var html = '';
                 data.history.forEach(function(p) {
-                    var statusColor = p.status === 'paid' ? 'var(--success)' : (p.status === 'pending' ? 'var(--warning)' : 'var(--text-light)');
+                    var statusColor = (p.status === 'paid' || p.status === 'received') ? 'var(--success)' : (p.status === 'pending' ? 'var(--warning)' : 'var(--text-light)');
                     var methodLabel = p.method === 'square' ? 'Card' : (p.method === 'cash' ? 'Cash' : p.method);
                     html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)">'
                         + '<span style="color:var(--text)">' + escHtml(p.period) + '</span>'
