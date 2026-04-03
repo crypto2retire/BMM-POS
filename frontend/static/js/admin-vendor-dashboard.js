@@ -1,16 +1,17 @@
 /**
- * Consolidated admin vendor hub: overview API, accordion, rent / edit / payouts modals.
+ * Consolidated admin vendor workspace: overview API, inspector, and modal actions.
  * Loaded from admin/index.html after api.js.
  */
 (function () {
     var _vendorData = null;
     var _filtered = [];
-    var _expandedId = null;
+    var _selectedVendorId = null;
     var _payVendorId = null;
     var _editVendorId = null;
     var _terminalPollInterval = null;
     var _vhPageSize = 10;
     var _vhCurrentPage = 1;
+    var _inspectorRequestSeq = 0;
 
     function fmt(v) {
         var n = parseFloat(v);
@@ -69,11 +70,10 @@
             renderVendorStats(data.totals, data.already_processed);
             _vhCurrentPage = 1;
             renderVendorRows();
-            _expandedId = null;
         } catch (e) {
             showAlert('alert-container', 'Vendor overview: ' + (e.message || e), 'error');
-            var tb = document.getElementById('vendor-hub-tbody');
-            if (tb) tb.innerHTML = '<tr><td colspan="5" class="empty-state">Failed to load vendors.</td></tr>';
+            var list = document.getElementById('vendor-hub-browser-list');
+            if (list) list.innerHTML = '<div class="vendor-browser-empty">Failed to load vendors.</div>';
         }
     };
 
@@ -128,128 +128,94 @@
         _vhCurrentPage += delta;
         if (_vhCurrentPage < 1) _vhCurrentPage = 1;
         if (_vhCurrentPage > pages) _vhCurrentPage = pages;
-        _expandedId = null;
-        document.querySelectorAll('.vendor-detail-tr').forEach(function (r) {
-            r.remove();
-        });
         renderVendorRows();
     };
 
-    function renderVendorRows() {
+    function getVisibleVendors() {
         var vendorsFull = _filtered || [];
-        var tbody = document.getElementById('vendor-hub-tbody');
-        var mob = document.getElementById('vendor-hub-cards-mobile');
-        if (!tbody) return;
-
-        document.querySelectorAll('.vendor-detail-tr').forEach(function (r) {
-            r.remove();
-        });
-
         var total = vendorsFull.length;
         var pages = Math.max(1, Math.ceil(total / _vhPageSize));
         if (_vhCurrentPage > pages) _vhCurrentPage = pages;
         if (_vhCurrentPage < 1) _vhCurrentPage = 1;
         var start = (_vhCurrentPage - 1) * _vhPageSize;
-        var vendors = vendorsFull.slice(start, start + _vhPageSize);
+        return {
+            total: total,
+            pages: pages,
+            start: start,
+            vendors: vendorsFull.slice(start, start + _vhPageSize),
+        };
+    }
+
+    function selectedVendorInView(vendors) {
+        for (var i = 0; i < vendors.length; i++) {
+            if (vendors[i].id === _selectedVendorId) return true;
+        }
+        return false;
+    }
+
+    function selectionTone(value) {
+        if (value < 0) return 'var(--danger)';
+        if (value > 0) return 'var(--success-light)';
+        return 'var(--text-light)';
+    }
+
+    function renderVendorRows() {
+        var browser = document.getElementById('vendor-hub-browser-list');
+        if (!browser) return;
+        var view = getVisibleVendors();
+        var total = view.total;
+        var pages = view.pages;
+        var start = view.start;
+        var vendors = view.vendors;
 
         if (!vendors.length) {
-            tbody.innerHTML =
-                '<tr><td colspan="5" class="empty-state">' +
+            browser.innerHTML = '<div class="vendor-browser-empty">' +
                 (total === 0 ? 'No vendors found.' : 'No vendors on this page.') +
-                '</td></tr>';
-            if (mob) mob.innerHTML = '<div class="empty-state">No vendors.</div>';
+                '</div>';
+            _selectedVendorId = null;
+            renderVendorInspector(null);
             updateVendorHubPagination(total, start, 0, pages);
             return;
         }
 
+        if (!selectedVendorInView(vendors)) {
+            _selectedVendorId = vendors[0].id;
+        }
+
         updateVendorHubPagination(total, start, vendors.length, pages);
 
-        tbody.innerHTML = vendors
+        browser.innerHTML = vendors
             .map(function (v) {
                 var flag = v.rent_flagged ? '<span title="Flagged">🚩</span> ' : '';
+                var current = displayBalance(v);
                 return (
-                    '<tr class="vh-row" data-vid="' +
-                    v.id +
-                    '" onclick="window.toggleVendorAccordion(' +
-                    v.id +
-                    ')">' +
-                    '<td><strong>' +
+                    '<button type="button" class="vendor-browser-item' +
+                    (v.id === _selectedVendorId ? ' is-selected' : '') +
+                    '" onclick="window.selectVendorWorkspace(' + v.id + ')">' +
+                    '<div>' +
+                    '<div class="vendor-browser-name">' +
                     flag +
                     esc(v.name) +
-                    '</strong></td>' +
-                    '<td>' +
+                    '</div>' +
+                    '<div class="vendor-browser-meta">Booth ' +
                     esc(v.booth_number) +
-                    '</td>' +
-                    '<td>' +
-                    '<div style="font-size:0.75rem;color:var(--text-light)">Sales: ' +
-                    fmt(num(v.sales_balance)) +
-                    '</div>' +
-                    '<div style="font-size:0.75rem;color:var(--text-light)">Rent: <span style="color:' +
-                    (num(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--text-light)') +
-                    '">' +
-                    fmt(num(v.rent_balance)) +
-                    '</span></div>' +
-                    '<div style="font-weight:600;color:' +
-                    (displayBalance(v) < 0
-                        ? 'var(--danger)'
-                        : displayBalance(v) > 0
-                          ? 'var(--success-light)'
-                          : 'var(--text-light)') +
-                    '">' +
-                    fmt(displayBalance(v)) +
-                    '</div>' +
-                    '</td>' +
-                    '<td>' +
+                    ' · ' +
                     rentBadge(v.rent_status) +
-                    '</td>' +
-                    '<td style="font-size:0.82rem">' +
-                    esc(v.payout_method) +
-                    ' <span class="vh-chevron">▼</span></td>' +
-                    '</tr>'
+                    '<br>Sales ' +
+                    fmt(num(v.sales_balance)) +
+                    ' · Rent ' +
+                    fmt(num(v.rent_balance)) +
+                    '</div>' +
+                    '</div>' +
+                    '<div class="vendor-browser-balance">' +
+                    '<div class="balance-amount" style="color:' + selectionTone(current) + '">' + fmt(current) + '</div>' +
+                    '<div class="balance-caption">Current</div>' +
+                    '</div>' +
+                    '</button>'
                 );
             })
             .join('');
-
-        if (mob) {
-            mob.innerHTML = vendors
-                .map(function (v) {
-                    return (
-                        '<div class="vh-mob-card" onclick="window.toggleVendorAccordion(' +
-                        v.id +
-                        ')">' +
-                        '<div class="vh-mob-top"><div><div class="vh-mob-name">' +
-                        (v.rent_flagged ? '🚩 ' : '') +
-                        esc(v.name) +
-                        '</div>' +
-                        '<div class="vh-mob-sub">Booth ' +
-                        esc(v.booth_number) +
-                        '</div></div>' +
-                        '<div class="vh-mob-bal">' +
-                        '<div style="font-size:0.7rem;color:var(--text-light)">Sales: ' +
-                        fmt(num(v.sales_balance)) +
-                        '</div>' +
-                        '<div style="font-size:0.7rem;color:' +
-                        (num(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--text-light)') +
-                        '">Rent: ' +
-                        fmt(num(v.rent_balance)) +
-                        '</div>' +
-                        '<div style="font-weight:600;color:' +
-                        (displayBalance(v) < 0
-                            ? 'var(--danger)'
-                            : displayBalance(v) > 0
-                              ? 'var(--success-light)'
-                              : 'var(--text-light)') +
-                        '">' +
-                        fmt(displayBalance(v)) +
-                        '</div>' +
-                        '</div></div>' +
-                        '<div style="margin-top:0.5rem">' +
-                        rentBadge(v.rent_status) +
-                        '</div></div>'
-                    );
-                })
-                .join('');
-        }
+        renderVendorInspector(findVendor(_selectedVendorId));
     }
 
     window.filterVendorHub = function filterVendorHub() {
@@ -269,11 +235,7 @@
                 );
             });
         }
-        _expandedId = null;
         _vhCurrentPage = 1;
-        document.querySelectorAll('.vendor-detail-tr').forEach(function (r) {
-            r.remove();
-        });
         renderVendorRows();
     };
 
@@ -289,207 +251,255 @@
         return null;
     }
 
-    window.toggleVendorAccordion = function toggleVendorAccordion(vendorId) {
-        var tbody = document.getElementById('vendor-hub-tbody');
-        if (!tbody) return;
+    window.selectVendorWorkspace = function selectVendorWorkspace(vendorId) {
+        _selectedVendorId = vendorId;
+        var v = findVendor(vendorId);
+        if (!v) return;
+        renderVendorRows();
+    };
 
-        document.querySelectorAll('.vendor-detail-tr').forEach(function (r) {
-            r.remove();
-        });
-
-        if (_expandedId === vendorId) {
-            _expandedId = null;
+    function renderVendorInspector(v) {
+        var inspector = document.getElementById('vendor-inspector');
+        if (!inspector) return;
+        if (!v) {
+            inspector.innerHTML =
+                '<div class="vendor-inspector-placeholder"><div>' +
+                '<div class="vendor-browser-kicker">Ready</div>' +
+                '<h3 class="vendor-browser-title" style="margin-top:0.4rem">Select a vendor</h3>' +
+                '<p class="vendor-browser-sub" style="max-width:32rem;margin:0.55rem auto 0">Use the search on the left to open a single vendor workspace with balances, rent, payout preview, notes, recent sales, and history.</p>' +
+                '</div></div>';
             return;
         }
 
-        _expandedId = vendorId;
-        var v = findVendor(vendorId);
-        if (!v) return;
-
-        var row = tbody.querySelector('tr[data-vid="' + vendorId + '"]');
-        if (!row) return;
-
-        var tr = document.createElement('tr');
-        tr.className = 'vendor-detail-tr';
-        tr.innerHTML =
-            '<td colspan="5" style="padding:0;background:var(--bg);border:1px solid var(--border)">' +
-            buildDetailHtml(v) +
-            '</td>';
-        row.parentNode.insertBefore(tr, row.nextSibling);
-
-        // Lazy-load sales history for this vendor
-        loadVendorSalesHistory(vendorId);
-    };
-
-    async function loadVendorSalesHistory(vendorId) {
-        var container = document.getElementById('vh-sales-' + vendorId);
-        if (!container) return;
-        try {
-            var sales = await apiGet('/api/v1/sales/?vendor_id=' + vendorId + '&limit=50');
-            if (!sales || !sales.length) {
-                container.innerHTML = '<p style="color:var(--text-light);font-style:italic">No sales recorded yet.</p>';
-                return;
-            }
-            var html = '<div style="max-height:300px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent">' +
-                '<table style="width:100%;border-collapse:collapse">' +
-                '<thead><tr>' +
-                '<th style="text-align:left;font-size:0.62rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;padding:0.4rem 0.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg)">Date</th>' +
-                '<th style="text-align:left;font-size:0.62rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;padding:0.4rem 0.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg)">Items</th>' +
-                '<th style="text-align:right;font-size:0.62rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;padding:0.4rem 0.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg)">Total</th>' +
-                '<th style="text-align:left;font-size:0.62rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;padding:0.4rem 0.5rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg)">Method</th>' +
-                '</tr></thead><tbody>';
-
-            sales.forEach(function(sale) {
-                var saleDate = '—';
-                if (sale.created_at) {
-                    var d = new Date(sale.created_at);
-                    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-                    saleDate = months[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
-                }
-                // API returns line_items (not items); lines use unit_price / line_total
-                var lines = sale.line_items || sale.items || [];
-                var vid = Number(vendorId);
-                var vendorItems = lines.filter(function(si) {
-                    return Number(si.vendor_id) === vid;
-                });
-                var itemNames = vendorItems.map(function(si) {
-                    return (si.item_name || si.name || 'Item') + (si.quantity > 1 ? ' x' + si.quantity : '');
-                }).join(', ') || '—';
-                var vendorTotal = vendorItems.reduce(function(sum, si) {
-                    if (si.line_total != null && si.line_total !== '') {
-                        return sum + num(si.line_total);
-                    }
-                    var up = si.unit_price != null ? si.unit_price : si.price;
-                    return sum + num(up) * (si.quantity || 1);
-                }, 0);
-
-                html += '<tr style="border-bottom:1px solid var(--border)">' +
-                    '<td style="padding:0.4rem 0.5rem;font-size:0.82rem;color:var(--text);white-space:nowrap">' + saleDate + '</td>' +
-                    '<td style="padding:0.4rem 0.5rem;font-size:0.82rem;color:var(--text);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + itemNames.replace(/"/g, '&quot;') + '">' + itemNames + '</td>' +
-                    '<td style="padding:0.4rem 0.5rem;font-size:0.82rem;color:var(--gold);text-align:right;font-weight:600">$' + vendorTotal.toFixed(2) + '</td>' +
-                    '<td style="padding:0.4rem 0.5rem;font-size:0.82rem;color:var(--text-light)">' + (sale.payment_method || '—') + '</td>' +
-                    '</tr>';
-            });
-
-            html += '</tbody></table></div>';
-            container.innerHTML = html;
-        } catch (e) {
-            container.innerHTML = '<p style="color:var(--danger)">Failed to load sales: ' + (e.message || e) + '</p>';
+        var balance = displayBalance(v);
+        var pp = v.payout_preview || {};
+        var rentTone = num(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--gold)';
+        var balanceTone = selectionTone(balance);
+        var actions = '';
+        if (isVendorHubAdmin()) {
+            actions += '<button type="button" class="btn btn-sm btn-primary" onclick="window.openEditModalHub(' + v.id + ')">Edit Vendor</button>';
+            actions += '<button type="button" class="btn btn-sm" style="background:var(--gold);color:var(--charcoal-deep)" onclick="window.openAdjustFromHub(' + v.id + ')">Adjust Balance</button>';
+            actions += '<button type="button" class="btn btn-sm" style="background:color-mix(in srgb,var(--success-light) 20%,transparent);color:var(--success-light);border:1px solid color-mix(in srgb,var(--success-light) 35%,transparent)" onclick="window.openRentModalHub(' + v.id + ')">Record Rent</button>';
+            actions += '<button type="button" class="btn btn-sm" onclick="window.toggleFlagHub(' + v.id + ', this)">' + (v.rent_flagged ? 'Unflag Rent' : 'Flag Rent') + '</button>';
         }
+        actions += '<a href="/vendor/items.html?vendor_id=' + v.id + '" class="btn btn-sm" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">View Items</a>';
+        actions += '<a href="/admin/vendors.html?vendor_id=' + v.id + '" class="btn btn-sm" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none">Open Vendor Page</a>';
+
+        inspector.innerHTML =
+            '<div class="vendor-inspector-body">' +
+            '<div class="vendor-inspector-head">' +
+            '<div>' +
+            '<div class="vendor-inspector-kicker">Vendor workspace</div>' +
+            '<h3 class="vendor-inspector-name">' + esc(v.name) + '</h3>' +
+            '<div class="vendor-inspector-sub">' +
+            '<span>Booth ' + esc(v.booth_number) + '</span>' +
+            '<span>•</span>' +
+            '<span>' + esc(v.email || 'No email') + '</span>' +
+            '<span>•</span>' +
+            rentBadge(v.rent_status) +
+            (v.rent_flagged ? '<span class="vh-badge vh-badge--bad">FLAGGED</span>' : '') +
+            '</div>' +
+            '</div>' +
+            '<div class="vendor-inspector-actions">' + actions + '</div>' +
+            '</div>' +
+
+            '<div class="vendor-inspector-grid">' +
+            '<div class="vendor-stat"><div class="vendor-stat-label">Current balance</div><div class="vendor-stat-value" style="color:' + balanceTone + '">' + fmt(balance) + '</div><div class="vendor-stat-note">Sales plus any past-due rent only</div></div>' +
+            '<div class="vendor-stat"><div class="vendor-stat-label">Sales balance</div><div class="vendor-stat-value" style="color:var(--gold)">' + fmt(num(v.sales_balance)) + '</div><div class="vendor-stat-note">Available sales total</div></div>' +
+            '<div class="vendor-stat"><div class="vendor-stat-label">Rent ledger</div><div class="vendor-stat-value" style="color:' + rentTone + '">' + fmt(num(v.rent_balance)) + '</div><div class="vendor-stat-note">' + (num(v.rent_balance) < 0 ? 'Past-due rent is reducing balance' : 'Positive value is prepaid credit') + '</div></div>' +
+            '<div class="vendor-stat"><div class="vendor-stat-label">Monthly rent</div><div class="vendor-stat-value">' + fmt(num(v.monthly_rent)) + '</div><div class="vendor-stat-note">Payout method: ' + esc(v.payout_method || '—') + '</div></div>' +
+            '</div>' +
+
+            '<div class="vendor-inspector-sections">' +
+            '<div class="vendor-stack">' +
+            '<section class="vendor-panel">' +
+            '<h4 class="vendor-panel-title">Account</h4>' +
+            '<div class="vendor-info-grid">' +
+            '<div class="vendor-info-item"><label>Email</label><div>' + esc(v.email || '—') + '</div></div>' +
+            '<div class="vendor-info-item"><label>Phone</label><div>' + esc(v.phone || '—') + '</div></div>' +
+            '<div class="vendor-info-item"><label>Status</label><div>' + esc(v.status || '—') + '</div></div>' +
+            '<div class="vendor-info-item"><label>Commission</label><div>' + (num(v.commission_rate) * 100).toFixed(1) + '%</div></div>' +
+            '</div>' +
+            '<div style="margin-top:1rem">' +
+            '<div class="vendor-info-item"><label>Notes</label><div class="vendor-notes-box">' + esc(v.notes || 'No notes on file.') + '</div></div>' +
+            '</div>' +
+            '</section>' +
+
+            '<section class="vendor-panel">' +
+            '<h4 class="vendor-panel-title">Payout preview</h4>' +
+            '<div class="vendor-info-grid">' +
+            '<div class="vendor-info-item"><label>Gross</label><div>' + fmt(pp.gross) + '</div></div>' +
+            '<div class="vendor-info-item"><label>Rent deduction</label><div style="color:var(--danger)">-' + fmt(pp.rent_deducted) + '</div></div>' +
+            '<div class="vendor-info-item"><label>Net payout</label><div style="color:var(--success-light)">' + fmt(pp.net) + '</div></div>' +
+            '<div class="vendor-info-item"><label>Shortfall</label><div style="color:' + (num(pp.shortfall) > 0 ? 'var(--danger)' : 'var(--text)') + '">' + fmt(pp.shortfall || 0) + '</div></div>' +
+            '</div>' +
+            '</section>' +
+
+            '<section class="vendor-panel">' +
+            '<h4 class="vendor-panel-title">Recent sales</h4>' +
+            '<div id="vh-sales-panel" class="vendor-inline-loading">Loading recent sales…</div>' +
+            '</section>' +
+            '</div>' +
+
+            '<div class="vendor-stack">' +
+            '<section class="vendor-panel">' +
+            '<h4 class="vendor-panel-title">Balance history</h4>' +
+            '<div id="vh-balance-history-panel" class="vendor-inline-loading">Loading balance history…</div>' +
+            '</section>' +
+            '<section class="vendor-panel">' +
+            '<h4 class="vendor-panel-title">Rent history</h4>' +
+            '<div id="vh-rent-history-panel" class="vendor-inline-loading">Loading rent history…</div>' +
+            '</section>' +
+            '<section class="vendor-panel">' +
+            '<h4 class="vendor-panel-title">Payout history</h4>' +
+            '<div id="vh-payout-history-panel" class="vendor-inline-loading">Loading payout history…</div>' +
+            '</section>' +
+            '</div>' +
+            '</div>' +
+            '</div>';
+
+        loadVendorInspectorData(v.id);
     }
 
-    function buildDetailHtml(v) {
-        var pp = v.payout_preview || {};
-        var shortHtml =
-            pp.shortfall > 0
-                ? '<p style="color:var(--danger);margin:0.35rem 0 0;font-size:0.9rem">Shortfall: ' +
-                  fmt(pp.shortfall) +
-                  '</p>'
-                : '';
+    async function loadVendorInspectorData(vendorId) {
+        var requestSeq = ++_inspectorRequestSeq;
+        var salesPanel = document.getElementById('vh-sales-panel');
+        var balancePanel = document.getElementById('vh-balance-history-panel');
+        var rentPanel = document.getElementById('vh-rent-history-panel');
+        var payoutPanel = document.getElementById('vh-payout-history-panel');
+        if (salesPanel) salesPanel.textContent = 'Loading recent sales…';
+        if (balancePanel) balancePanel.textContent = 'Loading balance history…';
+        if (rentPanel) rentPanel.textContent = 'Loading rent history…';
+        if (payoutPanel) payoutPanel.textContent = 'Loading payout history…';
 
-        return (
-            '<div class="vh-detail-grid">' +
-            '<div class="vh-detail-col">' +
-            '<h4 class="vh-detail-h">Balance &amp; Payout</h4>' +
-            '<div style="margin:0.5rem 0">' +
-            '<div style="font-size:0.85rem;color:var(--text-light);margin-bottom:0.25rem">Sales Balance: <span style="color:var(--gold)">' +
-            fmt(num(v.sales_balance)) +
-            '</span></div>' +
-            '<div style="font-size:0.85rem;color:var(--text-light);margin-bottom:0.25rem">Rent Balance: <span style="color:' +
-            (num(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--gold)') +
-            '">' +
-            fmt(num(v.rent_balance)) +
-            '</span></div>' +
-            '<p style="font-size:1.75rem;font-family:EB Garamond,serif;color:' +
-            (displayBalance(v) < 0
-                ? 'var(--danger)'
-                : displayBalance(v) > 0
-                  ? 'var(--success-light)'
-                  : 'var(--text-light)') +
-            ';margin:0.25rem 0">Current Sales Balance: ' +
-            fmt(displayBalance(v)) +
-            '</p></div>' +
-            '<div style="font-size:0.82rem;color:var(--text-light);line-height:1.5">' +
-            'Gross: ' +
-            fmt(pp.gross) +
-            '<br>Rent deduction: <span style="color:var(--danger)">-' +
-            fmt(pp.rent_deducted) +
-            '</span><br>' +
-            '<strong style="color:var(--success-light)">Net: ' +
-            fmt(pp.net) +
-            '</strong>' +
-            '</div>' +
-            shortHtml +
-            '<p style="margin:0.75rem 0 0;font-size:0.8rem">Method: ' +
-            esc(v.payout_method) +
-            '</p>' +
-            (isVendorHubAdmin()
-                ? '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem">' +
-                  '<button type="button" class="btn btn-sm" style="background:var(--gold);color:var(--charcoal-deep)" onclick="event.stopPropagation();window.openAdjustFromHub(' +
-                  v.id +
-                  ')">Adjust Balance</button>' +
-                  '<button type="button" class="btn btn-sm" onclick="event.stopPropagation();window.openHistoryFromHub(' +
-                  v.id +
-                  ')">Balance History</button>' +
-                  '</div>'
-                : '') +
-            '</div>' +
+        var salesPromise = apiGet('/api/v1/sales/?vendor_id=' + vendorId + '&limit=20');
+        var balancePromise = apiGet('/api/v1/vendors/' + vendorId + '/balance/history?limit=20');
+        var rentPromise = apiGet('/api/v1/admin/vendors/' + vendorId + '/rent-history');
+        var payoutPromise = apiGet('/api/v1/admin/reference-history?vendor_id=' + vendorId + '&entry_type=payout&limit=20');
 
-            '<div class="vh-detail-col">' +
-            '<h4 class="vh-detail-h">Rent</h4>' +
-            '<p style="font-size:0.88rem">Monthly: ' +
-            fmt(v.monthly_rent) +
-            '/mo</p>' +
-            '<p style="font-size:0.85rem">' +
-            (v.rent_paid
-                ? '<span class="vh-badge vh-badge--ok">PAID</span> ' +
-                  esc(v.rent_paid_method || '') +
-                  ' · ' +
-                  esc(v.rent_paid_date || '')
-                : rentBadge(v.rent_status)) +
-            '</p>' +
-            '<p style="font-size:0.8rem;color:var(--text-light)">Last payment: ' +
-            esc(v.last_rent_date || '—') +
-            '</p>' +
-            (isVendorHubAdmin()
-                ? '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem">' +
-                  '<button type="button" class="btn btn-sm" style="background:color-mix(in srgb,var(--success-light) 20%,transparent);color:var(--success-light);border:1px solid color-mix(in srgb,var(--success-light) 35%,transparent)" onclick="event.stopPropagation();window.openRentModalHub(' +
-                  v.id +
-                  ')">Record Rent Payment</button>' +
-                  '<button type="button" class="btn btn-sm" onclick="event.stopPropagation();window.toggleFlagHub(' +
-                  v.id +
-                  ',this)">' +
-                  (v.rent_flagged ? '🚩 Unflag' : '⚑ Flag') +
-                  '</button>' +
-                  '</div>'
-                : '') +
-            '</div>' +
+        var results = await Promise.allSettled([salesPromise, balancePromise, rentPromise, payoutPromise]);
+        if (requestSeq !== _inspectorRequestSeq || vendorId !== _selectedVendorId) return;
 
-            '<div class="vh-detail-col">' +
-            '<h4 class="vh-detail-h">Vendor</h4>' +
-            '<p style="font-size:0.8rem;color:var(--text-light)">' +
-            esc(v.email) +
-            '<br>' +
-            esc(v.phone || '—') +
-            '</p>' +
-            '<div style="margin-top:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center">' +
-            (isVendorHubAdmin()
-                ? '<button type="button" class="btn btn-sm btn-primary" onclick="event.stopPropagation();window.openEditModalHub(' +
-                  v.id +
-                  ')">Edit Vendor</button>'
-                : '') +
-            '<a href="/vendor/items.html?vendor_id=' +
-            v.id +
-            '" class="btn btn-sm" style="display:inline-block;text-decoration:none;border:1px solid var(--border);padding:0.45rem 0.75rem;font-size:0.78rem" onclick="event.stopPropagation()">View Items</a>' +
-            '</div></div>' +
-            '</div>' +
+        renderVendorSalesPanel(vendorId, results[0], salesPanel);
+        renderBalanceHistoryPanel(results[1], balancePanel);
+        renderRentHistoryPanel(results[2], rentPanel);
+        renderPayoutHistoryPanel(results[3], payoutPanel);
+    }
 
-            /* ── Sales History section ── */
-            '<div style="border-top:1px solid var(--border);padding:1rem 1.25rem">' +
-            '<h4 class="vh-detail-h" style="margin-bottom:0.5rem">Sales History</h4>' +
-            '<div id="vh-sales-' + v.id + '" style="font-size:0.85rem;color:var(--text-light)">Loading sales...</div>' +
-            '</div>'
-        );
+    function shortDate(iso) {
+        if (!iso) return '—';
+        var d = new Date(iso);
+        return window.bmmFormatDate(d, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' });
+    }
+
+    function shortDateTime(iso) {
+        if (!iso) return '—';
+        var d = new Date(iso);
+        return window.bmmFormatDate(d, { month: 'short', day: 'numeric', timeZone: 'America/Chicago' }) +
+            ' · ' +
+            window.bmmFormatTime(d, { hour: 'numeric', minute: '2-digit', timeZone: 'America/Chicago' });
+    }
+
+    function renderHistoryRows(rows) {
+        if (!rows || !rows.length) {
+            return '<div class="vendor-inline-empty">No history found.</div>';
+        }
+        return '<div class="vendor-history-list">' + rows.join('') + '</div>';
+    }
+
+    function renderVendorSalesPanel(vendorId, result, container) {
+        if (!container) return;
+        if (result.status !== 'fulfilled') {
+            container.innerHTML = '<div class="vendor-inline-error">' + esc(result.reason && result.reason.message ? result.reason.message : 'Failed to load sales.') + '</div>';
+            return;
+        }
+        var sales = result.value || [];
+        if (!sales.length) {
+            container.innerHTML = '<div class="vendor-inline-empty">No sales recorded yet.</div>';
+            return;
+        }
+        var rows = sales.map(function (sale) {
+            var lines = sale.line_items || sale.items || [];
+            var vendorItems = lines.filter(function (si) { return Number(si.vendor_id) === Number(vendorId); });
+            var vendorTotal = vendorItems.reduce(function (sum, si) {
+                if (si.line_total != null && si.line_total !== '') return sum + num(si.line_total);
+                return sum + (num(si.unit_price != null ? si.unit_price : si.price) * (si.quantity || 1));
+            }, 0);
+            var summary = vendorItems.map(function (si) {
+                return (si.item_name || si.name || 'Item') + ((si.quantity || 1) > 1 ? ' x' + (si.quantity || 1) : '');
+            }).join(', ') || '—';
+            return '<div class="vendor-history-row">' +
+                '<div class="vendor-history-main">' + esc(summary) +
+                '<div class="vendor-history-sub">Sale #' + esc(sale.id) + ' · ' + shortDateTime(sale.created_at) + ' · ' + esc((sale.payment_method || '—').toUpperCase()) + '</div>' +
+                '</div>' +
+                '<div class="vendor-history-amount">' + fmt(vendorTotal) + '</div>' +
+                '</div>';
+        });
+        container.innerHTML = renderHistoryRows(rows);
+    }
+
+    function renderBalanceHistoryPanel(result, container) {
+        if (!container) return;
+        if (result.status !== 'fulfilled') {
+            container.innerHTML = '<div class="vendor-inline-error">' + esc(result.reason && result.reason.message ? result.reason.message : 'Failed to load balance history.') + '</div>';
+            return;
+        }
+        var entries = result.value || [];
+        var rows = entries.map(function (a) {
+            return '<div class="vendor-history-row">' +
+                '<div class="vendor-history-main">' + esc(a.reason || 'Adjustment') +
+                '<div class="vendor-history-sub">' + shortDateTime(a.created_at) + ' · ' + esc((a.adjustment_type || '').toUpperCase()) + ' · ' + fmt(a.balance_before) + ' → ' + fmt(a.balance_after) + '</div>' +
+                '</div>' +
+                '<div class="vendor-history-amount" style="color:' + (a.adjustment_type === 'debit' ? 'var(--danger)' : 'var(--success-light)') + '">' + fmt(a.amount) + '</div>' +
+                '</div>';
+        });
+        container.innerHTML = renderHistoryRows(rows);
+    }
+
+    function renderRentHistoryPanel(result, container) {
+        if (!container) return;
+        if (result.status !== 'fulfilled') {
+            container.innerHTML = '<div class="vendor-inline-error">' + esc(result.reason && result.reason.message ? result.reason.message : 'Failed to load rent history.') + '</div>';
+            return;
+        }
+        var data = result.value || {};
+        var rows = [];
+        (data.payments || []).slice(0, 8).forEach(function (p) {
+            rows.push('<div class="vendor-history-row">' +
+                '<div class="vendor-history-main">' + esc(p.period_month || 'Rent payment') +
+                '<div class="vendor-history-sub">' + shortDateTime(p.processed_at) + ' · ' + esc((p.method || '—').toUpperCase()) + (p.notes ? ' · ' + esc(p.notes) : '') + '</div>' +
+                '</div>' +
+                '<div class="vendor-history-amount">' + fmt(p.amount) + '</div>' +
+                '</div>');
+        });
+        (data.legacy_entries || []).slice(0, 6).forEach(function (entry) {
+            rows.push('<div class="vendor-history-row">' +
+                '<div class="vendor-history-main">' + esc(entry.description || 'Legacy rent record') +
+                '<div class="vendor-history-sub">' + shortDate(entry.entry_date) + ' · Ricochet reference</div>' +
+                '</div>' +
+                '<div class="vendor-history-amount">' + fmt(entry.amount) + '</div>' +
+                '</div>');
+        });
+        container.innerHTML = renderHistoryRows(rows);
+    }
+
+    function renderPayoutHistoryPanel(result, container) {
+        if (!container) return;
+        if (result.status !== 'fulfilled') {
+            container.innerHTML = '<div class="vendor-inline-error">' + esc(result.reason && result.reason.message ? result.reason.message : 'Failed to load payout history.') + '</div>';
+            return;
+        }
+        var data = result.value || {};
+        var entries = data.entries || [];
+        var rows = entries.map(function (entry) {
+            return '<div class="vendor-history-row">' +
+                '<div class="vendor-history-main">' + esc(entry.description || 'Payout') +
+                '<div class="vendor-history-sub">' + shortDate(entry.entry_date) + ' · ' + esc(entry.source_system || 'Reference') + '</div>' +
+                '</div>' +
+                '<div class="vendor-history-amount">' + fmt(entry.amount) + '</div>' +
+                '</div>';
+        });
+        container.innerHTML = renderHistoryRows(rows);
     }
 
     window.openAdjustFromHub = function (id) {
@@ -498,7 +508,7 @@
             window.openAdjustModal(
                 id,
                 v.name,
-                v.sales_balance != null && v.sales_balance !== '' ? num(v.sales_balance) : num(v.balance)
+                displayBalance(v)
             );
         }
     };
