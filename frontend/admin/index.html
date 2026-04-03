@@ -856,10 +856,8 @@
         <span id="user-name">Administrator</span>
         <nav class="navbar-nav">
             <a href="/admin/index.html" class="active">Dashboard</a>
-            <a href="/admin/vendors.html">Vendors</a>
             <a href="/admin/reports.html">Reports</a>
             <a href="/admin/eod-reports.html">EOD Reports</a>
-            <a href="/admin/inventory-verify.html">Inventory</a>
             <a href="/admin/studio.html">Studio</a>
             <a href="/vendor/items.html">Items</a>
             <a href="/admin/settings.html" class="admin-only-nav">Settings</a>
@@ -871,10 +869,8 @@
 </nav>
 <div class="mobile-nav-dropdown" id="mobile-nav">
     <a href="/admin/index.html" class="active">Dashboard</a>
-    <a href="/admin/vendors.html">Vendors</a>
     <a href="/admin/reports.html">Reports</a>
     <a href="/admin/eod-reports.html">EOD Reports</a>
-    <a href="/admin/inventory-verify.html">Inventory</a>
     <a href="/admin/studio.html">Studio</a>
     <a href="/vendor/items.html">Items</a>
     <a href="/admin/settings.html" class="admin-only-nav">Settings</a>
@@ -888,10 +884,6 @@
     <div class="dash-greeting" id="greeting">Welcome back</div>
     <div class="dash-sub" id="dash-sub">Here's how things are going so far today</div>
     <div class="dashboard-quick-links">
-        <a href="/admin/vendors.html" class="dashboard-quick-link">
-            <strong>Vendors</strong>
-            <span>Jump into vendor accounts, balances, and roles.</span>
-        </a>
         <a href="/pos/index.html" class="dashboard-quick-link">
             <strong>POS</strong>
             <span>Open the register and in-store sales tools.</span>
@@ -937,7 +929,6 @@
     <div id="vendor-hub-section" class="vendor-hub-section section">
         <div class="section-header" style="flex-wrap:wrap;gap:0.75rem;align-items:center">
             <h2 class="section-title" style="margin:0"><span id="vendor-period-label">Vendor operations</span></h2>
-            <a href="/admin/vendors.html" class="btn btn-outline btn-sm" style="font-size:0.78rem;text-decoration:none">Manage vendors &amp; roles</a>
         </div>
         <div class="vendor-action-bar" id="vendor-action-bar">
             <div class="vendor-action-primary">
@@ -1066,42 +1057,6 @@
             </div>
             <div class="vendor-cards-mobile" id="employee-cards" style="display:none">
                 <div style="color:var(--text-light);padding:1rem;text-align:center">Loading…</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="ornament">&loz;</div>
-
-    <div class="section admin-only-dash" id="dash-data-import-section">
-        <div class="section-header">
-            <h2 class="section-title">Data Import</h2>
-        </div>
-        <div class="card" style="padding:1.25rem">
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-                <div>
-                    <h3 style="font-size:0.85rem;color:var(--text);margin-bottom:0.5rem">Import Vendors</h3>
-                    <p style="font-size:0.75rem;color:var(--text-light);margin-bottom:0.6rem">CSV with columns: name, email, phone, booth_number, monthly_rent, commission_rate, payout_method</p>
-                    <div style="display:flex;gap:6px;align-items:center">
-                        <input type="file" id="vendor-csv" accept=".csv" style="font-size:0.8rem;color:var(--text-light);max-width:200px">
-                        <button class="btn btn-primary btn-sm" onclick="uploadVendors()" id="upload-vendors-btn">Upload Vendors</button>
-                        <a href="#" onclick="downloadVendorTemplate(event)" style="font-size:0.75rem;color:var(--gold)">Template</a>
-                    </div>
-                </div>
-                <div>
-                    <h3 style="font-size:0.85rem;color:var(--text);margin-bottom:0.5rem">Import Inventory</h3>
-                    <p style="font-size:0.75rem;color:var(--text-light);margin-bottom:0.6rem">CSV with columns: name, price, vendor (name or booth), quantity, category, description, barcode, tax_exempt</p>
-                    <div style="display:flex;gap:6px;align-items:center">
-                        <input type="file" id="inventory-csv" accept=".csv" style="font-size:0.8rem;color:var(--text-light);max-width:200px">
-                        <button class="btn btn-primary btn-sm" onclick="uploadInventory()" id="upload-inventory-btn">Upload Inventory</button>
-                        <a href="#" onclick="downloadInventoryTemplate(event)" style="font-size:0.75rem;color:var(--gold)">Template</a>
-                    </div>
-                </div>
-            </div>
-            <div id="import-results" style="margin-top:0.75rem;max-height:300px;overflow-y:auto"></div>
-            <div style="margin-top:0.75rem;border-top:1px solid var(--border);padding-top:0.75rem;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-                <button class="btn btn-sm" onclick="clearTestData()" style="background:var(--danger-dark);color:color-mix(in srgb, var(--danger) 70%, var(--white));font-size:0.75rem">Clear Test Data (no sales)</button>
-                <button class="btn btn-sm" onclick="resetAllData()" style="background:color-mix(in srgb, var(--danger) 35%, var(--bg));color:color-mix(in srgb, var(--danger) 75%, var(--white));font-size:0.75rem;border:1px solid var(--danger)">Reset Everything &amp; Start Fresh</button>
-                <span style="font-size:0.7rem;color:var(--text-light)">Reset clears ALL vendors, items, sales, gift cards, etc. Only admin/cashier accounts and settings are kept.</span>
             </div>
         </div>
     </div>
