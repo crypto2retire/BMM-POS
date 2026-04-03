@@ -117,6 +117,7 @@ def _item_to_pos_dict(item: Item) -> dict:
         "sale_end": item.sale_end.isoformat() if item.sale_end else None,
         "category": item.category,
         "vendor_id": item.vendor_id,
+        "vendor_name": item.vendor.name if item.vendor else None,
         "booth_number": item.vendor.booth_number if item.vendor else None,
         "is_tax_exempt": item.is_tax_exempt,
         "is_consignment": item.is_consignment,

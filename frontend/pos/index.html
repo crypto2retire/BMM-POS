@@ -2005,7 +2005,10 @@
             const priceHtml = onSale
                 ? `<span style="text-decoration:line-through;font-size:0.75rem;color:var(--text-muted);margin-right:4px">$${item.price.toFixed(2)}</span><span class="search-result-price on-sale">$${item.active_price.toFixed(2)}</span>`
                 : `<span class="search-result-price">$${item.active_price.toFixed(2)}</span>`;
-            const meta = [item.category, item.booth_number ? `Booth ${item.booth_number}` : null, `Qty: ${item.quantity}`].filter(Boolean).join(' · ');
+            const vendorMeta = item.vendor_name
+                ? (item.booth_number ? `${item.vendor_name} · Booth ${item.booth_number}` : item.vendor_name)
+                : (item.booth_number ? `Booth ${item.booth_number}` : null);
+            const meta = [vendorMeta, item.category, `Qty: ${item.quantity}`].filter(Boolean).join(' · ');
             return `<div class="search-result-item" onclick="addFromSearch(${item.id})">
                 <div class="search-result-left">
                     <div class="search-result-name">${item.name}</div>
