@@ -113,7 +113,9 @@ def _admin_effective_balance(
     return round(sales_balance + min(rent_ledger, 0.0), 2)
 
 
-def _rent_status(today: date, last_payment: Optional[RentPayment]) -> str:
+def _rent_status(today: date, last_payment: Optional[RentPayment], monthly_rent: float = 0.0) -> str:
+    if monthly_rent <= 0:
+        return "none"
     if last_payment is None:
         return "overdue"
     period = last_payment.period_month
@@ -307,7 +309,7 @@ async def rent_status(
 
     for v in vendors:
         last = latest_by_vendor.get(v.id)
-        status = _rent_status(today, last)
+        status = _rent_status(today, last, float(v.monthly_rent or 0))
         if last and last.period_month >= current_period:
             total_collected_this_month += float(last.amount or 0)
         rows.append({
@@ -382,7 +384,7 @@ async def vendor_rent_history(
 
     today = date.today()
     latest = payments[0] if payments else None
-    status = _rent_status(today, latest)
+    status = _rent_status(today, latest, float(vendor.monthly_rent or 0))
 
     return {
         "vendor": {
