@@ -1,19 +1,22 @@
 import secrets
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.vendor import Vendor, VendorBalance
 from app.models.rent import RentPayment
 from app.models.legacy_history import LegacyFinancialHistory
+from app.models.sale import Sale, SaleItem
+from app.models.item import Item
 from app.routers.auth import get_current_user
 from app.services.rent_payments import apply_rent_payment, display_rent_notes, extract_rent_reference, stamp_rent_notes
+from app.timezone import STORE_TZ
 
 router = APIRouter(prefix="/vendor", tags=["vendor-rent"])
 
@@ -38,6 +41,23 @@ def _serialize_legacy_entry(entry: LegacyFinancialHistory) -> dict:
 
 def _has_vendor_booth_access(user: Vendor) -> bool:
     return user.role == "vendor" or bool(getattr(user, "is_vendor", False))
+
+
+def _month_window(month: str | None):
+    if month:
+        try:
+            year, mon = month.split("-")
+            start_local = datetime(int(year), int(mon), 1, tzinfo=STORE_TZ)
+        except Exception:
+            raise HTTPException(status_code=400, detail="Invalid month. Use YYYY-MM.")
+    else:
+        today = datetime.now(STORE_TZ)
+        start_local = datetime(today.year, today.month, 1, tzinfo=STORE_TZ)
+    if start_local.month == 12:
+        end_local = datetime(start_local.year + 1, 1, 1, tzinfo=STORE_TZ)
+    else:
+        end_local = datetime(start_local.year, start_local.month + 1, 1, tzinfo=STORE_TZ)
+    return start_local, end_local, start_local.astimezone(timezone.utc), end_local.astimezone(timezone.utc)
 
 
 def _visible_rent_history_rows(payments: list[RentPayment]) -> list[RentPayment]:
@@ -133,6 +153,122 @@ class RentConfirmRequest(BaseModel):
 class VendorRentRequest(BaseModel):
     amount: Optional[Decimal] = None
     period: Optional[str] = None
+
+
+@router.get("/monthly-report")
+async def monthly_report(
+    month: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_vendor: Vendor = Depends(get_current_user),
+):
+    if not _has_vendor_booth_access(current_vendor):
+        raise HTTPException(status_code=403, detail="Vendor access required.")
+
+    vendor = current_vendor
+    start_local, end_local, start_utc, end_utc = _month_window(month)
+
+    balance_result = await db.execute(
+        select(VendorBalance).where(VendorBalance.vendor_id == vendor.id)
+    )
+    balance = balance_result.scalar_one_or_none()
+    sales_balance = float(balance.balance or 0) if balance and balance.balance is not None else 0.0
+    rent_balance = float(balance.rent_balance or 0) if balance and balance.rent_balance is not None else 0.0
+    current_balance = round(sales_balance + rent_balance, 2)
+
+    sales_summary = await db.execute(
+        select(
+            func.coalesce(func.sum(SaleItem.line_total), 0).label("gross_sales"),
+            func.coalesce(func.sum(SaleItem.quantity), 0).label("items_sold"),
+            func.count(func.distinct(Sale.id)).label("transactions"),
+        )
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .where(
+            SaleItem.vendor_id == vendor.id,
+            Sale.is_voided.is_(False),
+            Sale.created_at >= start_utc,
+            Sale.created_at < end_utc,
+        )
+    )
+    summary_row = sales_summary.one()
+
+    sold_items_result = await db.execute(
+        select(
+            SaleItem.item_id.label("item_id"),
+            Item.name.label("item_name"),
+            Item.sku.label("sku"),
+            func.coalesce(func.sum(SaleItem.quantity), 0).label("qty_sold"),
+            func.coalesce(func.sum(SaleItem.line_total), 0).label("gross_sales"),
+            func.max(Sale.created_at).label("last_sold_at"),
+        )
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .join(Item, Item.id == SaleItem.item_id)
+        .where(
+            SaleItem.vendor_id == vendor.id,
+            Sale.is_voided.is_(False),
+            Sale.created_at >= start_utc,
+            Sale.created_at < end_utc,
+        )
+        .group_by(SaleItem.item_id, Item.name, Item.sku)
+        .order_by(func.sum(SaleItem.line_total).desc(), func.max(Sale.created_at).desc())
+    )
+    sold_items = sold_items_result.all()
+
+    rent_result = await db.execute(
+        select(RentPayment)
+        .where(
+            RentPayment.vendor_id == vendor.id,
+            RentPayment.processed_at >= start_utc,
+            RentPayment.processed_at < end_utc,
+        )
+        .order_by(RentPayment.processed_at.desc())
+    )
+    rent_payments = _visible_rent_history_rows(rent_result.scalars().all())
+
+    return {
+        "vendor": {
+            "id": vendor.id,
+            "name": vendor.name,
+            "email": vendor.email,
+            "booth_number": vendor.booth_number or "—",
+            "monthly_rent": float(vendor.monthly_rent or 0),
+            "payout_method": vendor.payout_method or "check",
+        },
+        "month": start_local.strftime("%Y-%m"),
+        "month_label": start_local.strftime("%B %Y"),
+        "period_start": start_local.date().isoformat(),
+        "period_end": (end_local.date() - timedelta(days=1)).isoformat(),
+        "summary": {
+            "gross_sales": round(float(summary_row.gross_sales or 0), 2),
+            "items_sold": int(summary_row.items_sold or 0),
+            "transactions": int(summary_row.transactions or 0),
+            "sales_balance": round(sales_balance, 2),
+            "rent_balance": round(rent_balance, 2),
+            "current_balance": current_balance,
+        },
+        "sold_items": [
+            {
+                "item_id": row.item_id,
+                "item_name": row.item_name,
+                "sku": row.sku,
+                "qty_sold": int(row.qty_sold or 0),
+                "gross_sales": round(float(row.gross_sales or 0), 2),
+                "last_sold_at": row.last_sold_at.isoformat() if row.last_sold_at else None,
+            }
+            for row in sold_items
+        ],
+        "rent_payments": [
+            {
+                "id": p.id,
+                "amount": float(p.amount or 0),
+                "method": p.method,
+                "status": p.status,
+                "notes": display_rent_notes(p.notes),
+                "period_month": p.period_month.strftime("%B %Y") if p.period_month else None,
+                "processed_at": p.processed_at.isoformat() if p.processed_at else None,
+            }
+            for p in rent_payments
+        ],
+    }
 
 
 @router.post("/pay-rent")

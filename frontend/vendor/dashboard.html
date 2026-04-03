@@ -174,6 +174,15 @@
             color: var(--text-light);
             font-style: italic;
         }
+        .report-actions-row {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            align-items: end;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--warm-border);
+        }
         @media (max-width: 767px) {
             .rent-card-layout {
                 flex-direction: column !important;
@@ -318,6 +327,14 @@
                 <div class="card-title" style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Legacy Rent Reference</div>
                 <div style="color:var(--text-light);font-size:0.78rem;margin-bottom:0.6rem;">Imported from Ricochet for reference only. These entries do not change your current rent status in BMM-POS.</div>
                 <div id="legacy-rent-history-list" style="font-size:0.85rem;"></div>
+            </div>
+            <div class="report-actions-row">
+                <div>
+                    <div class="card-title" style="font-size:0.72rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;">Monthly Report</div>
+                    <input type="month" id="vendor-report-month" class="form-control" style="min-width:160px;">
+                </div>
+                <button class="btn btn-outline" type="button" onclick="openMonthlyReport(false)">Open Report</button>
+                <button class="btn btn-primary" type="button" onclick="openMonthlyReport(true)">Print Report</button>
             </div>
         </div>
     </div>
@@ -737,6 +754,13 @@
         loadSoldItems(period);
     }
 
+    function openMonthlyReport(printMode) {
+        var month = document.getElementById('vendor-report-month').value || new Date().toISOString().slice(0, 7);
+        var url = '/vendor/monthly-report.html?month=' + encodeURIComponent(month);
+        if (printMode) url += '&print=1';
+        window.open(url, '_blank');
+    }
+
     async function refreshVendorDashboardData(force) {
         var now = Date.now();
         if (!force && now - lastVendorDashboardRefresh < 15000) return;
@@ -789,12 +813,14 @@
             var rentAmountInput = document.getElementById('vendor-rent-amount');
             if (rentAmountInput) rentAmountInput.value = rent.toFixed(2);
             var rentPeriodInput = document.getElementById('vendor-rent-period');
+            var reportMonthInput = document.getElementById('vendor-report-month');
             if (rentPeriodInput) {
                 var defaultPeriod = vendor.upcoming_rent_due_date
                     ? vendor.upcoming_rent_due_date.slice(0, 7)
                     : (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0'));
                 rentPeriodInput.value = defaultPeriod;
             }
+            if (reportMonthInput) reportMonthInput.value = new Date().toISOString().slice(0, 7);
             const nextSummaryEl = document.getElementById('next-rent-summary');
             if (nextRentDue > 0) {
                 var dueDateLabel = formatRentDueDate(vendor.upcoming_rent_due_date);
