@@ -1912,7 +1912,19 @@
         setTimeout(() => document.getElementById('manual-vendor').focus(), 100);
     }
 
+    function resetManualEntryState() {
+        document.getElementById('manual-name').value = '';
+        document.getElementById('manual-price').value = '';
+        document.getElementById('manual-qty').value = '1';
+        document.getElementById('manual-tax-exempt').checked = false;
+        document.getElementById('manual-consignment').checked = false;
+        document.getElementById('manual-consignment-rate').value = '';
+        document.getElementById('manual-consignment-group').style.display = 'none';
+        document.getElementById('manual-error').textContent = '';
+    }
+
     function closeManualEntry() {
+        resetManualEntryState();
         document.getElementById('manual-modal').classList.add('hidden');
     }
 
@@ -1947,6 +1959,7 @@
             });
             addToCart(item);
             closeManualEntry();
+            document.getElementById('barcode-input').focus();
             showToast(`"${name}" added to cart`, 'success');
         } catch (err) {
             errEl.textContent = err.message || 'Failed to create item';
@@ -3135,13 +3148,25 @@ table { width: 100%; border-collapse: collapse; }
         if (cart.length === 0) return;
         var totals = calcTotals();
         document.getElementById('gc-pay-total').textContent = '$' + totals.total.toFixed(2);
-        document.getElementById('gc-pay-barcode').value = '';
-        document.getElementById('gc-pay-balance').innerHTML = '';
-        document.getElementById('gc-pay-error').textContent = '';
+        resetGcPayModalState();
         document.getElementById('gc-pay-modal').classList.remove('hidden');
         setTimeout(function() { document.getElementById('gc-pay-barcode').focus(); }, 100);
     }
-    function closeGcPayModal() { document.getElementById('gc-pay-modal').classList.add('hidden'); }
+    function resetGcPayModalState() {
+        clearTimeout(gcPayCheckTimer);
+        document.getElementById('gc-pay-barcode').value = '';
+        document.getElementById('gc-pay-balance').innerHTML = '';
+        document.getElementById('gc-pay-error').textContent = '';
+        var btn = document.getElementById('gc-pay-submit');
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = 'Pay with Gift Card';
+        }
+    }
+    function closeGcPayModal() {
+        resetGcPayModalState();
+        document.getElementById('gc-pay-modal').classList.add('hidden');
+    }
 
     document.getElementById('gc-pay-modal').addEventListener('click', function(e) { if (e.target === this) closeGcPayModal(); });
 
@@ -3186,11 +3211,13 @@ table { width: 100%; border-collapse: collapse; }
             var payload = buildSalePayload('gift_card');
             payload.gift_card_barcode = bc;
             var sale = await apiPost('/api/v1/pos/sale', payload);
-            closeGcPayModal();
             currentSale = sale;
             cart = [];
             renderCart();
-            showReceiptModal(sale);
+            closeGcPayModal();
+            requestAnimationFrame(function() {
+                showReceiptModal(sale);
+            });
         } catch (err) {
             errEl.textContent = err.message || 'Payment failed';
         } finally {
