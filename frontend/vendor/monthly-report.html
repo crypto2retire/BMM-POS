@@ -186,13 +186,19 @@ async function loadReport() {
         }).join('');
     }
 
+    window.__bmmMonthlyReportReady = true;
+    document.body.dataset.reportReady = '1';
+
     let nextUrl = '/vendor/monthly-report.html?month=' + encodeURIComponent(month);
     if (vendorId) nextUrl += '&vendor_id=' + encodeURIComponent(vendorId);
     if (params.get('print') === '1') nextUrl += '&print=1';
     history.replaceState({}, '', nextUrl);
     if (params.get('print') === '1' && !window.__reportPrintedOnce) {
         window.__reportPrintedOnce = true;
-        setTimeout(function() { window.print(); }, 250);
+        setTimeout(function() {
+            window.focus();
+            window.print();
+        }, 250);
     }
 }
 

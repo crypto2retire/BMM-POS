@@ -568,7 +568,28 @@
         var month = new Date().toISOString().slice(0, 7);
         var url = '/vendor/monthly-report.html?vendor_id=' + encodeURIComponent(id) + '&month=' + encodeURIComponent(month);
         if (printMode) url += '&print=1';
-        window.open(url, '_blank');
+        var reportWindow = window.open(url, '_blank');
+        if (printMode && reportWindow) {
+            var attempts = 0;
+            var timer = setInterval(function() {
+                attempts += 1;
+                if (!reportWindow || reportWindow.closed) {
+                    clearInterval(timer);
+                    return;
+                }
+                try {
+                    if (reportWindow.__bmmMonthlyReportReady || reportWindow.document.body.dataset.reportReady === '1') {
+                        clearInterval(timer);
+                        reportWindow.focus();
+                        reportWindow.print();
+                    } else if (attempts >= 40) {
+                        clearInterval(timer);
+                    }
+                } catch (err) {
+                    if (attempts >= 40) clearInterval(timer);
+                }
+            }, 250);
+        }
     };
 
     window.openHistoryFromHub = function (id) {
