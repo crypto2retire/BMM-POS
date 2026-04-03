@@ -392,12 +392,6 @@
                         </select>
                     </div>
                 </div>
-                <div id="e-vendor-flag-row" style="margin-bottom:1rem;">
-                    <label style="display:flex;align-items:center;gap:0.6rem;cursor:pointer;font-size:0.88rem;color:var(--text);padding:0.75rem 0.85rem;background:var(--surface-2);border:1px solid var(--border);">
-                        <input type="checkbox" id="e-is-vendor" onchange="toggleBoothFields()" style="width:18px;height:18px;accent-color:var(--gold);cursor:pointer;">
-                        <span>This person also has a vendor booth</span>
-                    </label>
-                </div>
                 <div id="e-booth-fields">
                     <div class="form-row">
                         <div class="form-group">
@@ -613,19 +607,8 @@
 
     function toggleBoothFields() {
         const role = document.getElementById('e-role').value;
-        const flagRow = document.getElementById('e-vendor-flag-row');
         const boothFields = document.getElementById('e-booth-fields');
-        const checkbox = document.getElementById('e-is-vendor');
-
-        if (role === 'vendor') {
-            // Pure vendors always have a booth — hide the checkbox, show booth fields
-            flagRow.style.display = 'none';
-            boothFields.style.display = 'block';
-        } else {
-            // Admin/cashier — show checkbox, toggle booth fields based on it
-            flagRow.style.display = 'block';
-            boothFields.style.display = checkbox.checked ? 'block' : 'none';
-        }
+        boothFields.style.display = role === 'vendor' ? 'block' : 'none';
     }
 
     /* ── Grid view ───────────────────────────────────────── */
@@ -855,7 +838,6 @@
         document.getElementById('e-booth').value = v.booth_number || '';
         document.getElementById('e-rent').value = v.monthly_rent || 0;
         document.getElementById('e-role').value = v.role || 'vendor';
-        document.getElementById('e-is-vendor').checked = !!v.is_vendor;
         document.getElementById('e-status').value = v.status || 'active';
         document.getElementById('e-payout').value = v.payout_method || 'check';
         document.getElementById('e-zelle').value = v.zelle_handle || '';
@@ -905,20 +887,19 @@
         }
 
         const role = document.getElementById('e-role').value;
-        const isVendorChecked = document.getElementById('e-is-vendor').checked;
-        const isVendor = role === 'vendor' ? true : isVendorChecked;
+        const isVendor = role === 'vendor';
 
         const body = {
             name,
             email,
             phone: document.getElementById('e-phone').value || null,
-            booth_number: document.getElementById('e-booth').value || null,
-            monthly_rent: parseFloat(document.getElementById('e-rent').value) || 0,
+            booth_number: isVendor ? (document.getElementById('e-booth').value || null) : null,
+            monthly_rent: isVendor ? (parseFloat(document.getElementById('e-rent').value) || 0) : 0,
             role,
             is_vendor: isVendor,
             status: document.getElementById('e-status').value,
             payout_method: document.getElementById('e-payout').value,
-            zelle_handle: document.getElementById('e-zelle').value || null,
+            zelle_handle: isVendor ? (document.getElementById('e-zelle').value || null) : null,
             notes: document.getElementById('e-notes').value || null,
         };
 

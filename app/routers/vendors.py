@@ -25,6 +25,22 @@ class AssistantSettingsUpdate(BaseModel):
     assistant_enabled: Optional[bool] = None
 
 
+def _normalize_vendor_account_payload(data: dict) -> dict:
+    role = data.get("role")
+    if role == "vendor":
+        data["is_vendor"] = True
+        return data
+
+    if role in ("admin", "cashier"):
+        data["is_vendor"] = False
+        data["booth_number"] = None
+        data["monthly_rent"] = Decimal("0.00")
+        data["zelle_handle"] = None
+        return data
+
+    return data
+
+
 async def _can_access_vendor_directory(db: AsyncSession, user: Vendor) -> bool:
     if user.role == "admin":
         return True
@@ -161,19 +177,21 @@ async def create_vendor(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    normalized = _normalize_vendor_account_payload(vendor.model_dump())
+
     db_vendor = Vendor(
-        name=vendor.name,
-        email=vendor.email,
-        phone=vendor.phone,
+        name=normalized["name"],
+        email=normalized["email"],
+        phone=normalized.get("phone"),
         password_hash=get_password_hash(vendor.password),
-        booth_number=vendor.booth_number,
-        role=vendor.role,
-        is_vendor=vendor.is_vendor,
-        monthly_rent=vendor.monthly_rent,
-        commission_rate=vendor.commission_rate,
-        payout_method=vendor.payout_method,
-        zelle_handle=vendor.zelle_handle,
-        auto_payout_enabled=vendor.auto_payout_enabled,
+        booth_number=normalized.get("booth_number"),
+        role=normalized["role"],
+        is_vendor=normalized.get("is_vendor", False),
+        monthly_rent=normalized.get("monthly_rent", Decimal("0.00")),
+        commission_rate=normalized.get("commission_rate", Decimal("0.10")),
+        payout_method=normalized.get("payout_method"),
+        zelle_handle=normalized.get("zelle_handle"),
+        auto_payout_enabled=normalized.get("auto_payout_enabled", True),
     )
     db.add(db_vendor)
     await db.commit()
@@ -243,6 +261,7 @@ async def update_vendor(
         raise HTTPException(status_code=404, detail="Vendor not found")
 
     update_data = vendor_update.model_dump(exclude_unset=True)
+    update_data = _normalize_vendor_account_payload(update_data)
     for key, value in update_data.items():
         setattr(vendor, key, value)
 
