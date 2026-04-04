@@ -1140,6 +1140,7 @@
 
         const params = new URLSearchParams(window.location.search);
         const vid = params.get('vendor_id') || params.get('id');
+        const openAdd = params.get('open_add') === '1';
         if (vid) {
             const id = parseInt(vid, 10);
             if (!isNaN(id)) {
@@ -1148,6 +1149,8 @@
                 renderGrid(getFilteredVendors());
                 await editVendor(id);
             }
+        } else if (openAdd && isAdmin) {
+            openAddModal();
         }
     }
 
