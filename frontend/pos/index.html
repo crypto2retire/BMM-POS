@@ -4235,7 +4235,7 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
 
             let html = '';
             data.matches.forEach(item => {
-                const imgSrc = `/api/v1/items/${item.id}/image`;
+                const imgSrc = item.image_path || `/api/v1/items/${item.id}/image`;
                 const meta = [item.category, item.booth_number ? 'Booth ' + item.booth_number : null].filter(Boolean).join(' · ');
                 html += `<div onclick="addImageSearchResult(${item.id})" style="display:flex;gap:10px;align-items:center;background:var(--surface-2);padding:8px;margin-bottom:4px;cursor:pointer;transition:background 0.12s" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background='var(--surface-2)'">
                     <img src="${imgSrc}" style="width:56px;height:56px;object-fit:cover;border:1px solid var(--border);flex-shrink:0" onerror="this.style.display='none'">

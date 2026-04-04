@@ -636,7 +636,7 @@ async def upload_item_photo(
 
     photo_url = f"/static/images/items/{filename}"
     item.photo_urls = (item.photo_urls or []) + [photo_url]
-    item.image_path = f"/api/v1/items/{item_id}/image"
+    item.image_path = photo_url
     await db.commit()
 
     result = await db.execute(
@@ -734,7 +734,7 @@ async def upload_item_image(
     else:
         db.add(ItemImage(item_id=item_id, image_data=jpeg_bytes, content_type="image/jpeg"))
 
-    image_path = f"/api/v1/items/{item_id}/image"
+    image_path = f"/static/uploads/items/{item_id}.jpg"
     item.image_path = image_path
     await db.commit()
 

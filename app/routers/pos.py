@@ -125,6 +125,7 @@ def _item_to_pos_dict(item: Item) -> dict:
         "consignment_rate": float(item.consignment_rate) if item.consignment_rate is not None else None,
         "quantity": item.quantity,
         "photo_urls": item.photo_urls,
+        "image_path": item.image_path,
     }
 
 
