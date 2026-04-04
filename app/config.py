@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     poynt_store_id: str = ""
     poynt_terminal_id: str = ""
     poynt_private_key: str = ""
+    # DigitalOcean Spaces (optional — falls back to local disk when unset)
+    do_spaces_key: Optional[str] = None
+    do_spaces_secret: Optional[str] = None
+    do_spaces_region: str = "nyc3"
+    do_spaces_bucket: Optional[str] = None
+    do_spaces_cdn_endpoint: Optional[str] = None
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
