@@ -79,10 +79,10 @@ except Exception as _import_err:
 async def lifespan(app: FastAPI):
     _startup_checks.clear()
 
-    # Ensure all models are registered with Base.metadata before create_all
+    # Register all models with Base.metadata
     import app.models  # noqa: F401
 
-    # Create any missing tables (safe to run on every startup — skips existing tables)
+    # Create any tables that don't exist yet (idempotent, fast on subsequent boots)
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -92,341 +92,7 @@ async def lifespan(app: FastAPI):
         print(f"BMM-POS: schema create_all FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("database_schema", e, critical=True)
 
-    # Add columns that create_all won't add to existing tables
-    try:
-        async with AsyncSessionLocal() as session:
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "rent_flagged BOOLEAN NOT NULL DEFAULT false"
-            ))
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "is_active BOOLEAN NOT NULL DEFAULT true"
-            ))
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "is_vendor BOOLEAN NOT NULL DEFAULT false"
-            ))
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "commission_rate NUMERIC(5,4) NOT NULL DEFAULT 0.1000"
-            ))
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "label_preference VARCHAR(20) NOT NULL DEFAULT 'standard'"
-            ))
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "pdf_label_size VARCHAR(30) NOT NULL DEFAULT '2.25x1.25'"
-            ))
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "assistant_name VARCHAR(50)"
-            ))
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "assistant_enabled BOOLEAN NOT NULL DEFAULT true"
-            ))
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "auto_payout_enabled BOOLEAN NOT NULL DEFAULT true"
-            ))
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "notes TEXT"
-            ))
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "theme_preference VARCHAR(10) NOT NULL DEFAULT 'dark'"
-            ))
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "font_size_preference VARCHAR(10) NOT NULL DEFAULT 'medium'"
-            ))
-            await session.execute(text("""
-                ALTER TABLE vendors
-                ADD COLUMN IF NOT EXISTS sale_notify_preference VARCHAR(10) NOT NULL DEFAULT 'instant'
-            """))
-            await session.execute(text(
-                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
-                "image_path VARCHAR(500)"
-            ))
-            await session.execute(text(
-                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
-                "is_consignment BOOLEAN NOT NULL DEFAULT false"
-            ))
-            await session.execute(text(
-                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
-                "consignment_rate NUMERIC(5,4)"
-            ))
-            await session.execute(text(
-                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
-                "label_printed BOOLEAN NOT NULL DEFAULT false"
-            ))
-            await session.execute(text(
-                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
-                "verified_at TIMESTAMPTZ"
-            ))
-            await session.execute(text(
-                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
-                "archive_expires_at TIMESTAMPTZ"
-            ))
-            await session.execute(text(
-                "ALTER TABLE items ADD COLUMN IF NOT EXISTS "
-                "import_source VARCHAR(50)"
-            ))
-            import_source_marker = "startup_task_import_source_backfill_v1"
-            if not await _has_startup_marker(session, import_source_marker):
-                backfill_result = await session.execute(text(
-                    "UPDATE items SET import_source = 'ricochet' "
-                    "WHERE import_source IS NULL AND barcode IS NOT NULL"
-                ))
-                await _set_startup_marker(
-                    session,
-                    import_source_marker,
-                    "Applied one-time startup backfill for Ricochet import_source tags.",
-                )
-                print(
-                    f"BMM-POS: Ricochet import_source backfill marked complete ({backfill_result.rowcount} items)",
-                    file=sys.stderr,
-                    flush=True,
-                )
-            await session.execute(text(
-                "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS "
-                "is_consignment BOOLEAN NOT NULL DEFAULT false"
-            ))
-            await session.execute(text(
-                "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS "
-                "consignment_rate NUMERIC(5,4)"
-            ))
-            await session.execute(text(
-                "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS "
-                "consignment_amount NUMERIC(10,2)"
-            ))
-            await session.execute(text(
-                "ALTER TABLE sales ADD COLUMN IF NOT EXISTS "
-                "is_voided BOOLEAN NOT NULL DEFAULT false"
-            ))
-            await session.execute(text(
-                "ALTER TABLE sales ADD COLUMN IF NOT EXISTS "
-                "voided_at TIMESTAMPTZ"
-            ))
-            await session.execute(text(
-                "ALTER TABLE sales ADD COLUMN IF NOT EXISTS "
-                "voided_by INTEGER REFERENCES vendors(id)"
-            ))
-            await session.execute(text(
-                "ALTER TABLE sales ADD COLUMN IF NOT EXISTS "
-                "void_reason TEXT"
-            ))
-            await session.execute(text(
-                "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS "
-                "customer_email VARCHAR(200)"
-            ))
-            await session.execute(text(
-                "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS "
-                "public_id VARCHAR(36)"
-            ))
-            backfill_result = await session.execute(text(
-                "SELECT id FROM reservations WHERE public_id IS NULL"
-            ))
-            import uuid as _uuid_mod
-            for row in backfill_result.fetchall():
-                await session.execute(
-                    text("UPDATE reservations SET public_id = :pid WHERE id = :rid"),
-                    {"pid": str(_uuid_mod.uuid4()), "rid": row[0]}
-                )
-            await session.execute(text("""
-                DO $$ BEGIN
-                    ALTER TABLE reservations
-                        ALTER COLUMN public_id SET NOT NULL;
-                EXCEPTION WHEN others THEN NULL;
-                END $$
-            """))
-            await session.execute(text("""
-                DO $$ BEGIN
-                    CREATE UNIQUE INDEX IF NOT EXISTS ix_reservations_public_id
-                        ON reservations (public_id);
-                EXCEPTION WHEN others THEN NULL;
-                END $$
-            """))
-            landing_cols = [
-                "landing_page_enabled BOOLEAN DEFAULT FALSE",
-                "landing_slug VARCHAR(100)",
-                "landing_about TEXT",
-                "landing_contact_email VARCHAR(200)",
-                "landing_contact_phone VARCHAR(50)",
-                "landing_website VARCHAR(300)",
-                "landing_facebook VARCHAR(300)",
-                "landing_instagram VARCHAR(300)",
-                "landing_tiktok VARCHAR(300)",
-                "landing_twitter VARCHAR(300)",
-                "landing_etsy VARCHAR(300)",
-                "landing_meta_title VARCHAR(200)",
-                "landing_meta_desc VARCHAR(500)",
-            ]
-            for col_def in landing_cols:
-                col_name = col_def.split()[0]
-                await session.execute(text(
-                    f"ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS {col_def}"
-                ))
-            await session.execute(text(
-                "CREATE UNIQUE INDEX IF NOT EXISTS ix_booth_showcases_landing_slug "
-                "ON booth_showcases (landing_slug) WHERE landing_slug IS NOT NULL"
-            ))
-            await session.execute(text("""
-                CREATE TABLE IF NOT EXISTS balance_adjustments (
-                    id SERIAL PRIMARY KEY,
-                    vendor_id INTEGER NOT NULL REFERENCES vendors(id),
-                    adjusted_by INTEGER NOT NULL REFERENCES vendors(id),
-                    amount NUMERIC(10,2) NOT NULL,
-                    adjustment_type VARCHAR(10) NOT NULL,
-                    reason TEXT NOT NULL,
-                    balance_before NUMERIC(10,2) NOT NULL,
-                    balance_after NUMERIC(10,2) NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-                )
-            """))
-            # Discount columns on sale_items and sales
-            for tbl, col_def in [
-                ("sale_items", "discount_type VARCHAR(10)"),
-                ("sale_items", "discount_value NUMERIC(10,2)"),
-                ("sale_items", "discount_amount NUMERIC(10,2)"),
-                ("sales", "discount_type VARCHAR(10)"),
-                ("sales", "discount_value NUMERIC(10,2)"),
-                ("sales", "discount_amount NUMERIC(10,2)"),
-            ]:
-                await session.execute(text(
-                    f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS {col_def}"
-                ))
-            # Poynt payments table (Phase 4)
-            await session.execute(text("""
-                CREATE TABLE IF NOT EXISTS poynt_payments (
-                    id SERIAL PRIMARY KEY,
-                    reference_id VARCHAR(100) UNIQUE,
-                    amount_cents INTEGER,
-                    status VARCHAR(20) DEFAULT 'pending',
-                    poynt_transaction_id VARCHAR(200),
-                    sale_id INTEGER REFERENCES sales(id),
-                    created_at TIMESTAMPTZ DEFAULT NOW(),
-                    updated_at TIMESTAMPTZ DEFAULT NOW()
-                )
-            """))
-            await session.execute(text(
-                "CREATE INDEX IF NOT EXISTS idx_poynt_payments_reference_id ON poynt_payments(reference_id)"
-            ))
-            await session.execute(text(
-                "CREATE INDEX IF NOT EXISTS idx_poynt_payments_status ON poynt_payments(status)"
-            ))
-            await session.execute(text("""
-                CREATE TABLE IF NOT EXISTS eod_reports (
-                    id SERIAL PRIMARY KEY,
-                    report_date DATE NOT NULL,
-                    submitted_by INTEGER NOT NULL REFERENCES vendors(id),
-                    submitted_by_name VARCHAR(200),
-                    starting_balance NUMERIC(10,2) NOT NULL,
-                    counted_cash NUMERIC(10,2) NOT NULL,
-                    expected_cash NUMERIC(10,2) NOT NULL,
-                    variance NUMERIC(10,2) NOT NULL,
-                    deposit NUMERIC(10,2) NOT NULL,
-                    total_revenue NUMERIC(10,2) NOT NULL DEFAULT 0,
-                    total_tax NUMERIC(10,2) NOT NULL DEFAULT 0,
-                    total_transactions INTEGER NOT NULL DEFAULT 0,
-                    items_sold INTEGER NOT NULL DEFAULT 0,
-                    cash_total NUMERIC(10,2) NOT NULL DEFAULT 0,
-                    cash_count INTEGER NOT NULL DEFAULT 0,
-                    card_total NUMERIC(10,2) NOT NULL DEFAULT 0,
-                    card_count INTEGER NOT NULL DEFAULT 0,
-                    gift_card_total NUMERIC(10,2) NOT NULL DEFAULT 0,
-                    gift_card_count INTEGER NOT NULL DEFAULT 0,
-                    voided_count INTEGER NOT NULL DEFAULT 0,
-                    voided_total NUMERIC(10,2) NOT NULL DEFAULT 0,
-                    cashier_breakdown JSONB,
-                    notes TEXT,
-                    submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                )
-            """))
-            await session.execute(text(
-                "CREATE INDEX IF NOT EXISTS idx_eod_reports_date ON eod_reports(report_date)"
-            ))
-            await session.execute(text(
-                "ALTER TABLE eod_reports ADD COLUMN IF NOT EXISTS denomination_counts JSONB"
-            ))
-            await session.commit()
-            _record_startup_ok("column_migrations")
-    except Exception as e:
-        print(f"BMM-POS: column migration FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
-        _record_startup_failure("column_migrations", e, critical=True)
-
-    # Historical cleanup: run once so deploys stop mutating inventory flags.
-    try:
-        async with AsyncSessionLocal() as session:
-            marker_key = "startup_task_consignment_cleanup_v1"
-            if await _has_startup_marker(session, marker_key):
-                print("BMM-POS: consignment cleanup already applied", file=sys.stderr, flush=True)
-            else:
-                result = await session.execute(text("""
-                    UPDATE items
-                    SET is_consignment = false,
-                        consignment_rate = NULL
-                    WHERE is_consignment = true OR consignment_rate IS NOT NULL
-                """))
-                await _set_startup_marker(
-                    session,
-                    marker_key,
-                    "Applied one-time startup cleanup to clear legacy consignment flags.",
-                )
-                await session.commit()
-                count = result.rowcount
-                if count > 0:
-                    print(f"BMM-POS: CLEARED consignment flags on {count} items", file=sys.stderr, flush=True)
-                else:
-                    print("BMM-POS: consignment check OK — no items flagged", file=sys.stderr, flush=True)
-            _record_startup_ok("consignment_cleanup")
-    except Exception as e:
-        print(f"BMM-POS: CRITICAL — consignment cleanup failed: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
-        _record_startup_failure("consignment_cleanup", e)
-
-    # Historical defaulting: run once so startup does not overwrite payout choices.
-    try:
-        async with AsyncSessionLocal() as session:
-            marker_key = "startup_task_vendor_payout_method_default_v1"
-            if await _has_startup_marker(session, marker_key):
-                print("BMM-POS: vendor payout_method default already applied", file=sys.stderr, flush=True)
-            else:
-                result = await session.execute(text("""
-                    UPDATE vendors SET payout_method = 'check'
-                    WHERE payout_method IS NULL OR payout_method != 'check'
-                """))
-                await _set_startup_marker(
-                    session,
-                    marker_key,
-                    "Applied one-time startup default for vendor payout_method values.",
-                )
-                await session.commit()
-                count = result.rowcount
-                if count > 0:
-                    print(f"BMM-POS: Set payout_method to 'check' for {count} vendors", file=sys.stderr, flush=True)
-            _record_startup_ok("vendor_payout_method_default")
-    except Exception as e:
-        print(f"BMM-POS: payout_method default note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
-        _record_startup_failure("vendor_payout_method_default", e)
-
-    # ── Add rent_balance column if missing ──
-    try:
-        async with AsyncSessionLocal() as session:
-            await session.execute(text(
-                "ALTER TABLE vendor_balances ADD COLUMN IF NOT EXISTS "
-                "rent_balance NUMERIC(10,2) NOT NULL DEFAULT 0.00"
-            ))
-            await session.commit()
-            print("BMM-POS: rent_balance column OK", file=sys.stderr, flush=True)
-            _record_startup_ok("rent_balance_column")
-    except Exception as e:
-        print(f"BMM-POS: rent_balance column note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
-        _record_startup_failure("rent_balance_column", e)
-
-    # ── Ensure every vendor has a vendor_balances row ──
+    # Ensure every vendor has a vendor_balances row (safe INSERT ... WHERE NOT EXISTS)
     try:
         async with AsyncSessionLocal() as session:
             result = await session.execute(text("""
@@ -439,51 +105,13 @@ async def lifespan(app: FastAPI):
             await session.commit()
             count = result.rowcount
             if count > 0:
-                print(f"BMM-POS: Created missing vendor_balances rows for {count} vendors", file=sys.stderr, flush=True)
-            _record_startup_ok("vendor_balances_backfill")
+                print(f"BMM-POS: created {count} missing vendor_balances rows", file=sys.stderr, flush=True)
+        _record_startup_ok("vendor_balances_backfill")
     except Exception as e:
         print(f"BMM-POS: vendor_balances backfill note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("vendor_balances_backfill", e)
 
-    # Historical migration: run once so deploys stop re-touching vendor balances.
-    try:
-        async with AsyncSessionLocal() as session:
-            marker_key = "startup_task_rent_balance_migration_v1"
-            if await _has_startup_marker(session, marker_key):
-                print("BMM-POS: rent_balance migration already applied", file=sys.stderr, flush=True)
-            else:
-                result = await session.execute(text("""
-                    UPDATE vendor_balances vb
-                    SET rent_balance = rent_balance + sub.total_paid
-                    FROM (
-                        SELECT rp.vendor_id, SUM(rp.amount) as total_paid
-                        FROM rent_payments rp
-                        WHERE rp.status = 'paid'
-                          AND rp.method != 'balance'
-                          AND rp.processed_at >= CURRENT_DATE
-                          AND NOT EXISTS (
-                              SELECT 1 FROM vendor_balances vb2
-                              WHERE vb2.vendor_id = rp.vendor_id AND vb2.rent_balance != 0
-                          )
-                        GROUP BY rp.vendor_id
-                    ) sub
-                    WHERE vb.vendor_id = sub.vendor_id
-                """))
-                await _set_startup_marker(
-                    session,
-                    marker_key,
-                    "Applied one-time startup migration for rent_balance credits from paid rent payments.",
-                )
-                await session.commit()
-                count = result.rowcount
-                if count > 0:
-                    print(f"BMM-POS: Migrated rent payments to rent_balance for {count} vendors", file=sys.stderr, flush=True)
-            _record_startup_ok("rent_balance_migration")
-    except Exception as e:
-        print(f"BMM-POS: rent_balance migration note: {type(e).__name__}: {e}", file=sys.stderr, flush=True)
-        _record_startup_failure("rent_balance_migration", e)
-
-    # Verify connectivity
+    # Verify DB connectivity
     try:
         async with AsyncSessionLocal() as session:
             await session.execute(text("SELECT 1"))
@@ -493,7 +121,7 @@ async def lifespan(app: FastAPI):
         print(f"BMM-POS: DATABASE CONNECTION FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("database_connection", e, critical=True)
 
-    # Auto-seed essential accounts if database is empty
+    # Auto-seed accounts if the database is empty (fresh install only)
     try:
         from app.models.vendor import Vendor
         import bcrypt
@@ -556,7 +184,6 @@ async def lifespan(app: FastAPI):
                     pw = acct.pop("password")
                     session.add(Vendor(**acct, password_hash=make_hash(pw)))
                     added += 1
-
                 if added:
                     await session.commit()
                     print(f"BMM-POS: seeded {added} default vendor accounts", file=sys.stderr, flush=True)
@@ -577,7 +204,6 @@ async def lifespan(app: FastAPI):
         print("BMM-POS: startup checks all passed", file=sys.stderr, flush=True)
 
     yield
-
 
 app = FastAPI(
     title="BMM-POS",
