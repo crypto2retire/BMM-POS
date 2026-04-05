@@ -15,6 +15,7 @@ from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
 from app.models.item_image import ItemImage
 from app.config import settings
+from app.services import spaces as spaces_svc
 
 logger = logging.getLogger("bmm-data-sync")
 
@@ -35,6 +36,24 @@ def _ext(filename: str) -> str:
     if "." in filename:
         return "." + filename.rsplit(".", 1)[-1]
     return ".jpg"
+
+
+def _ext_for_content_type(content_type: Optional[str]) -> str:
+    mapping = {
+        "image/jpeg": ".jpg",
+        "image/jpg": ".jpg",
+        "image/png": ".png",
+        "image/webp": ".webp",
+        "image/gif": ".gif",
+    }
+    return mapping.get((content_type or "").lower(), ".jpg")
+
+
+def _store_item_image_url(item_id: int, image_data: bytes, content_type: str, source_prefix: str = "ricochet") -> str:
+    ext = _ext_for_content_type(content_type)
+    spaces_key = f"items/{source_prefix}/{item_id}{ext}"
+    cdn_url = spaces_svc.upload_bytes(image_data, spaces_key, content_type)
+    return cdn_url or f"/api/v1/items/{item_id}/image"
 
 
 @router.get("/export/vendors")
@@ -305,10 +324,9 @@ async def store_images_to_db(
                     content_type=content_type,
                 ))
 
-            item.image_path = f"/api/v1/items/{item.id}/image"
-
-            photo_paths = [f"/static/uploads/items/{fn}" for fn in real_files]
-            item.photo_urls = photo_paths
+            stored_url = _store_item_image_url(item.id, image_data, content_type, "ricochet")
+            item.image_path = stored_url
+            item.photo_urls = [stored_url]
 
             stored += 1
         except Exception as e:
@@ -573,7 +591,9 @@ async def _scrape_and_store_images():
                         else:
                             db.add(ItemImage(item_id=item.id, image_data=image_data, content_type=content_type))
 
-                        item.image_path = f"/api/v1/items/{item.id}/image"
+                        stored_url = _store_item_image_url(item.id, image_data, content_type, "ricochet")
+                        item.image_path = stored_url
+                        item.photo_urls = [stored_url]
                         await db.flush()
                         await db.commit()
                         _scrape_status["matched"] += 1
@@ -786,8 +806,9 @@ async def scrape_rico_store(
                 else:
                     db.add(ItemImage(item_id=item.id, image_data=image_data, content_type=content_type))
 
-                item.image_path = f"/api/v1/items/{item.id}/image"
-                item.photo_urls = image_urls
+                stored_url = _store_item_image_url(item.id, image_data, content_type, "ricochet")
+                item.image_path = stored_url
+                item.photo_urls = [stored_url]
                 matched += 1
                 await _rico_pause(0.75)
             except Exception as e:

@@ -20,12 +20,16 @@ import asyncio
 import os
 import sys
 import uuid
+from typing import Optional
 
 # Allow running from repo root: python scripts/migrate.py
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sqlalchemy import text
+from sqlalchemy import text, select, or_
 from app.database import AsyncSessionLocal, engine, Base
+from app.models.item import Item
+from app.models.item_image import ItemImage
+from app.services import spaces as spaces_svc
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -52,6 +56,23 @@ async def _set_marker(session, key: str, description: str) -> None:
         """),
         {"key": key, "description": description},
     )
+
+
+def _ext_for_content_type(content_type: Optional[str]) -> str:
+    mapping = {
+        "image/jpeg": "jpg",
+        "image/jpg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp",
+        "image/gif": "gif",
+    }
+    return mapping.get((content_type or "").lower(), "jpg")
+
+
+def _is_legacy_item_path(url: Optional[str]) -> bool:
+    if not url:
+        return True
+    return url.startswith("/api/v1/items/") or url.startswith("/static/uploads/items/")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -299,6 +320,52 @@ async def run():
             """))
             await _set_marker(session, marker, "One-time rent_balance migration")
             print(f"BMM-POS migrate: rent_balance migration — {r.rowcount} vendors", flush=True)
+
+        # 6f: Move legacy item_images blobs to Spaces and rewrite image_path
+        marker = "startup_task_item_images_to_spaces_v1"
+        if not await _has_marker(session, marker):
+            if not spaces_svc.spaces_enabled():
+                print("BMM-POS migrate: item_images->Spaces skipped — Spaces not configured", flush=True)
+            else:
+                result = await session.execute(
+                    select(Item, ItemImage)
+                    .join(ItemImage, ItemImage.item_id == Item.id)
+                    .where(
+                        ItemImage.image_data.isnot(None),
+                        or_(
+                            Item.image_path.is_(None),
+                            Item.image_path == "",
+                            Item.image_path.like("/api/v1/items/%/image"),
+                            Item.image_path.like("/static/uploads/items/%"),
+                        ),
+                    )
+                )
+                rows = result.all()
+                migrated = 0
+                failed = 0
+
+                for item, item_image in rows:
+                    ext = _ext_for_content_type(item_image.content_type)
+                    spaces_key = f"items/legacy/{item.id}.{ext}"
+                    cdn_url = spaces_svc.upload_bytes(
+                        item_image.image_data,
+                        spaces_key,
+                        item_image.content_type or "image/jpeg",
+                    )
+                    if not cdn_url:
+                        failed += 1
+                        continue
+
+                    item.image_path = cdn_url
+                    if not item.photo_urls or all(_is_legacy_item_path(url) for url in item.photo_urls):
+                        item.photo_urls = [cdn_url]
+                    migrated += 1
+
+                await _set_marker(session, marker, "One-time migration of item_images blobs to Spaces URLs")
+                print(
+                    f"BMM-POS migrate: item_images to Spaces — migrated {migrated}, failed {failed}",
+                    flush=True,
+                )
 
         await session.commit()
 
