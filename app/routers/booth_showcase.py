@@ -3,6 +3,7 @@ import os
 import uuid
 import logging
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional
 
 import httpx
@@ -28,6 +29,7 @@ MAX_VIDEO_SIZE = 50 * 1024 * 1024
 MAX_IMAGE_DIMENSION = 1600
 MAX_PHOTOS = 8
 PHOTO_STALE_DAYS = 60
+STATIC_ROOT = Path("frontend/static")
 
 
 def _has_vendor_booth_access(user: Vendor) -> bool:
@@ -98,6 +100,60 @@ def _is_stale(last_update: Optional[datetime]) -> bool:
     if last_update.tzinfo is None:
         last_update = last_update.replace(tzinfo=timezone.utc)
     return (now - last_update).days >= PHOTO_STALE_DAYS
+
+
+def _public_media_exists(url: Optional[str]) -> bool:
+    if not url:
+        return False
+    if url.startswith("http://") or url.startswith("https://"):
+        return True
+    if url.startswith("/static/"):
+        return (STATIC_ROOT / url.removeprefix("/static/")).exists()
+    return False
+
+
+def _valid_public_photo_urls(photo_urls: Optional[list]) -> list[str]:
+    return [url for url in (photo_urls or []) if _public_media_exists(url)]
+
+
+async def _fallback_item_image_url(db: AsyncSession, vendor_id: int) -> Optional[str]:
+    from app.models.item import Item
+
+    result = await db.execute(
+        select(Item).where(
+            Item.vendor_id == vendor_id,
+            Item.status == "active",
+        ).order_by(Item.created_at.desc()).limit(20)
+    )
+    items = result.scalars().all()
+    for item in items:
+        if item.image_path and _public_media_exists(item.image_path):
+            return item.image_path
+        for url in item.photo_urls or []:
+            if _public_media_exists(url):
+                return url
+    return None
+
+
+async def _public_showcase_payload(db: AsyncSession, sc: BoothShowcase, item_count: int = 0) -> dict:
+    valid_photo_urls = _valid_public_photo_urls(sc.photo_urls)
+    cover_image_url = valid_photo_urls[0] if valid_photo_urls else await _fallback_item_image_url(db, sc.vendor_id)
+    if not valid_photo_urls and cover_image_url:
+        valid_photo_urls = [cover_image_url]
+
+    return {
+        "id": sc.id,
+        "vendor_id": sc.vendor_id,
+        "vendor_name": sc.vendor.name if sc.vendor else "",
+        "booth_number": sc.vendor.booth_number if sc.vendor else None,
+        "title": sc.title,
+        "description": sc.description,
+        "photo_urls": valid_photo_urls or None,
+        "cover_image_url": cover_image_url,
+        "video_url": sc.video_url,
+        "item_count": item_count,
+        "landing_slug": sc.landing_slug if sc.landing_page_enabled else None,
+    }
 
 
 def _to_response(sc: BoothShowcase, item_count: int = 0) -> dict:
@@ -551,18 +607,7 @@ async def list_public_showcases(
             )
         )
         item_count = count_result.scalar() or 0
-        response.append({
-            "id": sc.id,
-            "vendor_id": sc.vendor_id,
-            "vendor_name": sc.vendor.name if sc.vendor else "",
-            "booth_number": sc.vendor.booth_number if sc.vendor else None,
-            "title": sc.title,
-            "description": sc.description,
-            "photo_urls": sc.photo_urls,
-            "video_url": sc.video_url,
-            "item_count": item_count,
-            "landing_slug": sc.landing_slug if sc.landing_page_enabled else None,
-        })
+        response.append(await _public_showcase_payload(db, sc, item_count))
 
     return response
 
@@ -590,16 +635,9 @@ async def get_public_showcase(
     )
     item_count = count_result.scalar() or 0
 
-    return {
-        "id": sc.id,
-        "vendor_name": sc.vendor.name if sc.vendor else "",
-        "booth_number": sc.vendor.booth_number if sc.vendor else None,
-        "title": sc.title,
-        "description": sc.description,
-        "photo_urls": sc.photo_urls,
-        "video_url": sc.video_url,
-        "item_count": item_count,
-    }
+    payload = await _public_showcase_payload(db, sc, item_count)
+    payload.pop("landing_slug", None)
+    return payload
 
 
 @router.get("/stale-check")
@@ -763,6 +801,11 @@ async def get_landing_page(
     if settings.get("webstore_tiktok_on") == "true" and settings.get("webstore_tiktok_url"):
         market_socials["tiktok"] = settings["webstore_tiktok_url"]
 
+    valid_photo_urls = _valid_public_photo_urls(sc.photo_urls)
+    if not valid_photo_urls:
+        fallback_cover = await _fallback_item_image_url(db, sc.vendor_id)
+        valid_photo_urls = [fallback_cover] if fallback_cover else []
+
     return {
         "id": sc.id,
         "vendor_id": sc.vendor_id,
@@ -771,7 +814,7 @@ async def get_landing_page(
         "title": sc.title,
         "description": sc.description,
         "landing_about": sc.landing_about,
-        "photo_urls": sc.photo_urls,
+        "photo_urls": valid_photo_urls or None,
         "video_url": sc.video_url,
         "item_count": item_count,
         "items": item_list,

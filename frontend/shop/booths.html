@@ -411,11 +411,11 @@ async function loadBooths() {
         var grid = document.getElementById('booths-grid');
         grid.style.display = 'grid';
         grid.innerHTML = booths.map(function(b, i) {
-            var coverPhoto = (b.photo_urls && b.photo_urls.length > 0) ? b.photo_urls[0] : '/static/images/placeholder-booth.jpg';
+            var coverPhoto = b.cover_image_url || ((b.photo_urls && b.photo_urls.length > 0) ? b.photo_urls[0] : '/static/images/placeholder-booth.jpg');
             var displayName = b.title || b.vendor_name;
             var photoCount = (b.photo_urls || []).length;
             return '<div class="booth-card" onclick="openModal(' + i + ')" style="animation-delay:' + (i * 0.05) + 's">' +
-                '<img class="booth-card-img" src="' + escHtml(coverPhoto) + '" alt="' + escHtml(displayName) + ' booth" loading="lazy">' +
+                '<img class="booth-card-img" src="' + escHtml(coverPhoto) + '" alt="' + escHtml(displayName) + ' booth" loading="lazy" onerror="this.onerror=null;this.src=\'/static/images/placeholder-booth.jpg\'">' +
                 '<div class="booth-card-body">' +
                     (b.booth_number ? '<span class="booth-badge">Booth ' + escHtml(b.booth_number) + '</span>' : '') +
                     '<div class="booth-card-title">' + escHtml(displayName) + '</div>' +
