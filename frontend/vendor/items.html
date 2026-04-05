@@ -2661,10 +2661,10 @@
         if (selectedVendorId) {
             try {
                 var vendorInfo = await apiGet('/api/v1/vendors/' + selectedVendorId);
-                vendorLabelPref = vendorInfo.label_preference || 'standard';
+                vendorLabelPref = vendorInfo.label_preference || 'dymo';
                 vendorLabelSize = vendorInfo.pdf_label_size || '2.25x1.25';
                 updateLabelPrefUI();
-            } catch (e) { /* fallback to standard */ }
+            } catch (e) { vendorLabelPref = 'dymo'; }
         }
 
         await loadLabelSizes();

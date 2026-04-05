@@ -27,7 +27,7 @@ class Vendor(Base):
     is_vendor: Mapped[bool] = mapped_column(Boolean, default=False)
     password_changed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     commission_rate: Mapped[Decimal] = mapped_column(Numeric(5, 4), default=Decimal("0.10"))
-    label_preference: Mapped[str] = mapped_column(String(20), default="standard", nullable=False)
+    label_preference: Mapped[str] = mapped_column(String(20), default="dymo", nullable=False)
     pdf_label_size: Mapped[str] = mapped_column(String(30), default="2.25x1.25", nullable=False)
     assistant_name: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     assistant_enabled: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, server_default=text("true"))

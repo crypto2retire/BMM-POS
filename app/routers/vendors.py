@@ -323,7 +323,7 @@ async def update_label_preference(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    pref = body.get("label_preference", "standard")
+    pref = body.get("label_preference", "dymo")
     if pref not in ("standard", "dymo"):
         raise HTTPException(status_code=400, detail="Must be 'standard' or 'dymo'")
     current_user.label_preference = pref

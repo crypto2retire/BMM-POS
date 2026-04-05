@@ -76,7 +76,7 @@ async def run():
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true",
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS is_vendor BOOLEAN NOT NULL DEFAULT false",
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(5,4) NOT NULL DEFAULT 0.1000",
-            "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS label_preference VARCHAR(20) NOT NULL DEFAULT 'standard'",
+            "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS label_preference VARCHAR(20) NOT NULL DEFAULT 'dymo'",
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS pdf_label_size VARCHAR(30) NOT NULL DEFAULT '2.25x1.25'",
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS assistant_name VARCHAR(50)",
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS assistant_enabled BOOLEAN NOT NULL DEFAULT true",
@@ -262,7 +262,22 @@ async def run():
             await _set_marker(session, marker, "One-time vendor payout_method default")
             print(f"BMM-POS migrate: payout_method default — {r.rowcount} vendors", flush=True)
 
-        # 6d: Migrate rent payments into rent_balance
+        # 6d: Default untouched legacy label preferences to Dymo 30347
+        marker = "startup_task_default_label_preference_dymo_v1"
+        if not await _has_marker(session, marker):
+            await session.execute(text(
+                "ALTER TABLE vendors ALTER COLUMN label_preference SET DEFAULT 'dymo'"
+            ))
+            r = await session.execute(text("""
+                UPDATE vendors
+                SET label_preference = 'dymo'
+                WHERE COALESCE(label_preference, 'standard') = 'standard'
+                  AND COALESCE(pdf_label_size, '2.25x1.25') = '2.25x1.25'
+            """))
+            await _set_marker(session, marker, "One-time default label preference set to Dymo 30347")
+            print(f"BMM-POS migrate: default label preference to dymo — {r.rowcount} vendors", flush=True)
+
+        # 6e: Migrate rent payments into rent_balance
         marker = "startup_task_rent_balance_migration_v1"
         if not await _has_marker(session, marker):
             r = await session.execute(text("""
