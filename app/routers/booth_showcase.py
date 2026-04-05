@@ -107,6 +107,8 @@ def _public_media_exists(url: Optional[str]) -> bool:
         return False
     if url.startswith("http://") or url.startswith("https://"):
         return True
+    if url.startswith("/api/v1/items/"):
+        return True
     if url.startswith("/static/"):
         return (STATIC_ROOT / url.removeprefix("/static/")).exists()
     return False
