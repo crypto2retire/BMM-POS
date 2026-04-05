@@ -26,6 +26,7 @@ from app.services.labels import (
     generate_dymo_xml,
     resolve_pdf_label_size,
 )
+from app.services import spaces as spaces_svc
 from app.models.store_setting import StoreSetting
 
 PHOTO_UPLOAD_DIR = "frontend/static/images/items"
@@ -604,12 +605,7 @@ async def upload_item_photo(
     if len(contents) > MAX_IMAGE_SIZE:
         raise HTTPException(status_code=400, detail="File size must be under 5MB")
 
-    os.makedirs(PHOTO_UPLOAD_DIR, exist_ok=True)
-    filename = f"{item_id}_{uuid.uuid4().hex[:10]}{ext}"
-    filepath = os.path.join(PHOTO_UPLOAD_DIR, filename)
-
-    with open(filepath, "wb") as f:
-        f.write(contents)
+    filename = f"{item_id}_{uuid.uuid4().hex[:10]}.jpg"
 
     try:
         img = Image.open(io.BytesIO(contents))
@@ -624,6 +620,17 @@ async def upload_item_photo(
     except Exception:
         jpeg_bytes = contents
 
+    spaces_key = f"items/{filename}"
+    cdn_url = spaces_svc.upload_bytes(jpeg_bytes, spaces_key, "image/jpeg")
+    if cdn_url:
+        photo_url = cdn_url
+    else:
+        os.makedirs(PHOTO_UPLOAD_DIR, exist_ok=True)
+        filepath = os.path.join(PHOTO_UPLOAD_DIR, filename)
+        with open(filepath, "wb") as f:
+            f.write(jpeg_bytes)
+        photo_url = f"/static/images/items/{filename}"
+
     existing = await db.execute(
         select(ItemImage).where(ItemImage.item_id == item_id)
     )
@@ -634,9 +641,8 @@ async def upload_item_photo(
     else:
         db.add(ItemImage(item_id=item_id, image_data=jpeg_bytes, content_type="image/jpeg"))
 
-    photo_url = f"/static/images/items/{filename}"
     item.photo_urls = (item.photo_urls or []) + [photo_url]
-    item.image_path = f"/api/v1/items/{item_id}/image"
+    item.image_path = photo_url
     await db.commit()
 
     result = await db.execute(
@@ -667,10 +673,16 @@ async def delete_item_photo(
     urls = [u for u in (item.photo_urls or []) if u != photo_url]
     item.photo_urls = urls if urls else None
 
-    filename = os.path.basename(photo_url)
-    filepath = os.path.join(PHOTO_UPLOAD_DIR, filename)
-    if os.path.exists(filepath):
-        os.remove(filepath)
+    if photo_url.startswith("http"):
+        spaces_svc.delete_object(photo_url)
+    else:
+        filename = os.path.basename(photo_url)
+        filepath = os.path.join(PHOTO_UPLOAD_DIR, filename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
+
+    if item.image_path == photo_url:
+        item.image_path = urls[0] if urls else None
 
     await db.commit()
     result = await db.execute(
@@ -719,10 +731,17 @@ async def upload_item_image(
     img.save(buf, "JPEG", quality=85)
     jpeg_bytes = buf.getvalue()
 
-    os.makedirs(IMAGE_UPLOAD_DIR, exist_ok=True)
-    save_path = os.path.join(IMAGE_UPLOAD_DIR, f"{item_id}.jpg")
-    with open(save_path, "wb") as f:
-        f.write(jpeg_bytes)
+    filename = f"{item_id}.jpg"
+    spaces_key = f"items/{filename}"
+    cdn_url = spaces_svc.upload_bytes(jpeg_bytes, spaces_key, "image/jpeg")
+    if cdn_url:
+        image_path = cdn_url
+    else:
+        os.makedirs(IMAGE_UPLOAD_DIR, exist_ok=True)
+        save_path = os.path.join(IMAGE_UPLOAD_DIR, filename)
+        with open(save_path, "wb") as f:
+            f.write(jpeg_bytes)
+        image_path = f"/static/uploads/items/{filename}"
 
     existing = await db.execute(
         select(ItemImage).where(ItemImage.item_id == item_id)
@@ -734,7 +753,6 @@ async def upload_item_image(
     else:
         db.add(ItemImage(item_id=item_id, image_data=jpeg_bytes, content_type="image/jpeg"))
 
-    image_path = f"/api/v1/items/{item_id}/image"
     item.image_path = image_path
     await db.commit()
 

@@ -16,6 +16,7 @@ from app.database import get_db
 from app.models.vendor import Vendor
 from app.models.booth_showcase import BoothShowcase
 from app.routers.auth import get_current_user
+from app.services import spaces as spaces_svc
 
 logger = logging.getLogger(__name__)
 
@@ -288,13 +289,17 @@ async def upload_showcase_photo(
     except Exception:
         pass
 
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    filename = f"booth_{current_user.id}_{uuid.uuid4().hex[:10]}{ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(contents)
-
-    photo_url = f"/static/uploads/booths/{filename}"
+    filename = f"booth_{current_user.id}_{uuid.uuid4().hex[:10]}.jpg"
+    spaces_key = f"booths/{filename}"
+    cdn_url = spaces_svc.upload_bytes(contents, spaces_key, "image/jpeg")
+    if cdn_url:
+        photo_url = cdn_url
+    else:
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        filepath = os.path.join(UPLOAD_DIR, filename)
+        with open(filepath, "wb") as f:
+            f.write(contents)
+        photo_url = f"/static/uploads/booths/{filename}"
     sc.photo_urls = current_photos + [photo_url]
     sc.last_photo_update = datetime.now(timezone.utc)
     sc.updated_at = datetime.now(timezone.utc)
@@ -335,10 +340,13 @@ async def delete_showcase_photo(
         sc.is_published = False
     sc.updated_at = datetime.now(timezone.utc)
 
-    basename = os.path.basename(photo_url)
-    filepath = os.path.join(UPLOAD_DIR, basename)
-    if os.path.exists(filepath):
-        os.remove(filepath)
+    if photo_url.startswith("http"):
+        spaces_svc.delete_object(photo_url)
+    else:
+        basename = os.path.basename(photo_url)
+        filepath = os.path.join(UPLOAD_DIR, basename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
 
     await db.commit()
     await db.refresh(sc)
@@ -379,18 +387,25 @@ async def upload_showcase_video(
         raise HTTPException(status_code=400, detail="Video must be under 50MB")
 
     if sc.video_url:
-        old_basename = os.path.basename(sc.video_url)
-        old_path = os.path.join(UPLOAD_DIR, old_basename)
-        if os.path.exists(old_path):
-            os.remove(old_path)
+        if sc.video_url.startswith("http"):
+            spaces_svc.delete_object(sc.video_url)
+        else:
+            old_basename = os.path.basename(sc.video_url)
+            old_path = os.path.join(UPLOAD_DIR, old_basename)
+            if os.path.exists(old_path):
+                os.remove(old_path)
 
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
     filename = f"booth_vid_{current_user.id}_{uuid.uuid4().hex[:10]}{ext}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(contents)
-
-    sc.video_url = f"/static/uploads/booths/{filename}"
+    spaces_key = f"booths/{filename}"
+    cdn_url = spaces_svc.upload_bytes(contents, spaces_key, "video/mp4")
+    if cdn_url:
+        sc.video_url = cdn_url
+    else:
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        filepath = os.path.join(UPLOAD_DIR, filename)
+        with open(filepath, "wb") as f:
+            f.write(contents)
+        sc.video_url = f"/static/uploads/booths/{filename}"
     sc.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(sc)
@@ -418,10 +433,13 @@ async def delete_showcase_video(
     if not sc or not sc.video_url:
         raise HTTPException(status_code=404, detail="No video to remove")
 
-    basename = os.path.basename(sc.video_url)
-    filepath = os.path.join(UPLOAD_DIR, basename)
-    if os.path.exists(filepath):
-        os.remove(filepath)
+    if sc.video_url.startswith("http"):
+        spaces_svc.delete_object(sc.video_url)
+    else:
+        basename = os.path.basename(sc.video_url)
+        filepath = os.path.join(UPLOAD_DIR, basename)
+        if os.path.exists(filepath):
+            os.remove(filepath)
 
     sc.video_url = None
     sc.updated_at = datetime.now(timezone.utc)

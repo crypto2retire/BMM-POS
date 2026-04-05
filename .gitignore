@@ -15,7 +15,6 @@ venv/
 .pythonlibs/
 .local/
 attached_assets/
-uv.lock
 *.log
 gunicorn.ctl
 scraped_images/

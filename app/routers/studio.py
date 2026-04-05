@@ -18,6 +18,7 @@ from app.models.vendor import Vendor
 from app.routers.auth import get_current_user
 from app.routers.settings import role_feature_allowed, require_staff_feature
 from app.schemas.class_registration import ClassRegistrationCreate, ClassRegistrationResponse
+from app.services import spaces as spaces_svc
 
 STUDIO_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "static", "images", "studio")
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -233,11 +234,17 @@ async def upload_class_image(
     except Exception:
         jpeg_bytes = contents
 
-    os.makedirs(STUDIO_UPLOAD_DIR, exist_ok=True)
     filename = f"class_{class_id}_{uuid.uuid4().hex[:8]}.jpg"
-    filepath = os.path.join(STUDIO_UPLOAD_DIR, filename)
-    with open(filepath, "wb") as f:
-        f.write(jpeg_bytes)
+    spaces_key = f"studio/{filename}"
+    cdn_url = spaces_svc.upload_bytes(jpeg_bytes, spaces_key, "image/jpeg")
+    if cdn_url:
+        image_url = cdn_url
+    else:
+        os.makedirs(STUDIO_UPLOAD_DIR, exist_ok=True)
+        filepath = os.path.join(STUDIO_UPLOAD_DIR, filename)
+        with open(filepath, "wb") as f:
+            f.write(jpeg_bytes)
+        image_url = f"/static/images/studio/{filename}"
 
     existing = await db.execute(
         select(StudioImage).where(StudioImage.class_id == class_id)
@@ -249,7 +256,7 @@ async def upload_class_image(
     else:
         db.add(StudioImage(class_id=class_id, image_data=jpeg_bytes, content_type="image/jpeg"))
 
-    c.image_url = f"/api/v1/studio/classes/{class_id}/image"
+    c.image_url = image_url
     await db.commit()
     await db.refresh(c)
     return _class_to_response(c)
@@ -299,9 +306,12 @@ async def delete_class_image(
         await db.delete(old_img)
 
     if c.image_url:
-        old_file = os.path.join(STUDIO_UPLOAD_DIR, os.path.basename(c.image_url))
-        if os.path.exists(old_file):
-            os.remove(old_file)
+        if c.image_url.startswith("http"):
+            spaces_svc.delete_object(c.image_url)
+        else:
+            old_file = os.path.join(STUDIO_UPLOAD_DIR, os.path.basename(c.image_url))
+            if os.path.exists(old_file):
+                os.remove(old_file)
         c.image_url = None
 
     await db.commit()
