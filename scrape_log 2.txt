@@ -1,0 +1,23 @@
+=== Step 1: Collecting product URLs ===
+  Crawling: Accesories page 1
+    Found 16 new products (total: 16)
+  Crawling: Accesories page 2
+  Error: 404 Client Error: Not Found for url: https://bowenstreet.ricoconsign.com/nextpage?page=2&category=Accesories
+  Crawling: Stickers page 1
+    Found 10 new products (total: 26)
+  Crawling: Stickers page 2
+  Error: 404 Client Error: Not Found for url: https://bowenstreet.ricoconsign.com/nextpage?page=2&category=Stickers
+  Crawling: Books page 1
+  Crawling: Furniture page 1
+    Found 8 new products (total: 34)
+  Crawling: Furniture page 2
+  Error: 404 Client Error: Not Found for url: https://bowenstreet.ricoconsign.com/nextpage?page=2&category=Furniture
+  Crawling: Original Art page 1
+    Found 16 new products (total: 50)
+  Crawling: Original Art page 2
+  Error: 404 Client Error: Not Found for url: https://bowenstreet.ricoconsign.com/nextpage?page=2&category=Original%20Art
+  Crawling: Outside page 1
+    Found 9 new products (total: 59)
+  Crawling: Outside page 2
+  Error: 404 Client Error: Not Found for url: https://bowenstreet.ricoconsign.com/nextpage?page=2&category=Outside
+  Crawling: BowenStreet Repeats page 1

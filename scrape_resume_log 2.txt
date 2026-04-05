@@ -1,0 +1,13 @@
+Total URLs to scrape: 202
+Already scraped: 67
+Remaining: 135
+[1/135] https://bowenstreet.ricoconsign.com/store/product/Accesories/03R0CV
+  SKU: 03R0CV | Images: 2 | Name: Napkins
+[2/135] https://bowenstreet.ricoconsign.com/store/product/Accesories/0B0044
+  SKU: 0B0044 | Images: 3 | Name: Inner Peace magnet Booth 64
+[3/135] https://bowenstreet.ricoconsign.com/store/product/Accesories/0B0045
+  SKU: 0B0045 | Images: 2 | Name: Despite the look on my face  magnet Booth 64
+[4/135] https://bowenstreet.ricoconsign.com/store/product/Accesories/0B0048
+  SKU: 0B0048 | Images: 2 | Name: Flower tote bag Booth 64
+[5/135] https://bowenstreet.ricoconsign.com/store/product/Accesories/0B004E
+  SKU: 0B004E | Images: 2 | Name: Purple butterfly MF Booth 64

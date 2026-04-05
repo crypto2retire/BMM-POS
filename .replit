@@ -1,0 +1,49 @@
+modules = ["python-3.11", "nodejs-20", "postgresql-16"]
+[agent]
+expertMode = true
+integrations = ["github:1.0.0", "google-mail:1.0.0"]
+
+[nix]
+channel = "stable-25_05"
+packages = ["cacert", "cargo", "freetype", "glibcLocales", "lcms2", "libffi", "libiconv", "libimagequant", "libjpeg", "libtiff", "libuv", "libwebp", "libxcrypt", "openjpeg", "openssl", "pkg-config", "postgresql", "rustc", "tcl", "tk", "zlib"]
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Start application"
+
+[[workflows.workflow]]
+name = "Start application"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "uvicorn app.main:app --host 0.0.0.0 --port 5000"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 5001
+externalPort = 3000
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5000"]
+
+[userenv]
+
+[userenv.shared]
+SQUARE_ENVIRONMENT = "production"

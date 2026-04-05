@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">Vendor — Bowenstreet Market</title>
+<meta id="meta-desc" name="description" content="Visit this vendor's booth at Bowenstreet Market — handcrafted, vintage, and antique goods in Oshkosh, Wisconsin.">
+<meta id="og-title" property="og:title" content="Vendor — Bowenstreet Market">
+<meta id="og-desc" property="og:description" content="Visit this vendor's booth at Bowenstreet Market.">
+<meta property="og:type" content="website">
+<meta id="og-url" property="og:url" content="">
+<meta id="og-image" property="og:image" content="">
+<meta name="twitter:card" content="summary_large_image">
+<link id="canonical" rel="canonical" href="">
+<link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #38383B;
+    --bg-card:  #3a3a3e;
+    --bg-dark:  #1a1a1c;
+    --accent:   #A8A6A1;
+    --accent-lt:#C5C3BE;
+    --text:     #F0EDE8;
+    --text-dim: #A8A6A1;
+    --gold:     #C9A96E;
+    --gold-dim: rgba(201,169,110,0.22);
+    --border:   #4A4A4D;
+    --warm-border: rgba(201,169,110,0.22);
+  }
+
+  html { scroll-behavior: smooth; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse at 50% 0%,  rgba(201,169,110,0.06) 0%, transparent 55%),
+      radial-gradient(ellipse at 15% 100%, rgba(168,166,161,0.04) 0%, transparent 50%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: 'Roboto', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    line-height: 1.7;
+  }
+
+  .vendor-hero {
+    position: relative;
+    width: 100%;
+    min-height: 340px;
+    overflow: hidden;
+    background: var(--bg-dark);
+  }
+  .vendor-hero img {
+    width: 100%;
+    height: 340px;
+    object-fit: cover;
+    display: block;
+    filter: brightness(0.55);
+  }
+  .vendor-hero-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    background: linear-gradient(180deg, rgba(26,26,28,0.3) 0%, rgba(26,26,28,0.7) 100%);
+  }
+  .vendor-hero-badge {
+    display: inline-block;
+    background: var(--gold);
+    color: var(--bg-dark);
+    font-size: 0.65rem;
+    font-weight: 500;
+    padding: 0.2rem 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+  }
+  .vendor-hero h1 {
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: 0.03em;
+    margin-bottom: 0.3rem;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  }
+  .vendor-hero .subtitle {
+    font-size: 0.85rem;
+    color: var(--accent-lt);
+    letter-spacing: 0.08em;
+  }
+
+  .nav-bar {
+    background: var(--bg-dark);
+    border-bottom: 1px solid rgba(201,169,110,0.12);
+    padding: 0.6rem 1.5rem;
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .nav-bar a {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--accent);
+    text-decoration: none;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid transparent;
+    transition: all 0.2s;
+  }
+  .nav-bar a:hover, .nav-bar a.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  .vendor-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+  }
+
+  .vendor-section {
+    margin-top: 2.5rem;
+    animation: fadeUp 0.4s ease both;
+  }
+  .vendor-section h2 {
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    font-size: 1.4rem;
+    color: var(--text);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--warm-border);
+  }
+  .vendor-section p, .vendor-section .about-text {
+    font-size: 0.88rem;
+    color: var(--accent-lt);
+    line-height: 1.8;
+    white-space: pre-line;
+  }
+
+  .photo-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+  .photo-gallery img {
+    width: 100%;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .photo-gallery img:hover { transform: scale(1.02); border-color: var(--gold); }
+
+  .video-section video {
+    width: 100%;
+    max-width: 640px;
+    border: 1px solid var(--border);
+    margin-top: 0.5rem;
+  }
+
+  .contact-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+  .contact-item {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 1rem 1.25rem;
+  }
+  .contact-item .label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    margin-bottom: 0.25rem;
+  }
+  .contact-item .value {
+    font-size: 0.9rem;
+    color: var(--text);
+    word-break: break-word;
+  }
+  .contact-item a {
+    color: var(--gold);
+    text-decoration: none;
+  }
+  .contact-item a:hover { text-decoration: underline; }
+
+  .social-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+  .social-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.82rem;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .social-link:hover { border-color: var(--gold); color: var(--gold); }
+  .social-link .icon { font-size: 1.1rem; }
+
+  .social-divider {
+    width: 100%;
+    border: none;
+    border-top: 1px solid var(--warm-border);
+    margin: 1.25rem 0 0.75rem;
+  }
+  .social-section-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+
+  .inventory-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .inventory-header h2 {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+  .inventory-count {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+  .inventory-controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .inventory-search {
+    flex: 1;
+    min-width: 180px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.82rem;
+    font-family: 'Roboto', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .inventory-search:focus { border-color: var(--gold); }
+  .inventory-search::placeholder { color: var(--text-dim); }
+  .inventory-select {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.82rem;
+    font-family: 'Roboto', sans-serif;
+    outline: none;
+    cursor: pointer;
+  }
+  .inventory-select:focus { border-color: var(--gold); }
+  .inventory-category-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+  }
+  .cat-pill {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-size: 0.7rem;
+    padding: 0.3rem 0.7rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: capitalize;
+  }
+  .cat-pill:hover, .cat-pill.active {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: var(--gold-dim);
+  }
+  .items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+  .item-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .item-card:hover { border-color: var(--gold); }
+  .item-card img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+    background: var(--bg-dark);
+  }
+  .item-card-body {
+    padding: 0.6rem 0.75rem;
+  }
+  .item-card-name {
+    font-size: 0.8rem;
+    color: var(--text);
+    margin-bottom: 0.15rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .item-card-price {
+    font-size: 0.85rem;
+    color: var(--gold);
+    font-weight: 400;
+  }
+  .item-card-category {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    margin-top: 0.15rem;
+    text-transform: capitalize;
+  }
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+  }
+  .page-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Roboto', sans-serif;
+  }
+  .page-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .page-btn:disabled { opacity: 0.4; cursor: default; }
+  .page-btn:disabled:hover { border-color: var(--border); color: var(--text); }
+  .page-info { font-size: 0.75rem; color: var(--text-dim); }
+  .inventory-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+
+  .market-info {
+    margin-top: 3rem;
+    padding: 1.5rem;
+    background: var(--bg-dark);
+    border: 1px solid var(--warm-border);
+    text-align: center;
+  }
+  .market-info h3 {
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+  .market-info p {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-bottom: 0.2rem;
+  }
+  .market-info a { color: var(--gold); text-decoration: none; }
+  .market-info a:hover { text-decoration: underline; }
+
+  .loading-state {
+    text-align: center;
+    padding: 4rem 1.5rem;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+
+  .error-state {
+    text-align: center;
+    padding: 4rem 1.5rem;
+  }
+  .error-state h2 {
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    font-size: 1.5rem;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+  .error-state p {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    margin-bottom: 1rem;
+  }
+  .error-state a {
+    color: var(--gold);
+    text-decoration: none;
+    font-size: 0.85rem;
+  }
+
+  .lightbox-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    cursor: pointer;
+  }
+  .lightbox-overlay.open { display: flex; }
+  .lightbox-overlay img {
+    max-width: 90vw;
+    max-height: 85vh;
+    object-fit: contain;
+    cursor: default;
+  }
+  .lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1.5rem;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-size: 2rem;
+    cursor: pointer;
+  }
+  .lightbox-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: white;
+    font-size: 1.5rem;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+  }
+  .lightbox-prev { left: 1rem; }
+  .lightbox-next { right: 1rem; }
+
+  @media (max-width: 600px) {
+    .vendor-hero { min-height: 240px; }
+    .vendor-hero img { height: 240px; }
+    .photo-gallery { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .items-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  }
+</style>
+</head>
+<body>
+
+<div id="loading" class="loading-state">Loading vendor page...</div>
+<div id="error" class="error-state" style="display:none"></div>
+<div id="page-content" style="display:none">
+  <div class="vendor-hero" id="hero-section">
+    <img id="hero-img" src="" alt="">
+    <div class="vendor-hero-overlay">
+      <div class="vendor-hero-badge" id="hero-badge"></div>
+      <h1 id="hero-name"></h1>
+      <div class="subtitle">at Bowenstreet Market &nbsp;&middot;&nbsp; Oshkosh, WI</div>
+    </div>
+  </div>
+
+  <nav class="nav-bar">
+    <a href="/shop/index.html">Shop</a>
+    <a href="/shop/booths.html">Booths</a>
+    <a href="/shop/classes.html">Classes</a>
+  </nav>
+
+  <div class="vendor-container">
+    <div id="about-section" class="vendor-section" style="display:none">
+      <h2>About</h2>
+      <div id="about-text" class="about-text"></div>
+    </div>
+
+    <div id="desc-section" class="vendor-section" style="display:none">
+      <h2>Our Booth</h2>
+      <p id="desc-text"></p>
+    </div>
+
+    <div id="photos-section" class="vendor-section" style="display:none">
+      <h2>Gallery</h2>
+      <div id="photo-gallery" class="photo-gallery"></div>
+    </div>
+
+    <div id="video-section" class="vendor-section" style="display:none">
+      <h2>Video Tour</h2>
+      <div class="video-section">
+        <video id="vendor-video" controls preload="metadata"></video>
+      </div>
+    </div>
+
+    <div id="items-section" class="vendor-section" style="display:none">
+      <div class="inventory-header">
+        <h2>Inventory</h2>
+        <span class="inventory-count" id="inventory-count"></span>
+      </div>
+      <div class="inventory-controls">
+        <input type="text" class="inventory-search" id="inv-search" placeholder="Search items..." oninput="debounceSearch()">
+        <select class="inventory-select" id="inv-sort" onchange="loadInventory(1)">
+          <option value="newest">Newest</option>
+          <option value="price_asc">Price: Low to High</option>
+          <option value="price_desc">Price: High to Low</option>
+          <option value="name">Name A-Z</option>
+        </select>
+      </div>
+      <div class="inventory-category-pills" id="category-pills"></div>
+      <div id="items-grid" class="items-grid"></div>
+      <div id="inv-empty" class="inventory-empty" style="display:none">No items found.</div>
+      <div id="inv-pagination" class="pagination" style="display:none">
+        <button class="page-btn" id="prev-btn" onclick="loadInventory(currentPage-1)">&laquo; Prev</button>
+        <span class="page-info" id="page-info"></span>
+        <button class="page-btn" id="next-btn" onclick="loadInventory(currentPage+1)">Next &raquo;</button>
+      </div>
+    </div>
+
+    <div id="contact-section" class="vendor-section" style="display:none">
+      <h2>Contact</h2>
+      <div id="contact-grid" class="contact-grid"></div>
+    </div>
+
+    <div id="social-section" class="vendor-section" style="display:none">
+      <h2>Follow Us</h2>
+      <div id="vendor-socials" class="social-links"></div>
+      <div id="market-socials-area" style="display:none">
+        <hr class="social-divider">
+        <div class="social-section-label">Bowenstreet Market</div>
+        <div id="market-socials" class="social-links"></div>
+      </div>
+    </div>
+
+    <div class="market-info">
+      <h3>Visit Us at Bowenstreet Market</h3>
+      <p>2837 Bowen St, Oshkosh, WI 54901</p>
+      <p>Tue&ndash;Sat 10am&ndash;6pm &nbsp;&middot;&nbsp; Sun 11am&ndash;4pm</p>
+      <p style="margin-top:0.5rem"><a href="/shop/booths.html">Explore all vendor booths &rarr;</a></p>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox-overlay" id="lightbox" onclick="if(event.target===this)closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+  <button class="lightbox-nav lightbox-prev" onclick="event.stopPropagation();navLightbox(-1)">&#8249;</button>
+  <img id="lightbox-img" src="" alt="">
+  <button class="lightbox-nav lightbox-next" onclick="event.stopPropagation();navLightbox(1)">&#8250;</button>
+</div>
+
+<script>
+function escHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+var vendorData = null;
+var lightboxPhotos = [];
+var lightboxIndex = 0;
+
+function getSlug() {
+  var path = window.location.pathname;
+  var parts = path.split('/');
+  return parts[parts.length - 1] || '';
+}
+
+async function loadPage() {
+  var slug = getSlug();
+  if (!slug) { showError(); return; }
+
+  try {
+    var resp = await fetch('/api/v1/booth-showcase/landing/' + encodeURIComponent(slug));
+    if (resp.status === 404) { showError(); return; }
+    if (!resp.ok) throw new Error('Failed to load');
+    vendorData = await resp.json();
+    renderPage();
+  } catch (err) {
+    showError();
+  }
+}
+
+function showError() {
+  document.getElementById('loading').style.display = 'none';
+  var el = document.getElementById('error');
+  el.innerHTML = '<h2>Page Not Found</h2><p>This vendor page does not exist or is not currently published.</p><a href="/shop/booths.html">&larr; Browse all vendor booths</a>';
+  el.style.display = 'block';
+}
+
+function renderPage() {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('page-content').style.display = 'block';
+
+  var v = vendorData;
+  var displayName = v.title || v.vendor_name;
+
+  var metaTitle = v.landing_meta_title || (displayName + ' — Bowenstreet Market');
+  var metaDesc = v.landing_meta_desc || ('Visit ' + displayName + ' at Bowenstreet Market in Oshkosh, Wisconsin.');
+  var pageUrl = 'https://www.bowenstreetmm.com/v/' + getSlug();
+
+  document.title = metaTitle;
+  document.getElementById('page-title').textContent = metaTitle;
+  document.getElementById('meta-desc').setAttribute('content', metaDesc);
+  document.getElementById('og-title').setAttribute('content', metaTitle);
+  document.getElementById('og-desc').setAttribute('content', metaDesc);
+  document.getElementById('og-url').setAttribute('content', pageUrl);
+  document.getElementById('canonical').setAttribute('href', pageUrl);
+
+  if (v.photo_urls && v.photo_urls.length > 0) {
+    var heroUrl = v.photo_urls[0];
+    document.getElementById('hero-img').src = heroUrl;
+    document.getElementById('hero-img').alt = escHtml(displayName);
+    document.getElementById('og-image').setAttribute('content', heroUrl);
+  }
+
+  document.getElementById('hero-badge').textContent = v.booth_number ? 'Booth ' + v.booth_number : 'Vendor';
+  document.getElementById('hero-name').textContent = displayName;
+
+  if (v.landing_about) {
+    document.getElementById('about-section').style.display = 'block';
+    document.getElementById('about-text').textContent = v.landing_about;
+  }
+
+  if (v.description) {
+    document.getElementById('desc-section').style.display = 'block';
+    document.getElementById('desc-text').textContent = v.description;
+  }
+
+  if (v.photo_urls && v.photo_urls.length > 0) {
+    document.getElementById('photos-section').style.display = 'block';
+    lightboxPhotos = v.photo_urls;
+    var gallery = document.getElementById('photo-gallery');
+    gallery.innerHTML = v.photo_urls.map(function(url, i) {
+      return '<img src="' + escHtml(url) + '" alt="Booth photo" loading="lazy" onclick="openLightbox(' + i + ')">';
+    }).join('');
+  }
+
+  if (v.video_url) {
+    document.getElementById('video-section').style.display = 'block';
+    document.getElementById('vendor-video').src = v.video_url;
+  }
+
+  if (v.item_count > 0) {
+    document.getElementById('items-section').style.display = 'block';
+    loadInventory(1);
+    loadCategories();
+  }
+
+  var hasContact = v.landing_contact_email || v.landing_contact_phone || v.landing_website;
+  if (hasContact) {
+    document.getElementById('contact-section').style.display = 'block';
+    var contactHtml = '';
+    if (v.landing_contact_email) {
+      contactHtml += '<div class="contact-item"><div class="label">Email</div><div class="value"><a href="mailto:' + escHtml(v.landing_contact_email) + '">' + escHtml(v.landing_contact_email) + '</a></div></div>';
+    }
+    if (v.landing_contact_phone) {
+      contactHtml += '<div class="contact-item"><div class="label">Phone</div><div class="value"><a href="tel:' + escHtml(v.landing_contact_phone) + '">' + escHtml(v.landing_contact_phone) + '</a></div></div>';
+    }
+    if (v.landing_website) {
+      var url = v.landing_website;
+      if (url && !url.startsWith('http')) url = 'https://' + url;
+      contactHtml += '<div class="contact-item"><div class="label">Website</div><div class="value"><a href="' + escHtml(url) + '" target="_blank" rel="noopener">' + escHtml(v.landing_website) + '</a></div></div>';
+    }
+    document.getElementById('contact-grid').innerHTML = contactHtml;
+  }
+
+  var socialMap = [
+    { key: 'landing_facebook', label: 'Facebook', icon: 'f' },
+    { key: 'landing_instagram', label: 'Instagram', icon: '&#9679;' },
+    { key: 'landing_tiktok', label: 'TikTok', icon: '&#9835;' },
+    { key: 'landing_twitter', label: 'X (Twitter)', icon: 'X' },
+    { key: 'landing_etsy', label: 'Etsy', icon: '&#10047;' },
+  ];
+  var vendorSocialHtml = '';
+  socialMap.forEach(function(s) {
+    if (v[s.key]) {
+      var url = v[s.key];
+      if (!url.startsWith('http')) url = 'https://' + url;
+      vendorSocialHtml += '<a href="' + escHtml(url) + '" target="_blank" rel="noopener" class="social-link"><span class="icon">' + s.icon + '</span> ' + escHtml(s.label) + '</a>';
+    }
+  });
+
+  var marketSocialHtml = '';
+  if (v.market_socials) {
+    var mMap = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok' };
+    var mIcons = { facebook: 'f', instagram: '&#9679;', tiktok: '&#9835;' };
+    Object.keys(v.market_socials).forEach(function(k) {
+      marketSocialHtml += '<a href="' + escHtml(v.market_socials[k]) + '" target="_blank" rel="noopener" class="social-link"><span class="icon">' + mIcons[k] + '</span> ' + escHtml(mMap[k]) + '</a>';
+    });
+  }
+
+  if (vendorSocialHtml || marketSocialHtml) {
+    document.getElementById('social-section').style.display = 'block';
+    if (vendorSocialHtml) {
+      document.getElementById('vendor-socials').innerHTML = vendorSocialHtml;
+    }
+    if (marketSocialHtml) {
+      document.getElementById('market-socials-area').style.display = 'block';
+      document.getElementById('market-socials').innerHTML = marketSocialHtml;
+    }
+  }
+}
+
+var currentPage = 1;
+var totalPages = 1;
+var searchTimeout = null;
+var activeCategory = '';
+var PER_PAGE = 24;
+
+function debounceSearch() {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(function() { loadInventory(1); }, 300);
+}
+
+async function loadInventory(page) {
+  if (!vendorData || !vendorData.vendor_id) return;
+  currentPage = page;
+  var search = document.getElementById('inv-search').value.trim();
+  var sort = document.getElementById('inv-sort').value;
+  var params = new URLSearchParams({
+    sort: sort,
+    page: page,
+    per_page: PER_PAGE,
+  });
+  if (search) params.set('search', search);
+  if (activeCategory) params.set('category', activeCategory);
+
+  try {
+    var resp = await fetch('/api/v1/storefront/vendor-inventory/' + vendorData.vendor_id + '?' + params.toString());
+    if (!resp.ok) throw new Error('Failed');
+    var data = await resp.json();
+    var items = data.items || [];
+    var total = data.total || 0;
+    totalPages = Math.ceil(total / PER_PAGE) || 1;
+
+    document.getElementById('inventory-count').textContent = total + ' item' + (total !== 1 ? 's' : '');
+
+    var grid = document.getElementById('items-grid');
+    var emptyEl = document.getElementById('inv-empty');
+
+    if (items.length === 0) {
+      grid.innerHTML = '';
+      emptyEl.style.display = 'block';
+    } else {
+      emptyEl.style.display = 'none';
+      grid.innerHTML = items.map(function(item) {
+        var imgUrl = item.photo_url || item.image_path;
+        var imgHtml = imgUrl
+          ? '<img src="' + escHtml(imgUrl) + '" alt="' + escHtml(item.name) + '" loading="lazy">'
+          : '<div style="width:100%;aspect-ratio:1;background:var(--bg-dark);display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:0.7rem">No photo</div>';
+        var priceHtml = '$' + Number(item.price).toFixed(2);
+        if (item.sale_price) {
+          priceHtml = '<span style="text-decoration:line-through;color:var(--text-dim);font-size:0.75rem">$' + Number(item.price).toFixed(2) + '</span> <span style="color:#e07070">$' + Number(item.sale_price).toFixed(2) + '</span>';
+        }
+        return '<div class="item-card">' + imgHtml +
+          '<div class="item-card-body">' +
+          '<div class="item-card-name">' + escHtml(item.name) + '</div>' +
+          '<div class="item-card-price">' + priceHtml + '</div>' +
+          (item.category ? '<div class="item-card-category">' + escHtml(item.category) + '</div>' : '') +
+          '</div></div>';
+      }).join('');
+    }
+
+    var pagEl = document.getElementById('inv-pagination');
+    if (totalPages > 1) {
+      pagEl.style.display = 'flex';
+      document.getElementById('prev-btn').disabled = (currentPage <= 1);
+      document.getElementById('next-btn').disabled = (currentPage >= totalPages);
+      document.getElementById('page-info').textContent = 'Page ' + currentPage + ' of ' + totalPages;
+    } else {
+      pagEl.style.display = 'none';
+    }
+  } catch (err) {
+    document.getElementById('items-grid').innerHTML = '<div class="inventory-empty">Unable to load inventory.</div>';
+  }
+}
+
+async function loadCategories() {
+  if (!vendorData || !vendorData.vendor_id) return;
+  try {
+    var resp = await fetch('/api/v1/storefront/categories?vendor_id=' + vendorData.vendor_id + '&format=simple');
+    if (!resp.ok) return;
+    var cats = await resp.json();
+    if (!cats || cats.length === 0) return;
+    var pillsEl = document.getElementById('category-pills');
+    pillsEl.innerHTML = '';
+    var allPill = document.createElement('span');
+    allPill.className = 'cat-pill active';
+    allPill.textContent = 'All';
+    allPill.dataset.cat = '';
+    allPill.addEventListener('click', function() { filterCategory(this, ''); });
+    pillsEl.appendChild(allPill);
+    cats.forEach(function(c) {
+      var pill = document.createElement('span');
+      pill.className = 'cat-pill';
+      pill.textContent = c;
+      pill.dataset.cat = c;
+      pill.addEventListener('click', function() { filterCategory(this, c); });
+      pillsEl.appendChild(pill);
+    });
+  } catch (e) {}
+}
+
+function filterCategory(el, cat) {
+  activeCategory = cat;
+  var pills = document.querySelectorAll('.cat-pill');
+  pills.forEach(function(p) { p.classList.remove('active'); });
+  el.classList.add('active');
+  loadInventory(1);
+}
+
+function openLightbox(index) {
+  lightboxIndex = index;
+  document.getElementById('lightbox-img').src = lightboxPhotos[index];
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function navLightbox(dir) {
+  lightboxIndex = (lightboxIndex + dir + lightboxPhotos.length) % lightboxPhotos.length;
+  document.getElementById('lightbox-img').src = lightboxPhotos[lightboxIndex];
+}
+
+document.addEventListener('keydown', function(e) {
+  if (!document.getElementById('lightbox').classList.contains('open')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft') navLightbox(-1);
+  if (e.key === 'ArrowRight') navLightbox(1);
+});
+
+loadPage();
+</script>
+</body>
+</html>

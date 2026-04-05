@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports — Bowenstreet Market</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+    <style>
+        .report-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            align-items: center;
+            padding: 1rem 1.25rem;
+        }
+        .report-controls select,
+        .report-controls input {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+            font-family: 'Roboto', sans-serif;
+        }
+        .report-controls select { max-width: 260px; }
+        .report-controls input[type="date"] { max-width: 180px; }
+        .report-controls .date-sep { color: var(--text-light); font-size: 0.85rem; }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        .summary-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            text-align: center;
+        }
+        .summary-card .val {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.8rem;
+            font-weight: 500;
+            color: var(--gold);
+            line-height: 1.1;
+        }
+        .summary-card .lbl {
+            font-size: 0.7rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-top: 0.35rem;
+        }
+
+        .report-table { width: 100%; border-collapse: collapse; }
+        .report-table th {
+            text-align: left;
+            font-size: 0.7rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 0.6rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .report-table td {
+            padding: 0.6rem 0.75rem;
+            font-size: 0.9rem;
+            color: var(--text);
+            border-bottom: 1px solid var(--border);
+        }
+        .report-table tr:hover td { background: var(--gold-glow); }
+
+        .empty-msg {
+            color: var(--text-light);
+            text-align: center;
+            padding: 2.5rem 1rem;
+            font-style: italic;
+        }
+
+        .report-table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        @media (max-width: 767px) {
+            .main-content { padding-bottom: 70px; }
+            .report-controls { flex-direction: column; align-items: stretch; }
+            .report-controls select,
+            .report-controls input { max-width: 100%; }
+            .report-controls button { width: 100%; min-height: 44px; }
+            .summary-grid { grid-template-columns: 1fr 1fr; }
+            .summary-card .val { font-size: 1.4rem; }
+        }
+    </style>
+</head>
+<body>
+<script src="/static/js/theme-loader.js"></script>
+<nav class="navbar">
+    <a href="/admin/index.html" class="navbar-brand">
+        <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
+        <span class="store-name">Admin</span>
+    </a>
+    <div class="navbar-user">
+        <span id="user-name">Administrator</span>
+        <nav class="navbar-nav">
+            <a href="/admin/index.html">Dashboard</a>
+            <a href="/admin/reports.html" class="active">Reports</a>
+            <a href="/admin/eod-reports.html">EOD Reports</a>
+            <a href="/admin/studio.html">Studio</a>
+            <a href="/vendor/items.html">Items</a>
+            <a href="/admin/settings.html">Settings</a>
+            <a href="/pos/index.html">POS Terminal</a>
+            <button type="button" onclick="handleLogout()">Logout</button>
+        </nav>
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
+    </div>
+</nav>
+<div class="mobile-nav-dropdown" id="mobile-nav">
+    <a href="/admin/index.html">Dashboard</a>
+    <a href="/admin/reports.html" class="active">Reports</a>
+    <a href="/admin/eod-reports.html">EOD Reports</a>
+    <a href="/admin/studio.html">Studio</a>
+    <a href="/vendor/items.html">Items</a>
+    <a href="/admin/settings.html">Settings</a>
+    <a href="/pos/index.html">POS Terminal</a>
+    <button type="button" onclick="handleLogout()">Logout</button>
+</div>
+
+<div class="main-content">
+    <div id="alert-container"></div>
+    <div class="page-header">
+        <h1 class="page-title">Reports</h1>
+        <p style="font-family:'EB Garamond',serif;font-style:italic;color:var(--text-light);font-size:0.95rem;margin-top:0.25rem">
+            Sales analytics, vendor performance &amp; financial summaries
+        </p>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem">
+        <div class="report-controls">
+            <select id="reportType" onchange="loadReport()">
+                <option value="daily_sales">Daily Sales Summary</option>
+                <option value="vendor_performance">Vendor Performance</option>
+                <option value="top_items">Top Selling Items</option>
+                <option value="hourly_sales">Hourly Sales Pattern</option>
+                <option value="payment_methods">Payment Methods</option>
+                <option value="vendor_balances">Vendor Balances</option>
+            </select>
+            <input type="date" id="reportDateFrom">
+            <span class="date-sep">to</span>
+            <input type="date" id="reportDateTo">
+            <button class="btn btn-primary btn-sm" onclick="loadReport()">Generate</button>
+            <button class="btn btn-sm" style="background:transparent;border:1px solid var(--gold);color:var(--gold)" onclick="exportCSV()">Export CSV</button>
+        </div>
+    </div>
+
+    <div id="summaryCards" class="summary-grid"></div>
+
+    <div class="card">
+        <div id="reportContent" style="padding:1rem">
+            <p class="empty-msg">Select a report and click Generate</p>
+        </div>
+    </div>
+</div>
+
+<nav class="admin-bottom-nav">
+    <a href="/admin/index.html"><span class="nav-icon">&#127968;</span>Dashboard</a>
+    <a href="/admin/reports.html" class="active"><span class="nav-icon">&#128196;</span>Reports</a>
+    <a href="/vendor/items.html"><span class="nav-icon">&#127991;&#65039;</span>Items</a>
+    <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
+</nav>
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/auth-bootstrap.js?v=20260403b"></script>
+<script>
+    function toggleMobileNav() {
+        document.getElementById('mobile-nav').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+        var nav = document.getElementById('mobile-nav');
+        var btn = document.getElementById('hamburger-btn');
+        if (nav.classList.contains('open') && !nav.contains(e.target) && e.target !== btn) {
+            nav.classList.remove('open');
+        }
+    });
+    function handleLogout() { window.bmmAuth.logout(); }
+
+    var today = new Date();
+    var thirtyAgo = new Date(today);
+    thirtyAgo.setDate(thirtyAgo.getDate() - 30);
+    document.getElementById('reportDateFrom').value = thirtyAgo.toISOString().split('T')[0];
+    document.getElementById('reportDateTo').value = today.toISOString().split('T')[0];
+
+    var currentReportData = [];
+
+    function localDateInputValue(d) {
+        var year = d.getFullYear();
+        var month = String(d.getMonth() + 1).padStart(2, '0');
+        var day = String(d.getDate()).padStart(2, '0');
+        return year + '-' + month + '-' + day;
+    }
+
+    function resolveDateParam(value) {
+        if (!value) return '';
+        if (value === 'today') return localDateInputValue(new Date());
+        if (value === 'yesterday') {
+            var d = new Date();
+            d.setDate(d.getDate() - 1);
+            return localDateInputValue(d);
+        }
+        return value;
+    }
+
+    function applyQueryPreset() {
+        var params = new URLSearchParams(window.location.search);
+        var type = params.get('type');
+        var preset = params.get('preset');
+        var from = params.get('from');
+        var to = params.get('to');
+
+        if (type) {
+            var typeSelect = document.getElementById('reportType');
+            if (Array.from(typeSelect.options).some(function(opt) { return opt.value === type; })) {
+                typeSelect.value = type;
+            }
+        }
+
+        if (preset === 'today') {
+            var todayValue = localDateInputValue(new Date());
+            document.getElementById('reportDateFrom').value = todayValue;
+            document.getElementById('reportDateTo').value = todayValue;
+            return;
+        }
+
+        if (from) document.getElementById('reportDateFrom').value = resolveDateParam(from);
+        if (to) document.getElementById('reportDateTo').value = resolveDateParam(to);
+    }
+
+    async function loadReport() {
+        var type = document.getElementById('reportType').value;
+        var from = document.getElementById('reportDateFrom').value;
+        var to = document.getElementById('reportDateTo').value;
+        var content = document.getElementById('reportContent');
+        var summary = document.getElementById('summaryCards');
+
+        content.innerHTML = '<p class="empty-msg">Loading…</p>';
+        summary.innerHTML = '';
+
+        try {
+            var data = await apiGet('/api/v1/admin/reports/' + type + '?from_date=' + from + '&to_date=' + to);
+            currentReportData = data.rows || [];
+            renderSummary(type, data);
+            renderTable(type, data);
+        } catch (e) {
+            content.innerHTML = '<p style="color:var(--danger);text-align:center;padding:2rem">' + (e.message || 'Failed to load report') + '</p>';
+            summary.innerHTML = '';
+        }
+    }
+
+    function fmtMoney(v) { return '$' + (v || 0).toFixed(2); }
+
+    function renderSummary(type, data) {
+        var el = document.getElementById('summaryCards');
+        if (!data.summary) { el.innerHTML = ''; return; }
+        var s = data.summary;
+        var cards = [];
+
+        if (type === 'daily_sales') {
+            cards = [
+                { val: fmtMoney(s.total_revenue), lbl: 'Total Revenue' },
+                { val: s.total_transactions, lbl: 'Transactions' },
+                { val: s.total_items_sold, lbl: 'Items Sold' },
+                { val: fmtMoney(s.avg_transaction), lbl: 'Avg Transaction' },
+            ];
+        } else if (type === 'vendor_performance') {
+            cards = [
+                { val: s.active_vendors, lbl: 'Active Vendors' },
+                { val: fmtMoney(s.total_vendor_sales), lbl: 'Total Sales' },
+                { val: fmtMoney(s.avg_vendor_sales), lbl: 'Avg per Vendor' },
+            ];
+        } else if (type === 'top_items') {
+            cards = [
+                { val: s.unique_items, lbl: 'Unique Items' },
+                { val: s.total_quantity, lbl: 'Total Qty Sold' },
+                { val: fmtMoney(s.total_item_revenue), lbl: 'Total Revenue' },
+            ];
+        } else if (type === 'hourly_sales') {
+            cards = [
+                { val: s.total_transactions, lbl: 'Transactions' },
+                { val: fmtMoney(s.total_amount), lbl: 'Total Amount' },
+            ];
+        } else if (type === 'payment_methods') {
+            cards = [
+                { val: s.total_transactions, lbl: 'Transactions' },
+                { val: fmtMoney(s.total_amount), lbl: 'Total Amount' },
+            ];
+        } else if (type === 'vendor_balances') {
+            cards = [
+                { val: s.total_vendors, lbl: 'Active Vendors' },
+                { val: fmtMoney(s.total_balance), lbl: 'Total Owed' },
+                { val: fmtMoney(s.avg_balance), lbl: 'Avg Balance' },
+            ];
+        }
+
+        el.innerHTML = cards.map(function(c) {
+            return '<div class="summary-card"><div class="val">' + c.val + '</div><div class="lbl">' + c.lbl + '</div></div>';
+        }).join('');
+    }
+
+    function renderTable(type, data) {
+        var el = document.getElementById('reportContent');
+        var rows = data.rows || [];
+        if (!rows.length) {
+            el.innerHTML = '<p class="empty-msg">No data found for this date range</p>';
+            return;
+        }
+
+        var cols = data.columns || Object.keys(rows[0]);
+        var html = '<div style="overflow-x:auto"><table class="report-table"><thead><tr>';
+        cols.forEach(function(c) {
+            html += '<th>' + c.replace(/_/g, ' ').replace(/\b\w/g, function(l) { return l.toUpperCase(); }) + '</th>';
+        });
+        html += '</tr></thead><tbody>';
+        rows.forEach(function(row) {
+            html += '<tr>';
+            cols.forEach(function(c) {
+                var v = row[c];
+                if (typeof v === 'number' && c.match(/amount|revenue|sales|balance|total|avg|price|pct/i)) {
+                    v = c.match(/pct/i) ? v + '%' : '$' + v.toFixed(2);
+                }
+                html += '<td>' + (v !== null && v !== undefined ? v : '-') + '</td>';
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        el.innerHTML = html;
+    }
+
+    function exportCSV() {
+        if (!currentReportData.length) { alert('No data to export'); return; }
+        var cols = Object.keys(currentReportData[0]);
+        var csv = cols.join(',') + '\n';
+        currentReportData.forEach(function(row) {
+            csv += cols.map(function(c) {
+                var v = row[c];
+                if (v === null || v === undefined) v = '';
+                v = String(v);
+                if (v.indexOf(',') !== -1 || v.indexOf('"') !== -1)
+                    v = '"' + v.replace(/"/g, '""') + '"';
+                return v;
+            }).join(',') + '\n';
+        });
+        var blob = new Blob([csv], { type: 'text/csv' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = document.getElementById('reportType').value + '_' + document.getElementById('reportDateFrom').value + '.csv';
+        a.click();
+    }
+
+    async function init() {
+        var session = await window.bmmAuth.requirePageAccess({
+            access: 'canViewReports',
+            userNameId: 'user-name',
+            title: 'Reports Not Enabled',
+            message: 'Sales reports are not enabled for your current role.'
+        });
+        if (!session) return;
+        applyQueryPreset();
+        loadReport();
+    }
+
+    init();
+</script>
+<script src="/static/js/assistant-panel.js"></script>
+<script>
+    if (typeof initAssistantPanel === 'function') {
+        initAssistantPanel('Admin reports page', { buttonBottom: '70px' });
+    }
+</script>
+</body>
+</html>

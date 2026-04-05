@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payouts — BMM-POS</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+    <style>
+        .page-subtitle {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-style: italic;
+            font-size: 0.95rem;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-top: 0.25rem;
+        }
+
+        .payout-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .payout-stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.25rem 1.3rem;
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+        .payout-stat-card:hover { border-color: var(--warm-border); box-shadow: var(--shadow-warm); }
+        .payout-stat-title {
+            font-size: 0.6rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.14em;
+            margin-bottom: 0.5rem;
+            font-family: 'Roboto', sans-serif;
+        }
+        .payout-stat-value {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-size: 2rem;
+            font-weight: 500;
+            color: var(--text);
+            line-height: 1;
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .process-btn {
+            background: color-mix(in srgb, var(--success-light) 12%, transparent);
+            color: var(--success-light);
+            border: 1px solid color-mix(in srgb, var(--success-light) 30%, transparent);
+            padding: 0.6rem 1.5rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .process-btn:hover { background: color-mix(in srgb, var(--success-light) 22%, transparent); border-color: color-mix(in srgb, var(--success-light) 50%, transparent); }
+        .process-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .reminder-btn {
+            background: color-mix(in srgb, var(--warning) 12%, transparent);
+            color: var(--warning);
+            border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+            padding: 0.6rem 1.5rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .reminder-btn:hover { background: color-mix(in srgb, var(--warning) 22%, transparent); border-color: color-mix(in srgb, var(--warning) 50%, transparent); }
+        .reminder-btn.reminder-btn--green {
+            background: color-mix(in srgb, var(--success) 40%, var(--bg));
+            border-color: color-mix(in srgb, var(--success) 55%, var(--border));
+            color: var(--success-light);
+        }
+        .reminder-btn.reminder-btn--green:hover {
+            background: color-mix(in srgb, var(--success) 50%, var(--bg));
+            border-color: color-mix(in srgb, var(--success) 65%, var(--border));
+        }
+        .reminder-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .already-processed-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: color-mix(in srgb, var(--success-light) 10%, transparent);
+            color: var(--success-light);
+            border: 1px solid color-mix(in srgb, var(--success-light) 25%, transparent);
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .shortfall-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 0.6rem;
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: color-mix(in srgb, var(--danger) 10%, transparent);
+            color: var(--danger);
+            border: 1px solid color-mix(in srgb, var(--danger) 25%, transparent);
+            font-family: 'Roboto', sans-serif;
+        }
+        .rent-paid-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 0.6rem;
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            background: color-mix(in srgb, var(--success-light) 10%, transparent);
+            color: var(--success-light);
+            border: 1px solid color-mix(in srgb, var(--success-light) 25%, transparent);
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .confirm-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: color-mix(in srgb, black 55%, transparent);
+            z-index: 950;
+            animation: fadeIn 0.2s;
+        }
+        .confirm-overlay.open { display: flex; align-items: center; justify-content: center; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .confirm-modal {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            width: min(440px, 92vw);
+            padding: 1.5rem;
+        }
+        .confirm-modal h3 {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-weight: 500;
+            font-size: 1.25rem;
+            color: var(--text);
+            margin: 0 0 1rem;
+        }
+        .confirm-modal p {
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin: 0 0 1.25rem;
+            line-height: 1.5;
+        }
+        .confirm-actions {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+        }
+        .confirm-cancel {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            padding: 0.5rem 1.25rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.82rem;
+        }
+        .confirm-go {
+            background: var(--success-light);
+            border: 1px solid var(--success-light);
+            color: var(--charcoal-deep);
+            padding: 0.5rem 1.25rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 600;
+        }
+        .confirm-go:hover { background: color-mix(in srgb, var(--success-light) 85%, var(--text)); }
+
+        .payout-cards-mobile { display: none; flex-direction: column; gap: 0.75rem; }
+        .payout-mob-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1rem;
+        }
+        .payout-mob-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        .payout-mob-name { font-family: 'EB Garamond', serif; font-size: 1.05rem; font-weight: 500; }
+        .payout-mob-booth { font-size: 0.75rem; color: var(--text-light); margin-top: 2px; }
+        .payout-mob-net { font-family: 'EB Garamond', serif; font-size: 1.15rem; font-weight: 600; color: var(--success-light); text-align: right; }
+        .payout-mob-row { display: flex; justify-content: space-between; font-size: 0.82rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
+        .payout-mob-label { color: var(--text-light); }
+
+        @media (max-width: 767px) {
+            .payout-stat-value { font-size: 1.6rem; }
+            .main-content { padding-bottom: 70px; }
+            .table-wrapper { display: none; }
+            .payout-cards-mobile { display: flex; }
+            .action-bar { flex-direction: column; }
+            .action-bar .process-btn,
+            .action-bar .reminder-btn { width: 100%; text-align: center; min-height: 48px; }
+            .confirm-actions { flex-direction: column-reverse; }
+            .confirm-actions button { width: 100%; min-height: 48px; }
+        }
+    </style>
+</head>
+<body>
+<script src="/static/js/theme-loader.js"></script>
+
+<nav class="navbar">
+    <a href="/admin/index.html" class="navbar-brand">
+        <img src="/static/images/logo.webp" alt="Bowenstreet Market" class="navbar-logo">
+        <span class="store-name">Admin</span>
+    </a>
+    <div class="navbar-user">
+        <span id="user-name">Administrator</span>
+        <nav class="navbar-nav">
+            <a href="/admin/index.html">Dashboard</a>
+            <a href="/admin/rent.html">Rent</a>
+            <a href="/vendor/items.html">Items</a>
+            <a href="/admin/studio.html">Studio</a>
+            <a href="/admin/reports.html">Reports</a>
+            <a href="/admin/eod-reports.html">EOD Reports</a>
+            <a href="/admin/payouts.html" class="active">Payouts</a>
+            <a href="/admin/settings.html">Settings</a>
+            <a href="/pos/index.html">POS Terminal</a>
+            <button type="button" onclick="handleLogout()">Logout</button>
+        </nav>
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
+    </div>
+</nav>
+<div class="mobile-nav-dropdown" id="mobile-nav">
+    <a href="/admin/index.html">Dashboard</a>
+    <a href="/admin/rent.html">Rent</a>
+    <a href="/vendor/items.html">Items</a>
+    <a href="/admin/studio.html">Studio</a>
+    <a href="/admin/reports.html">Reports</a>
+    <a href="/admin/eod-reports.html">EOD Reports</a>
+    <a href="/admin/payouts.html" class="active">Payouts</a>
+    <a href="/admin/settings.html">Settings</a>
+    <a href="/pos/index.html">POS Terminal</a>
+    <button type="button" onclick="handleLogout()">Logout</button>
+</div>
+
+<div class="main-content">
+    <div id="alert-container"></div>
+    <div class="page-header">
+        <h1 class="page-title">Vendor Payouts</h1>
+        <p class="page-subtitle">Process monthly payouts with automatic rent deduction</p>
+        <span id="period-label" style="color:var(--text-light);font-size:0.95rem;"></span>
+    </div>
+
+    <div class="payout-stats">
+        <div class="payout-stat-card">
+            <div class="payout-stat-title">Gross Sales</div>
+            <div class="payout-stat-value" id="stat-gross">&mdash;</div>
+        </div>
+        <div class="payout-stat-card">
+            <div class="payout-stat-title">Rent Deducted</div>
+            <div class="payout-stat-value" style="color:var(--danger)" id="stat-rent">&mdash;</div>
+        </div>
+        <div class="payout-stat-card">
+            <div class="payout-stat-title">Net Payouts</div>
+            <div class="payout-stat-value" style="color:var(--success-light)" id="stat-net">&mdash;</div>
+        </div>
+        <div class="payout-stat-card">
+            <div class="payout-stat-title">Carry Forward</div>
+            <div class="payout-stat-value" style="color:var(--gold)" id="stat-carry">&mdash;</div>
+        </div>
+        <div class="payout-stat-card">
+            <div class="payout-stat-title">Shortfalls</div>
+            <div class="payout-stat-value" style="color:var(--warning)" id="stat-shortfalls">&mdash;</div>
+        </div>
+    </div>
+
+    <div class="ornament">&loz;</div>
+
+    <div class="action-bar">
+        <button class="process-btn" id="process-btn" onclick="confirmProcess()">Process Payouts</button>
+        <button class="reminder-btn" id="reminder-btn" onclick="sendReminders()">Send Rent Reminders</button>
+        <button class="reminder-btn reminder-btn--green" id="weekly-btn" onclick="sendWeeklyReports()">Send Weekly Reports</button>
+        <span id="processed-badge" style="display:none"></span>
+    </div>
+
+    <div class="section">
+        <div class="card">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Vendor</th>
+                            <th>Booth</th>
+                            <th>Gross Sales</th>
+                            <th>Rent</th>
+                            <th>Payout Mode</th>
+                            <th>Net Payout</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payout-table-body">
+                        <tr><td colspan="7" class="loading">Loading&hellip;</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="payout-cards-mobile" id="payout-cards-mobile"></div>
+    </div>
+</div>
+
+<div class="confirm-overlay" id="confirm-overlay" onclick="closeConfirm()">
+    <div class="confirm-modal" onclick="event.stopPropagation()">
+        <h3>Confirm Payout Processing</h3>
+        <p id="confirm-msg">This will process payouts for the current month, deducting rent from vendor sales. Vendors will be notified by email. This action cannot be undone.</p>
+        <div class="confirm-actions">
+            <button class="confirm-cancel" onclick="closeConfirm()">Cancel</button>
+            <button class="confirm-go" id="confirm-go-btn" onclick="doProcessPayouts()">Process Payouts</button>
+        </div>
+    </div>
+</div>
+
+<nav class="admin-bottom-nav">
+    <a href="/admin/index.html"><span class="nav-icon">&#127968;</span>Dashboard</a>
+    <a href="/admin/rent.html"><span class="nav-icon">&#128179;</span>Rent</a>
+    <a href="/admin/payouts.html" class="active"><span class="nav-icon">&#128176;</span>Payouts</a>
+    <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
+</nav>
+
+<script src="/static/js/api.js"></script>
+<script src="/static/js/auth-bootstrap.js?v=20260403b"></script>
+<script>
+    function handleLogout() { window.bmmAuth.logout(); }
+    function toggleMobileNav() { document.getElementById('mobile-nav').classList.toggle('open'); }
+    document.addEventListener('click', function(e) {
+        var nav = document.getElementById('mobile-nav');
+        var btn = document.getElementById('hamburger-btn');
+        if (nav.classList.contains('open') && !nav.contains(e.target) && e.target !== btn) {
+            nav.classList.remove('open');
+        }
+    });
+
+    var payoutData = null;
+
+    function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+    function renderTable(vendors) {
+        var tbody = document.getElementById('payout-table-body');
+        var mobileCards = document.getElementById('payout-cards-mobile');
+        if (!vendors || vendors.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No vendors found.</td></tr>';
+            mobileCards.innerHTML = '<div class="empty-state">No vendors found.</div>';
+            return;
+        }
+
+        function statusHtml(v) {
+            if (v.shortfall > 0) return '<span class="shortfall-badge">Shortfall $' + v.shortfall.toFixed(2) + '</span>';
+            if (!v.auto_payout_enabled && v.carry_forward > 0) return '<span class="rent-paid-badge">Carried Forward</span>';
+            if (v.rent_already_paid) return '<span class="rent-paid-badge">Rent Paid</span>';
+            if (v.rent_to_deduct > 0) return '<span style="font-size:0.75rem;color:var(--text-light)">Rent from sales</span>';
+            return '<span style="font-size:0.75rem;color:var(--text-light)">No rent</span>';
+        }
+
+        tbody.innerHTML = vendors.map(function(v) {
+            return '<tr>'
+                + '<td><strong>' + esc(v.name) + '</strong></td>'
+                + '<td>' + esc(v.booth_number) + '</td>'
+                + '<td>$' + v.gross_sales.toFixed(2) + '</td>'
+                + '<td>' + (v.rent_already_paid ? '<s style="color:var(--text-light)">$' + v.monthly_rent.toFixed(2) + '</s> <small style="color:var(--success-light)">paid</small>' : '$' + v.rent_to_deduct.toFixed(2)) + '</td>'
+                + '<td>' + (v.auto_payout_enabled ? 'Monthly payout' : 'Carry balance') + '</td>'
+                + '<td style="font-weight:600;color:' + (v.auto_payout_enabled ? 'var(--success-light)' : 'var(--gold)') + '">'
+                + (v.auto_payout_enabled ? '$' + v.net_payout.toFixed(2) : '$' + v.carry_forward.toFixed(2))
+                + (v.auto_payout_enabled ? '' : '<div style="font-size:0.72rem;color:var(--text-light);font-weight:400">kept on account</div>')
+                + '</td>'
+                + '<td>' + statusHtml(v) + '</td>'
+                + '</tr>';
+        }).join('');
+
+        mobileCards.innerHTML = vendors.map(function(v) {
+            return '<div class="payout-mob-card">'
+                + '<div class="payout-mob-top">'
+                + '<div><div class="payout-mob-name">' + esc(v.name) + '</div>'
+                + '<div class="payout-mob-booth">Booth ' + esc(v.booth_number) + '</div></div>'
+                + '<div class="payout-mob-net">$' + v.net_payout.toFixed(2) + '</div>'
+                + '</div>'
+                + '<div class="payout-mob-row"><span class="payout-mob-label">Gross Sales</span><span>$' + v.gross_sales.toFixed(2) + '</span></div>'
+                + '<div class="payout-mob-row"><span class="payout-mob-label">Rent</span><span>' + (v.rent_already_paid ? '<s>$' + v.monthly_rent.toFixed(2) + '</s> paid' : '$' + v.rent_to_deduct.toFixed(2)) + '</span></div>'
+                + '<div class="payout-mob-row"><span class="payout-mob-label">Mode</span><span>' + (v.auto_payout_enabled ? 'Monthly payout' : 'Carry balance') + '</span></div>'
+                + '<div class="payout-mob-row"><span class="payout-mob-label">Status</span><span>' + statusHtml(v) + '</span></div>'
+                + '</div>';
+        }).join('');
+    }
+
+    async function loadPreview() {
+        var session = await window.bmmAuth.requirePageAccess({
+            access: 'canViewPayouts',
+            userNameId: 'user-name',
+            title: 'Payout Tools Restricted',
+            message: 'Payout preview access is not enabled for your current role.'
+        });
+        if (!session) return;
+        document.getElementById('process-btn').disabled = !session.canManageRent;
+        document.getElementById('reminder-btn').disabled = !session.canManageRent;
+        document.getElementById('weekly-btn').disabled = !session.canViewReports;
+
+        try {
+            payoutData = await apiGet('/api/v1/admin/payout-preview');
+
+            document.getElementById('period-label').textContent = payoutData.period;
+            document.getElementById('stat-gross').textContent = '$' + payoutData.totals.gross_sales.toFixed(2);
+            document.getElementById('stat-rent').textContent = '$' + payoutData.totals.rent_deducted.toFixed(2);
+            document.getElementById('stat-net').textContent = '$' + payoutData.totals.net_payouts.toFixed(2);
+            document.getElementById('stat-carry').textContent = '$' + payoutData.totals.carry_forward.toFixed(2);
+            document.getElementById('stat-shortfalls').textContent = '$' + payoutData.totals.shortfalls.toFixed(2);
+
+            if (payoutData.already_processed) {
+                document.getElementById('process-btn').disabled = true;
+                document.getElementById('process-btn').textContent = 'Already Processed';
+                document.getElementById('processed-badge').style.display = '';
+                document.getElementById('processed-badge').innerHTML = '<span class="already-processed-badge">Payouts processed for ' + esc(payoutData.period) + '</span>';
+            }
+
+            renderTable(payoutData.vendors);
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+            document.getElementById('payout-table-body').innerHTML =
+                '<tr><td colspan="7" class="empty-state">Failed to load payout data.</td></tr>';
+        }
+    }
+
+    function confirmProcess() {
+        if (!payoutData || payoutData.already_processed) return;
+        document.getElementById('confirm-msg').textContent =
+            'This will process payouts for ' + payoutData.period + ', deducting rent from vendor sales. '
+            + 'Vendors set to monthly payout will be paid out, and vendors set to carry balance will keep their remaining balance on account. '
+            + 'This action cannot be undone.';
+        document.getElementById('confirm-overlay').classList.add('open');
+    }
+
+    function closeConfirm() {
+        document.getElementById('confirm-overlay').classList.remove('open');
+    }
+
+    async function doProcessPayouts() {
+        var btn = document.getElementById('confirm-go-btn');
+        btn.disabled = true;
+        btn.textContent = 'Processing…';
+        try {
+            var result = await apiPost('/api/v1/admin/process-payouts', {});
+            closeConfirm();
+            showAlert('alert-container',
+                result.message + ' ' + result.processed + ' vendors processed, '
+                + result.shortfalls + ' with shortfalls. Total net: $' + result.total_net_payouts.toFixed(2),
+                'success');
+            await loadPreview();
+        } catch (err) {
+            showAlert('alert-container', err.message || 'Failed to process payouts.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Process Payouts';
+        }
+    }
+
+    async function sendReminders() {
+        var btn = document.getElementById('reminder-btn');
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+        try {
+            var result = await apiPost('/api/v1/admin/send-rent-reminders', {});
+            showAlert('alert-container', result.message, 'success');
+        } catch (err) {
+            showAlert('alert-container', err.message || 'Failed to send reminders.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Send Rent Reminders';
+        }
+    }
+
+    async function sendWeeklyReports() {
+        var btn = document.getElementById('weekly-btn');
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+        try {
+            var result = await apiPost('/api/v1/admin/send-weekly-reports', {});
+            showAlert('alert-container', result.message, 'success');
+        } catch (err) {
+            showAlert('alert-container', err.message || 'Failed to send weekly reports.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Send Weekly Reports';
+        }
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeConfirm();
+    });
+
+    loadPreview();
+</script>
+</body>
+</html>

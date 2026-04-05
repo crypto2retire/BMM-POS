@@ -1,0 +1,18 @@
+# Bowenstreet Market Mall
+> A 120-vendor antique and vintage marketplace in Oshkosh, Wisconsin
+
+## About
+Bowenstreet Market Mall is a curated multi-vendor marketplace featuring handcrafted, vintage, and antique goods. Located at 2837 Bowen St, Oshkosh WI 54901.
+
+## Shop
+Browse our vendors' items at /shop/index.html
+Each vendor has their own booth with unique inventory.
+
+## For Vendors
+Vendor portal: /vendor/login.html
+- Manage your inventory and pricing
+- View sales history and balance
+- Upload item photos
+
+## Contact
+Visit us at 2837 Bowen St, Oshkosh WI 54901

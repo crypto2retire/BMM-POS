@@ -1,0 +1,84 @@
+Make the vendor dashboard fully mobile-friendly for phones and tablets. Vendors use their phones to add items and upload photos.
+
+STEP 1 — Update frontend/static/css/main.css
+
+Add a complete mobile-first responsive system:
+
+Base mobile styles (applied always, no media query needed):
+- All inputs, selects, textareas: font-size 16px minimum (prevents iOS auto-zoom), padding 12px, width 100%, box-sizing border-box
+- All buttons: minimum height 44px, minimum width 44px (Apple/Google touch target standard), font-size 16px
+- Forms: single column layout, fields stacked vertically with 16px gap between them
+- Tables: do not use horizontal scroll — hide on mobile, replace with cards (see Step 3)
+- Navigation bar: hamburger menu on mobile, full horizontal nav on desktop
+- Modal/overlay forms: full screen on mobile (top 0, left 0, width 100%, height 100%, overflow-y scroll)
+- Cards: full width on mobile, padding 16px
+- Photo upload area: large tap target, minimum 120px tall, clear "Tap to add photo" label
+
+Tablet styles (min-width 768px):
+- Two column form layout for shorter fields (name + price side by side, etc.)
+- Modal forms: centered, max-width 600px, not full screen
+
+Desktop styles (min-width 1024px):
+- Original desktop layout restored
+- Tables visible again
+- Sidebar or horizontal nav
+
+STEP 2 — Update frontend/vendor/dashboard.html
+
+- Stack all summary cards vertically on mobile, horizontally on desktop
+- Replace the sales table with a card list on mobile: each sale is a card showing date, item name, amount
+- Add a large prominent "Add New Item" button at the top of the page on mobile
+- Navigation: show vendor name and a logout button, make sure logout is easy to tap
+- All text minimum 14px
+
+STEP 3 — Update frontend/vendor/items.html — this is the most important page
+
+Mobile item list (replaces table on small screens):
+- Each item is a card with: item photo thumbnail (if exists) on the left, item name and price on the right, status badge, sale price in red if active
+- Below each card: row of action buttons — Edit, Print Label, Delete — each at least 44px tall
+- Cards have enough padding to tap comfortably
+
+Add/Edit item form — make it work great on phones:
+- Full screen modal on mobile
+- Photo upload first at the top — large tap target, show thumbnail preview immediately after selecting
+- Support camera capture on mobile: the file input should include accept="image/*" capture="environment" so iPhone/Android offer the camera directly
+- Fields in this order: Photo, Name, Category (dropdown), Price, Sale Price, Sale Start, Sale End, Quantity, Description (textarea), Online listing toggle, Tax exempt toggle, Label style
+- All date fields: use type="date" HTML input (native mobile date picker)
+- Save button: full width, large, teal, fixed at bottom of screen on mobile so it is always visible without scrolling
+- Cancel button: above save button or in top-right corner as X
+
+STEP 4 — Add a bottom navigation bar for mobile vendor pages
+
+On screens narrower than 768px, show a fixed bottom nav bar with 3 icons:
+- House icon → /vendor/dashboard.html (labeled "Home")
+- Tag icon → /vendor/items.html (labeled "Items")  
+- Person icon → logout (labeled "Logout")
+
+Use simple Unicode characters for icons since we have no icon library:
+- 🏠 Home
+- 🏷️ Items
+- 🚪 Logout
+
+The bottom nav should be: fixed position, bottom 0, full width, background white, border-top 1px solid #e5e7eb, display flex, justify-content space-around, padding 8px 0, z-index 100
+
+STEP 5 — Update frontend/vendor/login.html
+
+- Center card should be full width with 16px margin on mobile
+- Input fields full width
+- Login button full width, 48px tall
+- Keyboard should not cover the login button — add padding-bottom to the form
+
+STEP 6 — Test on mobile sizes
+
+After all changes, verify the pages render correctly at these widths by checking the CSS:
+- 375px (iPhone SE)
+- 390px (iPhone 14)  
+- 768px (iPad)
+- 1024px (desktop)
+
+Confirm:
+1. No horizontal scrolling on any vendor page at 375px width
+2. The add item form camera button works (accept and capture attributes present)
+3. All tap targets are at least 44px tall
+4. The save button is visible without scrolling on the add item form
+5. Date pickers use native HTML date inputs
