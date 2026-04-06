@@ -308,18 +308,10 @@ async def send_sale_digests(
     if x_cron_secret and cron_secret and x_cron_secret == cron_secret:
         pass  # Cron auth OK
     elif authorization:
-        # Fall back to normal admin JWT check
-        from app.routers.auth import require_admin as _require_admin_fn
-        # Manual JWT validation — extract token and verify
-        from app.routers.auth import get_current_user
-        from fastapi import Request
-        token = authorization.replace("Bearer ", "") if authorization.startswith("Bearer ") else authorization
+        from app.routers.auth import get_user_from_authorization_header
         try:
-            from jose import jwt as jose_jwt
-            from app.routers.auth import SECRET_KEY, ALGORITHM
-            payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            role = payload.get("role")
-            if role != "admin":
+            user = await get_user_from_authorization_header(authorization, db)
+            if user.role != "admin":
                 raise HTTPException(status_code=403, detail="Admin only")
         except HTTPException:
             raise

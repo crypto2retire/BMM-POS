@@ -107,6 +107,7 @@ async def run():
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS rent_flagged BOOLEAN NOT NULL DEFAULT false",
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true",
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS is_vendor BOOLEAN NOT NULL DEFAULT false",
+            "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS auth_version INTEGER NOT NULL DEFAULT 0",
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(5,4) NOT NULL DEFAULT 0.1000",
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS label_preference VARCHAR(20) NOT NULL DEFAULT 'dymo'",
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS pdf_label_size VARCHAR(30) NOT NULL DEFAULT '2.25x1.25'",

@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from collections import defaultdict
 import logging
+import secrets
 import time
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -28,6 +29,7 @@ SECRET_KEY = _cfg.secret_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 480
 RESET_TOKEN_EXPIRE_MINUTES = 60
+MIN_PASSWORD_LENGTH = 10
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -51,12 +53,16 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
-    credentials_exception = HTTPException(
+def _build_credentials_exception() -> HTTPException:
+    return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
+
+
+async def _resolve_user_from_token(token: str, db: AsyncSession) -> Vendor:
+    credentials_exception = _build_credentials_exception()
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
@@ -67,9 +73,30 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
 
     result = await db.execute(select(Vendor).where(Vendor.email == email))
     user = result.scalar_one_or_none()
-    if user is None:
+    if user is None or not user.is_active:
         raise credentials_exception
+
+    token_auth_version = int(payload.get("av", 0) or 0)
+    current_auth_version = int(getattr(user, "auth_version", 0) or 0)
+    if token_auth_version != current_auth_version:
+        raise credentials_exception
+
     return user
+
+
+async def get_user_from_authorization_header(authorization: str, db: AsyncSession) -> Vendor:
+    token = authorization.replace("Bearer ", "", 1).strip() if authorization.lower().startswith("bearer ") else authorization.strip()
+    if not token:
+        raise _build_credentials_exception()
+    return await _resolve_user_from_token(token, db)
+
+
+async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+    return await _resolve_user_from_token(token, db)
+
+
+def bump_auth_version(user: Vendor) -> None:
+    user.auth_version = int(getattr(user, "auth_version", 0) or 0) + 1
 
 def require_role(*roles):
     async def role_checker(current_user: Vendor = Depends(get_current_user)):
@@ -110,6 +137,7 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
         "role": user.role,
         "vendor_id": user.id,
         "name": user.name,
+        "av": int(getattr(user, "auth_version", 0) or 0),
         "is_vendor": is_vendor,
         "booth_number": booth_number,
         "assistant_name": assistant_name,
@@ -221,6 +249,7 @@ async def refresh_token(current_user: Vendor = Depends(get_current_user)):
             "role": current_user.role,
             "vendor_id": current_user.id,
             "name": current_user.name,
+            "av": int(getattr(current_user, "auth_version", 0) or 0),
             "is_vendor": getattr(current_user, 'is_vendor', False) or False,
             "booth_number": getattr(current_user, 'booth_number', None),
             "assistant_name": getattr(current_user, 'assistant_name', None),
@@ -242,20 +271,23 @@ class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
 
-def _create_reset_token(email: str) -> str:
+def _create_reset_token(email: str, auth_version: int) -> str:
     expire = datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
     return jwt.encode(
-        {"sub": email, "purpose": "password_reset", "exp": expire},
+        {"sub": email, "purpose": "password_reset", "av": int(auth_version or 0), "exp": expire},
         SECRET_KEY,
         algorithm=ALGORITHM,
     )
 
-def _verify_reset_token(token: str) -> Optional[str]:
+def _verify_reset_token(token: str) -> Optional[tuple[str, int]]:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("purpose") != "password_reset":
             return None
-        return payload.get("sub")
+        email = payload.get("sub")
+        if not email:
+            return None
+        return email, int(payload.get("av", 0) or 0)
     except JWTError:
         return None
 
@@ -269,7 +301,7 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
     if not user:
         return {"detail": "If that email exists in our system, a reset link has been sent."}
 
-    token = _create_reset_token(user.email)
+    token = _create_reset_token(user.email, int(getattr(user, "auth_version", 0) or 0))
 
     import os
     base_url = os.environ.get("BASE_URL", "")
@@ -324,12 +356,13 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
 
 @router.post("/reset-password")
 async def reset_password_with_token(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
-    if len(body.new_password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if len(body.new_password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
 
-    email = _verify_reset_token(body.token)
-    if not email:
+    verified = _verify_reset_token(body.token)
+    if not verified:
         raise HTTPException(status_code=400, detail="Invalid or expired reset link. Please request a new one.")
+    email, token_auth_version = verified
 
     result = await db.execute(
         select(Vendor).where(func.lower(Vendor.email) == email.lower())
@@ -337,9 +370,12 @@ async def reset_password_with_token(body: ResetPasswordRequest, db: AsyncSession
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=400, detail="Account not found")
+    if int(getattr(user, "auth_version", 0) or 0) != token_auth_version:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link. Please request a new one.")
 
     user.password_hash = get_password_hash(body.new_password)
     user.password_changed = True
+    bump_auth_version(user)
     await db.commit()
 
     logger.info(f"Password reset completed for {user.email}")
@@ -352,14 +388,15 @@ async def change_password(
     current_user: Vendor = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if len(body.new_password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if len(body.new_password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
 
     if not verify_password(body.current_password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
 
     current_user.password_hash = get_password_hash(body.new_password)
     current_user.password_changed = True
+    bump_auth_version(current_user)
     await db.commit()
 
     return {"detail": "Password changed successfully"}

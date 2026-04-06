@@ -829,15 +829,35 @@ async def poynt_callback(
     elif raw_status.upper() in ("DECLINED", "VOIDED", "REFUNDED", "FAILED"):
         txn_status = "declined"
 
+    verified_status = "pending"
+    verified_txn_id = txn_id
+    try:
+        if txn_id:
+            verification = await poynt.verify_transaction(txn_id)
+            if verification.get("valid"):
+                verified_status = "approved"
+                verified_txn_id = verification.get("transaction_id") or verified_txn_id
+            elif str(verification.get("status", "")).upper() in ("DECLINED", "VOIDED", "REFUNDED", "FAILED"):
+                verified_status = "declined"
+        elif reference_id:
+            verification = await poynt.check_terminal_payment(reference_id)
+            verified_txn_id = verification.get("transaction_id") or verified_txn_id
+            if str(verification.get("status", "")).upper() == "APPROVED":
+                verified_status = "approved"
+            elif str(verification.get("status", "")).upper() == "DECLINED":
+                verified_status = "declined"
+    except Exception:
+        logger.exception("Poynt callback verification failed for reference_id=%s", reference_id)
+
     if reference_id:
         result = await db.execute(
             select(PoyntPayment).where(PoyntPayment.reference_id == reference_id)
         )
         payment = result.scalar_one_or_none()
-        if payment and payment.status == "pending":
-            payment.status = txn_status
-            if txn_id:
-                payment.poynt_transaction_id = txn_id
+        if payment and payment.status == "pending" and verified_status in {"approved", "declined"}:
+            payment.status = verified_status
+            if verified_txn_id:
+                payment.poynt_transaction_id = verified_txn_id
             await db.commit()
 
     return {"status": "ok"}

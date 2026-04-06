@@ -1,9 +1,9 @@
 import logging
-import os, re, asyncio, json, random
+import os, re, asyncio, json, random, secrets
 from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Header
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, text, func, or_
@@ -15,13 +15,12 @@ from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
 from app.models.item_image import ItemImage
 from app.config import settings
+from app.routers.auth import get_user_from_authorization_header
 from app.services import spaces as spaces_svc
 
 logger = logging.getLogger("bmm-data-sync")
 
 router = APIRouter(prefix="/data-sync", tags=["data-sync"])
-
-SYNC_SECRET = os.environ.get("ADMIN_PASSWORD", "")
 
 
 def _ser(val):
@@ -56,10 +55,35 @@ def _store_item_image_url(item_id: int, image_data: bytes, content_type: str, so
     return cdn_url or f"/api/v1/items/{item_id}/image"
 
 
+def _build_sync_headers() -> dict[str, str]:
+    secret = (settings.data_sync_secret or "").strip()
+    if not secret:
+        raise HTTPException(status_code=503, detail="DATA_SYNC_SECRET is not configured")
+    return {"X-Data-Sync-Secret": secret}
+
+
+async def require_data_sync_access(
+    db: AsyncSession = Depends(get_db),
+    authorization: Optional[str] = Header(None),
+    x_data_sync_secret: Optional[str] = Header(None),
+):
+    configured_secret = (settings.data_sync_secret or "").strip()
+    if x_data_sync_secret and configured_secret and secrets.compare_digest(x_data_sync_secret, configured_secret):
+        return None
+
+    if authorization:
+        user = await get_user_from_authorization_header(authorization, db)
+        if user.role == "admin":
+            return user
+
+    raise HTTPException(status_code=401, detail="Data sync access denied")
+
+
 @router.get("/export/vendors")
-async def export_vendors(key: str = Query(...), db: AsyncSession = Depends(get_db)):
-    if key != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid key")
+async def export_vendors(
+    db: AsyncSession = Depends(get_db),
+    _auth=Depends(require_data_sync_access),
+):
     result = await db.execute(select(Vendor))
     vendors = result.scalars().all()
     data = []
@@ -70,13 +94,11 @@ async def export_vendors(key: str = Query(...), db: AsyncSession = Depends(get_d
 
 @router.get("/export/items")
 async def export_items(
-    key: str = Query(...),
     offset: int = Query(0),
     limit: int = Query(5000),
     db: AsyncSession = Depends(get_db),
+    _auth=Depends(require_data_sync_access),
 ):
-    if key != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid key")
     total_result = await db.execute(select(func.count()).select_from(Item))
     total = total_result.scalar()
     result = await db.execute(select(Item).order_by(Item.id).offset(offset).limit(limit))
@@ -88,14 +110,16 @@ async def export_items(
 
 
 @router.post("/import/vendors")
-async def import_vendors(key: str = Query(...), source_url: str = Query(...), db: AsyncSession = Depends(get_db)):
-    if key != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid key")
+async def import_vendors(
+    source_url: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    _auth=Depends(require_data_sync_access),
+):
 
     import httpx
 
     async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.get(f"{source_url}/api/v1/data-sync/export/vendors?key={key}")
+        resp = await client.get(f"{source_url}/api/v1/data-sync/export/vendors", headers=_build_sync_headers())
         resp.raise_for_status()
         vendor_data = resp.json()
 
@@ -117,9 +141,11 @@ async def import_vendors(key: str = Query(...), source_url: str = Query(...), db
 
 
 @router.post("/import/items")
-async def import_items(key: str = Query(...), source_url: str = Query(...), db: AsyncSession = Depends(get_db)):
-    if key != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid key")
+async def import_items(
+    source_url: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    _auth=Depends(require_data_sync_access),
+):
 
     import httpx
 
@@ -133,7 +159,9 @@ async def import_items(key: str = Query(...), source_url: str = Query(...), db: 
     async with httpx.AsyncClient(timeout=120) as client:
         while True:
             resp = await client.get(
-                f"{source_url}/api/v1/data-sync/export/items?key={key}&offset={offset}&limit={batch_size}"
+                f"{source_url}/api/v1/data-sync/export/items",
+                params={"offset": offset, "limit": batch_size},
+                headers=_build_sync_headers(),
             )
             resp.raise_for_status()
             item_data = resp.json()
@@ -159,12 +187,13 @@ async def import_items(key: str = Query(...), source_url: str = Query(...), db: 
 
 
 @router.post("/import/all")
-async def import_all(key: str = Query(...), source_url: str = Query(...), db: AsyncSession = Depends(get_db)):
-    if key != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid key")
-
-    vendors_result = await import_vendors(key=key, source_url=source_url, db=db)
-    items_result = await import_items(key=key, source_url=source_url, db=db)
+async def import_all(
+    source_url: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+    _auth=Depends(require_data_sync_access),
+):
+    vendors_result = await import_vendors(source_url=source_url, db=db, _auth=True)
+    items_result = await import_items(source_url=source_url, db=db, _auth=True)
 
     vb_count = await db.execute(select(func.count()).select_from(VendorBalance))
 
@@ -183,11 +212,9 @@ class ImageMapping(BaseModel):
 @router.post("/apply-scraped-images")
 async def apply_scraped_images(
     mappings: List[ImageMapping],
-    secret: str = Query(...),
     db: AsyncSession = Depends(get_db),
+    _auth=Depends(require_data_sync_access),
 ):
-    if secret != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid secret")
 
     matched = 0
     updated = 0
@@ -237,13 +264,11 @@ RICO_CACHE_FILE = os.path.join(CACHE_DIR, "ricochet_product_cache.json")
 
 @router.post("/store-images-to-db")
 async def store_images_to_db(
-    secret: str = Query(...),
     batch_size: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
+    _auth=Depends(require_data_sync_access),
 ):
-    if secret != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid key")
 
     rico_files = sorted([
         f for f in os.listdir(SCRAPED_IMAGES_DIR)
@@ -347,11 +372,9 @@ async def store_images_to_db(
 
 @router.post("/set-photo-items-online")
 async def set_photo_items_online(
-    secret: str = Query(...),
     db: AsyncSession = Depends(get_db),
+    _auth=Depends(require_data_sync_access),
 ):
-    if secret != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid key")
 
     result = await db.execute(
         select(Item).where(
@@ -374,11 +397,9 @@ async def set_photo_items_online(
 @router.post("/clear-item-photos")
 async def clear_item_photos(
     barcode: str = Query(...),
-    secret: str = Query(...),
     db: AsyncSession = Depends(get_db),
+    _auth=Depends(require_data_sync_access),
 ):
-    if secret != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid key")
 
     result = await db.execute(
         select(Item).where(or_(Item.sku == barcode, Item.barcode == barcode))
@@ -403,11 +424,9 @@ async def clear_item_photos(
 
 @router.post("/clear-booth-showcases")
 async def clear_booth_showcases(
-    password: str = Query(...),
     db: AsyncSession = Depends(get_db),
+    _auth=Depends(require_data_sync_access),
 ):
-    if password != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid password")
 
     result = await db.execute(text("DELETE FROM booth_showcases"))
     count = result.rowcount
@@ -617,11 +636,9 @@ async def _scrape_and_store_images():
 
 @router.post("/scrape-ricochet-images")
 async def scrape_ricochet_images(
-    password: str = Query(...),
     background_tasks: BackgroundTasks = BackgroundTasks(),
+    _auth=Depends(require_data_sync_access),
 ):
-    if password != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid password")
     if _scrape_status["running"]:
         return {"detail": "Scrape already running", **_scrape_status}
 
@@ -630,9 +647,7 @@ async def scrape_ricochet_images(
 
 
 @router.get("/scrape-status")
-async def scrape_status(password: str = Query(...)):
-    if password != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid password")
+async def scrape_status(_auth=Depends(require_data_sync_access)):
     return _scrape_status
 
 
@@ -723,11 +738,9 @@ async def _collect_ricochet_products():
 
 @router.post("/scrape-rico-collect")
 async def scrape_rico_collect(
-    password: str = Query(...),
     background_tasks: BackgroundTasks = BackgroundTasks(),
+    _auth=Depends(require_data_sync_access),
 ):
-    if password != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid password")
     if _collect_status["running"]:
         return {"detail": "Collection already running", **_collect_status}
     background_tasks.add_task(_collect_ricochet_products)
@@ -735,22 +748,18 @@ async def scrape_rico_collect(
 
 
 @router.get("/scrape-rico-status")
-async def scrape_rico_status_endpoint(password: str = Query(...)):
-    if password != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid password")
+async def scrape_rico_status_endpoint(_auth=Depends(require_data_sync_access)):
     cached = len(_product_cache) or _load_product_cache()
     return {**_collect_status, "cached_products": cached}
 
 
 @router.post("/scrape-rico-store")
 async def scrape_rico_store(
-    password: str = Query(...),
     batch_offset: int = Query(0, ge=0),
     batch_size: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
+    _auth=Depends(require_data_sync_access),
 ):
-    if password != SYNC_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid password")
     if not _product_cache:
         loaded = _load_product_cache()
         if not loaded:

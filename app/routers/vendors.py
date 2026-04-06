@@ -14,7 +14,13 @@ from app.schemas.vendor import (
     VendorCreate, VendorUpdate, VendorResponse, VendorBalanceResponse,
     BalanceAdjustRequest, BalanceAdjustmentResponse,
 )
-from app.routers.auth import get_current_user, require_role, get_password_hash
+from app.routers.auth import (
+    MIN_PASSWORD_LENGTH,
+    bump_auth_version,
+    get_current_user,
+    require_role,
+    get_password_hash,
+)
 from app.routers.settings import role_allows_manage_vendors, role_feature_allowed, require_staff_feature
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
@@ -350,8 +356,8 @@ async def reset_vendor_password(
     current_user: Vendor = Depends(require_staff_feature("role_manage_vendors"))
 ):
     new_password = body.get("new_password")
-    if not new_password or len(new_password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters")
+    if not new_password or len(new_password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
 
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -365,6 +371,8 @@ async def reset_vendor_password(
         )
 
     vendor.password_hash = get_password_hash(new_password)
+    vendor.password_changed = True
+    bump_auth_version(vendor)
     await db.commit()
     return {"detail": "Password reset successfully"}
 
@@ -377,11 +385,13 @@ async def change_own_password(
     import bcrypt
     current_password = body.get("current_password", "")
     new_password = body.get("new_password", "")
-    if not new_password or len(new_password) < 6:
-        raise HTTPException(status_code=400, detail="New password must be at least 6 characters")
+    if not new_password or len(new_password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(status_code=400, detail=f"New password must be at least {MIN_PASSWORD_LENGTH} characters")
     if not bcrypt.checkpw(current_password.encode('utf-8'), current_user.password_hash.encode('utf-8')):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     current_user.password_hash = get_password_hash(new_password)
+    current_user.password_changed = True
+    bump_auth_version(current_user)
     await db.commit()
     return {"detail": "Password changed successfully"}
 

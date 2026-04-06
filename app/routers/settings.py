@@ -176,8 +176,9 @@ DEFAULT_SETTINGS = {
     "webstore_pinterest_key": "",
     "square_application_id": settings.square_application_id or "",
     "square_location_id": settings.square_location_id or "",
-    "square_access_token": settings.square_access_token or "",
 }
+
+SERVER_ONLY_SETTINGS = {"square_access_token"}
 
 
 async def get_setting(db: AsyncSession, key: str, default: Optional[str] = None) -> Optional[str]:
@@ -316,6 +317,9 @@ async def get_settings(
         await db.commit()
         existing.update(missing)
 
+    for key in SERVER_ONLY_SETTINGS:
+        existing.pop(key, None)
+
     return existing
 
 
@@ -326,6 +330,8 @@ async def save_settings(
     _admin: Vendor = Depends(require_admin),
 ):
     for key, value in payload.items():
+        if key in SERVER_ONLY_SETTINGS and (value is None or not str(value).strip()):
+            continue
         existing = await db.execute(
             select(StoreSetting).where(StoreSetting.key == key)
         )

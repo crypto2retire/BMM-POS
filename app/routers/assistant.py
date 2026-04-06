@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.item import Item
 from app.models.vendor import Vendor
-from app.routers.auth import get_password_hash
+from app.routers.auth import MIN_PASSWORD_LENGTH, bump_auth_version, get_password_hash
 from app.routers.settings import require_role_feature
 from app.schemas.assistant import AssistantChatRequest, AssistantChatResponse
 from app.services.barcode import generate_sku
@@ -505,12 +505,13 @@ async def _execute_tool(
     if tool_name == "change_password":
         current_pw = tool_args.get("current_password", "")
         new_pw = tool_args.get("new_password", "")
-        if not new_pw or len(new_pw) < 6:
-            return "ERROR: New password must be at least 6 characters.", None, None
+        if not new_pw or len(new_pw) < MIN_PASSWORD_LENGTH:
+            return f"ERROR: New password must be at least {MIN_PASSWORD_LENGTH} characters.", None, None
         if not bcrypt.checkpw(current_pw.encode("utf-8"), vendor.password_hash.encode("utf-8")):
             return "ERROR: Current password is incorrect. Please try again.", None, None
         vendor.password_hash = get_password_hash(new_pw)
         vendor.password_changed = True
+        bump_auth_version(vendor)
         await db.commit()
         return "SUCCESS: Your password has been changed. Use the new password next time you log in.", "password_changed", None
 

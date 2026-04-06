@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     database_url: str = ""
     secret_key: str
     access_token_expire_hours: int = 8
+    data_sync_secret: Optional[str] = None
     tax_rate: float = 0.05
     store_name: str = "Bowenstreet Market"
     dymo_label_size: str = "30347"
