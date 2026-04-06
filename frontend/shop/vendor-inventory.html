@@ -121,6 +121,19 @@
     border-color: var(--gold);
     color: var(--gold);
   }
+  .item-card-btn.disabled {
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-dim);
+    cursor: default;
+  }
+  .item-card-offline {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    margin-top: 0.2rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
   .cart-bar {
     position: sticky;
     bottom: 1rem;
@@ -343,14 +356,17 @@ function renderItems() {
     if (item.sale_price) {
       priceHtml = '<span style="text-decoration:line-through;color:var(--text-dim);font-size:0.75rem">$' + Number(item.price).toFixed(2) + '</span> <span style="color:#e07070">$' + Number(item.sale_price).toFixed(2) + '</span>';
     }
-    var inCart = cartHasItem(item.id);
-    var buttonLabel = inCart ? 'In Cart' : 'Add to Cart';
-    var buttonClass = inCart ? 'item-card-btn in-cart' : 'item-card-btn';
+    var isOnline = !!item.is_online;
+    var inCart = isOnline && cartHasItem(item.id);
+    var buttonLabel = !isOnline ? 'In Store Only' : (inCart ? 'In Cart' : 'Add to Cart');
+    var buttonClass = !isOnline ? 'item-card-btn disabled' : (inCart ? 'item-card-btn in-cart' : 'item-card-btn');
+    var offlineHtml = !isOnline ? '<div class="item-card-offline">Not available for online checkout</div>' : '';
     return '<div class="item-card" data-item-id="' + item.id + '">' + imgHtml +
       '<div class="item-card-body">' +
       '<div class="item-card-name">' + escHtml(item.name) + '</div>' +
       '<div class="item-card-price">' + priceHtml + '</div>' +
       (item.category ? '<div class="item-card-category">' + escHtml(item.category) + '</div>' : '') +
+      offlineHtml +
       '</div>' +
       '<div class="item-card-actions"><button type="button" class="' + buttonClass + '" data-add-cart-id="' + item.id + '">' + buttonLabel + '</button></div>' +
       '</div>';
@@ -359,7 +375,10 @@ function renderItems() {
   grid.querySelectorAll('.item-card').forEach(function(card) {
     card.addEventListener('click', function(e) {
       if (e.target.closest('[data-add-cart-id]')) return;
-      openItem(parseInt(this.getAttribute('data-item-id'), 10));
+      var itemId = parseInt(this.getAttribute('data-item-id'), 10);
+      var item = currentItems.find(function(entry) { return entry.id === itemId; });
+      if (!item || !item.is_online) return;
+      openItem(itemId);
     });
   });
   grid.querySelectorAll('[data-add-cart-id]').forEach(function(btn) {
@@ -368,6 +387,7 @@ function renderItems() {
       var itemId = parseInt(this.getAttribute('data-add-cart-id'), 10);
       var item = currentItems.find(function(entry) { return entry.id === itemId; });
       if (!item) return;
+      if (!item.is_online) return;
       if (cartHasItem(itemId)) {
         window.location.href = '/shop/index.html?cart=open#collection-start';
         return;

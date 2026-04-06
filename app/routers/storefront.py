@@ -199,11 +199,11 @@ async def get_vendor_inventory(
             Item.created_at,
             Item.image_path,
             Item.photo_urls,
+            Item.is_online,
         )
         .where(Item.vendor_id == vendor_id)
         .where(Item.status == "active")
         .where(Item.quantity > 0)
-        .where(Item.is_online == True)
     )
 
     if search:
@@ -252,6 +252,7 @@ async def get_vendor_inventory(
             "quantity": row.quantity,
             "image_path": row.image_path,
             "photo_url": photo_url,
+            "is_online": bool(row.is_online),
         })
 
     return {
@@ -281,11 +282,12 @@ async def get_categories(
         select(Item.category, func.count(Item.id))
         .where(Item.status == "active")
         .where(Item.quantity > 0)
-        .where(Item.is_online == True)
         .where(Item.category.isnot(None))
     )
     if vendor_id:
         query = query.where(Item.vendor_id == vendor_id)
+    else:
+        query = query.where(Item.is_online == True)
     query = query.group_by(Item.category).order_by(Item.category)
     result = await db.execute(query)
     rows = result.all()
