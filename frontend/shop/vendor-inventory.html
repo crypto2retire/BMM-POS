@@ -92,9 +92,10 @@
   }
   .item-card {
     background: var(--bg-card); border: 1px solid var(--border);
-    overflow: hidden; transition: border-color 0.2s;
+    overflow: hidden; transition: border-color 0.2s, transform 0.2s;
+    cursor: pointer;
   }
-  .item-card:hover { border-color: var(--gold); }
+  .item-card:hover { border-color: var(--gold); transform: translateY(-2px); }
   .item-card img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; background: var(--bg-dark); }
   .item-card-body { padding: 0.6rem 0.75rem; }
   .item-card-name {
@@ -103,6 +104,56 @@
   }
   .item-card-price { font-size: 0.85rem; color: var(--gold); font-weight: 400; }
   .item-card-category { font-size: 0.65rem; color: var(--text-dim); margin-top: 0.15rem; text-transform: capitalize; }
+  .item-card-actions { padding: 0 0.75rem 0.75rem; }
+  .item-card-btn {
+    width: 100%;
+    background: var(--gold);
+    border: 1px solid var(--gold);
+    color: var(--bg-dark);
+    padding: 0.55rem 0.75rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .item-card-btn.in-cart {
+    background: transparent;
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+  .cart-bar {
+    position: sticky;
+    bottom: 1rem;
+    z-index: 15;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1.25rem;
+    padding: 1rem 1.2rem;
+    background: rgba(26, 26, 28, 0.95);
+    border: 1px solid var(--warm-border);
+  }
+  .cart-bar.visible { display: flex; }
+  .cart-bar-copy { display: flex; flex-direction: column; gap: 0.15rem; }
+  .cart-bar-title { font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-dim); }
+  .cart-bar-meta { font-size: 0.92rem; color: var(--text); }
+  .cart-bar-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
+  .cart-link-btn {
+    background: var(--gold);
+    border: 1px solid var(--gold);
+    color: var(--bg-dark);
+    text-decoration: none;
+    padding: 0.6rem 1rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .cart-link-btn.secondary {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--border);
+  }
   .pagination { display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-top: 1.5rem; }
   .page-btn {
     background: var(--bg-card); border: 1px solid var(--border); color: var(--text);
@@ -128,6 +179,15 @@
   .market-info a { color: var(--gold); text-decoration: none; }
   @media (max-width: 600px) {
     .items-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .cart-bar {
+      position: fixed;
+      left: 1rem;
+      right: 1rem;
+      bottom: 1rem;
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .cart-bar-actions a { text-align: center; }
   }
 </style>
 </head>
@@ -162,6 +222,16 @@
       </select>
     </div>
     <div class="category-pills" id="category-pills"></div>
+    <div class="cart-bar" id="cart-bar">
+      <div class="cart-bar-copy">
+        <span class="cart-bar-title">Pickup Cart</span>
+        <span class="cart-bar-meta" id="cart-bar-meta">0 items selected</span>
+      </div>
+      <div class="cart-bar-actions">
+        <a href="/shop/index.html?cart=open#collection-start" class="cart-link-btn secondary">View Cart</a>
+        <a href="/shop/index.html?cart=open#collection-start" class="cart-link-btn">Checkout</a>
+      </div>
+    </div>
     <div id="items-grid" class="items-grid"></div>
     <div id="inv-empty" class="empty-state" style="display:none">No items found.</div>
     <div id="inv-pagination" class="pagination" style="display:none">
@@ -181,6 +251,7 @@
 
 <script>
 function escHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+var CART_STORAGE_KEY = 'bmm_shop_cart_v1';
 
 var vendorId = null;
 var currentPage = 1;
@@ -188,6 +259,123 @@ var totalPages = 1;
 var searchTimeout = null;
 var activeCategory = '';
 var PER_PAGE = 24;
+var currentItems = [];
+
+function loadCartState() {
+  try {
+    var raw = localStorage.getItem(CART_STORAGE_KEY);
+    var parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch (_) {
+    return {};
+  }
+}
+
+function saveCartState(cart) {
+  localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+}
+
+function cartHasItem(itemId) {
+  var cart = loadCartState();
+  return Object.prototype.hasOwnProperty.call(cart, String(itemId));
+}
+
+function addToCart(item) {
+  var cart = loadCartState();
+  cart[String(item.id)] = {
+    id: item.id,
+    name: item.name,
+    description: item.description || '',
+    price: item.price,
+    sale_price: item.sale_price,
+    category: item.category || '',
+    booth_number: item.booth_number || '',
+    image_path: item.image_path || '',
+    photo_url: item.photo_url || ''
+  };
+  saveCartState(cart);
+  updateCartBar();
+  renderItems();
+}
+
+function updateCartBar() {
+  var cart = loadCartState();
+  var items = Object.values(cart);
+  var bar = document.getElementById('cart-bar');
+  var meta = document.getElementById('cart-bar-meta');
+  if (!items.length) {
+    bar.classList.remove('visible');
+    meta.textContent = '0 items selected';
+    return;
+  }
+  var total = items.reduce(function(sum, item) {
+    var base = (item.sale_price != null && Number(item.sale_price) > 0 && Number(item.sale_price) < Number(item.price))
+      ? Number(item.sale_price)
+      : Number(item.price);
+    return sum + (base * 1.05);
+  }, 0);
+  bar.classList.add('visible');
+  meta.textContent = items.length + ' items · est. total $' + total.toFixed(2);
+}
+
+function openItem(itemId) {
+  window.location.href = '/shop/index.html?item=' + encodeURIComponent(itemId) + '#collection-start';
+}
+
+function renderItems() {
+  var items = currentItems || [];
+  var grid = document.getElementById('items-grid');
+  var emptyEl = document.getElementById('inv-empty');
+
+  if (items.length === 0) {
+    grid.innerHTML = '';
+    emptyEl.style.display = 'block';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+  grid.innerHTML = items.map(function(item) {
+    var imgUrl = item.image_path || item.photo_url;
+    var imgHtml = imgUrl
+      ? '<img src="' + escHtml(imgUrl) + '" alt="' + escHtml(item.name) + '" loading="lazy" onerror="this.onerror=null;this.src=\'/static/images/placeholder-booth.jpg\'">'
+      : '<img src="/static/images/placeholder-booth.jpg" alt="" loading="lazy">';
+    var priceHtml = '$' + Number(item.price).toFixed(2);
+    if (item.sale_price) {
+      priceHtml = '<span style="text-decoration:line-through;color:var(--text-dim);font-size:0.75rem">$' + Number(item.price).toFixed(2) + '</span> <span style="color:#e07070">$' + Number(item.sale_price).toFixed(2) + '</span>';
+    }
+    var inCart = cartHasItem(item.id);
+    var buttonLabel = inCart ? 'In Cart' : 'Add to Cart';
+    var buttonClass = inCart ? 'item-card-btn in-cart' : 'item-card-btn';
+    return '<div class="item-card" data-item-id="' + item.id + '">' + imgHtml +
+      '<div class="item-card-body">' +
+      '<div class="item-card-name">' + escHtml(item.name) + '</div>' +
+      '<div class="item-card-price">' + priceHtml + '</div>' +
+      (item.category ? '<div class="item-card-category">' + escHtml(item.category) + '</div>' : '') +
+      '</div>' +
+      '<div class="item-card-actions"><button type="button" class="' + buttonClass + '" data-add-cart-id="' + item.id + '">' + buttonLabel + '</button></div>' +
+      '</div>';
+  }).join('');
+
+  grid.querySelectorAll('.item-card').forEach(function(card) {
+    card.addEventListener('click', function(e) {
+      if (e.target.closest('[data-add-cart-id]')) return;
+      openItem(parseInt(this.getAttribute('data-item-id'), 10));
+    });
+  });
+  grid.querySelectorAll('[data-add-cart-id]').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var itemId = parseInt(this.getAttribute('data-add-cart-id'), 10);
+      var item = currentItems.find(function(entry) { return entry.id === itemId; });
+      if (!item) return;
+      if (cartHasItem(itemId)) {
+        window.location.href = '/shop/index.html?cart=open#collection-start';
+        return;
+      }
+      addToCart(item);
+    });
+  });
+}
 
 function getVendorId() {
   var parts = window.location.pathname.split('/');
@@ -222,36 +410,18 @@ async function loadInventory(page) {
     }
 
     var items = data.items || [];
+    items = items.map(function(item) {
+      item.booth_number = data.booth_number || '';
+      return item;
+    });
     var total = data.total || 0;
     totalPages = Math.ceil(total / PER_PAGE) || 1;
 
     document.getElementById('inventory-count').textContent = total + ' item' + (total !== 1 ? 's' : '');
 
-    var grid = document.getElementById('items-grid');
-    var emptyEl = document.getElementById('inv-empty');
+    currentItems = items;
 
-    if (items.length === 0) {
-      grid.innerHTML = '';
-      emptyEl.style.display = 'block';
-    } else {
-      emptyEl.style.display = 'none';
-      grid.innerHTML = items.map(function(item) {
-        var imgUrl = item.photo_url || item.image_path;
-        var imgHtml = imgUrl
-          ? '<img src="' + escHtml(imgUrl) + '" alt="' + escHtml(item.name) + '" loading="lazy">'
-          : '<div style="width:100%;aspect-ratio:1;background:var(--bg-dark);display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:0.7rem">No photo</div>';
-        var priceHtml = '$' + Number(item.price).toFixed(2);
-        if (item.sale_price) {
-          priceHtml = '<span style="text-decoration:line-through;color:var(--text-dim);font-size:0.75rem">$' + Number(item.price).toFixed(2) + '</span> <span style="color:#e07070">$' + Number(item.sale_price).toFixed(2) + '</span>';
-        }
-        return '<div class="item-card">' + imgHtml +
-          '<div class="item-card-body">' +
-          '<div class="item-card-name">' + escHtml(item.name) + '</div>' +
-          '<div class="item-card-price">' + priceHtml + '</div>' +
-          (item.category ? '<div class="item-card-category">' + escHtml(item.category) + '</div>' : '') +
-          '</div></div>';
-      }).join('');
-    }
+    renderItems();
 
     var pagEl = document.getElementById('inv-pagination');
     if (totalPages > 1) {
@@ -316,6 +486,7 @@ async function init() {
 
   loadInventory(1);
   loadCategories();
+  updateCartBar();
 }
 
 init();

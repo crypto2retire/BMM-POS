@@ -2803,10 +2803,15 @@
     loadItems(null).then(function () {
       var params = new URLSearchParams(window.location.search);
       var itemId = params.get('item');
+      var openCartParam = params.get('cart');
       if (itemId) {
         var found = allItems.find(function (i) { return i.id === parseInt(itemId); });
         if (found) openItemDetail(found);
-        window.history.replaceState({}, '', window.location.pathname);
+      } else if (openCartParam === 'open' && getCartItems().length) {
+        openCart();
+      }
+      if (itemId || openCartParam === 'open') {
+        window.history.replaceState({}, '', window.location.pathname + '#collection-start');
       }
     });
   });

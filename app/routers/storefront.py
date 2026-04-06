@@ -203,6 +203,13 @@ async def get_vendor_inventory(
         .where(Item.vendor_id == vendor_id)
         .where(Item.status == "active")
         .where(Item.quantity > 0)
+        .where(Item.is_online == True)
+        .where(
+            or_(
+                Item.image_path.isnot(None),
+                Item.photo_urls != [],
+            )
+        )
     )
 
     if search:
