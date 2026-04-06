@@ -25,10 +25,10 @@ The frontend adheres to Bowenstreet Market branding, using a dark (`#38383B`) an
 - **Barcode & Label Generation**: `python-barcode` for Code 128 barcodes; `ReportLab` for PDF labels in various configurable sizes (10 formats). SKU format: `BSM-{vendor_id:04d}-{sequence:06d}`.
 - **Role-Based Access Control**: Differentiated access for `vendor`, `cashier`, `admin` roles, including a "booth mode" for vendor-admins/cashiers.
 - **Soft Deletion**: Vendors and items are soft-deleted by updating their `status` field.
-- **Photo Uploads**: Item and studio class images are handled as multipart uploads, stored as static files, with paths referenced in the database. Ricochet storefront images scraped and imported for 196 items (522 images) via `scripts/scrape_ricochet_images.py` and `scripts/import_scraped_images.py`, matched by the `sku` field.
-- **Image Persistence**: Product images are stored as binary data in the `item_images` PostgreSQL table (not just filesystem), served via `/api/v1/items/{id}/image`. This ensures images persist across Railway deploys. The `store-images-to-db` endpoint handles bulk import, skipping logo placeholders (218508 bytes) and using real product photos.
+- **Photo Uploads**: New item, booth, and studio uploads are written to DigitalOcean Spaces when configured, with the public URL stored in the database. Legacy item images may still exist in `item_images` and are served through `/api/v1/items/{id}/image` as a compatibility fallback.
+- **Image Persistence**: The preferred storage path is object storage/CDN (`image_path` or `photo_urls`). The `item_images` PostgreSQL table remains in use only for legacy images and migration compatibility.
 - **Dynamic Category Images**: Homepage "What You'll Find" section loads a random in-stock item with a photo from each category group via `GET /api/v1/storefront/category-images`. Categories map display names (Handmade, Vintage & Antique, etc.) to actual DB categories.
-- **Data Sync Images**: `POST /api/v1/data-sync/apply-scraped-images` endpoint for applying Ricochet image mappings to any environment's database (admin password protected). `POST /api/v1/data-sync/store-images-to-db` persists scraped images into PostgreSQL `item_images` table.
+- **Data Sync Images**: `POST /api/v1/data-sync/apply-scraped-images` and `POST /api/v1/data-sync/store-images-to-db` are protected by admin bearer auth or a dedicated `DATA_SYNC_SECRET` header. They are migration/admin tooling, not public app features.
 - **Void/Reverse Transactions**: Supports comprehensive voiding of sales, reversing quantities, vendor balances, and gift card debits, with audit trails.
 - **Admin Balance Adjustments**: Admins can credit/debit vendor balances with a full audit trail.
 - **Batch Label Printing**: Items track a `label_printed` flag, with UI elements to select unprinted items and support vendor-specific label preferences (standard/Dymo).
@@ -68,4 +68,4 @@ The frontend adheres to Bowenstreet Market branding, using a dark (`#38383B`) an
 - **Password Hashing**: bcrypt
 - **Email Service**: Gmail API (via Replit connector)
 - **AI/LLM**: OpenRouter (for AI assistants)
-- **Secrets Management**: Replit Secrets (for `SECRET_KEY`, `POYNT_*`, `SQUARE_*`, `ADMIN_PASSWORD`, `CASHIER_PASSWORD`)
+- **Secrets Management**: Runtime secrets should live in the deployment platform environment (for example Railway variables). Do not use admin credentials as API secrets.

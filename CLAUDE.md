@@ -37,10 +37,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 5000
 
 ## 3 · Credentials (dev / seed)
 
-| role | email | password |
-|------|-------|----------|
-| admin | `admin@bowenstreetmarket.com` | set via `ADMIN_PASSWORD` env var |
-| cashier | `cashier@bowenstreetmarket.com` | set via `CASHIER_PASSWORD` env var |
+- Dev seed credentials are generated from environment variables when provided.
+- Do not assume fixed fallback passwords for local or production environments.
 
 ---
 
@@ -101,7 +99,7 @@ Example: `BSM-0012-000047`
 
 ```
 app/
-  main.py              ← FastAPI app + lifespan (auto-creates tables/columns)
+  main.py              ← FastAPI app + lifespan (fast startup path only)
   database.py          ← async engine + session
   models/
     __init__.py        ← re-exports all models + Base

@@ -1,5 +1,6 @@
 import asyncio
 import os
+import secrets
 import sys
 from datetime import date, timedelta
 
@@ -33,11 +34,17 @@ engine = create_async_engine(get_async_url(settings.database_url))
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
+ADMIN_DEV_PASSWORD = os.environ.get("ADMIN_PASSWORD") or secrets.token_urlsafe(12)
+CASHIER_DEV_PASSWORD = os.environ.get("CASHIER_PASSWORD") or secrets.token_urlsafe(12)
+VENDOR_DEV_PASSWORD = os.environ.get("VENDOR_PASSWORD") or secrets.token_urlsafe(12)
+TEST_ACCOUNT_PASSWORD = os.environ.get("TEST_ACCOUNT_PASSWORD") or VENDOR_DEV_PASSWORD
+
+
 VENDORS_DATA = [
     {
         "name": "Admin User",
         "email": "admin@bowenstreetmarket.com",
-        "password": os.environ.get("ADMIN_PASSWORD", "admin123"),
+        "password": ADMIN_DEV_PASSWORD,
         "role": "admin",
         "booth_number": None,
         "monthly_rent": 0,
@@ -48,7 +55,7 @@ VENDORS_DATA = [
     {
         "name": "Jane Doe",
         "email": "cashier@bowenstreetmarket.com",
-        "password": os.environ.get("CASHIER_PASSWORD", "cashier123"),
+        "password": CASHIER_DEV_PASSWORD,
         "role": "cashier",
         "booth_number": None,
         "monthly_rent": 0,
@@ -59,7 +66,7 @@ VENDORS_DATA = [
     {
         "name": "Sarah Johnson",
         "email": "sarah@email.com",
-        "password": os.environ.get("VENDOR_PASSWORD", "vendor123"),
+        "password": VENDOR_DEV_PASSWORD,
         "role": "vendor",
         "booth_number": "A-12",
         "monthly_rent": 175,
@@ -70,7 +77,7 @@ VENDORS_DATA = [
     {
         "name": "Mike Chen",
         "email": "mike@email.com",
-        "password": os.environ.get("VENDOR_PASSWORD", "vendor123"),
+        "password": VENDOR_DEV_PASSWORD,
         "role": "vendor",
         "booth_number": "B-07",
         "monthly_rent": 200,
@@ -81,7 +88,7 @@ VENDORS_DATA = [
     {
         "name": "Linda Kowalski",
         "email": "linda@email.com",
-        "password": os.environ.get("VENDOR_PASSWORD", "vendor123"),
+        "password": VENDOR_DEV_PASSWORD,
         "role": "vendor",
         "booth_number": "C-22",
         "monthly_rent": 150,
@@ -630,11 +637,11 @@ TEST_ITEMS_DATA = {
 }
 
 TEST_ACCOUNTS = [
-    {"name": "Nora",   "email": "nora@email.com",   "password": "vendor123", "role": "admin",  "booth_number": "TEST-1", "monthly_rent": 175},
-    {"name": "Sammy",  "email": "sammy@email.com",  "password": "vendor123", "role": "admin",  "booth_number": "TEST-2", "monthly_rent": 200},
-    {"name": "Ashley", "email": "ashley@email.com", "password": "vendor123", "role": "admin",  "booth_number": "TEST-3", "monthly_rent": 150},
-    {"name": "Anne",   "email": "anne@email.com",   "password": "vendor123", "role": "admin",  "booth_number": "TEST-4", "monthly_rent": 175},
-    {"name": "Paula",  "email": "paula@email.com",  "password": "vendor123", "role": "vendor", "booth_number": "TEST-5", "monthly_rent": 125},
+    {"name": "Nora",   "email": "nora@email.com",   "password": TEST_ACCOUNT_PASSWORD, "role": "admin",  "booth_number": "TEST-1", "monthly_rent": 175},
+    {"name": "Sammy",  "email": "sammy@email.com",  "password": TEST_ACCOUNT_PASSWORD, "role": "admin",  "booth_number": "TEST-2", "monthly_rent": 200},
+    {"name": "Ashley", "email": "ashley@email.com", "password": TEST_ACCOUNT_PASSWORD, "role": "admin",  "booth_number": "TEST-3", "monthly_rent": 150},
+    {"name": "Anne",   "email": "anne@email.com",   "password": TEST_ACCOUNT_PASSWORD, "role": "admin",  "booth_number": "TEST-4", "monthly_rent": 175},
+    {"name": "Paula",  "email": "paula@email.com",  "password": TEST_ACCOUNT_PASSWORD, "role": "vendor", "booth_number": "TEST-5", "monthly_rent": 125},
 ]
 
 
@@ -699,11 +706,11 @@ async def seed():
         print("  BMM-POS SEED DATA")
         print("=" * 60)
         print("\nCREDENTIALS:")
-        print("  Admin:    admin@bowenstreetmarket.com / admin123")
-        print("  Cashier:  cashier@bowenstreetmarket.com / cashier123")
-        print("  Sarah:    sarah@email.com / vendor123  (A-12, $175/mo)")
-        print("  Mike:     mike@email.com / vendor123   (B-07, $200/mo)")
-        print("  Linda:    linda@email.com / vendor123  (C-22, $150/mo)")
+        print(f"  Admin:    admin@bowenstreetmarket.com / {ADMIN_DEV_PASSWORD}")
+        print(f"  Cashier:  cashier@bowenstreetmarket.com / {CASHIER_DEV_PASSWORD}")
+        print(f"  Sarah:    sarah@email.com / {VENDOR_DEV_PASSWORD}  (A-12, $175/mo)")
+        print(f"  Mike:     mike@email.com / {VENDOR_DEV_PASSWORD}   (B-07, $200/mo)")
+        print(f"  Linda:    linda@email.com / {VENDOR_DEV_PASSWORD}  (C-22, $150/mo)")
         print(f"\nVENDORS CREATED: {len(created_vendors)}")
         print(f"ITEMS CREATED:   {total_items} (10 per vendor)")
         print("=" * 60 + "\n")
@@ -752,6 +759,7 @@ async def seed_test_accounts():
     for email, role, status, items in results:
         item_label = str(items) if items else "-"
         print(f"  {email:<30} {role:<8} {status:<14} {item_label}")
+    print(f"\n  Shared test-account password: {TEST_ACCOUNT_PASSWORD}")
     print("=" * 62 + "\n")
 
 
