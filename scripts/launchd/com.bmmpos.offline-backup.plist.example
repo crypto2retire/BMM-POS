@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.bmmpos.offline-backup</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>REPLACE_WITH_PYTHON_PATH</string>
+    <string>REPLACE_WITH_REPO_PATH/scripts/offline_operational_backup.py</string>
+    <string>--output</string>
+    <string>/Users/REPLACE_WITH_USER/Library/Application Support/BMM-POS/offline/current-operational-backup.json.gz</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>DATABASE_URL</key>
+    <string>REPLACE_WITH_DATABASE_URL</string>
+    <key>SECRET_KEY</key>
+    <string>REPLACE_WITH_SECRET_KEY</string>
+  </dict>
+
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>2</integer>
+    <key>Minute</key>
+    <integer>15</integer>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/bmmpos-offline-backup.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/bmmpos-offline-backup.error.log</string>
+</dict>
+</plist>
