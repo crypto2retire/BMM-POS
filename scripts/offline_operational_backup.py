@@ -4,14 +4,15 @@ import asyncio
 import gzip
 import json
 import os
+import sys
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from app.database import AsyncSessionLocal
 from app.models.booth_showcase import BoothShowcase
 from app.models.class_registration import ClassRegistration
 from app.models.eod_report import EodReport
@@ -26,6 +27,59 @@ from app.models.sale import Sale, SaleItem
 from app.models.store_setting import StoreSetting
 from app.models.studio_class import StudioClass
 from app.models.vendor import BalanceAdjustment, Vendor, VendorBalance
+
+
+def _resolve_database_url() -> str:
+    return (
+        os.environ.get("DATABASE_URL", "")
+        or os.environ.get("DATABASE_PRIVATE_URL", "")
+        or os.environ.get("DATABASE_PUBLIC_URL", "")
+    )
+
+
+def _get_async_url(url: str) -> tuple[str, dict[str, Any]]:
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+    if "?" in url:
+        base, query = url.split("?", 1)
+    else:
+        base, query = url, ""
+
+    params: dict[str, str] = {}
+    if query:
+        for part in query.split("&"):
+            if "=" in part:
+                key, value = part.split("=", 1)
+                params[key] = value
+            elif part:
+                params[part] = ""
+
+    sslmode = params.pop("sslmode", None)
+    ssl_param = params.pop("ssl", None)
+    ssl_value = sslmode or ssl_param
+    needs_ssl = ssl_value in ("require", "verify-ca", "verify-full", "true", "True", "1")
+
+    rebuilt_query = "&".join(f"{key}={value}" for key, value in params.items())
+    normalized_url = f"{base}?{rebuilt_query}" if rebuilt_query else base
+    return normalized_url, {"ssl": needs_ssl}
+
+
+_RAW_DATABASE_URL = _resolve_database_url()
+if not _RAW_DATABASE_URL:
+    print("offline backup requires DATABASE_URL", file=sys.stderr, flush=True)
+    raise RuntimeError("DATABASE_URL is not configured")
+
+_ASYNC_DATABASE_URL, _CONNECT_ARGS = _get_async_url(_RAW_DATABASE_URL)
+_ENGINE = create_async_engine(
+    _ASYNC_DATABASE_URL,
+    echo=False,
+    connect_args=_CONNECT_ARGS,
+    pool_pre_ping=True,
+)
+AsyncSessionLocal = async_sessionmaker(_ENGINE, class_=AsyncSession, expire_on_commit=False)
 
 
 DEFAULT_OUTPUT_PATH = (
@@ -158,6 +212,7 @@ async def main() -> int:
             indent=2,
         )
     )
+    await _ENGINE.dispose()
     return 0
 
 
