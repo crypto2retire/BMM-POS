@@ -1,4 +1,5 @@
 import time
+import uuid
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
@@ -397,60 +398,158 @@ class CreatePaymentRequest(BaseModel):
         return v
 
 
+class CreateCartPaymentRequest(BaseModel):
+    item_ids: list[int]
+    customer_name: str
+    customer_phone: str
+    customer_email: Optional[str] = None
+
+    @field_validator("item_ids")
+    @classmethod
+    def validate_item_ids(cls, v):
+        unique_ids: list[int] = []
+        seen: set[int] = set()
+        for raw_id in v:
+            item_id = int(raw_id)
+            if item_id <= 0:
+                raise ValueError("Item IDs must be positive integers")
+            if item_id in seen:
+                continue
+            seen.add(item_id)
+            unique_ids.append(item_id)
+        if not unique_ids:
+            raise ValueError("Please add at least one item to checkout")
+        if len(unique_ids) > 25:
+            raise ValueError("Cart checkout is limited to 25 items")
+        return unique_ids
+
+    @field_validator("customer_name")
+    @classmethod
+    def validate_name(cls, v):
+        v = v.strip()
+        if len(v) < 2 or len(v) > 200:
+            raise ValueError("Name must be 2-200 characters")
+        return v
+
+    @field_validator("customer_phone")
+    @classmethod
+    def validate_phone(cls, v):
+        v = v.strip()
+        if len(v) < 7 or len(v) > 50:
+            raise ValueError("Phone must be 7-50 characters")
+        return v
+
+    @field_validator("customer_email")
+    @classmethod
+    def validate_email(cls, v):
+        if v is None:
+            return v
+        v = v.strip()
+        if len(v) > 200 or "@" not in v:
+            raise ValueError("Invalid email address")
+        return v
+
+
+def _reservation_total_for_item(item: Item, tax_rate: Decimal) -> Decimal:
+    price = Decimal(str(item.sale_price or item.price))
+    tax_amount = (price * tax_rate).quantize(Decimal("0.01"))
+    return price + tax_amount
+
+
+async def _load_checkout_items(db: AsyncSession, item_ids: list[int]) -> list[Item]:
+    item_result = await db.execute(
+        select(Item).where(Item.id.in_(item_ids), Item.status == "active")
+    )
+    found_items = item_result.scalars().all()
+    found_map = {item.id: item for item in found_items}
+
+    ordered_items: list[Item] = []
+    for item_id in item_ids:
+        item = found_map.get(item_id)
+        if not item:
+            raise HTTPException(status_code=404, detail="One or more items are no longer available")
+        if item.quantity < 1:
+            raise HTTPException(status_code=400, detail=f"{item.name} is out of stock")
+        ordered_items.append(item)
+    return ordered_items
+
+
 @router.post("/create-payment")
 async def create_payment(
     request: Request,
     req: CreatePaymentRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    _check_rate_limit(request)
-    item_result = await db.execute(
-        select(Item).where(Item.id == req.item_id, Item.status == "active")
-    )
-    item = item_result.scalar_one_or_none()
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found or no longer available")
-
-    if item.quantity < 1:
-        raise HTTPException(status_code=400, detail="Item is out of stock")
-
-    price = Decimal(str(item.sale_price or item.price))
-    db_tax_rate = await get_tax_rate(db)
-    tax_rate = Decimal(str(db_tax_rate)).quantize(Decimal("0.0001"))
-    tax_amount = (price * tax_rate).quantize(Decimal("0.01"))
-    total = price + tax_amount
-
-    reservation = Reservation(
-        item_id=req.item_id,
+    cart_req = CreateCartPaymentRequest(
+        item_ids=[req.item_id],
         customer_name=req.customer_name,
         customer_phone=req.customer_phone,
         customer_email=req.customer_email,
-        amount_paid=total,
-        status="pending",
     )
-    db.add(reservation)
+    return await create_cart_payment(request, cart_req, db)
+
+
+@router.post("/create-cart-payment")
+async def create_cart_payment(
+    request: Request,
+    req: CreateCartPaymentRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    _check_rate_limit(request)
+    db_tax_rate = await get_tax_rate(db)
+    tax_rate = Decimal(str(db_tax_rate)).quantize(Decimal("0.0001"))
+    items = await _load_checkout_items(db, req.item_ids)
+    checkout_group_id = str(uuid.uuid4())
+
+    reservations: list[Reservation] = []
+    total = Decimal("0.00")
+    for item in items:
+        line_total = _reservation_total_for_item(item, tax_rate)
+        total += line_total
+        reservation = Reservation(
+            item_id=item.id,
+            checkout_group_id=checkout_group_id,
+            customer_name=req.customer_name,
+            customer_phone=req.customer_phone,
+            customer_email=req.customer_email,
+            amount_paid=line_total,
+            status="pending",
+        )
+        db.add(reservation)
+        reservations.append(reservation)
+
     await db.commit()
-    await db.refresh(reservation)
+    for reservation in reservations:
+        await db.refresh(reservation)
 
     host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
     scheme = request.headers.get("x-forwarded-proto") or "https"
     base_url = f"{scheme}://{host}"
-    redirect_url = f"{base_url}/shop/index.html?payment=success&ref={reservation.public_id}"
+    redirect_url = f"{base_url}/shop/index.html?payment=success&ref={checkout_group_id}"
 
     try:
         from app.services.square import create_payment_link
         price_cents = int(total * 100)
-        item_name = (item.name or "Item")[:100]
+        item_count = len(items)
+        item_name = (items[0].name or "Item")[:60]
+        checkout_name = (
+            f"Reserve: {item_name}" if item_count == 1
+            else f"Reserve {item_count} items at Bowenstreet Market"
+        )
         link_result = await create_payment_link(
-            name=f"Reserve: {item_name}",
+            name=checkout_name,
             price_cents=price_cents,
             redirect_url=redirect_url,
         )
-        reservation.square_payment_id = link_result.get("payment_link_id", "")
+        payment_link_id = link_result.get("payment_link_id", "")
+        for reservation in reservations:
+            reservation.square_payment_id = payment_link_id
         await db.commit()
 
         return {
-            "reservation_id": reservation.public_id,
+            "reference_id": checkout_group_id,
+            "reservation_id": reservations[0].public_id,
+            "reservation_count": item_count,
             "total": float(total),
             "payment_url": link_result["url"],
             "message": "Redirecting to secure checkout...",
@@ -459,14 +558,17 @@ async def create_payment(
         import logging
         logging.getLogger(__name__).error(f"Square payment link error: {e}")
         return {
-            "reservation_id": reservation.public_id,
+            "reference_id": checkout_group_id,
+            "reservation_id": reservations[0].public_id,
+            "reservation_count": len(reservations),
             "total": float(total),
-            "message": "Reservation created. In-store payment required.",
+            "message": "Reservations created. In-store payment required.",
         }
 
 
 class ConfirmPaymentRequest(BaseModel):
-    reservation_id: str
+    reference_id: Optional[str] = None
+    reservation_id: Optional[str] = None
 
 
 @router.post("/payment-confirmed")
@@ -476,8 +578,28 @@ async def payment_confirmed(
     db: AsyncSession = Depends(get_db),
 ):
     _check_rate_limit(request)
+    reference_id = (req.reference_id or req.reservation_id or "").strip()
+    if not reference_id:
+        raise HTTPException(status_code=400, detail="Reservation reference is required")
+
+    group_result = await db.execute(
+        select(Reservation).where(Reservation.checkout_group_id == reference_id)
+    )
+    reservations = group_result.scalars().all()
+    if reservations:
+        pending_count = 0
+        for reservation in reservations:
+            if reservation.status != "completed":
+                reservation.status = "completed"
+                pending_count += 1
+        await db.commit()
+        if pending_count == 0:
+            return {"message": "Payment already confirmed."}
+        item_word = "item" if pending_count == 1 else "items"
+        return {"message": f"Payment confirmed! {pending_count} {item_word} reserved."}
+
     result = await db.execute(
-        select(Reservation).where(Reservation.public_id == req.reservation_id)
+        select(Reservation).where(Reservation.public_id == reference_id)
     )
     reservation = result.scalar_one_or_none()
     if not reservation:

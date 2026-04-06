@@ -144,6 +144,7 @@ async def run():
             # reservations
             "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS customer_email VARCHAR(200)",
             "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS public_id VARCHAR(36)",
+            "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS checkout_group_id VARCHAR(36)",
             # vendor_balances
             "ALTER TABLE vendor_balances ADD COLUMN IF NOT EXISTS rent_balance NUMERIC(10,2) NOT NULL DEFAULT 0.00",
             # eod_reports
@@ -235,6 +236,10 @@ async def run():
             """DO $$ BEGIN
                 CREATE UNIQUE INDEX IF NOT EXISTS ix_reservations_public_id
                     ON reservations (public_id);
+            EXCEPTION WHEN others THEN NULL; END $$""",
+            """DO $$ BEGIN
+                CREATE INDEX IF NOT EXISTS ix_reservations_checkout_group_id
+                    ON reservations (checkout_group_id);
             EXCEPTION WHEN others THEN NULL; END $$""",
             """DO $$ BEGIN
                 CREATE UNIQUE INDEX IF NOT EXISTS ix_booth_showcases_landing_slug

@@ -463,6 +463,16 @@
     border-bottom: 1px solid var(--gold-glow);
   }
 
+  .modal-item-summary {
+    margin: -0.9rem 0 1rem;
+    padding: 0.85rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 0.84rem;
+    color: var(--text-dim);
+    line-height: 1.55;
+  }
+
   .modal label {
     display: block;
     font-size: 0.65rem;
@@ -513,6 +523,128 @@
     margin-top: 1.5rem;
   }
 
+  .cart-bar {
+    position: sticky;
+    bottom: 1rem;
+    z-index: 15;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1.5rem;
+    padding: 1rem 1.2rem;
+    background: color-mix(in srgb, var(--surface) 92%, var(--bg) 8%);
+    border: 1px solid var(--warm-border);
+    box-shadow: var(--shadow-md);
+  }
+
+  .cart-bar.is-visible { display: flex; }
+
+  .cart-bar-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  .cart-bar-title {
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .cart-bar-meta {
+    font-size: 0.98rem;
+    color: var(--text);
+  }
+
+  .cart-bar-actions {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .cart-items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 1rem 0 1.25rem;
+    max-height: 320px;
+    overflow: auto;
+  }
+
+  .cart-line {
+    display: grid;
+    grid-template-columns: 68px 1fr auto;
+    gap: 0.9rem;
+    align-items: center;
+    padding: 0.8rem 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .cart-line:first-child {
+    border-top: none;
+    padding-top: 0;
+  }
+
+  .cart-line-thumb {
+    width: 68px;
+    height: 68px;
+    overflow: hidden;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cart-line-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .cart-line-name {
+    font-size: 0.96rem;
+    color: var(--text);
+    margin-bottom: 0.2rem;
+  }
+
+  .cart-line-meta {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+
+  .cart-line-price {
+    font-size: 0.95rem;
+    color: var(--text);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .cart-line-remove {
+    margin-top: 0.45rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--gold);
+    cursor: pointer;
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .cart-empty {
+    padding: 1rem 0;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+
   .btn-primary {
     flex: 1;
     background: var(--accent);
@@ -532,6 +664,11 @@
 
   .btn-primary:hover:not(:disabled) { background: var(--accent-lt); }
   .btn-primary:disabled { opacity: 0.4; cursor: default; }
+  .btn-primary.carted {
+    background: rgba(214, 188, 123, 0.14);
+    border-color: rgba(214, 188, 123, 0.34);
+    color: #6e5530;
+  }
 
   .btn-ghost {
     background: transparent;
@@ -1369,6 +1506,12 @@
     color: #4d6f4d;
   }
 
+  .btn-reserve.carted {
+    background: rgba(214, 188, 123, 0.14);
+    border-color: rgba(214, 188, 123, 0.34);
+    color: #6e5530;
+  }
+
   .item-grid.list-view {
     gap: 0.85rem;
   }
@@ -1473,6 +1616,32 @@
     .item-card.card-feature {
       grid-column: span 1;
     }
+
+    .cart-bar {
+      position: fixed;
+      left: 1rem;
+      right: 1rem;
+      bottom: 1rem;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .cart-bar-actions {
+      justify-content: stretch;
+    }
+
+    .cart-bar-actions button {
+      flex: 1;
+    }
+
+    .cart-line {
+      grid-template-columns: 56px 1fr;
+    }
+
+    .cart-line-price {
+      grid-column: 2;
+      text-align: left;
+    }
   }
 
   @media (max-width: 540px) {
@@ -1568,7 +1737,7 @@
   <article class="highlight-card">
     <p class="highlight-kicker">Pickup flow</p>
     <h2>Pay online, then pick up your piece at Bowenstreet Market.</h2>
-    <p>Use search and booth browsing to narrow the selection, then reserve directly from the product card.</p>
+    <p>Build a small pickup cart, pay once, and we will hold each item for in-store pickup.</p>
   </article>
   <article class="highlight-card">
     <p class="highlight-kicker">Why it feels better</p>
@@ -1583,7 +1752,7 @@
       <p class="section-kicker">Current inventory</p>
       <h2>Browse photographed pieces from across the market.</h2>
     </div>
-    <p class="collection-copy">Search by name, booth, category, or price band. Reserve online and pick up in store after payment is confirmed.</p>
+    <p class="collection-copy">Search by name, booth, category, or price band. Add items to your cart and complete one payment for pickup.</p>
   </section>
 
   <section class="workspace-panel" aria-label="Storefront tools">
@@ -1632,6 +1801,16 @@
     <span id="collection-meta" class="collection-meta">Loading current inventory…</span>
   </div>
   </section>
+  <div class="cart-bar" id="cart-bar" aria-live="polite">
+    <div class="cart-bar-copy">
+      <span class="cart-bar-title">Pickup Cart</span>
+      <span class="cart-bar-meta" id="cart-bar-meta">0 items selected</span>
+    </div>
+    <div class="cart-bar-actions">
+      <button type="button" class="btn-ghost" id="cart-view-btn">View Cart</button>
+      <button type="button" class="btn-primary" id="cart-checkout-btn">Checkout</button>
+    </div>
+  </div>
   <div class="item-grid" id="item-grid">
     <div class="state-msg"><span class="spinner"></span> Loading items&#8230;</div>
   </div>
@@ -1665,6 +1844,7 @@
     <div id="modal-form-body">
       <h2 id="modal-title">Reserve for Pickup</h2>
       <p class="modal-item-name" id="modal-item-name"></p>
+      <div class="modal-item-summary" id="modal-item-summary"></div>
 
       <label for="input-name">Your Name</label>
       <input type="text" id="input-name" placeholder="Jane Smith" autocomplete="name">
@@ -1676,7 +1856,7 @@
       <input type="email" id="input-email" placeholder="jane@example.com" autocomplete="email">
 
       <p class="modal-notice">
-        Payment is required to reserve this item. You'll be redirected to our secure checkout.
+        Payment is required to reserve these items. You'll be redirected to our secure checkout.
         All sales are final. No returns or refunds.
       </p>
 
@@ -1691,6 +1871,20 @@
     <div class="modal-success" id="modal-success">
       <span class="check">&#10003;</span>
       <p id="modal-success-msg"></p>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="cart-overlay" role="dialog" aria-modal="true" aria-labelledby="cart-title">
+  <div class="modal" style="max-width:640px">
+    <button class="modal-close" id="cart-close" aria-label="Close">&#10005;</button>
+    <h2 id="cart-title">Your Pickup Cart</h2>
+    <p class="modal-item-name">Review your selected items before checkout.</p>
+    <div class="cart-items-list" id="cart-items-list"></div>
+    <div class="cart-empty" id="cart-empty" style="display:none">Your cart is empty.</div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="cart-clear-btn">Clear Cart</button>
+      <button class="btn-primary" id="cart-modal-checkout-btn">Checkout</button>
     </div>
   </div>
 </div>
@@ -1717,13 +1911,16 @@
   const API_ITEMS          = '/api/v1/storefront/items';
   const API_TAX_RATE       = '/api/v1/storefront/tax-rate';
   const API_CREATE_PAYMENT = '/api/v1/storefront/create-payment';
+  const API_CREATE_CART_PAYMENT = '/api/v1/storefront/create-cart-payment';
   const API_CONFIRM        = '/api/v1/storefront/payment-confirmed';
+  const CART_STORAGE_KEY   = 'bmm_shop_cart_v1';
+  const PENDING_CHECKOUT_STORAGE_KEY = 'bmm_shop_pending_checkout_v1';
 
   let SHOP_TAX_RATE = 0.05;
 
-  let pendingItemId   = null;
-  let pendingItemName = null;
+  let pendingCheckoutIds = [];
   let reservedIds     = new Set();
+  let cartItemsById   = loadCartState();
 
   let allItems      = [];
   let currentView   = 'grid';
@@ -1732,6 +1929,99 @@
   let currentCategory = '';
   const STOREFRONT_PAGE_SIZE = 100;
   let lastSearchTerm = '';
+
+  function loadCartState() {
+    try {
+      const raw = localStorage.getItem(CART_STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function saveCartState() {
+    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItemsById));
+  }
+
+  function snapshotItem(item) {
+    return {
+      id: item.id,
+      name: item.name,
+      description: item.description || '',
+      price: item.price,
+      sale_price: item.sale_price,
+      category: item.category || '',
+      booth_number: item.booth_number || '',
+      image_path: item.image_path || '',
+      photo_url: item.photo_url || '',
+    };
+  }
+
+  function getCartItems() {
+    return Object.values(cartItemsById)
+      .map(function (item) { return item; })
+      .sort(function (a, b) { return String(a.name || '').localeCompare(String(b.name || '')); });
+  }
+
+  function cartHasItem(itemId) {
+    return Object.prototype.hasOwnProperty.call(cartItemsById, String(itemId));
+  }
+
+  function addToCart(item) {
+    if (reservedIds.has(item.id) || cartHasItem(item.id)) return;
+    cartItemsById[String(item.id)] = snapshotItem(item);
+    saveCartState();
+    updateCartUI();
+    applyFiltersAndRender();
+  }
+
+  function removeFromCart(itemId) {
+    delete cartItemsById[String(itemId)];
+    saveCartState();
+    updateCartUI();
+    applyFiltersAndRender();
+  }
+
+  function clearCart() {
+    cartItemsById = {};
+    saveCartState();
+    updateCartUI();
+    applyFiltersAndRender();
+  }
+
+  function markItemsReserved(itemIds) {
+    itemIds.forEach(function (itemId) {
+      reservedIds.add(Number(itemId));
+      delete cartItemsById[String(itemId)];
+    });
+    saveCartState();
+    updateCartUI();
+    applyFiltersAndRender();
+  }
+
+  function stashPendingCheckout(referenceId, itemIds) {
+    try {
+      const raw = localStorage.getItem(PENDING_CHECKOUT_STORAGE_KEY);
+      const map = raw ? JSON.parse(raw) : {};
+      map[referenceId] = itemIds;
+      localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(map));
+    } catch (_) {}
+  }
+
+  function consumePendingCheckout(referenceId) {
+    try {
+      const raw = localStorage.getItem(PENDING_CHECKOUT_STORAGE_KEY);
+      const map = raw ? JSON.parse(raw) : {};
+      const ids = Array.isArray(map[referenceId]) ? map[referenceId] : [];
+      delete map[referenceId];
+      localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(map));
+      return ids;
+    } catch (_) {
+      return [];
+    }
+  }
 
   function getCardVariant(index) {
     const cycle = ['card-feature', 'card-standard', 'card-tall', 'card-standard', 'card-wide', 'card-standard', 'card-compact', 'card-standard'];
@@ -1822,6 +2112,117 @@
     metaEl.textContent = visible.toLocaleString() + ' visible now from ' + total.toLocaleString() + ' available pieces' + categoryNote + saleNote + '.';
   }
 
+  function mergeLoadedItemsIntoCart(items) {
+    let changed = false;
+    items.forEach(function (item) {
+      if (!cartHasItem(item.id)) return;
+      cartItemsById[String(item.id)] = snapshotItem(item);
+      changed = true;
+    });
+    if (changed) saveCartState();
+  }
+
+  function renderCartModal() {
+    const items = getCartItems();
+    const listEl = document.getElementById('cart-items-list');
+    const emptyEl = document.getElementById('cart-empty');
+    const checkoutBtn = document.getElementById('cart-modal-checkout-btn');
+    const total = items.reduce(function (sum, item) {
+      const basePrice = hasActiveSale(item) ? parseFloat(item.sale_price) : parseFloat(item.price);
+      return sum + (basePrice * (1 + SHOP_TAX_RATE));
+    }, 0);
+
+    if (!items.length) {
+      listEl.innerHTML = '';
+      emptyEl.style.display = 'block';
+      checkoutBtn.disabled = true;
+      checkoutBtn.textContent = 'Checkout';
+      return;
+    }
+
+    emptyEl.style.display = 'none';
+    checkoutBtn.disabled = false;
+    checkoutBtn.textContent = 'Checkout';
+    listEl.innerHTML = items.map(function (item) {
+      const imgSrc = item.image_path || item.photo_url || '';
+      const basePrice = hasActiveSale(item) ? parseFloat(item.sale_price) : parseFloat(item.price);
+      const totalPrice = basePrice * (1 + SHOP_TAX_RATE);
+      return `
+        <div class="cart-line">
+          <div class="cart-line-thumb">${imgSrc ? '<img src="' + escAttr(imgSrc) + '" alt="' + escAttr(item.name) + '">' : '&#127991;'}</div>
+          <div>
+            <div class="cart-line-name">${escHtml(item.name)}</div>
+            <div class="cart-line-meta">${item.booth_number ? 'Booth ' + escHtml(item.booth_number) + ' · ' : ''}${item.category ? escHtml(item.category) : 'Market item'}</div>
+            <button type="button" class="cart-line-remove" data-remove-cart-id="${item.id}">Remove</button>
+          </div>
+          <div class="cart-line-price">$${fmt(totalPrice)}</div>
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('[data-remove-cart-id]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        removeFromCart(parseInt(this.getAttribute('data-remove-cart-id'), 10));
+        renderCartModal();
+      });
+    });
+  }
+
+  function updateCartUI() {
+    const items = getCartItems();
+    const bar = document.getElementById('cart-bar');
+    const meta = document.getElementById('cart-bar-meta');
+    const checkoutBtn = document.getElementById('cart-checkout-btn');
+    const total = items.reduce(function (sum, item) {
+      const basePrice = hasActiveSale(item) ? parseFloat(item.sale_price) : parseFloat(item.price);
+      return sum + (basePrice * (1 + SHOP_TAX_RATE));
+    }, 0);
+
+    if (!items.length) {
+      bar.classList.remove('is-visible');
+      meta.textContent = '0 items selected';
+      checkoutBtn.disabled = true;
+      return;
+    }
+
+    const itemWord = items.length === 1 ? 'item' : 'items';
+    meta.textContent = items.length + ' ' + itemWord + ' · Estimated total $' + fmt(total);
+    bar.classList.add('is-visible');
+    checkoutBtn.disabled = false;
+    renderCartModal();
+  }
+
+  function openCart() {
+    renderCartModal();
+    document.getElementById('cart-overlay').classList.add('open');
+  }
+
+  function closeCart() {
+    document.getElementById('cart-overlay').classList.remove('open');
+  }
+
+  document.getElementById('cart-view-btn').addEventListener('click', openCart);
+  document.getElementById('cart-checkout-btn').addEventListener('click', function () {
+    const cartItems = getCartItems();
+    if (!cartItems.length) return;
+    closeCart();
+    openCheckoutModal(cartItems.map(function (item) { return item.id; }));
+  });
+  document.getElementById('cart-close').addEventListener('click', closeCart);
+  document.getElementById('cart-overlay').addEventListener('click', function (e) {
+    if (e.target === this) closeCart();
+  });
+  document.getElementById('cart-clear-btn').addEventListener('click', function () {
+    clearCart();
+    renderCartModal();
+  });
+  document.getElementById('cart-modal-checkout-btn').addEventListener('click', function () {
+    const cartItems = getCartItems();
+    if (!cartItems.length) return;
+    closeCart();
+    openCheckoutModal(cartItems.map(function (item) { return item.id; }));
+  });
+
   // ── Load items ────────────────────────────────────────────────────
   async function loadTaxRate() {
     try {
@@ -1881,8 +2282,10 @@
       }
 
       allItems = data;
+      mergeLoadedItemsIntoCart(allItems);
       updateCategoryOptions(allItems);
       updateHeroShowcase(allItems);
+      updateCartUI();
       applyFiltersAndRender();
     } catch (err) {
       grid.innerHTML = '<div class="state-msg">Could not load items. Please try again.</div>';
@@ -1963,6 +2366,7 @@
     card.setAttribute('itemtype', 'https://schema.org/Product');
 
     const isReserved = reservedIds.has(item.id);
+    const isInCart   = cartHasItem(item.id);
     const hasSale    = hasActiveSale(item);
 
     const basePrice  = hasSale ? parseFloat(item.sale_price) : parseFloat(item.price);
@@ -1975,8 +2379,8 @@
          <span class="sale-badge">SALE</span>`
       : `<span class="shop-price">$${fmt(item.price)}</span>`;
 
-    const btnClass  = isReserved ? 'btn-reserve reserved' : 'btn-reserve';
-    const btnLabel  = isReserved ? 'Reserved \u2713' : 'Pay &amp; Reserve';
+    const btnClass  = isReserved ? 'btn-reserve reserved' : (isInCart ? 'btn-reserve carted' : 'btn-reserve');
+    const btnLabel  = isReserved ? 'Reserved \u2713' : (isInCart ? 'In Cart' : 'Add to Cart');
     const btnDisabled = isReserved ? ' disabled' : '';
 
     const imgSrc = item.image_path || item.photo_url || null;
@@ -2012,7 +2416,12 @@
 
     card.querySelector('.btn-reserve').addEventListener('click', function (e) {
       e.stopPropagation();
-      if (!this.disabled) openModal(item.id, item.name);
+      if (isReserved) return;
+      if (isInCart) {
+        openCart();
+        return;
+      }
+      addToCart(item);
     });
 
     return card;
@@ -2024,6 +2433,7 @@
     row.className = 'item-list-row';
 
     const isReserved = reservedIds.has(item.id);
+    const isInCart   = cartHasItem(item.id);
     const hasSale    = hasActiveSale(item);
     const basePrice  = hasSale ? parseFloat(item.sale_price) : parseFloat(item.price);
     const totalPrice = basePrice * (1 + SHOP_TAX_RATE);
@@ -2037,8 +2447,8 @@
       ? `<span class="shop-price shop-price--compare" style="font-size:0.85rem">$${fmt(item.price)}</span><br><span class="shop-price--sale" style="font-size:1.1rem">$${fmt(item.sale_price)}</span>`
       : `<span class="shop-price" style="font-size:1.1rem">$${fmt(item.price)}</span>`;
 
-    const btnClass    = isReserved ? 'btn-reserve reserved' : 'btn-reserve';
-    const btnLabel    = isReserved ? 'Reserved \u2713' : 'Pay &amp; Reserve';
+    const btnClass    = isReserved ? 'btn-reserve reserved' : (isInCart ? 'btn-reserve carted' : 'btn-reserve');
+    const btnLabel    = isReserved ? 'Reserved \u2713' : (isInCart ? 'In Cart' : 'Add to Cart');
     const btnDisabled = isReserved ? ' disabled' : '';
 
     row.innerHTML = `
@@ -2061,18 +2471,37 @@
 
     row.querySelector('.btn-reserve').addEventListener('click', function (e) {
       e.stopPropagation();
-      if (!this.disabled) openModal(item.id, item.name);
+      if (isReserved) return;
+      if (isInCart) {
+        openCart();
+        return;
+      }
+      addToCart(item);
     });
 
     return row;
   }
 
   // ── Modal ─────────────────────────────────────────────────────────
-  function openModal(itemId, itemName) {
-    pendingItemId   = itemId;
-    pendingItemName = itemName;
+  function openCheckoutModal(itemIds) {
+    const items = getCartItems().filter(function (item) {
+      return itemIds.indexOf(item.id) !== -1;
+    });
+    if (!items.length) return;
 
-    document.getElementById('modal-item-name').textContent = itemName;
+    pendingCheckoutIds = items.map(function (item) { return item.id; });
+    const itemWord = items.length === 1 ? 'item' : 'items';
+    const total = items.reduce(function (sum, item) {
+      const basePrice = hasActiveSale(item) ? parseFloat(item.sale_price) : parseFloat(item.price);
+      return sum + (basePrice * (1 + SHOP_TAX_RATE));
+    }, 0);
+
+    document.getElementById('modal-item-name').textContent = items.length + ' ' + itemWord + ' selected for pickup';
+    document.getElementById('modal-item-summary').innerHTML = items
+      .map(function (item) {
+        return escHtml(item.name) + (item.booth_number ? ' · Booth ' + escHtml(item.booth_number) : '');
+      })
+      .join('<br>') + '<div style="margin-top:0.75rem;color:var(--text);font-weight:500">Estimated total: $' + fmt(total) + '</div>';
     document.getElementById('input-name').value  = '';
     document.getElementById('input-phone').value = '';
     document.getElementById('input-email').value = '';
@@ -2086,22 +2515,24 @@
     document.getElementById('input-name').focus();
   }
 
-  function closeModal() {
+  function closeCheckoutModal() {
     document.getElementById('modal-overlay').classList.remove('open');
-    pendingItemId   = null;
-    pendingItemName = null;
+    pendingCheckoutIds = [];
   }
 
-  document.getElementById('modal-close').addEventListener('click', closeModal);
-  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-close').addEventListener('click', closeCheckoutModal);
+  document.getElementById('modal-cancel').addEventListener('click', closeCheckoutModal);
   document.getElementById('modal-overlay').addEventListener('click', function (e) {
-    if (e.target === this) closeModal();
+    if (e.target === this) closeCheckoutModal();
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeModal();
+    if (e.key === 'Escape') {
+      closeCheckoutModal();
+      closeCart();
+    }
   });
 
-  // ── Submit reservation (Square payment) ───────────────────────────
+  // ── Submit reservation cart (Square payment) ──────────────────────
   document.getElementById('modal-submit').addEventListener('click', async function () {
     const name  = document.getElementById('input-name').value.trim();
     const phone = document.getElementById('input-phone').value.trim();
@@ -2126,9 +2557,9 @@
     this.textContent = 'Processing\u2026';
 
     try {
-      var payload = { item_id: pendingItemId, customer_name: name, customer_phone: phone };
+      var payload = { item_ids: pendingCheckoutIds, customer_name: name, customer_phone: phone };
       if (email) payload.customer_email = email;
-      const res  = await fetch(API_CREATE_PAYMENT, {
+      const res  = await fetch(API_CREATE_CART_PAYMENT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -2144,16 +2575,18 @@
       }
 
       if (data.payment_url) {
+        stashPendingCheckout(data.reference_id, pendingCheckoutIds.slice());
         window.location.href = data.payment_url;
       } else {
         document.getElementById('modal-form-body').style.display = 'none';
         var successEl = document.getElementById('modal-success');
         if (successEl) {
           successEl.style.display = 'block';
-          successEl.innerHTML = '<p class="shop-reserve-success-title">Item Reserved!</p>'
-            + '<p class="shop-reserve-success-meta">Reservation #' + data.reservation_id + '</p>'
+          successEl.innerHTML = '<p class="shop-reserve-success-title">Reservations Created</p>'
+            + '<p class="shop-reserve-success-meta">' + (data.reservation_count || pendingCheckoutIds.length) + ' items reserved</p>'
             + '<p class="shop-reserve-success-note">Please visit the store to pay and pick up your item. We\'ll email you when it\'s ready.</p>';
         }
+        markItemsReserved(pendingCheckoutIds.slice());
       }
 
     } catch (err) {
@@ -2178,9 +2611,13 @@
       const res  = await fetch(API_CONFIRM, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reservation_id: ref }),
+        body: JSON.stringify({ reference_id: ref }),
       });
       const data = await res.json();
+      const pendingIds = consumePendingCheckout(ref);
+      if (res.ok && pendingIds.length) {
+        markItemsReserved(pendingIds);
+      }
       showBanner(
         res.ok
           ? (data.message || 'Payment confirmed! Your item has been reserved.')
@@ -2328,15 +2765,19 @@
     document.getElementById('detail-category').textContent = item.category ? 'Category: ' + item.category : '';
     document.getElementById('detail-desc').textContent = item.description || 'No description available.';
 
-    var btnClass = isReserved ? 'btn-primary reserved' : 'btn-primary';
-    var btnLabel = isReserved ? 'Reserved \u2713' : 'Pay & Reserve';
+    var btnClass = isReserved ? 'btn-primary reserved' : (isInCart ? 'btn-primary carted' : 'btn-primary');
+    var btnLabel = isReserved ? 'Reserved \u2713' : (isInCart ? 'View Cart' : 'Add to Cart');
     var actionsEl = document.getElementById('detail-actions');
     actionsEl.innerHTML = '<button class="' + btnClass + '" style="flex:1;padding:0.75rem 1.5rem"'
       + (isReserved ? ' disabled' : '') + '>' + btnLabel + '</button>';
     if (!isReserved) {
       actionsEl.querySelector('button').addEventListener('click', function () {
         closeItemDetail();
-        openModal(item.id, item.name);
+        if (isInCart) {
+          openCart();
+          return;
+        }
+        addToCart(item);
       });
     }
 

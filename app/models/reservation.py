@@ -21,6 +21,7 @@ class Reservation(Base):
         String(36), unique=True, nullable=False, default=_new_uuid, index=True
     )
     item_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("items.id"), nullable=True)
+    checkout_group_id: Mapped[Optional[str]] = mapped_column(String(36), index=True, nullable=True)
     customer_name: Mapped[Optional[str]] = mapped_column(String(200))
     customer_phone: Mapped[Optional[str]] = mapped_column(String(50))
     customer_email: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
