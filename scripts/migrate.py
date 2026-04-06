@@ -75,6 +75,17 @@ def _is_legacy_item_path(url: Optional[str]) -> bool:
     return url.startswith("/api/v1/items/") or url.startswith("/static/uploads/items/")
 
 
+def _is_public_image_url(url: Optional[str]) -> bool:
+    if not url:
+        return False
+    return (
+        url.startswith("http://")
+        or url.startswith("https://")
+        or url.startswith("/api/v1/items/")
+        or url.startswith("/static/")
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Main migration
 # ─────────────────────────────────────────────────────────────────────────────
@@ -366,6 +377,68 @@ async def run():
                     f"BMM-POS migrate: item_images to Spaces — migrated {migrated}, failed {failed}",
                     flush=True,
                 )
+
+        # 6g: Rebuild booth showcase photos from surviving item images when booth uploads are gone
+        marker = "startup_task_booth_showcase_photo_backfill_v1"
+        if not await _has_marker(session, marker):
+            from app.models.booth_showcase import BoothShowcase
+
+            showcase_rows = (
+                await session.execute(
+                    select(BoothShowcase).where(BoothShowcase.is_published == True)
+                )
+            ).scalars().all()
+
+            updated = 0
+            skipped = 0
+            for sc in showcase_rows:
+                current_urls = [url for url in (sc.photo_urls or []) if _is_public_image_url(url)]
+                if current_urls:
+                    skipped += 1
+                    continue
+
+                item_rows = (
+                    await session.execute(
+                        select(Item).where(
+                            Item.vendor_id == sc.vendor_id,
+                            Item.status == "active",
+                        ).order_by(Item.created_at.desc()).limit(24)
+                    )
+                ).scalars().all()
+
+                recovered_urls: list[str] = []
+                seen = set()
+                for item in item_rows:
+                    candidates = []
+                    if item.image_path:
+                        candidates.append(item.image_path)
+                    candidates.extend(item.photo_urls or [])
+                    for candidate in candidates:
+                        if not _is_public_image_url(candidate):
+                            continue
+                        if candidate in seen:
+                            continue
+                        seen.add(candidate)
+                        recovered_urls.append(candidate)
+                        if len(recovered_urls) >= 8:
+                            break
+                    if len(recovered_urls) >= 8:
+                        break
+
+                if not recovered_urls:
+                    skipped += 1
+                    continue
+
+                sc.photo_urls = recovered_urls
+                if not sc.last_photo_update:
+                    sc.last_photo_update = datetime.utcnow()
+                updated += 1
+
+            await _set_marker(session, marker, "One-time booth showcase photo backfill from surviving vendor item images")
+            print(
+                f"BMM-POS migrate: booth showcase photo backfill — updated {updated}, skipped {skipped}",
+                flush=True,
+            )
 
         await session.commit()
 
