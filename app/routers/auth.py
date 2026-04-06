@@ -91,6 +91,10 @@ async def get_user_from_authorization_header(authorization: str, db: AsyncSessio
     return await _resolve_user_from_token(token, db)
 
 
+async def get_user_from_token(token: str, db: AsyncSession) -> Vendor:
+    return await _resolve_user_from_token(token, db)
+
+
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
     return await _resolve_user_from_token(token, db)
 

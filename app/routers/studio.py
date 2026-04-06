@@ -15,7 +15,7 @@ from app.models.studio_class import StudioClass
 from app.models.studio_image import StudioImage
 from app.models.class_registration import ClassRegistration
 from app.models.vendor import Vendor
-from app.routers.auth import get_current_user
+from app.routers.auth import get_current_user, get_user_from_token
 from app.routers.settings import role_feature_allowed, require_staff_feature
 from app.schemas.class_registration import ClassRegistrationCreate, ClassRegistrationResponse
 from app.services import spaces as spaces_svc
@@ -36,14 +36,7 @@ async def get_optional_user(
     if not token:
         return None
     try:
-        import jwt
-        from app.routers.auth import SECRET_KEY, ALGORITHM
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-        if not email:
-            return None
-        result = await db.execute(select(Vendor).where(Vendor.email == email))
-        return result.scalar_one_or_none()
+        return await get_user_from_token(token, db)
     except Exception:
         return None
 
