@@ -13,6 +13,7 @@
     var _vhCurrentPage = 1;
     var _inspectorRequestSeq = 0;
     var _inspectorPages = { sales: 1, rent: 1, payout: 1 };
+    var _searchAutofillCleared = false;
 
     function fmt(v) {
         var n = parseFloat(v);
@@ -44,6 +45,18 @@
         return d.innerHTML;
     }
 
+    function normalizeVendorSearchInput() {
+        var input = document.getElementById('vendor-search-input');
+        if (!input) return '';
+        var value = (input.value || '').trim();
+        if (!_searchAutofillCleared && value && value.indexOf('@') !== -1) {
+            input.value = '';
+            _searchAutofillCleared = true;
+            return '';
+        }
+        return value.toLowerCase();
+    }
+
     /** Set from admin/index.html; admin and cashiers get full vendor hub actions */
     function isVendorHubAdmin() {
         return window._adminDashboardIsAdmin !== false;
@@ -70,7 +83,7 @@
 
             renderVendorStats(data.totals, data.already_processed);
             _vhCurrentPage = 1;
-            renderVendorRows();
+            window.filterVendorHub(true);
         } catch (e) {
             showAlert('alert-container', 'Vendor overview: ' + (e.message || e), 'error');
             var list = document.getElementById('vendor-hub-browser-list');
@@ -219,9 +232,8 @@
         renderVendorInspector(findVendor(_selectedVendorId));
     }
 
-    window.filterVendorHub = function filterVendorHub() {
-        var q = (document.getElementById('vendor-search-input') || {}).value;
-        q = (q || '').trim().toLowerCase();
+    window.filterVendorHub = function filterVendorHub(fromLoad) {
+        var q = normalizeVendorSearchInput();
         if (!_vendorData || !_vendorData.vendors) return;
         if (!q) {
             _filtered = _vendorData.vendors;
@@ -239,6 +251,21 @@
         _vhCurrentPage = 1;
         renderVendorRows();
     };
+
+    window.addEventListener('pageshow', function () {
+        var input = document.getElementById('vendor-search-input');
+        if (!input) return;
+        var value = (input.value || '').trim();
+        if (value && value.indexOf('@') !== -1) {
+            input.value = '';
+            _searchAutofillCleared = true;
+            if (_vendorData && _vendorData.vendors) {
+                _filtered = _vendorData.vendors;
+                _vhCurrentPage = 1;
+                renderVendorRows();
+            }
+        }
+    });
 
     function findVendor(id) {
         var list = _vendorData && _vendorData.vendors ? _vendorData.vendors : [];

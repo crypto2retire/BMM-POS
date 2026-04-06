@@ -951,7 +951,7 @@
             <div class="sum-card"><div class="sum-label">Vendors</div><div class="sum-value white" id="vh-stat-count">&mdash;</div></div>
         </div>
         <div style="margin-bottom:0.75rem">
-            <input type="search" id="vendor-search-input" class="form-control" placeholder="Search by name, email, or booth&hellip;" oninput="window.filterVendorHub()" style="max-width:28rem;width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.75rem;font-size:0.88rem;box-sizing:border-box">
+            <input type="search" id="vendor-search-input" class="form-control" placeholder="Search by name, email, or booth&hellip;" oninput="window.filterVendorHub()" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="vendor-search" style="max-width:28rem;width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.75rem;font-size:0.88rem;box-sizing:border-box">
         </div>
         <div class="vendor-workspace">
             <aside class="vendor-browser">
@@ -1370,7 +1370,7 @@
 
 <script src="/static/js/api.js?v=20260402a"></script>
 <script src="/static/js/auth-bootstrap.js?v=20260403b"></script>
-<script src="/static/js/admin-vendor-dashboard.js?v=20260403b"></script>
+<script src="/static/js/admin-vendor-dashboard.js?v=20260405a"></script>
 <script>
     function toggleMobileNav() {
         document.getElementById('mobile-nav').classList.toggle('open');
