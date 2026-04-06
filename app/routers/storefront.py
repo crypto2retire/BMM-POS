@@ -204,12 +204,6 @@ async def get_vendor_inventory(
         .where(Item.status == "active")
         .where(Item.quantity > 0)
         .where(Item.is_online == True)
-        .where(
-            or_(
-                Item.image_path.isnot(None),
-                Item.photo_urls != [],
-            )
-        )
     )
 
     if search:
@@ -287,6 +281,7 @@ async def get_categories(
         select(Item.category, func.count(Item.id))
         .where(Item.status == "active")
         .where(Item.quantity > 0)
+        .where(Item.is_online == True)
         .where(Item.category.isnot(None))
     )
     if vendor_id:
