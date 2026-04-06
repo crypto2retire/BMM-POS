@@ -3,11 +3,9 @@ import sys
 import traceback
 import logging
 from contextlib import asynccontextmanager
-from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, PlainTextResponse, Response, FileResponse, HTMLResponse
 from pathlib import Path
@@ -228,31 +226,7 @@ def _build_allowed_origins() -> list[str]:
     return origins
 
 
-def _build_allowed_hosts() -> list[str]:
-    hosts = {
-        "bowenstreetmarket.com",
-        "www.bowenstreetmarket.com",
-        "localhost",
-        "127.0.0.1",
-    }
-    for value in (
-        os.environ.get("BASE_URL", ""),
-        os.environ.get("REPLIT_DEV_DOMAIN", ""),
-        os.environ.get("RAILWAY_PUBLIC_DOMAIN", ""),
-        os.environ.get("RAILWAY_PRIVATE_DOMAIN", ""),
-    ):
-        candidate = (value or "").strip()
-        if not candidate:
-            continue
-        if "://" in candidate:
-            candidate = urlparse(candidate).hostname or ""
-        if candidate:
-            hosts.add(candidate)
-    return sorted(hosts)
-
-
 _allowed_origins = _build_allowed_origins()
-_allowed_hosts = _build_allowed_hosts()
 
 app.add_middleware(
     CORSMiddleware,
@@ -261,7 +235,6 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
     allow_credentials=True,
 )
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=_allowed_hosts)
 
 
 @app.exception_handler(Exception)
