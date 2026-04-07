@@ -2,10 +2,12 @@ import os
 import uuid
 import io
 from datetime import date, timedelta, datetime, timezone
+from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, UploadFile, File
 from fastapi.responses import Response
 from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
 from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
@@ -20,6 +22,7 @@ from app.routers.auth import get_current_user, get_user_from_token
 from app.routers.settings import role_feature_allowed, require_staff_feature
 from app.schemas.class_registration import ClassRegistrationCreate, ClassRegistrationResponse
 from app.services import spaces as spaces_svc
+from app.services.square import create_payment_link
 
 STUDIO_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "static", "images", "studio")
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
@@ -60,6 +63,10 @@ async def _can_manage_or_host_class(
         return True, studio_class
 
     return False, studio_class
+
+
+def _normalize_email(email: str) -> str:
+    return str(email).strip().lower()
 
 
 def _class_to_response(c: StudioClass) -> "StudioClassResponse":
@@ -374,7 +381,7 @@ async def register_for_class(
     if data.num_spots < 1 or data.num_spots > 10:
         raise HTTPException(status_code=400, detail="Must register for 1–10 spots")
 
-    normalized_email = str(data.customer_email).strip().lower()
+    normalized_email = _normalize_email(data.customer_email)
     enrolled = int(cls.enrolled or 0)
     capacity = int(cls.capacity or 0)
     spots_left = max(0, capacity - enrolled)
@@ -427,6 +434,114 @@ async def register_for_class(
         "status": "confirmed",
         "created_at": reg_created_at,
     }
+
+
+@router.post("/classes/{class_id}/create-payment")
+async def create_class_payment(
+    class_id: int,
+    data: ClassRegistrationCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(StudioClass).where(
+            StudioClass.id == class_id,
+            StudioClass.is_published == True,
+            StudioClass.is_cancelled == False,
+        ).with_for_update()
+    )
+    cls = result.scalar_one_or_none()
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found or not available")
+    if cls.class_date < date.today():
+        raise HTTPException(status_code=400, detail="This class has already passed")
+    if data.num_spots < 1 or data.num_spots > 10:
+        raise HTTPException(status_code=400, detail="Must register for 1–10 spots")
+
+    normalized_email = _normalize_email(data.customer_email)
+    existing = await db.execute(
+        select(ClassRegistration).where(
+            ClassRegistration.class_id == class_id,
+            ClassRegistration.customer_email == normalized_email,
+            ClassRegistration.status.in_(("confirmed", "pending")),
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="This email already has a signup in progress for this class")
+
+    enrolled = int(cls.enrolled or 0)
+    capacity = int(cls.capacity or 0)
+    spots_left = max(0, capacity - enrolled)
+    if data.num_spots > spots_left:
+        raise HTTPException(status_code=400, detail=f"Only {spots_left} spot(s) remaining")
+
+    registration = ClassRegistration(
+        class_id=class_id,
+        customer_name=data.customer_name,
+        customer_email=normalized_email,
+        customer_phone=data.customer_phone,
+        num_spots=data.num_spots,
+        notes=data.notes,
+        status="pending",
+    )
+    db.add(registration)
+    cls.enrolled = enrolled + data.num_spots
+    await db.flush()
+
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+    scheme = request.headers.get("x-forwarded-proto") or "https"
+    base_url = f"{scheme}://{host}"
+    redirect_url = f"{base_url}/shop/classes.html?class_payment=success&ref={registration.public_id}"
+
+    try:
+        total = (Decimal(str(cls.price)) * Decimal(str(data.num_spots))).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        link_result = await create_payment_link(
+            name=f"Class Signup: {cls.title[:80]}",
+            price_cents=int(total * 100),
+            redirect_url=redirect_url,
+        )
+        registration.square_payment_id = link_result.get("payment_link_id", "")
+        await db.commit()
+        return {
+            "reference_id": registration.public_id,
+            "payment_url": link_result["url"],
+            "total": float(total),
+            "message": "Redirecting to secure checkout...",
+        }
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Unable to start class checkout right now")
+
+
+class ConfirmClassPaymentRequest(BaseModel):
+    reference_id: str
+
+
+@router.post("/classes/payment-confirmed")
+async def confirm_class_payment(
+    req: ConfirmClassPaymentRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    _ = request
+    reference_id = (req.reference_id or "").strip()
+    if not reference_id:
+        raise HTTPException(status_code=400, detail="Registration reference is required")
+
+    result = await db.execute(
+        select(ClassRegistration).where(ClassRegistration.public_id == reference_id)
+    )
+    reg = result.scalar_one_or_none()
+    if not reg:
+        raise HTTPException(status_code=404, detail="Class registration not found")
+    if reg.status == "confirmed":
+        return {"message": "Payment already confirmed."}
+    if reg.status != "pending":
+        raise HTTPException(status_code=400, detail="This class signup is not awaiting payment")
+
+    reg.status = "confirmed"
+    await db.commit()
+    return {"message": "Payment confirmed. Your class signup is complete."}
 
 
 @router.get("/classes/{class_id}/registrations")

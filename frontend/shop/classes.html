@@ -389,6 +389,7 @@
 
 <script>
 const API = '/api/v1/studio';
+const CLASS_PAYMENT_STORAGE_KEY = 'bmm_class_pending_payment_v1';
 let allClasses = [];
 let categories = [];
 let activeFilter = 'all';
@@ -609,6 +610,41 @@ function closeSuccess() {
     document.getElementById('success-modal').classList.remove('show');
 }
 
+function stashPendingClassPayment(referenceId, payload) {
+    try {
+        localStorage.setItem(CLASS_PAYMENT_STORAGE_KEY, JSON.stringify({
+            reference_id: referenceId,
+            payload: payload,
+        }));
+    } catch (e) {}
+}
+
+function consumePendingClassPayment(referenceId) {
+    try {
+        const raw = localStorage.getItem(CLASS_PAYMENT_STORAGE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || parsed.reference_id !== referenceId) return null;
+        localStorage.removeItem(CLASS_PAYMENT_STORAGE_KEY);
+        return parsed.payload || null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function showBanner(msg, type) {
+    const banner = document.createElement('div');
+    banner.className = 'shop-banner ' + (type === 'success' ? 'shop-banner--success' : 'shop-banner--error');
+    banner.textContent = msg;
+    const close = document.createElement('button');
+    close.textContent = ' ✕';
+    close.style.cssText = 'background:none;border:none;color:inherit;cursor:pointer;margin-left:1rem;font-size:1rem;';
+    close.onclick = () => banner.remove();
+    banner.appendChild(close);
+    document.body.prepend(banner);
+    if (type === 'success') setTimeout(() => banner.remove(), 10000);
+}
+
 document.getElementById('register-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('submit-btn');
@@ -629,41 +665,34 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
     }
 
     btn.disabled = true;
-    btn.textContent = 'Registering...';
+    btn.textContent = 'Redirecting...';
 
     try {
-        const res = await fetch(`${API}/classes/${classId}/register`, {
+        const payload = {
+            class_id: parseInt(classId),
+            customer_name: name,
+            customer_email: email,
+            customer_phone: phone || null,
+            num_spots: spots,
+            notes: notes || null,
+        };
+        const res = await fetch(`${API}/classes/${classId}/create-payment`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                class_id: parseInt(classId),
-                customer_name: name,
-                customer_email: email,
-                customer_phone: phone || null,
-                num_spots: spots,
-                notes: notes || null,
-            }),
+            body: JSON.stringify(payload),
         });
 
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || 'Registration failed');
+            throw new Error(err.detail || 'Unable to start checkout');
         }
 
-        const reg = await res.json();
-        closeModal();
-
-        const cls = allClasses.find(c => c.id === parseInt(classId));
-        document.getElementById('success-details').innerHTML = `
-            <div><span class="label">Class</span><br>${escHtml(cls?.title || '')}</div>
-            <div><span class="label">Date</span><br>${fmtDate(cls?.class_date || '')}</div>
-            <div><span class="label">Time</span><br>${cls ? fmtTimeRange(cls.start_time, cls.end_time) : ''}</div>
-            <div><span class="label">Name</span><br>${escHtml(name)}</div>
-            <div><span class="label">Spots</span><br>${spots}</div>
-        `;
-        document.getElementById('success-modal').classList.add('show');
-
-        await loadClasses();
+        const data = await res.json();
+        if (!data.payment_url) {
+            throw new Error(data.detail || 'Class checkout is unavailable right now');
+        }
+        stashPendingClassPayment(data.reference_id, payload);
+        window.location.href = data.payment_url;
     } catch (err) {
         errEl.textContent = err.message;
         errEl.style.display = 'block';
@@ -673,6 +702,43 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
     }
 });
 
+async function handleClassPaymentReturn() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('class_payment') !== 'success') return;
+    const ref = params.get('ref');
+    if (!ref) return;
+
+    history.replaceState({}, '', '/shop/classes.html');
+    const pending = consumePendingClassPayment(ref);
+
+    try {
+        const res = await fetch(`${API}/classes/payment-confirmed`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reference_id: ref }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            showBanner(data.detail || 'Payment received but class signup confirmation failed. Please call the store.', 'error');
+            return;
+        }
+
+        const cls = pending ? allClasses.find(c => c.id === parseInt(pending.class_id, 10)) : null;
+        document.getElementById('success-details').innerHTML = `
+            <div><span class="label">Class</span><br>${escHtml(cls?.title || '')}</div>
+            <div><span class="label">Date</span><br>${fmtDate(cls?.class_date || '')}</div>
+            <div><span class="label">Time</span><br>${cls ? fmtTimeRange(cls.start_time, cls.end_time) : ''}</div>
+            <div><span class="label">Name</span><br>${escHtml(pending?.customer_name || '')}</div>
+            <div><span class="label">Spots</span><br>${pending?.num_spots || ''}</div>
+        `;
+        document.getElementById('success-modal').classList.add('show');
+        showBanner(data.message || 'Payment confirmed. Your class signup is complete.', 'success');
+        await loadClasses();
+    } catch (_) {
+        showBanner('Payment received. Please call the store to confirm your class signup.', 'error');
+    }
+}
+
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
@@ -681,7 +747,7 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
     });
 });
 
-loadClasses();
+loadClasses().then(handleClassPaymentReturn);
 </script>
 <script src="/static/js/public-assistant.js"></script>
 <script>initPublicAssistant('Studio Classes page - browsing classes and workshops');</script>

@@ -145,6 +145,9 @@ async def run():
             "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS customer_email VARCHAR(200)",
             "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS public_id VARCHAR(36)",
             "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS checkout_group_id VARCHAR(36)",
+            # class_registrations
+            "ALTER TABLE class_registrations ADD COLUMN IF NOT EXISTS public_id VARCHAR(36)",
+            "ALTER TABLE class_registrations ADD COLUMN IF NOT EXISTS square_payment_id VARCHAR(200)",
             # vendor_balances
             "ALTER TABLE vendor_balances ADD COLUMN IF NOT EXISTS rent_balance NUMERIC(10,2) NOT NULL DEFAULT 0.00",
             # eod_reports
@@ -238,6 +241,10 @@ async def run():
                     ON reservations (public_id);
             EXCEPTION WHEN others THEN NULL; END $$""",
             """DO $$ BEGIN
+                CREATE UNIQUE INDEX IF NOT EXISTS ix_class_registrations_public_id
+                    ON class_registrations (public_id);
+            EXCEPTION WHEN others THEN NULL; END $$""",
+            """DO $$ BEGIN
                 CREATE INDEX IF NOT EXISTS ix_reservations_checkout_group_id
                     ON reservations (checkout_group_id);
             EXCEPTION WHEN others THEN NULL; END $$""",
@@ -264,6 +271,22 @@ async def run():
         await session.execute(text("""
             DO $$ BEGIN
                 ALTER TABLE reservations ALTER COLUMN public_id SET NOT NULL;
+            EXCEPTION WHEN others THEN NULL; END $$
+        """))
+
+        class_rows = (await session.execute(
+            text("SELECT id FROM class_registrations WHERE public_id IS NULL")
+        )).fetchall()
+        for row in class_rows:
+            await session.execute(
+                text("UPDATE class_registrations SET public_id = :pid WHERE id = :rid"),
+                {"pid": str(uuid.uuid4()), "rid": row[0]},
+            )
+        if class_rows:
+            print(f"BMM-POS migrate: backfilled class registration public_id for {len(class_rows)} rows", flush=True)
+        await session.execute(text("""
+            DO $$ BEGIN
+                ALTER TABLE class_registrations ALTER COLUMN public_id SET NOT NULL;
             EXCEPTION WHEN others THEN NULL; END $$
         """))
 
