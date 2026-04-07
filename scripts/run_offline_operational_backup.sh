@@ -15,4 +15,3 @@ if [[ -x "$REPO_ROOT/.venv/bin/python" ]]; then
   PYTHON_CMD=("$REPO_ROOT/.venv/bin/python")
 fi
 "${PYTHON_CMD[@]}" "$SCRIPT_DIR/offline_operational_backup.py"
-"${PYTHON_CMD[@]}" "$SCRIPT_DIR/square_offline_export.py"
