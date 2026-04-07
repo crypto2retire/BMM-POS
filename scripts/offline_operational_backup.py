@@ -5,7 +5,7 @@ import gzip
 import json
 import os
 import sys
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -119,6 +119,8 @@ def _serialize_value(value: Any) -> Any:
     if isinstance(value, datetime):
         if value.tzinfo is None:
             return value.replace(tzinfo=timezone.utc).isoformat()
+        return value.isoformat()
+    if isinstance(value, time):
         return value.isoformat()
     if isinstance(value, date):
         return value.isoformat()
