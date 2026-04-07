@@ -996,6 +996,9 @@
         <button class="pay-btn cash" onclick="openRentPaymentModal()" style="width:100%;margin-top:6px;background:color-mix(in srgb, var(--warning) 58%, var(--bg));border-color:color-mix(in srgb, var(--warning) 58%, var(--bg))">
             🏠 RENT PAYMENT
         </button>
+        <button class="pay-btn card" onclick="openClassSignupModal()" style="width:100%;margin-top:6px;background:color-mix(in srgb, var(--info) 44%, var(--bg));border-color:color-mix(in srgb, var(--info) 44%, var(--bg))">
+            🎨 CLASS SIGNUP
+        </button>
     </div>
 </div>
 
@@ -1631,6 +1634,47 @@
         <div id="rent-result-msg" style="display:none;padding:0.75rem;margin-top:0.75rem;text-align:center;font-size:0.9rem"></div>
         <div class="modal-actions" style="margin-top:1rem">
             <button class="cancel-btn" onclick="closeRentModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="pos-modal-overlay hidden" id="class-signup-modal">
+    <div class="pos-modal" style="max-width:520px">
+        <h2>🎨 Class Signup</h2>
+        <div style="font-size:0.76rem;color:var(--text-light);margin-bottom:0.8rem">Record a register signup so the attendee appears on the class roster.</div>
+        <div class="manual-form-group">
+            <label for="class-signup-class">Class</label>
+            <select id="class-signup-class" onchange="updateClassSignupMeta()"></select>
+        </div>
+        <div id="class-signup-class-meta" style="font-size:0.76rem;color:var(--text-light);margin:-0.25rem 0 0.85rem"></div>
+        <div class="manual-form-group">
+            <label for="class-signup-name">Name</label>
+            <input type="text" id="class-signup-name" placeholder="Customer name">
+        </div>
+        <div class="manual-form-row">
+            <div class="manual-form-group">
+                <label for="class-signup-email">Email</label>
+                <input type="email" id="class-signup-email" placeholder="customer@email.com">
+            </div>
+            <div class="manual-form-group">
+                <label for="class-signup-phone">Phone</label>
+                <input type="tel" id="class-signup-phone" placeholder="555-555-5555">
+            </div>
+        </div>
+        <div class="manual-form-row">
+            <div class="manual-form-group">
+                <label for="class-signup-spots">Spots</label>
+                <select id="class-signup-spots"></select>
+            </div>
+            <div class="manual-form-group">
+                <label for="class-signup-notes">Notes</label>
+                <input type="text" id="class-signup-notes" placeholder="Optional notes">
+            </div>
+        </div>
+        <div id="class-signup-msg" style="display:none;font-size:0.8rem;min-height:20px;margin-bottom:0.4rem"></div>
+        <div class="modal-actions">
+            <button class="cancel-btn" onclick="closeClassSignupModal()">Cancel</button>
+            <button class="confirm-btn" onclick="submitClassSignup()">Add To Class List</button>
         </div>
     </div>
 </div>
@@ -4266,6 +4310,7 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
 
     var _rentVendors = [];
     var _selectedRentVendor = null;
+    var _studioSignupClasses = [];
 
     async function openRentPaymentModal() {
         document.getElementById('rent-modal').classList.remove('hidden');
@@ -4371,6 +4416,113 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
     function closeRentModal() {
         document.getElementById('rent-modal').classList.add('hidden');
         _selectedRentVendor = null;
+    }
+
+    async function openClassSignupModal() {
+        document.getElementById('class-signup-modal').classList.remove('hidden');
+        document.getElementById('class-signup-name').value = '';
+        document.getElementById('class-signup-email').value = '';
+        document.getElementById('class-signup-phone').value = '';
+        document.getElementById('class-signup-notes').value = '';
+        document.getElementById('class-signup-msg').style.display = 'none';
+
+        var classSelect = document.getElementById('class-signup-class');
+        classSelect.innerHTML = '<option value="">Loading classes…</option>';
+        document.getElementById('class-signup-spots').innerHTML = '<option value="1">1</option>';
+        document.getElementById('class-signup-class-meta').textContent = '';
+
+        try {
+            var classes = await apiGet('/api/v1/studio/classes?published_only=true');
+            var today = new Date().toISOString().slice(0, 10);
+            _studioSignupClasses = (classes || []).filter(function(c) {
+                return !c.is_cancelled && c.class_date >= today && (c.spots_left || 0) > 0;
+            });
+
+            if (!_studioSignupClasses.length) {
+                classSelect.innerHTML = '<option value="">No open classes available</option>';
+                return;
+            }
+
+            classSelect.innerHTML = _studioSignupClasses.map(function(c) {
+                return '<option value="' + c.id + '">' + escHtml(c.title) + '</option>';
+            }).join('');
+            updateClassSignupMeta();
+        } catch (e) {
+            classSelect.innerHTML = '<option value="">Failed to load classes</option>';
+            var msgEl = document.getElementById('class-signup-msg');
+            msgEl.style.display = 'block';
+            msgEl.style.color = 'color-mix(in srgb, var(--danger) 72%, var(--surface))';
+            msgEl.textContent = e.message || 'Failed to load classes';
+        }
+    }
+
+    function updateClassSignupMeta() {
+        var classId = parseInt(document.getElementById('class-signup-class').value, 10);
+        var cls = _studioSignupClasses.find(function(c) { return c.id === classId; });
+        var metaEl = document.getElementById('class-signup-class-meta');
+        var spotsEl = document.getElementById('class-signup-spots');
+        if (!cls) {
+            metaEl.textContent = '';
+            spotsEl.innerHTML = '<option value="1">1</option>';
+            return;
+        }
+        metaEl.textContent = cls.class_date + ' · ' + cls.start_time.slice(0, 5) + '–' + cls.end_time.slice(0, 5) + ' · ' + cls.instructor + ' · ' + cls.spots_left + ' spots left';
+        var maxSpots = Math.min(Math.max(parseInt(cls.spots_left || 0, 10), 1), 10);
+        var html = '';
+        for (var i = 1; i <= maxSpots; i++) {
+            html += '<option value="' + i + '">' + i + '</option>';
+        }
+        spotsEl.innerHTML = html;
+    }
+
+    async function submitClassSignup() {
+        var classId = parseInt(document.getElementById('class-signup-class').value, 10);
+        var name = document.getElementById('class-signup-name').value.trim();
+        var email = document.getElementById('class-signup-email').value.trim();
+        var phone = document.getElementById('class-signup-phone').value.trim();
+        var notes = document.getElementById('class-signup-notes').value.trim();
+        var spots = parseInt(document.getElementById('class-signup-spots').value, 10) || 1;
+        var msgEl = document.getElementById('class-signup-msg');
+
+        msgEl.style.display = 'none';
+        if (!classId) {
+            msgEl.style.display = 'block';
+            msgEl.style.color = 'color-mix(in srgb, var(--danger) 72%, var(--surface))';
+            msgEl.textContent = 'Select a class';
+            return;
+        }
+        if (!name || !email || !phone) {
+            msgEl.style.display = 'block';
+            msgEl.style.color = 'color-mix(in srgb, var(--danger) 72%, var(--surface))';
+            msgEl.textContent = 'Name, email, and phone are required';
+            return;
+        }
+
+        try {
+            await apiPost('/api/v1/studio/classes/' + classId + '/register', {
+                class_id: classId,
+                customer_name: name,
+                customer_email: email,
+                customer_phone: phone,
+                num_spots: spots,
+                notes: notes || null,
+            });
+            msgEl.style.display = 'block';
+            msgEl.style.color = 'var(--success-light)';
+            msgEl.textContent = 'Signup added to class list';
+            showToast('Class signup recorded', 'success');
+            setTimeout(function() {
+                closeClassSignupModal();
+            }, 700);
+        } catch (e) {
+            msgEl.style.display = 'block';
+            msgEl.style.color = 'color-mix(in srgb, var(--danger) 72%, var(--surface))';
+            msgEl.textContent = e.message || 'Failed to record class signup';
+        }
+    }
+
+    function closeClassSignupModal() {
+        document.getElementById('class-signup-modal').classList.add('hidden');
     }
 
     init();
