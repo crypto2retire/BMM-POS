@@ -90,6 +90,14 @@ DEFAULT_OUTPUT_PATH = (
     / "offline"
     / "current-operational-backup.json.gz"
 )
+DEFAULT_PREVIOUS_OUTPUT_PATH = (
+    Path.home()
+    / "Library"
+    / "Application Support"
+    / "BMM-POS"
+    / "offline"
+    / "previous-operational-backup.json.gz"
+)
 
 SNAPSHOT_MODELS = [
     ("vendors", Vendor),
@@ -178,7 +186,11 @@ async def build_snapshot() -> dict[str, Any]:
     return snapshot
 
 
-def write_snapshot(snapshot: dict[str, Any], output_path: Path) -> None:
+def write_snapshot(
+    snapshot: dict[str, Any],
+    output_path: Path,
+    previous_output_path: Path | None = None,
+) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = output_path.with_suffix(output_path.suffix + ".tmp")
 
@@ -186,6 +198,10 @@ def write_snapshot(snapshot: dict[str, Any], output_path: Path) -> None:
         json.dump(snapshot, fh, separators=(",", ":"), ensure_ascii=True)
 
     os.chmod(temp_path, 0o600)
+    if previous_output_path:
+        previous_output_path.parent.mkdir(parents=True, exist_ok=True)
+        if output_path.exists():
+            os.replace(output_path, previous_output_path)
     os.replace(temp_path, output_path)
 
 
@@ -198,16 +214,23 @@ async def main() -> int:
         default=os.environ.get("OFFLINE_BACKUP_PATH", str(DEFAULT_OUTPUT_PATH)),
         help="Destination .json.gz path. Defaults to ~/Library/Application Support/BMM-POS/offline/current-operational-backup.json.gz",
     )
+    parser.add_argument(
+        "--previous-output",
+        default=os.environ.get("OFFLINE_BACKUP_PREVIOUS_PATH", str(DEFAULT_PREVIOUS_OUTPUT_PATH)),
+        help="Destination path for the previous successful backup copy.",
+    )
     args = parser.parse_args()
 
     output_path = Path(args.output).expanduser().resolve()
+    previous_output_path = Path(args.previous_output).expanduser().resolve()
     snapshot = await build_snapshot()
-    write_snapshot(snapshot, output_path)
+    write_snapshot(snapshot, output_path, previous_output_path)
 
     print(
         json.dumps(
             {
                 "output_path": str(output_path),
+                "previous_output_path": str(previous_output_path),
                 "generated_at": snapshot["generated_at"],
                 "counts": snapshot["counts"],
             },
