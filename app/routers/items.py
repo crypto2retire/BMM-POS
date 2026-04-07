@@ -34,6 +34,7 @@ IMAGE_UPLOAD_DIR = "frontend/static/uploads/items"
 MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5MB
 ALLOWED_IMAGE_TYPES = {".jpg", ".jpeg", ".png", ".webp"}
 MAX_IMAGE_DIMENSION = 800
+MAX_ITEM_PHOTOS = 10
 
 router = APIRouter(prefix="/items", tags=["items"])
 
@@ -641,7 +642,14 @@ async def upload_item_photo(
     else:
         db.add(ItemImage(item_id=item_id, image_data=jpeg_bytes, content_type="image/jpeg"))
 
-    item.photo_urls = (item.photo_urls or []) + [photo_url]
+    existing_urls = item.photo_urls or []
+    if len(existing_urls) >= MAX_ITEM_PHOTOS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Items can have up to {MAX_ITEM_PHOTOS} photos.",
+        )
+
+    item.photo_urls = existing_urls + [photo_url]
     item.image_path = photo_url
     await db.commit()
 

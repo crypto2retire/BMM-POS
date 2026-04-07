@@ -53,6 +53,7 @@
         }
         .item-card-photos .add-photo-btn:hover { border-color:var(--gold-dim); color:var(--gold); }
         .item-card-photos .add-photo-btn input { position:absolute; inset:0; opacity:0; cursor:pointer; }
+        .photo-count-note { font-size:0.68rem; color:var(--text-light); margin-top:6px; }
 
         .online-photo-note {
             display:block; font-size:0.7rem; color:var(--gold-dim); opacity:0.85;
@@ -642,6 +643,7 @@
                             id="f-photo"
                             accept="image/*"
                             capture="environment"
+                            multiple
                             style="display:none"
                             onchange="onPhotoSelected(event)">
                     </div>
@@ -916,7 +918,8 @@
 <script>
     let editingId = null;
     let deepLinkItemId = null;
-    let pendingPhotoFile = null;
+    const MAX_ITEM_PHOTOS = 10;
+    let pendingPhotoFiles = [];
     let pendingPhotoBase64 = null;
     let pendingPhotoMime = null;
     function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
@@ -1058,7 +1061,7 @@
     });
 
     function itemHasPhoto() {
-        if (pendingPhotoFile) return true;
+        if (pendingPhotoFiles.length) return true;
         var existingList = document.getElementById('existing-photos-list');
         if (existingList && existingList.children.length > 0) return true;
         var previewImg = document.querySelector('#photo-preview-container .image-path-preview');
@@ -1089,9 +1092,10 @@
     }
 
     function onPhotoSelected(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        pendingPhotoFile = file;
+        const files = Array.from(event.target.files || []);
+        if (!files.length) return;
+        pendingPhotoFiles = files.slice(0, MAX_ITEM_PHOTOS);
+        const file = pendingPhotoFiles[0];
         const reader = new FileReader();
         reader.onload = function(e) {
             const dataUrl = e.target.result;
@@ -1102,7 +1106,8 @@
                     <img src="${dataUrl}" alt="Selected item photo preview" width="120" height="120">
                     <button type="button" class="photo-preview-remove" onclick="clearPhotoPreview()" aria-label="Remove selected photo">✕</button>
                 </div>
-                <div class="photo-upload-label" style="margin-top:4px">Tap to change photo</div>`;
+                <div class="photo-upload-label" style="margin-top:4px">Tap to change photo${pendingPhotoFiles.length > 1 ? 's' : ''}</div>
+                <div class="photo-count-note">${pendingPhotoFiles.length} selected${files.length > pendingPhotoFiles.length ? `, ${files.length - pendingPhotoFiles.length} skipped` : ''} · max ${MAX_ITEM_PHOTOS}</div>`;
             document.getElementById('ai-describe-wrap').style.display = 'flex';
             dismissSuggestions();
             updateOnlineCheckbox();
@@ -1111,7 +1116,7 @@
     }
 
     function clearPhotoPreview() {
-        pendingPhotoFile = null;
+        pendingPhotoFiles = [];
         pendingPhotoBase64 = null;
         pendingPhotoMime = null;
         document.getElementById('f-photo').value = '';
@@ -1133,13 +1138,14 @@
             return;
         }
         wrap.style.display = 'block';
-        list.innerHTML = photoUrls.map(url => `
+        list.innerHTML = photoUrls.map((url, index) => `
             <div style="position:relative">
                 <img src="${url}" alt="Existing item photo" width="56" height="56" style="width:56px;height:56px;object-fit:cover;border:1px solid var(--border)">
+                ${index === 0 ? '<div style="position:absolute;left:2px;bottom:2px;background:rgba(0,0,0,0.7);color:white;font-size:0.55rem;padding:1px 4px">PRIMARY</div>' : ''}
                 <button type="button" class="photo-preview-remove"
                     onclick="removeExistingPhoto('${url.replace(/'/g, "\\'")}')"
                     style="position:absolute;top:2px;right:2px" aria-label="Remove existing photo">✕</button>
-            </div>`).join('');
+            </div>`).join('') + `<div style="flex-basis:100%;font-size:0.68rem;color:var(--text-light)">${photoUrls.length} of ${MAX_ITEM_PHOTOS} photos used</div>`;
     }
 
     async function removeExistingPhoto(url) {
@@ -1470,35 +1476,53 @@
 
     // ── Inline photo upload on card ─────────────────────────────────────
     async function uploadCardPhoto(id, input) {
-        const file = input.files[0];
-        if (!file) return;
-        const formData = new FormData();
-        formData.append('file', file);
+        const files = Array.from(input.files || []);
+        if (!files.length) return;
         const token = sessionStorage.getItem('bmm_token');
         try {
-            const res = await fetch(`/api/v1/items/${id}/photo`, {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token },
-                body: formData,
-            });
-            if (!res.ok) {
-                const err = await res.json().catch(() => ({ detail: 'Upload failed' }));
-                throw new Error(err.detail || 'Upload failed');
+            const item = allItems.find(function(entry) { return entry.id === id; });
+            const existingCount = ((item && item.photo_urls) || []).length;
+            const remainingSlots = MAX_ITEM_PHOTOS - existingCount;
+            if (remainingSlots <= 0) {
+                throw new Error(`This item already has ${MAX_ITEM_PHOTOS} photos.`);
             }
-            // Also upload via the new upload-image endpoint
-            const formData2 = new FormData();
-            formData2.append('file', file);
-            try {
-                await fetch(`/api/v1/items/${id}/upload-image`, {
+
+            const filesToUpload = files.slice(0, remainingSlots);
+            for (let index = 0; index < filesToUpload.length; index += 1) {
+                const file = filesToUpload[index];
+                const formData = new FormData();
+                formData.append('file', file);
+                const res = await fetch(`/api/v1/items/${id}/photo`, {
                     method: 'POST',
                     headers: { 'Authorization': 'Bearer ' + token },
-                    body: formData2,
+                    body: formData,
                 });
-            } catch (e2) { /* best effort */ }
-            showAlert('alert-container', 'Photo uploaded.', 'success');
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ detail: 'Upload failed' }));
+                    throw new Error(err.detail || 'Upload failed');
+                }
+                if (index === 0) {
+                    const formData2 = new FormData();
+                    formData2.append('file', file);
+                    try {
+                        await fetch(`/api/v1/items/${id}/upload-image`, {
+                            method: 'POST',
+                            headers: { 'Authorization': 'Bearer ' + token },
+                            body: formData2,
+                        });
+                    } catch (e2) { /* best effort */ }
+                }
+            }
+            if (files.length > filesToUpload.length) {
+                showAlert('alert-container', `Uploaded ${filesToUpload.length} photo(s). ${files.length - filesToUpload.length} skipped because items can have up to ${MAX_ITEM_PHOTOS} photos.`, 'warning');
+            } else {
+                showAlert('alert-container', `${filesToUpload.length} photo(s) uploaded.`, 'success');
+            }
+            input.value = '';
             await loadItems();
         } catch (e) {
             showAlert('alert-container', e.message, 'error');
+            input.value = '';
         }
     }
 
@@ -1913,30 +1937,47 @@
                 showAlert('alert-container', 'Item created.', 'success');
             }
 
-            if (pendingPhotoFile && savedItem && savedItem.id) {
+            if (pendingPhotoFiles.length && savedItem && savedItem.id) {
                 btn.textContent = 'Uploading photo…';
-                const formData = new FormData();
-                formData.append('file', pendingPhotoFile);
                 const token = sessionStorage.getItem('bmm_token');
                 try {
-                    await fetch(`/api/v1/items/${savedItem.id}/photo`, {
-                        method: 'POST',
-                        headers: { 'Authorization': 'Bearer ' + token },
-                        body: formData,
-                    });
+                    const existingCount = ((savedItem.photo_urls) || []).length;
+                    const remainingSlots = MAX_ITEM_PHOTOS - existingCount;
+                    const filesToUpload = pendingPhotoFiles.slice(0, remainingSlots);
+                    if (!filesToUpload.length) {
+                        throw new Error(`Items can have up to ${MAX_ITEM_PHOTOS} photos.`);
+                    }
+                    for (let index = 0; index < filesToUpload.length; index += 1) {
+                        const file = filesToUpload[index];
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        const uploadRes = await fetch(`/api/v1/items/${savedItem.id}/photo`, {
+                            method: 'POST',
+                            headers: { 'Authorization': 'Bearer ' + token },
+                            body: formData,
+                        });
+                        if (!uploadRes.ok) {
+                            const err = await uploadRes.json().catch(() => ({ detail: 'Upload failed' }));
+                            throw new Error(err.detail || 'Upload failed');
+                        }
+                        if (index === 0) {
+                            try {
+                                const formData2 = new FormData();
+                                formData2.append('file', file);
+                                await fetch(`/api/v1/items/${savedItem.id}/upload-image`, {
+                                    method: 'POST',
+                                    headers: { 'Authorization': 'Bearer ' + token },
+                                    body: formData2,
+                                });
+                            } catch (e2) { /* best effort */ }
+                        }
+                    }
+                    if (pendingPhotoFiles.length > filesToUpload.length) {
+                        showAlert('alert-container', `Item saved. ${filesToUpload.length} photo(s) uploaded; extra photos were skipped because items can have up to ${MAX_ITEM_PHOTOS}.`, 'warning');
+                    }
                 } catch (photoErr) {
-                    showAlert('alert-container', 'Item saved but photo upload failed.', 'warning');
+                    showAlert('alert-container', photoErr.message || 'Item saved but photo upload failed.', 'warning');
                 }
-                // Also upload via the new upload-image endpoint
-                try {
-                    const formData2 = new FormData();
-                    formData2.append('file', pendingPhotoFile);
-                    await fetch(`/api/v1/items/${savedItem.id}/upload-image`, {
-                        method: 'POST',
-                        headers: { 'Authorization': 'Bearer ' + token },
-                        body: formData2,
-                    });
-                } catch (e2) { /* best effort */ }
             }
 
             if (!editingId && addAnother) {
@@ -1952,7 +1993,7 @@
                 document.getElementById('f-is-consignment').checked = false;
                 document.getElementById('f-consignment-rate').value = '';
                 document.getElementById('consignment-rate-group').style.display = 'none';
-                pendingPhotoFile = null;
+                pendingPhotoFiles = [];
                 pendingPhotoBase64 = null;
                 pendingPhotoMime = null;
                 var preview = document.getElementById('photo-preview');
@@ -2369,7 +2410,7 @@
                     ).join('')}
                     ${canMutate ? `<button class="add-photo-btn" title="Add photo" type="button">
                         <span style="pointer-events:none">+&#x1F4F7;</span>
-                        <input type="file" accept="image/*" capture="environment"
+                        <input type="file" accept="image/*" capture="environment" multiple
                             onchange="uploadCardPhoto(${item.id}, this)">
                     </button>` : ''}
                 </div>
