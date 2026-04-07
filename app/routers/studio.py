@@ -80,6 +80,7 @@ def _class_to_response(c: StudioClass) -> "StudioClassResponse":
         is_published=c.is_published,
         is_cancelled=c.is_cancelled,
         image_url=c.image_url,
+        created_by=c.created_by,
         created_at=c.created_at,
         spots_left=max(0, c.capacity - c.enrolled),
     )

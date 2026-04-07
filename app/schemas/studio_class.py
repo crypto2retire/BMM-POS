@@ -51,6 +51,7 @@ class StudioClassResponse(BaseModel):
     is_published: bool
     is_cancelled: bool
     image_url: Optional[str] = None
+    created_by: Optional[int] = None
     created_at: datetime
     spots_left: int = 0
 

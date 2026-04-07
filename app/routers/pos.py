@@ -25,6 +25,7 @@ from app.models.item_image import ItemImage
 from app.models.sale import Sale, SaleItem
 from app.models.gift_card import GiftCard, GiftCardTransaction
 from app.models.poynt_payment import PoyntPayment
+from app.models.studio_class import StudioClass
 from app.schemas.sale import (
     SaleCreate, SaleResponse, SaleItemResponse, VoidSaleRequest,
     PoyntChargeRequest, PoyntChargeResponse, PoyntStatusResponse,
@@ -249,6 +250,69 @@ async def pos_manual_item(
     )
     item = result.scalar_one()
 
+    return _item_to_pos_dict(item)
+
+
+@router.post("/class-fee-item")
+async def pos_class_fee_item(
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
+):
+    class_id = body.get("class_id")
+    spots = int(body.get("num_spots") or 1)
+
+    if not class_id:
+        raise HTTPException(status_code=400, detail="class_id is required")
+    if spots < 1 or spots > 10:
+        raise HTTPException(status_code=400, detail="Class signup must be for 1-10 spots")
+
+    result = await db.execute(select(StudioClass).where(StudioClass.id == class_id))
+    studio_class = result.scalar_one_or_none()
+    if not studio_class:
+        raise HTTPException(status_code=404, detail="Class not found")
+    if not studio_class.is_published or studio_class.is_cancelled:
+        raise HTTPException(status_code=400, detail="Class is not available for signup")
+    if studio_class.class_date < date.today():
+        raise HTTPException(status_code=400, detail="This class has already passed")
+
+    enrolled = int(studio_class.enrolled or 0)
+    capacity = int(studio_class.capacity or 0)
+    spots_left = max(0, capacity - enrolled)
+    if spots > spots_left:
+        raise HTTPException(status_code=400, detail=f"Only {spots_left} spot(s) remaining")
+
+    owner_id = studio_class.created_by or current_user.id
+    owner_result = await db.execute(select(Vendor).where(Vendor.id == owner_id))
+    owner = owner_result.scalar_one_or_none()
+    if not owner:
+        raise HTTPException(status_code=400, detail="Class host account was not found")
+    if owner.status != "active":
+        raise HTTPException(status_code=400, detail="Class host account is not active")
+
+    barcode = f"CLASS-{uuid.uuid4().hex[:10].upper()}"
+    total_price = (Decimal(str(studio_class.price)) * Decimal(str(spots))).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    item = Item(
+        vendor_id=owner.id,
+        name=f"Class Signup: {studio_class.title} ({spots} spot{'s' if spots != 1 else ''})",
+        barcode=barcode,
+        sku=barcode,
+        price=total_price,
+        quantity=1,
+        category="Studio Class",
+        status="active",
+        is_tax_exempt=True,
+        is_consignment=False,
+        consignment_rate=None,
+    )
+    db.add(item)
+    await db.commit()
+    await db.refresh(item, attribute_names=["id", "vendor"])
+
+    result = await db.execute(
+        select(Item).options(selectinload(Item.vendor)).where(Item.id == item.id)
+    )
+    item = result.scalar_one()
     return _item_to_pos_dict(item)
 
 

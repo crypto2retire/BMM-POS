@@ -1664,17 +1664,18 @@
         <div class="manual-form-row">
             <div class="manual-form-group">
                 <label for="class-signup-spots">Spots</label>
-                <select id="class-signup-spots"></select>
+                <select id="class-signup-spots" onchange="updateClassSignupTotal()"></select>
             </div>
             <div class="manual-form-group">
                 <label for="class-signup-notes">Notes</label>
                 <input type="text" id="class-signup-notes" placeholder="Optional notes">
             </div>
         </div>
+        <div id="class-signup-total" style="font-size:1rem;font-weight:700;color:var(--gold);margin-bottom:0.5rem"></div>
         <div id="class-signup-msg" style="display:none;font-size:0.8rem;min-height:20px;margin-bottom:0.4rem"></div>
         <div class="modal-actions">
             <button class="cancel-btn" onclick="closeClassSignupModal()">Cancel</button>
-            <button class="confirm-btn" onclick="submitClassSignup()">Add To Class List</button>
+            <button class="confirm-btn" onclick="queueClassSignupForPayment()">Add Fee To Cart</button>
         </div>
     </div>
 </div>
@@ -1693,6 +1694,7 @@
     let cartDiscountValue = 0;
     const TAX_RATE = 0.05;
     let startingCashStatus = null;
+    let pendingClassRegistrations = [];
 
     // ── Display preferences (POS) ─────────────────────────────────────────────
     function toggleDisplayPrefs() {
@@ -2147,6 +2149,7 @@
 
     function removeFromCart(itemId) {
         cart = cart.filter(c => c.item.id !== itemId);
+        pendingClassRegistrations = pendingClassRegistrations.filter(function(reg) { return reg.classFeeItemId !== itemId; });
         renderCart();
     }
 
@@ -2169,6 +2172,7 @@
         if (cart.length === 0) return;
         if (!confirm('Clear the cart?')) return;
         cart = [];
+        pendingClassRegistrations = [];
         cartDiscountType = null;
         cartDiscountValue = 0;
         renderCart();
@@ -2397,6 +2401,7 @@
             const payload = buildSalePayload('cash');
             payload.cash_tendered = tendered;
             const sale = await apiPost('/api/v1/pos/sale', payload);
+            await finalizePendingClassRegistrations(sale);
             currentSale = sale;
             closeCashModal();
             showReceiptModal(sale);
@@ -2427,6 +2432,7 @@
             const payload = buildSalePayload('card');
             payload.card_transaction_id = 'MANUAL-' + Date.now();
             const sale = await apiPost('/api/v1/pos/sale', payload);
+            await finalizePendingClassRegistrations(sale);
             currentSale = sale;
             document.getElementById('card-overlay').classList.add('hidden');
             showReceiptModal(sale);
@@ -2853,6 +2859,7 @@ table { width: 100%; border-collapse: collapse; }
 
     function startNewSale() {
         cart = [];
+        pendingClassRegistrations = [];
         currentSale = null;
         poyntOrderId = null;
         cartDiscountType = null;
@@ -3294,6 +3301,7 @@ table { width: 100%; border-collapse: collapse; }
             var payload = buildSalePayload('gift_card');
             payload.gift_card_barcode = bc;
             var sale = await apiPost('/api/v1/pos/sale', payload);
+            await finalizePendingClassRegistrations(sale);
             currentSale = sale;
             cart = [];
             renderCart();
@@ -3556,6 +3564,7 @@ table { width: 100%; border-collapse: collapse; }
                 payload.card_transaction_id = cardPayment.transactionId;
             }
             var sale = await apiPost('/api/v1/pos/sale', payload);
+            await finalizePendingClassRegistrations(sale);
             currentSale = sale;
             closeSplitModal();
             cart = [];
@@ -4430,6 +4439,7 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
         classSelect.innerHTML = '<option value="">Loading classes…</option>';
         document.getElementById('class-signup-spots').innerHTML = '<option value="1">1</option>';
         document.getElementById('class-signup-class-meta').textContent = '';
+        document.getElementById('class-signup-total').textContent = '';
 
         try {
             var classes = await apiGet('/api/v1/studio/classes?published_only=true');
@@ -4461,9 +4471,11 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
         var cls = _studioSignupClasses.find(function(c) { return c.id === classId; });
         var metaEl = document.getElementById('class-signup-class-meta');
         var spotsEl = document.getElementById('class-signup-spots');
+        var totalEl = document.getElementById('class-signup-total');
         if (!cls) {
             metaEl.textContent = '';
             spotsEl.innerHTML = '<option value="1">1</option>';
+            totalEl.textContent = '';
             return;
         }
         metaEl.textContent = cls.class_date + ' · ' + cls.start_time.slice(0, 5) + '–' + cls.end_time.slice(0, 5) + ' · ' + cls.instructor + ' · ' + cls.spots_left + ' spots left';
@@ -4473,9 +4485,22 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
             html += '<option value="' + i + '">' + i + '</option>';
         }
         spotsEl.innerHTML = html;
+        updateClassSignupTotal();
     }
 
-    async function submitClassSignup() {
+    function updateClassSignupTotal() {
+        var classId = parseInt(document.getElementById('class-signup-class').value, 10);
+        var spots = parseInt(document.getElementById('class-signup-spots').value, 10) || 1;
+        var cls = _studioSignupClasses.find(function(c) { return c.id === classId; });
+        var totalEl = document.getElementById('class-signup-total');
+        if (!cls) {
+            totalEl.textContent = '';
+            return;
+        }
+        totalEl.textContent = 'Class Total: $' + ((parseFloat(cls.price) || 0) * spots).toFixed(2);
+    }
+
+    async function queueClassSignupForPayment() {
         var classId = parseInt(document.getElementById('class-signup-class').value, 10);
         var name = document.getElementById('class-signup-name').value.trim();
         var email = document.getElementById('class-signup-email').value.trim();
@@ -4483,6 +4508,7 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
         var notes = document.getElementById('class-signup-notes').value.trim();
         var spots = parseInt(document.getElementById('class-signup-spots').value, 10) || 1;
         var msgEl = document.getElementById('class-signup-msg');
+        var cls = _studioSignupClasses.find(function(c) { return c.id === classId; });
 
         msgEl.style.display = 'none';
         if (!classId) {
@@ -4497,10 +4523,23 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
             msgEl.textContent = 'Name, email, and phone are required';
             return;
         }
+        if (!cls) {
+            msgEl.style.display = 'block';
+            msgEl.style.color = 'color-mix(in srgb, var(--danger) 72%, var(--surface))';
+            msgEl.textContent = 'Selected class is not available';
+            return;
+        }
 
         try {
-            await apiPost('/api/v1/studio/classes/' + classId + '/register', {
+            var feeItem = await apiPost('/api/v1/pos/class-fee-item', {
                 class_id: classId,
+                num_spots: spots,
+            });
+            addToCart(feeItem);
+            pendingClassRegistrations.push({
+                classId: classId,
+                classTitle: cls.title,
+                classFeeItemId: feeItem.id,
                 customer_name: name,
                 customer_email: email,
                 customer_phone: phone,
@@ -4509,20 +4548,56 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
             });
             msgEl.style.display = 'block';
             msgEl.style.color = 'var(--success-light)';
-            msgEl.textContent = 'Signup added to class list';
-            showToast('Class signup recorded', 'success');
+            msgEl.textContent = 'Class fee added to cart. Complete payment to finish signup.';
+            showToast('Class fee added to cart', 'success');
             setTimeout(function() {
                 closeClassSignupModal();
             }, 700);
         } catch (e) {
             msgEl.style.display = 'block';
             msgEl.style.color = 'color-mix(in srgb, var(--danger) 72%, var(--surface))';
-            msgEl.textContent = e.message || 'Failed to record class signup';
+            msgEl.textContent = e.message || 'Failed to add class fee';
         }
     }
 
     function closeClassSignupModal() {
         document.getElementById('class-signup-modal').classList.add('hidden');
+    }
+
+    async function finalizePendingClassRegistrations(sale) {
+        if (!sale || !sale.line_items || !pendingClassRegistrations.length) return;
+        var soldItemIds = new Set((sale.line_items || []).map(function(li) { return li.item_id; }));
+        var matched = pendingClassRegistrations.filter(function(reg) {
+            return soldItemIds.has(reg.classFeeItemId);
+        });
+        if (!matched.length) return;
+
+        var failures = [];
+        for (var i = 0; i < matched.length; i++) {
+            var reg = matched[i];
+            try {
+                await apiPost('/api/v1/studio/classes/' + reg.classId + '/register', {
+                    class_id: reg.classId,
+                    customer_name: reg.customer_name,
+                    customer_email: reg.customer_email,
+                    customer_phone: reg.customer_phone,
+                    num_spots: reg.num_spots,
+                    notes: reg.notes,
+                });
+            } catch (e) {
+                failures.push(reg.classTitle + ': ' + (e.message || 'registration failed'));
+            }
+        }
+
+        pendingClassRegistrations = pendingClassRegistrations.filter(function(reg) {
+            return !soldItemIds.has(reg.classFeeItemId);
+        });
+
+        if (failures.length) {
+            showToast('Payment succeeded but class roster save failed: ' + failures.join('; '), 'error');
+        } else {
+            showToast('Class signup saved to roster', 'success');
+        }
     }
 
     init();
