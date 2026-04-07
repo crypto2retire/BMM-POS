@@ -174,6 +174,61 @@
             font-family: 'Roboto', sans-serif; transition: background 0.15s ease, color 0.15s ease;
         }
         .view-toggle button.active { background: var(--gold); color: var(--charcoal-deep); }
+        .registrations-modal {
+            background: var(--surface); border: 1px solid var(--border);
+            width: min(92vw, 900px); max-height: 90vh; overflow-y: auto;
+            padding: 1.5rem;
+        }
+        .registrations-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;
+        }
+        .registrations-header h3 {
+            font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.3rem; margin: 0;
+        }
+        .registrations-subtitle {
+            color: var(--text-light); font-size: 0.8rem; margin-top: 0.2rem;
+        }
+        .registration-summary {
+            display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;
+        }
+        .registration-pill {
+            background: var(--bg); border: 1px solid var(--border); padding: 0.55rem 0.8rem;
+            font-size: 0.75rem; color: var(--text-light);
+        }
+        .registration-pill strong { color: var(--text); font-size: 0.95rem; margin-right: 0.35rem; }
+        .registrations-empty {
+            color: var(--text-light); text-align: center; padding: 2rem 1rem;
+            border: 1px dashed var(--border);
+        }
+        .registrations-list {
+            display: flex; flex-direction: column; gap: 0.75rem;
+        }
+        .registration-card {
+            border: 1px solid var(--border); background: var(--bg); padding: 0.9rem;
+        }
+        .registration-card-header {
+            display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+            margin-bottom: 0.45rem;
+        }
+        .registration-name {
+            font-size: 0.95rem; color: var(--text); font-weight: 500;
+        }
+        .registration-status {
+            font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase;
+            padding: 0.2rem 0.45rem; border: 1px solid var(--border); color: var(--text-light);
+        }
+        .registration-meta {
+            display: flex; flex-wrap: wrap; gap: 0.75rem; color: var(--text-light);
+            font-size: 0.78rem; margin-bottom: 0.5rem;
+        }
+        .registration-notes {
+            color: var(--text); font-size: 0.82rem; white-space: pre-wrap;
+            border-top: 1px solid var(--border); padding-top: 0.5rem; margin-top: 0.5rem;
+        }
+        .registration-actions {
+            display: flex; justify-content: flex-end; margin-top: 0.65rem;
+        }
 
         @media (max-width: 768px) {
             .calendar-grid { font-size: 0.7rem; }
@@ -242,7 +297,7 @@
         </div>
     </div>
 
-    <div class="stats-row" id="stats-row"></div>
+        <div class="stats-row" id="stats-row"></div>
 
     <div id="calendar-view">
         <div class="calendar-grid" id="calendar-grid"></div>
@@ -325,6 +380,21 @@
     </div>
 </div>
 
+<div class="class-modal-overlay" id="registrations-modal">
+    <div class="registrations-modal">
+        <div class="registrations-header">
+            <div>
+                <h3 id="registrations-title">Class Registrations</h3>
+                <div class="registrations-subtitle" id="registrations-subtitle"></div>
+            </div>
+            <button class="btn-cancel" type="button" onclick="closeRegistrations()">Close</button>
+        </div>
+        <div class="registration-summary" id="registrations-summary"></div>
+        <div id="registrations-error" style="color:var(--danger);font-size:0.8rem;min-height:18px;margin-bottom:0.6rem;"></div>
+        <div id="registrations-content"></div>
+    </div>
+</div>
+
 <nav class="admin-bottom-nav">
     <a href="/admin/index.html"><span class="nav-icon">&#127968;</span>Dashboard</a>
     <a href="/admin/reports.html"><span class="nav-icon">&#128196;</span>Reports</a>
@@ -339,18 +409,34 @@
     let currentYear, currentMonth;
     let editingId = null;
     let currentView = 'calendar';
+    let currentSession = null;
+    let currentRegistrationClassId = null;
 
     const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
     async function init() {
-        const session = await window.bmmAuth.requirePageAccess({
-            access: 'canManageStudio',
-            userNameId: 'user-name',
-            title: 'Studio Tools Restricted',
-            message: 'Studio management is not enabled for your current role.'
-        });
-        if (!session) return;
+        const session = await window.bmmAuth.loadSession();
+        if (!session) {
+            window.location.href = '/vendor/login.html';
+            return;
+        }
+        currentSession = session;
+
+        const userName = document.getElementById('user-name');
+        if (userName) userName.textContent = session.name || 'User';
+
+        const canHostView = session.role === 'vendor' || session.is_vendor;
+        if (!session.canManageStudio && !canHostView) {
+            document.body.classList.add('bmm-blocked');
+            document.getElementById('alert-container').innerHTML = '<div class="alert alert-error">Studio access is not enabled for your account.</div>';
+            return;
+        }
+
+        if (!session.canManageStudio) {
+            const addBtn = document.querySelector('.add-class-btn');
+            if (addBtn) addBtn.style.display = 'none';
+        }
 
         const now = new Date();
         currentYear = now.getFullYear();
@@ -366,7 +452,8 @@
         const endStr = `${end.getFullYear()}-${pad(end.getMonth()+1)}-${pad(end.getDate())}`;
 
         try {
-            classes = await apiGet(`/api/v1/studio/classes?start=${startStr}&end=${endStr}&published_only=false`);
+            const unpublishedScope = currentSession && (currentSession.canManageStudio || currentSession.role === 'vendor' || currentSession.is_vendor);
+            classes = await apiGet(`/api/v1/studio/classes?start=${startStr}&end=${endStr}&published_only=${unpublishedScope ? 'false' : 'true'}`);
         } catch (e) {
             classes = [];
         }
@@ -416,10 +503,15 @@
                 if (c.is_cancelled) cls += ' cancelled';
                 else if (c.spots_left <= 0) cls += ' full';
                 const t = c.start_time.slice(0,5);
-                return `<div class="${cls}" onclick="event.stopPropagation();openModal(${JSON.stringify(c).replace(/"/g,'&quot;')})" title="${c.title} - ${c.instructor}">${t} ${c.title}</div>`;
+                const escaped = JSON.stringify(c).replace(/"/g,'&quot;');
+                const action = currentSession?.canManageStudio
+                    ? `openModal(${escaped})`
+                    : `openRegistrations(${c.id}, ${JSON.stringify(c.title).replace(/"/g,'&quot;')})`;
+                return `<div class="${cls}" onclick="event.stopPropagation();${action}" title="${c.title} - ${c.instructor}">${t} ${c.title}</div>`;
             }).join('');
 
-            html += `<div class="cal-day${isToday ? ' today' : ''}" onclick="openModalForDate('${dateStr}')">
+            const dayClick = currentSession?.canManageStudio ? `openModalForDate('${dateStr}')` : 'void(0)';
+            html += `<div class="cal-day${isToday ? ' today' : ''}" onclick="${dayClick}">
                 <span class="cal-day-num">${d}</span>${eventsHtml}
             </div>`;
         }
@@ -454,6 +546,9 @@
             const dateStr = window.bmmFormatDate(d, { weekday: 'short', month: 'short', day: 'numeric' });
             const timeStr = `${c.start_time.slice(0,5)} - ${c.end_time.slice(0,5)}`;
 
+            const editButton = currentSession?.canManageStudio
+                ? `<button class="li-action" onclick='openModal(${JSON.stringify(c)})'>Edit</button>`
+                : '';
             return `<div class="list-item">
                 <div class="li-main">
                     <div class="li-title">${c.title}</div>
@@ -462,7 +557,8 @@
                 <div class="li-right">
                     <span class="li-badge ${badgeCls}">${badge}</span>
                     <span style="font-size:0.8rem;color:var(--text-light)">${c.enrolled}/${c.capacity}</span>
-                    <button class="li-action" onclick='openModal(${JSON.stringify(c)})'>Edit</button>
+                    <button class="li-action" onclick='openRegistrations(${c.id}, ${JSON.stringify(c.title)})'>Registrations</button>
+                    ${editButton}
                 </div>
             </div>`;
         }).join('');
@@ -486,10 +582,12 @@
     }
 
     function openModalForDate(dateStr) {
+        if (!currentSession?.canManageStudio) return;
         openModal(null, dateStr);
     }
 
     function openModal(classData = null, prefillDate = null) {
+        if (!currentSession?.canManageStudio) return;
         editingId = classData ? classData.id : null;
         document.getElementById('modal-title').textContent = classData ? 'Edit Class' : 'New Class';
         document.getElementById('delete-btn').style.display = classData ? 'inline-block' : 'none';
@@ -527,6 +625,95 @@
     function closeModal() {
         document.getElementById('class-modal').classList.remove('open');
         editingId = null;
+    }
+
+    async function openRegistrations(classId, classTitle) {
+        currentRegistrationClassId = classId;
+        document.getElementById('registrations-title').textContent = classTitle ? `${classTitle} Registrations` : 'Class Registrations';
+        document.getElementById('registrations-subtitle').textContent = 'Loading current registrations...';
+        document.getElementById('registrations-summary').innerHTML = '';
+        document.getElementById('registrations-error').textContent = '';
+        document.getElementById('registrations-content').innerHTML = '<div class="registrations-empty">Loading registrations...</div>';
+        document.getElementById('registrations-modal').classList.add('open');
+
+        try {
+            const rows = await apiGet(`/api/v1/studio/classes/${classId}/registrations`);
+            const activeRows = rows.filter(r => r.status !== 'cancelled');
+            const totalSpots = activeRows.reduce((sum, row) => sum + (parseInt(row.num_spots, 10) || 0), 0);
+            document.getElementById('registrations-subtitle').textContent = rows.length
+                ? 'Current and cancelled signups for this class.'
+                : 'No one has signed up yet.';
+            document.getElementById('registrations-summary').innerHTML = `
+                <div class="registration-pill"><strong>${rows.length}</strong> registrations</div>
+                <div class="registration-pill"><strong>${totalSpots}</strong> active spots</div>
+            `;
+
+            if (!rows.length) {
+                document.getElementById('registrations-content').innerHTML = '<div class="registrations-empty">No registrations yet.</div>';
+                return;
+            }
+
+            document.getElementById('registrations-content').innerHTML = `
+                <div class="registrations-list">
+                    ${rows.map(row => renderRegistrationCard(row)).join('')}
+                </div>
+            `;
+        } catch (e) {
+            document.getElementById('registrations-error').textContent = e.message || 'Failed to load registrations';
+            document.getElementById('registrations-content').innerHTML = '<div class="registrations-empty">Unable to load registrations.</div>';
+        }
+    }
+
+    function renderRegistrationCard(row) {
+        const createdAt = row.created_at ? window.bmmFormatDateTime(new Date(row.created_at)) : 'Unknown';
+        const notes = row.notes ? `<div class="registration-notes">${escapeHtml(row.notes)}</div>` : '';
+        const cancelButton = row.status !== 'cancelled'
+            ? `<div class="registration-actions"><button class="li-action" onclick="cancelRegistration(${row.id})">Cancel Registration</button></div>`
+            : '';
+        return `
+            <div class="registration-card">
+                <div class="registration-card-header">
+                    <div class="registration-name">${escapeHtml(row.customer_name || 'Unknown')}</div>
+                    <div class="registration-status">${escapeHtml(row.status || 'registered')}</div>
+                </div>
+                <div class="registration-meta">
+                    <span>${escapeHtml(row.customer_email || 'No email')}</span>
+                    <span>${escapeHtml(row.customer_phone || 'No phone')}</span>
+                    <span>${parseInt(row.num_spots, 10) || 0} spot(s)</span>
+                    <span>Signed up ${escapeHtml(createdAt)}</span>
+                </div>
+                ${notes}
+                ${cancelButton}
+            </div>
+        `;
+    }
+
+    async function cancelRegistration(registrationId) {
+        if (!confirm('Cancel this registration?')) return;
+        try {
+            await apiDelete(`/api/v1/studio/registrations/${registrationId}`);
+            const title = document.getElementById('registrations-title').textContent.replace(/ Registrations$/, '');
+            if (currentRegistrationClassId) {
+                await openRegistrations(currentRegistrationClassId, title);
+                await loadClasses();
+            }
+        } catch (e) {
+            document.getElementById('registrations-error').textContent = e.message || 'Failed to cancel registration';
+        }
+    }
+
+    function closeRegistrations() {
+        currentRegistrationClassId = null;
+        document.getElementById('registrations-modal').classList.remove('open');
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     async function saveClass() {

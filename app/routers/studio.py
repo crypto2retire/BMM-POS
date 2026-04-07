@@ -6,7 +6,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, UploadFile, File
 from fastapi.responses import Response
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from PIL import Image as PILImage
 
@@ -39,6 +39,26 @@ async def get_optional_user(
         return await get_user_from_token(token, db)
     except Exception:
         return None
+
+
+async def _can_manage_or_host_class(
+    db: AsyncSession,
+    current_user: Vendor,
+    class_id: int,
+) -> tuple[bool, Optional[StudioClass]]:
+    class_result = await db.execute(select(StudioClass).where(StudioClass.id == class_id))
+    studio_class = class_result.scalar_one_or_none()
+    if not studio_class:
+        return False, None
+
+    if current_user.role in ("admin", "cashier"):
+        if await role_feature_allowed(db, current_user, "role_manage_studio"):
+            return True, studio_class
+
+    if studio_class.created_by and studio_class.created_by == current_user.id:
+        return True, studio_class
+
+    return False, studio_class
 
 
 def _class_to_response(c: StudioClass) -> "StudioClassResponse":
@@ -82,6 +102,8 @@ async def list_classes(
 
     if not published_only and can_manage_studio:
         pass
+    elif not published_only and current_user:
+        q = q.where(StudioClass.created_by == current_user.id)
     else:
         q = q.where(StudioClass.is_published == True)
 
@@ -112,7 +134,11 @@ async def get_class(
     can_manage_studio = False
     if is_staff and current_user:
         can_manage_studio = await role_feature_allowed(db, current_user, "role_manage_studio")
-    if not can_manage_studio:
+    if can_manage_studio:
+        pass
+    elif current_user:
+        q = q.where(or_(StudioClass.is_published == True, StudioClass.created_by == current_user.id))
+    else:
         q = q.where(StudioClass.is_published == True)
 
     result = await db.execute(q)
@@ -366,9 +392,9 @@ async def register_for_class(
 
     reg = ClassRegistration(
         class_id=class_id,
-        customer_name=data.customer_name.strip(),
-        customer_email=data.customer_email.strip().lower(),
-        customer_phone=data.customer_phone.strip() if data.customer_phone else None,
+        customer_name=data.customer_name,
+        customer_email=str(data.customer_email).strip().lower(),
+        customer_phone=data.customer_phone,
         num_spots=data.num_spots,
         notes=data.notes,
         status="confirmed",
@@ -378,15 +404,31 @@ async def register_for_class(
     cls.enrolled += data.num_spots
     await db.commit()
     await db.refresh(reg)
-    return ClassRegistrationResponse.model_validate(reg)
+    return {
+        "id": reg.id,
+        "class_id": reg.class_id,
+        "customer_name": reg.customer_name,
+        "customer_email": reg.customer_email,
+        "customer_phone": reg.customer_phone,
+        "num_spots": reg.num_spots,
+        "notes": reg.notes,
+        "status": reg.status,
+        "created_at": reg.created_at,
+    }
 
 
 @router.get("/classes/{class_id}/registrations")
 async def list_registrations(
     class_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_staff_feature("role_manage_studio")),
+    current_user: Vendor = Depends(get_current_user),
 ):
+    allowed, studio_class = await _can_manage_or_host_class(db, current_user, class_id)
+    if not studio_class:
+        raise HTTPException(status_code=404, detail="Class not found")
+    if not allowed:
+        raise HTTPException(status_code=403, detail="Access denied")
+
     result = await db.execute(
         select(ClassRegistration)
         .where(ClassRegistration.class_id == class_id)
@@ -400,7 +442,7 @@ async def list_registrations(
 async def cancel_registration(
     reg_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_staff_feature("role_manage_studio")),
+    current_user: Vendor = Depends(get_current_user),
 ):
     result = await db.execute(
         select(ClassRegistration).where(ClassRegistration.id == reg_id)
@@ -416,6 +458,12 @@ async def cancel_registration(
         select(StudioClass).where(StudioClass.id == reg.class_id)
     )
     cls = cls_result.scalar_one_or_none()
+    if current_user.role in ("admin", "cashier"):
+        if not await role_feature_allowed(db, current_user, "role_manage_studio"):
+            raise HTTPException(status_code=403, detail="Access denied")
+    elif not cls or cls.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Access denied")
+
     if cls:
         cls.enrolled = max(0, cls.enrolled - reg.num_spots)
 
