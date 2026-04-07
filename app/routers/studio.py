@@ -1,13 +1,14 @@
 import os
 import uuid
 import io
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, UploadFile, File
 from fastapi.responses import Response
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from PIL import Image as PILImage
 
 from app.database import get_db
@@ -355,7 +356,6 @@ async def register_for_class(
     data: ClassRegistrationCreate,
     db: AsyncSession = Depends(get_db),
 ):
-    from sqlalchemy import with_for_update
     result = await db.execute(
         select(StudioClass).where(
             StudioClass.id == class_id,
@@ -373,7 +373,10 @@ async def register_for_class(
     if data.num_spots < 1 or data.num_spots > 10:
         raise HTTPException(status_code=400, detail="Must register for 1–10 spots")
 
-    spots_left = cls.capacity - cls.enrolled
+    normalized_email = str(data.customer_email).strip().lower()
+    enrolled = int(cls.enrolled or 0)
+    capacity = int(cls.capacity or 0)
+    spots_left = max(0, capacity - enrolled)
     if data.num_spots > spots_left:
         raise HTTPException(
             status_code=400,
@@ -383,7 +386,7 @@ async def register_for_class(
     existing = await db.execute(
         select(ClassRegistration).where(
             ClassRegistration.class_id == class_id,
-            ClassRegistration.customer_email == data.customer_email.strip().lower(),
+            ClassRegistration.customer_email == normalized_email,
             ClassRegistration.status == "confirmed",
         )
     )
@@ -393,27 +396,35 @@ async def register_for_class(
     reg = ClassRegistration(
         class_id=class_id,
         customer_name=data.customer_name,
-        customer_email=str(data.customer_email).strip().lower(),
+        customer_email=normalized_email,
         customer_phone=data.customer_phone,
         num_spots=data.num_spots,
         notes=data.notes,
         status="confirmed",
     )
     db.add(reg)
-
-    cls.enrolled += data.num_spots
-    await db.commit()
-    await db.refresh(reg)
+    cls.enrolled = enrolled + data.num_spots
+    try:
+        await db.flush()
+        reg_id = reg.id
+        reg_created_at = reg.created_at or datetime.now(timezone.utc)
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Unable to save this registration")
+    except SQLAlchemyError:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Unable to save this registration right now")
     return {
-        "id": reg.id,
-        "class_id": reg.class_id,
-        "customer_name": reg.customer_name,
-        "customer_email": reg.customer_email,
-        "customer_phone": reg.customer_phone,
+        "id": reg_id,
+        "class_id": class_id,
+        "customer_name": data.customer_name,
+        "customer_email": normalized_email,
+        "customer_phone": data.customer_phone,
         "num_spots": reg.num_spots,
-        "notes": reg.notes,
-        "status": reg.status,
-        "created_at": reg.created_at,
+        "notes": data.notes,
+        "status": "confirmed",
+        "created_at": reg_created_at,
     }
 
 

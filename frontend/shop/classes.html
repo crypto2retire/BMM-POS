@@ -478,8 +478,13 @@ function renderList() {
         const isFull = spotsLeft <= 0;
         const isLow = spotsLeft > 0 && spotsLeft <= 3;
         const isPast = c.class_date < new Date().toISOString().split('T')[0];
+        const canRegister = !isFull && !isPast && !c.is_cancelled;
+        const registerPayload = JSON.stringify(c).replace(/'/g, "&#39;");
+        const cardAttrs = canRegister
+            ? ` role="button" tabindex="0" onclick='openRegister(${registerPayload})' onkeydown="handleClassKeydown(event, ${registerPayload.replace(/"/g, '&quot;')})"`
+            : '';
 
-        return `<div class="class-card">
+        return `<div class="class-card"${cardAttrs}>
             <div class="class-date-block">
                 <div class="month">${dt.toLocaleDateString('en-US', {month:'short'})}</div>
                 <div class="day">${dt.getDate()}</div>
@@ -498,7 +503,7 @@ function renderList() {
             <div class="class-action">
                 <div class="class-price">$${parseFloat(c.price).toFixed(2)}</div>
                 <div class="class-spots ${isFull ? '' : isLow ? 'low' : ''}">${isFull ? 'Class Full' : spotsLeft + ' spot' + (spotsLeft !== 1 ? 's' : '') + ' left'}</div>
-                <button class="btn-register" ${isFull || isPast || c.is_cancelled ? 'disabled' : ''} onclick='openRegister(${JSON.stringify(c).replace(/'/g, "&#39;")})'>
+                <button class="btn-register" ${canRegister ? '' : 'disabled'} onclick='event.stopPropagation();openRegister(${registerPayload})'>
                     ${isPast ? 'Past' : c.is_cancelled ? 'Cancelled' : isFull ? 'Full' : 'Sign Up'}
                 </button>
             </div>
@@ -532,12 +537,15 @@ function renderCalendar() {
         const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         const isToday = dateStr === todayStr;
         const dayClasses = classes.filter(c => c.class_date === dateStr);
+        const openSingleClass = dayClasses.length === 1 && dayClasses[0].spots_left > 0 && !dayClasses[0].is_cancelled && dayClasses[0].class_date >= todayStr;
+        const singlePayload = openSingleClass ? JSON.stringify(dayClasses[0]).replace(/'/g, "&#39;") : null;
 
-        html += `<div class="cal-day ${isToday ? 'today' : ''}">
+        html += `<div class="cal-day ${isToday ? 'today' : ''}" ${openSingleClass ? `role="button" tabindex="0" onclick='openRegister(${singlePayload})' onkeydown="handleClassKeydown(event, ${singlePayload.replace(/"/g, '&quot;')})"` : ''}>
             <div class="day-num">${d}</div>
             ${dayClasses.map(c => {
                 const isFull = c.spots_left <= 0;
-                return `<div class="cal-event ${isFull ? 'full' : ''}" onclick='openRegister(${JSON.stringify(c).replace(/'/g, "&#39;")})' title="${escHtml(c.title)} — ${fmtTime(c.start_time)}">${escHtml(c.title)}</div>`;
+                const eventPayload = JSON.stringify(c).replace(/'/g, "&#39;");
+                return `<div class="cal-event ${isFull ? 'full' : ''}" onclick='event.stopPropagation();openRegister(${eventPayload})' title="${escHtml(c.title)} — ${fmtTime(c.start_time)}">${escHtml(c.title)}</div>`;
             }).join('')}
         </div>`;
     }
@@ -584,6 +592,13 @@ function openRegister(cls) {
     document.getElementById('form-error').style.display = 'none';
     document.getElementById('register-form').reset();
     document.getElementById('register-modal').classList.add('show');
+}
+
+function handleClassKeydown(event, cls) {
+    if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openRegister(cls);
+    }
 }
 
 function closeModal() {
