@@ -1090,28 +1090,86 @@
         document.getElementById('f-photo').click();
     }
 
-    function onPhotoSelected(event) {
-        const files = Array.from(event.target.files || []);
-        if (!files.length) return;
-        pendingPhotoFiles = files.slice(0, MAX_ITEM_PHOTOS);
-        const file = pendingPhotoFiles[0];
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const dataUrl = e.target.result;
-            pendingPhotoBase64 = dataUrl.split(',')[1];
-            pendingPhotoMime = file.type;
-            document.getElementById('photo-preview-container').innerHTML = `
-                <div class="photo-preview-wrap">
-                    <img src="${dataUrl}" alt="Selected item photo preview" width="120" height="120">
-                    <button type="button" class="photo-preview-remove" onclick="clearPhotoPreview()" aria-label="Remove selected photo">✕</button>
-                </div>
-                <div class="photo-upload-label" style="margin-top:4px">Tap to change photo${pendingPhotoFiles.length > 1 ? 's' : ''}</div>
-                <div class="photo-count-note">${pendingPhotoFiles.length} selected${files.length > pendingPhotoFiles.length ? `, ${files.length - pendingPhotoFiles.length} skipped` : ''} · max ${MAX_ITEM_PHOTOS}</div>`;
-            document.getElementById('ai-describe-wrap').style.display = 'flex';
-            dismissSuggestions();
-            updateOnlineCheckbox();
-        };
-        reader.readAsDataURL(file);
+    function isHeicLikeFile(file) {
+        if (!file) return false;
+        const type = (file.type || '').toLowerCase();
+        const name = (file.name || '').toLowerCase();
+        return type === 'image/heic' || type === 'image/heif' || name.endsWith('.heic') || name.endsWith('.heif');
+    }
+
+    function convertImageFileToJpeg(file) {
+        return new Promise(function(resolve, reject) {
+            const objectUrl = URL.createObjectURL(file);
+            const img = new Image();
+            img.onload = function() {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth || img.width;
+                    canvas.height = img.naturalHeight || img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    canvas.toBlob(function(blob) {
+                        URL.revokeObjectURL(objectUrl);
+                        if (!blob) {
+                            reject(new Error('Unable to convert selected photo.'));
+                            return;
+                        }
+                        const baseName = (file.name || 'photo').replace(/\.(heic|heif)$/i, '');
+                        resolve(new File([blob], baseName + '.jpg', { type: 'image/jpeg' }));
+                    }, 'image/jpeg', 0.9);
+                } catch (err) {
+                    URL.revokeObjectURL(objectUrl);
+                    reject(err);
+                }
+            };
+            img.onerror = function() {
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error('This photo format is not supported on this device. Try choosing “Most Compatible” photos or a JPEG/PNG image.'));
+            };
+            img.src = objectUrl;
+        });
+    }
+
+    async function normalizeSelectedImageFiles(files) {
+        const normalized = [];
+        for (const file of files) {
+            if (isHeicLikeFile(file)) {
+                normalized.push(await convertImageFileToJpeg(file));
+            } else {
+                normalized.push(file);
+            }
+        }
+        return normalized;
+    }
+
+    async function onPhotoSelected(event) {
+        try {
+            const rawFiles = Array.from(event.target.files || []);
+            const files = await normalizeSelectedImageFiles(rawFiles);
+            if (!files.length) return;
+            pendingPhotoFiles = files.slice(0, MAX_ITEM_PHOTOS);
+            const file = pendingPhotoFiles[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                pendingPhotoBase64 = dataUrl.split(',')[1];
+                pendingPhotoMime = file.type;
+                document.getElementById('photo-preview-container').innerHTML = `
+                    <div class="photo-preview-wrap">
+                        <img src="${dataUrl}" alt="Selected item photo preview" width="120" height="120">
+                        <button type="button" class="photo-preview-remove" onclick="clearPhotoPreview()" aria-label="Remove selected photo">✕</button>
+                    </div>
+                    <div class="photo-upload-label" style="margin-top:4px">Tap to change photo${pendingPhotoFiles.length > 1 ? 's' : ''}</div>
+                    <div class="photo-count-note">${pendingPhotoFiles.length} selected${files.length > pendingPhotoFiles.length ? `, ${files.length - pendingPhotoFiles.length} skipped` : ''} · max ${MAX_ITEM_PHOTOS}</div>`;
+                document.getElementById('ai-describe-wrap').style.display = 'flex';
+                dismissSuggestions();
+                updateOnlineCheckbox();
+            };
+            reader.readAsDataURL(file);
+        } catch (err) {
+            showAlert('modal-alert', err.message || 'Unable to use the selected photo.', 'error');
+            event.target.value = '';
+        }
     }
 
     function clearPhotoPreview() {
@@ -1475,10 +1533,11 @@
 
     // ── Inline photo upload on card ─────────────────────────────────────
     async function uploadCardPhoto(id, input) {
-        const files = Array.from(input.files || []);
-        if (!files.length) return;
-        const token = sessionStorage.getItem('bmm_token');
         try {
+            const rawFiles = Array.from(input.files || []);
+            const files = await normalizeSelectedImageFiles(rawFiles);
+            if (!files.length) return;
+            const token = sessionStorage.getItem('bmm_token');
             const item = allItems.find(function(entry) { return entry.id === id; });
             const existingCount = ((item && item.photo_urls) || []).length;
             const remainingSlots = MAX_ITEM_PHOTOS - existingCount;
