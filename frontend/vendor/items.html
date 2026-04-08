@@ -642,7 +642,6 @@
                         <input type="file"
                             id="f-photo"
                             accept="image/*"
-                            capture="environment"
                             multiple
                             style="display:none"
                             onchange="onPhotoSelected(event)">
@@ -800,7 +799,7 @@
                             <button type="button" id="mini-chat-photo-btn" title="Send a photo"
                                 style="background:var(--surface-2);border:none;color:var(--white);font-size:1rem;cursor:pointer;min-height:44px;min-width:44px;display:flex;align-items:center;justify-content:center;flex-shrink:0;border-radius:0">
                                 📷
-                                <input type="file" accept="image/*" capture="environment" id="mini-chat-photo-input" style="display:none">
+                                <input type="file" accept="image/*" id="mini-chat-photo-input" style="display:none">
                             </button>
                             <input type="text" id="mini-chat-input"
                                 placeholder="Ask about this item…"
@@ -2410,7 +2409,7 @@
                     ).join('')}
                     ${canMutate ? `<button class="add-photo-btn" title="Add photo" type="button">
                         <span style="pointer-events:none">+&#x1F4F7;</span>
-                        <input type="file" accept="image/*" capture="environment" multiple
+                        <input type="file" accept="image/*" multiple
                             onchange="uploadCardPhoto(${item.id}, this)">
                     </button>` : ''}
                 </div>
