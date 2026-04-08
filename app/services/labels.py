@@ -178,22 +178,25 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
     if booth:
         booth_number = getattr(booth, "booth_number", "") or ""
 
-    name = (item.name or "")[:20 if small_label else (50 if scale > 1.2 else 40)]
-    name_y = _snap_down(h - margin - (9 if small_label else 13) * scale_h)
+    if small_label:
+        divider_y = _snap_down(h - margin - (2.5 * scale_h))
+    else:
+        name = (item.name or "")[:50 if scale > 1.2 else 40]
+        name_y = _snap_down(h - margin - 13 * scale_h)
 
-    base_name_size = 6.5 if small_label else 11
-    if len(name) > (16 if small_label else 28):
-        base_name_size = 6 if small_label else 8
-    elif len(name) > (12 if small_label else 20):
-        base_name_size = 6.5 if small_label else 10
-    name_size = max(5.5 if small_label else 6, min(24, base_name_size * scale))
-    c.setFont("Helvetica-Bold", name_size)
-    c.drawString(inner_left, name_y, name)
+        base_name_size = 11
+        if len(name) > 28:
+            base_name_size = 8
+        elif len(name) > 20:
+            base_name_size = 10
+        name_size = max(6, min(24, base_name_size * scale))
+        c.setFont("Helvetica-Bold", name_size)
+        c.drawString(inner_left, name_y, name)
 
-    divider_y = _snap_down(name_y - (3 if small_label else 5) * scale_h)
-    c.setStrokeColorRGB(0.4, 0.4, 0.4)
-    c.setLineWidth(DOT)
-    c.line(inner_left, divider_y, inner_right, divider_y)
+        divider_y = _snap_down(name_y - 5 * scale_h)
+        c.setStrokeColorRGB(0.4, 0.4, 0.4)
+        c.setLineWidth(DOT)
+        c.line(inner_left, divider_y, inner_right, divider_y)
 
     today = datetime.date.today()
     active_price = item.price
@@ -209,7 +212,7 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
 
     price_str = f"${active_price:.2f}"
     price_size = max(8 if small_label else 8, min(28, (10.5 if small_label else 14) * scale))
-    price_y = _snap_down(divider_y - (10 if small_label else 16) * scale_h)
+    price_y = _snap_down((h - margin - (13 if small_label else 16) * scale_h) if small_label else (divider_y - 16 * scale_h))
     c.setFont("Helvetica-Bold", price_size)
     c.setFillColorRGB(0, 0, 0)
     c.drawString(inner_left, price_y, price_str)
@@ -243,7 +246,7 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
         barcode_y = _snap_up(barcode_text_y + (11 if small_label else 14) * scale_h)
 
         min_bar_h = _snap_down((0.54 if small_label else 0.32) * inch * scale_h)
-        bar_h = _snap_down(price_y - (3 if small_label else 8) * scale_h - barcode_y)
+        bar_h = _snap_down((price_y - 5 * scale_h - barcode_y) if small_label else (price_y - 8 * scale_h - barcode_y))
         bar_h = max(bar_h, min_bar_h)
 
         # Keep quiet zones, but keep them tighter on the smallest label.
@@ -292,7 +295,7 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
     price_str = saxutils.escape(f"${active_price:.2f}")
     if on_sale and label_size != "30347":
         price_str += saxutils.escape(f"  (was ${item.price:.2f})")
-    max_name_len = 20 if label_size == "30347" else 35
+    max_name_len = 35
     name_str = saxutils.escape((item.name or "")[:max_name_len])
     raw_barcode = item.barcode or ""
     barcode_str = saxutils.escape(raw_barcode)
@@ -313,17 +316,17 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
     usable_w = lw - (m * 2)
 
     if is_small_dymo:
-        name_y = lh - m - 4
-        name_h = int(lh * 0.11)
-        price_y = name_y - name_h - 2
-        price_h = int(lh * 0.10)
+        name_y = 0
+        name_h = 0
+        price_y = lh - m - int(lh * 0.11)
+        price_h = int(lh * 0.11)
         price_w = int(usable_w * 0.54)
         booth_w = usable_w - price_w - 12
         barcode_text_h = int(lh * 0.085)
         barcode_text_y = m
         barcode_y = barcode_text_y + barcode_text_h + 10
-        barcode_h = name_y - price_h - barcode_y - 10
-        barcode_h = max(barcode_h, int(lh * 0.54))
+        barcode_h = price_y - barcode_y - 12
+        barcode_h = max(barcode_h, int(lh * 0.60))
     else:
         name_y = lh - m - 10
         name_h = int(lh * 0.18)
@@ -343,6 +346,10 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
   <Id>Address</Id>
   <PaperName>{paper_name}</PaperName>
   <DrawCommands/>
+"""
+
+    if not is_small_dymo:
+        xml += f"""
   <ObjectInfo>
     <TextObject>
       <Name>NAME</Name>
@@ -375,7 +382,9 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
       <BorderColor Alpha="255" Red="0" Green="0" Blue="0"/>
       <BorderThickness>0</BorderThickness>
     </ObjectLayout>
-  </ObjectInfo>
+  </ObjectInfo>"""
+
+    xml += f"""
   <ObjectInfo>
     <TextObject>
       <Name>PRICE</Name>
