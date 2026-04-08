@@ -130,6 +130,12 @@ def _item_to_pos_dict(item: Item) -> dict:
     }
 
 
+def _is_tax_exempt_sale_item(item: Item) -> bool:
+    if bool(item.is_tax_exempt):
+        return True
+    return (item.category or "").strip().lower() == "studio class"
+
+
 @router.get("/search")
 async def pos_search(
     q: str = Query(..., min_length=1, description="Search term"),
@@ -389,7 +395,7 @@ async def pos_create_sale(
     db_tax_rate = await get_tax_rate(db)
     tax_rate = Decimal(str(db_tax_rate)).quantize(Decimal("0.0001"), ROUND_HALF_UP)
     taxable_subtotal = sum(
-        ltad for item, _, _, _, ltad, _, _, _ in resolved_lines if not item.is_tax_exempt
+        ltad for item, _, _, _, ltad, _, _, _ in resolved_lines if not _is_tax_exempt_sale_item(item)
     ).quantize(Decimal("0.01"), ROUND_HALF_UP)
     # Proportionally reduce taxable amount by cart discount
     if subtotal > 0 and cart_discount_amount > 0:

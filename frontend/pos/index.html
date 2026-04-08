@@ -1664,7 +1664,7 @@
         <div class="manual-form-row">
             <div class="manual-form-group">
                 <label for="class-signup-spots">Spots</label>
-                <select id="class-signup-spots" onchange="updateClassSignupTotal()"></select>
+                <input type="number" id="class-signup-spots" min="1" max="10" step="1" value="1" onchange="updateClassSignupTotal()" oninput="updateClassSignupTotal()">
             </div>
             <div class="manual-form-group">
                 <label for="class-signup-notes">Notes</label>
@@ -2218,7 +2218,7 @@
         // Tax only on non-exempt items (after discounts)
         let taxableAmount = 0;
         for (const entry of cart) {
-            if (!entry.item.is_tax_exempt) {
+            if (!isPosTaxExempt(entry.item)) {
                 const lineTotal = getActivePrice(entry.item) * entry.quantity;
                 const itemDiscount = entry.calculatedDiscount || 0;
                 taxableAmount += lineTotal - itemDiscount;
@@ -2238,6 +2238,11 @@
             taxAmount: Math.round(taxAmount * 100) / 100,
             total: Math.round(total * 100) / 100,
         };
+    }
+
+    function isPosTaxExempt(item) {
+        if (item && item.is_tax_exempt) return true;
+        return ((item && item.category) || '').trim().toLowerCase() === 'studio class';
     }
 
     function renderCart() {
@@ -2282,7 +2287,7 @@
                     : `$${activePrice.toFixed(2)}`;
 
                 const consignTag = '';
-                const taxExTag = item.is_tax_exempt ? ' <span style="background:var(--success);color:var(--success-light);font-size:0.6rem;padding:1px 5px;border-radius:2px;font-weight:700;vertical-align:middle">TE</span>' : '';
+                const taxExTag = isPosTaxExempt(item) ? ' <span style="background:var(--success);color:var(--success-light);font-size:0.6rem;padding:1px 5px;border-radius:2px;font-weight:700;vertical-align:middle">TE</span>' : '';
 
                 const disc = entry.calculatedDiscount || 0;
                 const discLabel = entry.discountType === 'percent' ? `−${entry.discountValue}%` : entry.discountType === 'dollar' ? `−$${(entry.discountValue||0).toFixed(2)}` : '';
@@ -4437,7 +4442,10 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
 
         var classSelect = document.getElementById('class-signup-class');
         classSelect.innerHTML = '<option value="">Loading classes…</option>';
-        document.getElementById('class-signup-spots').innerHTML = '<option value="1">1</option>';
+        var spotsInput = document.getElementById('class-signup-spots');
+        spotsInput.value = '1';
+        spotsInput.min = '1';
+        spotsInput.max = '1';
         document.getElementById('class-signup-class-meta').textContent = '';
         document.getElementById('class-signup-total').textContent = '';
 
@@ -4474,23 +4482,28 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
         var totalEl = document.getElementById('class-signup-total');
         if (!cls) {
             metaEl.textContent = '';
-            spotsEl.innerHTML = '<option value="1">1</option>';
+            spotsEl.value = '1';
+            spotsEl.min = '1';
+            spotsEl.max = '1';
             totalEl.textContent = '';
             return;
         }
         metaEl.textContent = cls.class_date + ' · ' + cls.start_time.slice(0, 5) + '–' + cls.end_time.slice(0, 5) + ' · ' + cls.instructor + ' · ' + cls.spots_left + ' spots left';
         var maxSpots = Math.min(Math.max(parseInt(cls.spots_left || 0, 10), 1), 10);
-        var html = '';
-        for (var i = 1; i <= maxSpots; i++) {
-            html += '<option value="' + i + '">' + i + '</option>';
-        }
-        spotsEl.innerHTML = html;
+        var currentValue = parseInt(spotsEl.value, 10) || 1;
+        spotsEl.min = '1';
+        spotsEl.max = String(maxSpots);
+        spotsEl.value = String(Math.min(currentValue, maxSpots));
         updateClassSignupTotal();
     }
 
     function updateClassSignupTotal() {
         var classId = parseInt(document.getElementById('class-signup-class').value, 10);
-        var spots = parseInt(document.getElementById('class-signup-spots').value, 10) || 1;
+        var spotsInput = document.getElementById('class-signup-spots');
+        var maxSpots = parseInt(spotsInput.max, 10) || 1;
+        var spots = parseInt(spotsInput.value, 10) || 1;
+        spots = Math.min(Math.max(spots, 1), maxSpots);
+        spotsInput.value = String(spots);
         var cls = _studioSignupClasses.find(function(c) { return c.id === classId; });
         var totalEl = document.getElementById('class-signup-total');
         if (!cls) {
