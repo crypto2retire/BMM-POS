@@ -27,6 +27,7 @@ from app.services.square import create_payment_link
 STUDIO_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "static", "images", "studio")
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 MAX_IMAGE_DIMENSION = 1200
+CLASS_PAYMENT_HOLD_MINUTES = 20
 
 router = APIRouter(prefix="/studio", tags=["studio"])
 
@@ -69,6 +70,47 @@ def _normalize_email(email: str) -> str:
     return str(email).strip().lower()
 
 
+async def _release_expired_pending_registrations(
+    db: AsyncSession,
+    class_ids: Optional[list[int]] = None,
+) -> int:
+    now = datetime.now(timezone.utc)
+    query = select(ClassRegistration).where(
+        ClassRegistration.status == "pending",
+        ClassRegistration.pending_expires_at.is_not(None),
+        ClassRegistration.pending_expires_at <= now,
+    )
+    if class_ids:
+        query = query.where(ClassRegistration.class_id.in_(class_ids))
+
+    expired_regs = (await db.execute(query)).scalars().all()
+    if not expired_regs:
+        return 0
+
+    affected_class_ids = sorted({reg.class_id for reg in expired_regs})
+    class_rows = (
+        await db.execute(
+            select(StudioClass)
+            .where(StudioClass.id.in_(affected_class_ids))
+            .with_for_update()
+        )
+    ).scalars().all()
+    class_map = {row.id: row for row in class_rows}
+
+    released = 0
+    for reg in expired_regs:
+        studio_class = class_map.get(reg.class_id)
+        if studio_class:
+            current_enrolled = int(studio_class.enrolled or 0)
+            studio_class.enrolled = max(0, current_enrolled - int(reg.num_spots or 0))
+        reg.status = "expired"
+        reg.pending_expires_at = None
+        released += 1
+
+    await db.commit()
+    return released
+
+
 def _class_to_response(c: StudioClass) -> "StudioClassResponse":
     from app.schemas.studio_class import StudioClassResponse
     return StudioClassResponse(
@@ -102,6 +144,7 @@ async def list_classes(
     db: AsyncSession = Depends(get_db),
     current_user: Optional[Vendor] = Depends(get_optional_user),
 ):
+    await _release_expired_pending_registrations(db)
     q = select(StudioClass).order_by(StudioClass.class_date, StudioClass.start_time)
 
     is_staff = current_user and current_user.role in ("admin", "cashier")
@@ -138,6 +181,7 @@ async def get_class(
     db: AsyncSession = Depends(get_db),
     current_user: Optional[Vendor] = Depends(get_optional_user),
 ):
+    await _release_expired_pending_registrations(db, [class_id])
     q = select(StudioClass).where(StudioClass.id == class_id)
     is_staff = current_user and current_user.role in ("admin", "cashier")
     can_manage_studio = False
@@ -348,6 +392,7 @@ async def delete_class_image(
 
 @router.get("/categories")
 async def list_categories(db: AsyncSession = Depends(get_db)):
+    await _release_expired_pending_registrations(db)
     result = await db.execute(
         select(StudioClass.category)
         .where(StudioClass.category != None)
@@ -364,6 +409,7 @@ async def register_for_class(
     data: ClassRegistrationCreate,
     db: AsyncSession = Depends(get_db),
 ):
+    await _release_expired_pending_registrations(db, [class_id])
     result = await db.execute(
         select(StudioClass).where(
             StudioClass.id == class_id,
@@ -483,6 +529,7 @@ async def create_class_payment(
         num_spots=data.num_spots,
         notes=data.notes,
         status="pending",
+        pending_expires_at=datetime.now(timezone.utc) + timedelta(minutes=CLASS_PAYMENT_HOLD_MINUTES),
     )
     db.add(registration)
     cls.enrolled = enrolled + data.num_spots
@@ -524,6 +571,7 @@ async def confirm_class_payment(
     db: AsyncSession = Depends(get_db),
 ):
     _ = request
+    await _release_expired_pending_registrations(db)
     reference_id = (req.reference_id or "").strip()
     if not reference_id:
         raise HTTPException(status_code=400, detail="Registration reference is required")
@@ -540,6 +588,7 @@ async def confirm_class_payment(
         raise HTTPException(status_code=400, detail="This class signup is not awaiting payment")
 
     reg.status = "confirmed"
+    reg.pending_expires_at = None
     await db.commit()
     return {"message": "Payment confirmed. Your class signup is complete."}
 
@@ -550,6 +599,7 @@ async def list_registrations(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
+    await _release_expired_pending_registrations(db, [class_id])
     allowed, studio_class = await _can_manage_or_host_class(db, current_user, class_id)
     if not studio_class:
         raise HTTPException(status_code=404, detail="Class not found")

@@ -19,6 +19,7 @@ class ClassRegistration(Base):
     status: Mapped[str] = mapped_column(String(20), default="confirmed", nullable=False)
     public_id: Mapped[str] = mapped_column(String(36), unique=True, nullable=False, default=lambda: str(_uuid.uuid4()))
     square_payment_id: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    pending_expires_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), server_default="now()", nullable=False)
 
     studio_class = relationship("StudioClass", backref="registrations", lazy="selectin")

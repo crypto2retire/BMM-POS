@@ -148,6 +148,7 @@ async def run():
             # class_registrations
             "ALTER TABLE class_registrations ADD COLUMN IF NOT EXISTS public_id VARCHAR(36)",
             "ALTER TABLE class_registrations ADD COLUMN IF NOT EXISTS square_payment_id VARCHAR(200)",
+            "ALTER TABLE class_registrations ADD COLUMN IF NOT EXISTS pending_expires_at TIMESTAMPTZ",
             # vendor_balances
             "ALTER TABLE vendor_balances ADD COLUMN IF NOT EXISTS rent_balance NUMERIC(10,2) NOT NULL DEFAULT 0.00",
             # eod_reports
@@ -243,6 +244,10 @@ async def run():
             """DO $$ BEGIN
                 CREATE UNIQUE INDEX IF NOT EXISTS ix_class_registrations_public_id
                     ON class_registrations (public_id);
+            EXCEPTION WHEN others THEN NULL; END $$""",
+            """DO $$ BEGIN
+                CREATE INDEX IF NOT EXISTS ix_class_registrations_pending_expires_at
+                    ON class_registrations (status, pending_expires_at);
             EXCEPTION WHEN others THEN NULL; END $$""",
             """DO $$ BEGIN
                 CREATE INDEX IF NOT EXISTS ix_reservations_checkout_group_id
