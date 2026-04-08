@@ -25,6 +25,7 @@ from app.services.labels import (
     generate_label_sheet,
     generate_dymo_xml,
     resolve_pdf_label_size,
+    resolve_dymo_label_size,
 )
 from app.services import spaces as spaces_svc
 from app.models.store_setting import StoreSetting
@@ -44,14 +45,22 @@ async def _resolve_user_pdf_label_size(
     user: Vendor,
     requested_size: Optional[str] = None,
 ) -> str:
-    dymo_size = None
-    if getattr(user, "label_preference", None) == "dymo":
-        dymo_size = await get_setting(db, "dymo_label_size") or "30347"
     return resolve_pdf_label_size(
         requested_size=requested_size,
         label_preference=getattr(user, "label_preference", None),
-        dymo_size=dymo_size,
+        dymo_size=None,
         fallback_size=getattr(user, "pdf_label_size", None),
+    )
+
+
+async def _resolve_user_dymo_label_size(
+    db: AsyncSession,
+    user: Vendor,
+) -> str:
+    default_dymo_size = await get_setting(db, "dymo_label_size") or "30347"
+    return resolve_dymo_label_size(
+        fallback_size=getattr(user, "pdf_label_size", None),
+        default_dymo_size=default_dymo_size,
     )
 
 
@@ -488,7 +497,7 @@ async def get_dymo_label(
             detail="Label printing is disabled for your role in Settings → User Roles.",
         )
 
-    dymo_size = await get_setting(db, "dymo_label_size") or "30347"
+    dymo_size = await _resolve_user_dymo_label_size(db, current_user)
     xml = generate_dymo_xml(item, label_size=dymo_size)
 
     item.label_printed = True

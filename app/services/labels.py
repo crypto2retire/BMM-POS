@@ -33,6 +33,7 @@ DYMO_TO_PDF_SIZE = {
     "30336": "2.125x1",
     "30252": "3.5x1.125",
 }
+PDF_TO_DYMO_SIZE = {v: k for k, v in DYMO_TO_PDF_SIZE.items()}
 
 CODE39_ALLOWED_CHARS = set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-. $/+%")
 
@@ -58,6 +59,21 @@ def resolve_pdf_label_size(
     if fallback_size in LABEL_SIZES:
         return fallback_size
     return DEFAULT_LABEL_SIZE
+
+
+def resolve_dymo_label_size(
+    requested_size: str | None = None,
+    *,
+    fallback_size: str | None = None,
+    default_dymo_size: str | None = None,
+) -> str:
+    if requested_size in PDF_TO_DYMO_SIZE:
+        return PDF_TO_DYMO_SIZE[requested_size]
+    if fallback_size in PDF_TO_DYMO_SIZE:
+        return PDF_TO_DYMO_SIZE[fallback_size]
+    if default_dymo_size in DYMO_TO_PDF_SIZE:
+        return default_dymo_size
+    return "30347"
 
 
 def _snap_down(val):
