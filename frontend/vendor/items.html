@@ -2353,7 +2353,10 @@
                 ? ` &middot; Booth ${item.booth_number}` : '';
 
             const style = item.label_style || 'standard';
-            const labelBtnText = style === 'dymo' ? 'Dymo' : 'Label';
+            const isReprint = !!item.label_printed;
+            const labelBtnText = isReprint
+                ? (style === 'dymo' ? 'Reprint Dymo' : 'Reprint Label')
+                : (style === 'dymo' ? 'Print Dymo' : 'Print Label');
             const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
 
             const selChecked = selectedItemIds.has(item.id) ? 'checked' : '';
@@ -2386,8 +2389,8 @@
                         <button class="btn btn-secondary label-btn-toggle"
                             onclick="toggleLabelDropdown(event, ${item.id})">▾</button>
                         <div class="ldd" id="ldd-${item.id}">
-                            <button onclick="printPdfLabel(${item.id})">PDF Label</button>
-                            <button onclick="printDymoLabel(${item.id})">Dymo Label</button>
+                            <button onclick="printPdfLabel(${item.id})">${isReprint ? 'Reprint PDF Label' : 'Print PDF Label'}</button>
+                            <button onclick="printDymoLabel(${item.id})">${isReprint ? 'Reprint Dymo Label' : 'Print Dymo Label'}</button>
                         </div>
                     </div>` : ''}
                     ${canMutate && (item.status === 'active' || item.status === 'inactive') ? `<div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
@@ -2476,6 +2479,7 @@
 
             const photoHtml = getItemPhotoHtml(item, 40);
             const style = item.label_style || 'standard';
+            const isReprint = !!item.label_printed;
             const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
             const selChecked = selectedItemIds.has(item.id) ? 'checked' : '';
             const canSelect = isSelectableItem(item) && (canMutate || canPrintLabels);
@@ -2495,7 +2499,7 @@
                 <td>${statusBadge(item.status)}${!item.label_printed ? ' <span class="item-needs-label-chip item-needs-label-chip--compact">NEW</span>' : ''}</td>
                 <td><div class="actions-cell">
                     <button class="btn btn-outline" onclick="openModal(${itemJson})">${canMutate ? 'Edit' : 'View'}</button>
-                    ${canPrintLabels ? `<button class="btn btn-secondary" onclick="printLabelAuto(${item.id}, '${style}')">Label</button>` : ''}
+                    ${canPrintLabels ? `<button class="btn btn-secondary" onclick="printLabelAuto(${item.id}, '${style}')">${isReprint ? 'Reprint' : 'Print Label'}</button>` : ''}
                     ${canMutate && (item.status === 'active' || item.status === 'inactive') ? `<label class="status-toggle" title="${isActive ? 'Mark not for sale' : 'Mark for sale'}">
                         <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
                         <span class="slider"></span>
