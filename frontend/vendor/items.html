@@ -972,8 +972,8 @@
         if (addItemBtn) addItemBtn.style.display = readOnly ? 'none' : '';
         if (bulkStatusBar) bulkStatusBar.style.display = readOnly ? 'none' : 'flex';
         if (saleToolsPanel) saleToolsPanel.style.display = readOnly ? 'none' : '';
-        if (labelPrefWrap) labelPrefWrap.style.display = currentRole === 'vendor' || isVendorMode ? 'flex' : 'none';
-        if (labelSizeWrap) labelSizeWrap.style.display = currentRole === 'vendor' || isVendorMode ? 'flex' : 'none';
+        if (labelPrefWrap) labelPrefWrap.style.display = canPrintLabels ? 'flex' : 'none';
+        if (labelSizeWrap) labelSizeWrap.style.display = canPrintLabels ? 'flex' : 'none';
     }
 
     function applyModalAccessMode(item) {
@@ -1269,11 +1269,16 @@
         setTimeout(function() { URL.revokeObjectURL(url); }, 600000);
     }
 
-    async function printPdfLabel(id) {
+    function labelPrefSavePath() {
+        if (currentRole !== 'vendor' && selectedVendorId) return '/api/v1/vendors/' + selectedVendorId + '/label-preference';
+        return '/api/v1/vendors/me/label-preference';
+    }
+
+    async function printPdfLabel(id, forcedSize) {
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
         const token = sessionStorage.getItem('bmm_token');
         try {
-            var requestedSize = vendorLabelPref === 'dymo' ? '' : vendorLabelSize;
+            var requestedSize = forcedSize || vendorLabelSize || '';
             var sizeParam = requestedSize ? '?label_size=' + encodeURIComponent(requestedSize) : '';
             const res = await fetch(`/api/v1/items/${id}/label` + sizeParam, {
                 headers: { 'Authorization': 'Bearer ' + token }
@@ -1290,7 +1295,7 @@
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
         try {
             if (vendorLabelSize === '1.5x1') {
-                await printPdfLabel(id);
+                await printPdfLabel(id, '1.5x1');
                 return;
             }
             const token = sessionStorage.getItem('bmm_token');
@@ -1322,6 +1327,10 @@
     }
 
     async function printLabelAuto(id, style) {
+        if (vendorLabelSize === '1.5x1') {
+            await printPdfLabel(id, '1.5x1');
+            return;
+        }
         if (style === 'dymo') await printDymoLabel(id);
         else await printPdfLabel(id);
     }
@@ -2836,7 +2845,7 @@
         var sel = document.getElementById('label-pref-select');
         var newPref = sel.value;
         try {
-            await apiFetch('PATCH', '/api/v1/vendors/me/label-preference', { label_preference: newPref });
+            await apiFetch('PATCH', labelPrefSavePath(), { label_preference: newPref });
             vendorLabelPref = newPref;
             toggleLabelSizeVisibility();
             showAlert('alert-container', 'Label type set to ' + (newPref === 'dymo' ? 'Dymo LabelWriter' : 'Standard PDF') + '.', 'success');
@@ -2849,7 +2858,7 @@
         var sel = document.getElementById('label-size-select');
         var newSize = sel.value;
         try {
-            await apiFetch('PATCH', '/api/v1/vendors/me/label-preference', { label_preference: vendorLabelPref, pdf_label_size: newSize });
+            await apiFetch('PATCH', labelPrefSavePath(), { label_preference: vendorLabelPref, pdf_label_size: newSize });
             vendorLabelSize = newSize;
             showAlert('alert-container', 'Label size saved.', 'success');
         } catch (e) {
