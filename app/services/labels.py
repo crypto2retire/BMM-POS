@@ -179,24 +179,25 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
         booth_number = getattr(booth, "booth_number", "") or ""
 
     if small_label:
-        divider_y = _snap_down(h - margin - (2.5 * scale_h))
-    else:
-        name = (item.name or "")[:50 if scale > 1.2 else 40]
-        name_y = _snap_down(h - margin - 13 * scale_h)
+        _draw_small_label_30347_style(c, item, w, h, margin, booth_number)
+        return
 
-        base_name_size = 11
-        if len(name) > 28:
-            base_name_size = 8
-        elif len(name) > 20:
-            base_name_size = 10
-        name_size = max(6, min(24, base_name_size * scale))
-        c.setFont("Helvetica-Bold", name_size)
-        c.drawString(inner_left, name_y, name)
+    name = (item.name or "")[:50 if scale > 1.2 else 40]
+    name_y = _snap_down(h - margin - 13 * scale_h)
 
-        divider_y = _snap_down(name_y - 5 * scale_h)
-        c.setStrokeColorRGB(0.4, 0.4, 0.4)
-        c.setLineWidth(DOT)
-        c.line(inner_left, divider_y, inner_right, divider_y)
+    base_name_size = 11
+    if len(name) > 28:
+        base_name_size = 8
+    elif len(name) > 20:
+        base_name_size = 10
+    name_size = max(6, min(24, base_name_size * scale))
+    c.setFont("Helvetica-Bold", name_size)
+    c.drawString(inner_left, name_y, name)
+
+    divider_y = _snap_down(name_y - 5 * scale_h)
+    c.setStrokeColorRGB(0.4, 0.4, 0.4)
+    c.setLineWidth(DOT)
+    c.line(inner_left, divider_y, inner_right, divider_y)
 
     today = datetime.date.today()
     active_price = item.price
@@ -211,8 +212,8 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
         on_sale = True
 
     price_str = f"${active_price:.2f}"
-    price_size = max(8 if small_label else 8, min(28, (10.5 if small_label else 14) * scale))
-    price_y = _snap_down((h - margin - (13 if small_label else 16) * scale_h) if small_label else (divider_y - 16 * scale_h))
+    price_size = max(8, min(28, 14 * scale))
+    price_y = _snap_down(divider_y - 16 * scale_h)
     c.setFont("Helvetica-Bold", price_size)
     c.setFillColorRGB(0, 0, 0)
     c.drawString(inner_left, price_y, price_str)
@@ -233,7 +234,7 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
         c.setFillColorRGB(0, 0, 0)
 
     if booth_number:
-        booth_size = max(7.5 if small_label else price_size, min(price_size, (9 if small_label else price_size)))
+        booth_size = max(price_size, min(price_size, price_size))
         c.setFont("Helvetica-Bold", booth_size)
         c.drawRightString(inner_right, price_y, "B" + booth_number)
 
@@ -241,12 +242,12 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
     if barcode_val:
         avail_w = w - margin * 2
 
-        barcode_text_size = max(6 if small_label else 6, min(16, (7 if small_label else 10) * scale))
-        barcode_text_y = _snap_up(margin + (1 if small_label else 1) * scale_h)
-        barcode_y = _snap_up(barcode_text_y + (11 if small_label else 14) * scale_h)
+        barcode_text_size = max(6, min(16, 10 * scale))
+        barcode_text_y = _snap_up(margin + 1 * scale_h)
+        barcode_y = _snap_up(barcode_text_y + 14 * scale_h)
 
-        min_bar_h = _snap_down((0.54 if small_label else 0.32) * inch * scale_h)
-        bar_h = _snap_down((price_y - 5 * scale_h - barcode_y) if small_label else (price_y - 8 * scale_h - barcode_y))
+        min_bar_h = _snap_down(0.32 * inch * scale_h)
+        bar_h = _snap_down(price_y - 8 * scale_h - barcode_y)
         bar_h = max(bar_h, min_bar_h)
 
         # Keep quiet zones, but keep them tighter on the smallest label.
@@ -266,6 +267,63 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
 
         c.setFont("Helvetica-Bold", barcode_text_size)
         c.drawCentredString(w / 2, barcode_text_y, barcode_val)
+
+
+def _draw_small_label_30347_style(c, item, w, h, margin, booth_number):
+    barcode_val = (item.barcode or "").upper()
+    today = datetime.date.today()
+    active_price = item.price
+    if (
+        item.sale_price is not None
+        and item.sale_start is not None
+        and item.sale_end is not None
+        and item.sale_start <= today <= item.sale_end
+    ):
+        active_price = item.sale_price
+
+    price_str = f"${active_price:.2f}"
+    booth_str = f"B{booth_number}" if booth_number else ""
+
+    left_strip_w = _snap_down(w * 0.34)
+    right_strip_w = _snap_down(w * 0.28)
+    center_x = left_strip_w
+    center_w = _snap_down(w - left_strip_w - right_strip_w)
+
+    barcode_h = _snap_down(h - margin * 2 - 18 * DOT)
+    barcode_obj = _build_pdf_barcode(
+        barcode_val,
+        small_label=True,
+        usable_w=barcode_h,
+        bar_h=max(_snap_down(left_strip_w - margin * 2), 10 * DOT),
+    )
+
+    c.saveState()
+    c.translate(_snap_up(margin + 4 * DOT), _snap_up(margin + 10 * DOT))
+    c.rotate(90)
+    barcode_obj.drawOn(c, 0, 0)
+    c.restoreState()
+
+    c.saveState()
+    c.translate(_snap_up(left_strip_w - 2 * DOT), _snap_up(margin + 6 * DOT))
+    c.rotate(90)
+    c.setFont("Helvetica-Bold", 8)
+    c.drawString(0, 0, barcode_val)
+    c.restoreState()
+
+    if booth_str:
+        c.saveState()
+        c.translate(_snap_up(center_x + center_w * 0.42), _snap_up(margin + 8 * DOT))
+        c.rotate(90)
+        c.setFont("Helvetica-Bold", 12)
+        c.drawCentredString(_snap_down((h - margin * 2) / 2), 0, booth_str)
+        c.restoreState()
+
+    c.saveState()
+    c.translate(_snap_down(w - margin - 6 * DOT), _snap_up(margin + 4 * DOT))
+    c.rotate(90)
+    c.setFont("Helvetica-Bold", 26)
+    c.drawCentredString(_snap_down((h - margin * 2) / 2), 0, price_str)
+    c.restoreState()
 
 
 def generate_dymo_xml(item, label_size: str = None) -> str:
@@ -316,17 +374,27 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
     usable_w = lw - (m * 2)
 
     if is_small_dymo:
-        name_y = 0
-        name_h = 0
-        price_y = lh - m - int(lh * 0.11)
-        price_h = int(lh * 0.11)
-        price_w = int(usable_w * 0.54)
-        booth_w = usable_w - price_w - 12
-        barcode_text_h = int(lh * 0.085)
+        portrait_w = lh
+        portrait_h = lw
+        left_strip_w = int(portrait_w * 0.34)
+        right_strip_w = int(portrait_w * 0.28)
+        center_w = portrait_w - left_strip_w - right_strip_w
+        price_x = portrait_w - right_strip_w + 4
+        price_y = m
+        price_w = right_strip_w - 8
+        price_h = portrait_h - (m * 2)
+        booth_x = left_strip_w + int(center_w * 0.18)
+        booth_y = m
+        booth_w = int(center_w * 0.30)
+        booth_h = portrait_h - (m * 2)
+        barcode_x = m
+        barcode_y = m
+        barcode_w = left_strip_w - int(m * 0.35)
+        barcode_h = portrait_h - (m * 2)
+        barcode_text_x = left_strip_w - 36
         barcode_text_y = m
-        barcode_y = barcode_text_y + barcode_text_h + 10
-        barcode_h = price_y - barcode_y - 12
-        barcode_h = max(barcode_h, int(lh * 0.60))
+        barcode_text_w = 32
+        barcode_text_h = portrait_h - (m * 2)
     else:
         name_y = lh - m - 10
         name_h = int(lh * 0.18)
@@ -342,7 +410,7 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
 
     xml = f"""<?xml version="1.0" encoding="utf-8"?>
 <DieCutLabel Version="8.0" Units="twips" MediaType="Default">
-  <PaperOrientation>Landscape</PaperOrientation>
+  <PaperOrientation>{'Portrait' if is_small_dymo else 'Landscape'}</PaperOrientation>
   <Id>Address</Id>
   <PaperName>{paper_name}</PaperName>
   <DrawCommands/>
@@ -356,7 +424,7 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
       <ForeColor Alpha="255" Red="0" Green="0" Blue="0"/>
       <BackColor Alpha="0" Red="255" Green="255" Blue="255"/>
       <LinkedObjectName></LinkedObjectName>
-      <Rotation>Rotation0</Rotation>
+      <Rotation>{'Rotation90' if is_small_dymo else 'Rotation0'}</Rotation>
       <IsMirrored>False</IsMirrored>
       <IsVariable>False</IsVariable>
       <HorizontalAlignment>Left</HorizontalAlignment>
@@ -368,7 +436,7 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
         <Element>
           <String>{name_str}</String>
           <Attributes>
-            <Font Family="Arial" Size="{'9' if is_small_dymo else '14'}" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
+            <Font Family="Arial" Size="{'26' if is_small_dymo else '14'}" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
           </Attributes>
         </Element>
       </StyledText>
@@ -391,7 +459,7 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
       <ForeColor Alpha="255" Red="0" Green="0" Blue="0"/>
       <BackColor Alpha="0" Red="255" Green="255" Blue="255"/>
       <LinkedObjectName></LinkedObjectName>
-      <Rotation>Rotation0</Rotation>
+      <Rotation>{'Rotation90' if is_small_dymo else 'Rotation0'}</Rotation>
       <IsMirrored>False</IsMirrored>
       <IsVariable>False</IsVariable>
       <HorizontalAlignment>Left</HorizontalAlignment>
@@ -409,7 +477,7 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
       </StyledText>
     </TextObject>
     <ObjectLayout>
-      <DYMOPoint><X>{m}</X><Y>{price_y}</Y></DYMOPoint>
+      <DYMOPoint><X>{price_x if is_small_dymo else m}</X><Y>{price_y}</Y></DYMOPoint>
       <Size><Width>{price_w}</Width><Height>{price_h}</Height></Size>
       <ZOrder>1</ZOrder>
       <AlternateColors>False</AlternateColors>
@@ -427,7 +495,7 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
       <ForeColor Alpha="255" Red="0" Green="0" Blue="0"/>
       <BackColor Alpha="0" Red="255" Green="255" Blue="255"/>
       <LinkedObjectName></LinkedObjectName>
-      <Rotation>Rotation0</Rotation>
+      <Rotation>{'Rotation90' if is_small_dymo else 'Rotation0'}</Rotation>
       <IsMirrored>False</IsMirrored>
       <IsVariable>False</IsVariable>
       <HorizontalAlignment>Right</HorizontalAlignment>
@@ -439,14 +507,14 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
         <Element>
           <String>{booth_str}</String>
           <Attributes>
-            <Font Family="Arial" Size="{'8' if is_small_dymo else '10'}" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
+            <Font Family="Arial" Size="{'12' if is_small_dymo else '10'}" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
           </Attributes>
         </Element>
       </StyledText>
     </TextObject>
     <ObjectLayout>
-      <DYMOPoint><X>{m + price_w + 20}</X><Y>{price_y}</Y></DYMOPoint>
-      <Size><Width>{booth_w}</Width><Height>{price_h}</Height></Size>
+      <DYMOPoint><X>{booth_x if is_small_dymo else (m + price_w + 20)}</X><Y>{booth_y if is_small_dymo else price_y}</Y></DYMOPoint>
+      <Size><Width>{booth_w}</Width><Height>{booth_h if is_small_dymo else price_h}</Height></Size>
       <ZOrder>2</ZOrder>
       <AlternateColors>False</AlternateColors>
       <BorderStyle>SolidLine</BorderStyle>
@@ -467,7 +535,7 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
       <ForeColor Alpha="255" Red="0" Green="0" Blue="0"/>
       <BackColor Alpha="0" Red="255" Green="255" Blue="255"/>
       <LinkedObjectName></LinkedObjectName>
-      <Rotation>Rotation0</Rotation>
+      <Rotation>Rotation90</Rotation>
       <IsMirrored>False</IsMirrored>
       <IsVariable>False</IsVariable>
       <Text>{barcode_str}</Text>
@@ -482,8 +550,8 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
       <QuietZonesPadding Left="{dymo_quiet_zone}" Top="0" Right="{dymo_quiet_zone}" Bottom="0"/>
     </BarcodeObject>
     <ObjectLayout>
-      <DYMOPoint><X>{m}</X><Y>{barcode_y}</Y></DYMOPoint>
-      <Size><Width>{usable_w}</Width><Height>{barcode_h}</Height></Size>
+      <DYMOPoint><X>{barcode_x if is_small_dymo else m}</X><Y>{barcode_y}</Y></DYMOPoint>
+      <Size><Width>{barcode_w if is_small_dymo else usable_w}</Width><Height>{barcode_h}</Height></Size>
       <ZOrder>3</ZOrder>
       <AlternateColors>False</AlternateColors>
       <BorderStyle>SolidLine</BorderStyle>
@@ -518,8 +586,8 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
       </StyledText>
     </TextObject>
     <ObjectLayout>
-      <DYMOPoint><X>{m}</X><Y>{barcode_text_y}</Y></DYMOPoint>
-      <Size><Width>{usable_w}</Width><Height>{barcode_text_h}</Height></Size>
+      <DYMOPoint><X>{barcode_text_x}</X><Y>{barcode_text_y}</Y></DYMOPoint>
+      <Size><Width>{barcode_text_w}</Width><Height>{barcode_text_h}</Height></Size>
       <ZOrder>4</ZOrder>
       <AlternateColors>False</AlternateColors>
       <BorderStyle>SolidLine</BorderStyle>
