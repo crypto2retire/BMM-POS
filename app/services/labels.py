@@ -4,6 +4,7 @@ import datetime
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas as pdf_canvas
 from reportlab.graphics.barcode import code128
+from reportlab.graphics.barcode import code39
 
 
 THERMAL_DPI = 203
@@ -30,6 +31,8 @@ DYMO_TO_PDF_SIZE = {
     "30336": "2.125x1",
     "30252": "3.5x1.125",
 }
+
+CODE39_ALLOWED_CHARS = set("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-. $/+%")
 
 
 def _get_label_dims(size_key):
@@ -80,6 +83,55 @@ def _minimum_small_label_bar_width(barcode_val, usable_w, probe_width):
     if (probe_width * preferred) <= usable_w:
         return preferred
     return DOT
+
+
+def _supports_small_label_code39(barcode_val: str) -> bool:
+    if not barcode_val:
+        return False
+    return all(ch in CODE39_ALLOWED_CHARS for ch in barcode_val.upper())
+
+
+def _build_pdf_barcode(barcode_val: str, *, small_label: bool, usable_w: float, bar_h: float):
+    if small_label and _supports_small_label_code39(barcode_val):
+        probe = code39.Standard39(
+            barcode_val.upper(),
+            barHeight=10,
+            stop=1,
+            checksum=0,
+            quiet=0,
+        )
+        probe_width = probe.width
+        bar_w = _fit_bar_width(usable_w, probe_width)
+        bar_w = max(bar_w, _minimum_small_label_bar_width(barcode_val, usable_w, probe_width))
+        barcode_obj = code39.Standard39(
+            barcode_val.upper(),
+            barHeight=bar_h,
+            stop=1,
+            checksum=0,
+            quiet=0,
+            barWidth=bar_w,
+        )
+        return barcode_obj
+
+    probe = code128.Code128(
+        barcode_val,
+        barHeight=10,
+        barWidth=1.0,
+        humanReadable=False,
+        quiet=False,
+    )
+    probe_width = probe.width
+    bar_w = _fit_bar_width(usable_w, probe_width)
+    if small_label:
+        bar_w = max(bar_w, _minimum_small_label_bar_width(barcode_val, usable_w, probe_width))
+    barcode_obj = code128.Code128(
+        barcode_val,
+        barHeight=bar_h,
+        barWidth=bar_w,
+        humanReadable=False,
+        quiet=False,
+    )
+    return barcode_obj
 
 
 def generate_label_pdf(item, label_size=None) -> bytes:
@@ -194,24 +246,15 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
         bar_h = _snap_down(price_y - (3 if small_label else 8) * scale_h - barcode_y)
         bar_h = max(bar_h, min_bar_h)
 
-        probe = code128.Code128(barcode_val, barHeight=10, barWidth=1.0,
-                                humanReadable=False, quiet=False)
-        probe_width = probe.width
-
         # Keep quiet zones, but keep them tighter on the smallest label.
         quiet_zone = (10 if small_label else 10) * DOT
         usable_w = avail_w - quiet_zone * 2
 
-        bar_w = _fit_bar_width(usable_w, probe_width)
-        if small_label:
-            bar_w = max(bar_w, _minimum_small_label_bar_width(barcode_val, usable_w, probe_width))
-
-        barcode_obj = code128.Code128(
+        barcode_obj = _build_pdf_barcode(
             barcode_val,
-            barHeight=bar_h,
-            barWidth=bar_w,
-            humanReadable=False,
-            quiet=False,
+            small_label=small_label,
+            usable_w=usable_w,
+            bar_h=bar_h,
         )
 
         barcode_w = barcode_obj.width
@@ -251,7 +294,8 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
         price_str += saxutils.escape(f"  (was ${item.price:.2f})")
     max_name_len = 20 if label_size == "30347" else 35
     name_str = saxutils.escape((item.name or "")[:max_name_len])
-    barcode_str = saxutils.escape(item.barcode or "")
+    raw_barcode = item.barcode or ""
+    barcode_str = saxutils.escape(raw_barcode)
     booth_str = saxutils.escape(f"Booth {booth_number}") if booth_number else ""
 
     DYMO_PAPER = {
@@ -403,6 +447,10 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
   </ObjectInfo>"""
 
     if barcode_str:
+        small_dymo_uses_code39 = is_small_dymo and _supports_small_label_code39(raw_barcode)
+        dymo_barcode_type = "Code39" if small_dymo_uses_code39 else "Code128Auto"
+        dymo_barcode_size = "Medium" if small_dymo_uses_code39 else "Large"
+        dymo_quiet_zone = "0" if small_dymo_uses_code39 else "14"
         xml += f"""
   <ObjectInfo>
     <BarcodeObject>
@@ -414,15 +462,15 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
       <IsMirrored>False</IsMirrored>
       <IsVariable>False</IsVariable>
       <Text>{barcode_str}</Text>
-      <Type>Code128Auto</Type>
-      <Size>Large</Size>
+      <Type>{dymo_barcode_type}</Type>
+      <Size>{dymo_barcode_size}</Size>
       <TextPosition>{'None' if is_small_dymo else 'Bottom'}</TextPosition>
       <TextFont Family="Arial" Size="{'6' if is_small_dymo else '7'}" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
       <CheckSumFont Family="Arial" Size="{'6' if is_small_dymo else '7'}" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
       <TextEmbedding>None</TextEmbedding>
       <ECLevel>0</ECLevel>
       <HorizontalAlignment>Center</HorizontalAlignment>
-      <QuietZonesPadding Left="14" Top="0" Right="14" Bottom="0"/>
+      <QuietZonesPadding Left="{dymo_quiet_zone}" Top="0" Right="{dymo_quiet_zone}" Bottom="0"/>
     </BarcodeObject>
     <ObjectLayout>
       <DYMOPoint><X>{m}</X><Y>{barcode_y}</Y></DYMOPoint>
