@@ -56,7 +56,7 @@ DEFAULT_SETTINGS = {
     "module_time_clock": "false",
     "module_split_payments": "true",
     "default_label_format": "dymo",
-    "dymo_label_size": "30347",
+    "dymo_label_size": "30336",
     "label_show_price": "true",
     "label_show_booth": "true",
     "label_show_aging": "false",

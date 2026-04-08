@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     data_sync_secret: Optional[str] = None
     tax_rate: float = 0.05
     store_name: str = "Bowenstreet Market"
-    dymo_label_size: str = "30347"
+    dymo_label_size: str = "30336"
     openrouter_api_key: Optional[str] = None
     square_access_token: Optional[str] = None
     square_location_id: Optional[str] = None

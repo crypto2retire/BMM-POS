@@ -328,7 +328,7 @@ async def run():
             await _set_marker(session, marker, "One-time vendor payout_method default")
             print(f"BMM-POS migrate: payout_method default — {r.rowcount} vendors", flush=True)
 
-        # 6d: Default untouched legacy label preferences to Dymo 30347
+        # 6d: Default untouched legacy label preferences to Dymo
         marker = "startup_task_default_label_preference_dymo_v1"
         if not await _has_marker(session, marker):
             await session.execute(text(
@@ -340,8 +340,20 @@ async def run():
                 WHERE COALESCE(label_preference, 'standard') = 'standard'
                   AND COALESCE(pdf_label_size, '2.25x1.25') = '2.25x1.25'
             """))
-            await _set_marker(session, marker, "One-time default label preference set to Dymo 30347")
+            await _set_marker(session, marker, "One-time default label preference set to Dymo")
             print(f"BMM-POS migrate: default label preference to dymo — {r.rowcount} vendors", flush=True)
+
+        # 6d2: Move the live default Dymo stock from 30347 to 30336
+        marker = "startup_task_default_dymo_size_30336_v1"
+        if not await _has_marker(session, marker):
+            await session.execute(text("""
+                UPDATE store_settings
+                SET value = '30336'
+                WHERE key = 'dymo_label_size'
+                  AND COALESCE(value, '30347') = '30347'
+            """))
+            await _set_marker(session, marker, "One-time default dymo size changed to 30336")
+            print("BMM-POS migrate: default dymo label size set to 30336", flush=True)
 
         # 6e: Migrate rent payments into rent_balance
         marker = "startup_task_rent_balance_migration_v1"
