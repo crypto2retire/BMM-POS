@@ -1955,6 +1955,9 @@
             return;
         }
 
+        const desiredOnline = document.getElementById('f-is-online').checked;
+        const shouldDeferOnlineEnable = desiredOnline && pendingPhotoFiles.length > 0;
+
         const body = {
             name,
             category: document.getElementById('f-category').value || null,
@@ -1964,7 +1967,7 @@
             sale_price: parseFloat(document.getElementById('f-sale-price').value) || null,
             sale_start: document.getElementById('f-sale-start').value || null,
             sale_end: document.getElementById('f-sale-end').value || null,
-            is_online: document.getElementById('f-is-online').checked,
+            is_online: shouldDeferOnlineEnable ? false : desiredOnline,
             is_tax_exempt: document.getElementById('f-is-tax-exempt').checked,
             is_consignment: false,
             consignment_rate: null,
@@ -2033,9 +2036,14 @@
                     if (pendingPhotoFiles.length > filesToUpload.length) {
                         showAlert('alert-container', `Item saved. ${filesToUpload.length} photo(s) uploaded; extra photos were skipped because items can have up to ${MAX_ITEM_PHOTOS}.`, 'warning');
                     }
+                    if (shouldDeferOnlineEnable) {
+                        await apiPut(`/api/v1/items/${savedItem.id}`, { is_online: true });
+                    }
                 } catch (photoErr) {
                     showAlert('alert-container', photoErr.message || 'Item saved but photo upload failed.', 'warning');
                 }
+            } else if (shouldDeferOnlineEnable && savedItem && savedItem.id) {
+                showAlert('alert-container', 'Item saved, but it was not listed online because no photo finished uploading.', 'warning');
             }
 
             if (!editingId && addAnother) {
