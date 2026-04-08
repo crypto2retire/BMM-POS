@@ -1289,6 +1289,10 @@
     async function printDymoLabel(id) {
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
         try {
+            if (vendorLabelSize === '1.5x1') {
+                await printPdfLabel(id);
+                return;
+            }
             const token = sessionStorage.getItem('bmm_token');
             const xmlRes = await fetch(`/api/v1/items/${id}/dymo-label?ts=` + Date.now(), {
                 method: 'GET',

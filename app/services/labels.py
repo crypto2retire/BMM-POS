@@ -361,7 +361,7 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
         booth_number = getattr(booth, "booth_number", "") or ""
 
     if small_label:
-        _draw_small_label_30347_style(c, item, w, h, margin, booth_number)
+        _draw_small_label_standard_style(c, item, w, h, margin, booth_number)
         return
 
     name = (item.name or "")[:50 if scale > 1.2 else 40]
@@ -451,7 +451,7 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
         c.drawCentredString(w / 2, barcode_text_y, barcode_val)
 
 
-def _draw_small_label_30347_style(c, item, w, h, margin, booth_number):
+def _draw_small_label_standard_style(c, item, w, h, margin, booth_number):
     barcode_val = (item.barcode or "").upper()
     today = datetime.date.today()
     active_price = item.price
@@ -464,48 +464,38 @@ def _draw_small_label_30347_style(c, item, w, h, margin, booth_number):
         active_price = item.sale_price
 
     price_str = f"${active_price:.2f}"
-    booth_str = f"B{booth_number}" if booth_number else ""
+    header_y = _snap_down(h - margin - 11 * DOT)
+    price_size = 11
+    booth_size = 10
+    c.setFillColorRGB(0, 0, 0)
+    c.setFont("Helvetica-Bold", price_size)
+    c.drawString(_snap_up(margin + 2 * DOT), header_y, price_str)
 
-    left_strip_w = _snap_down(w * 0.34)
-    right_strip_w = _snap_down(w * 0.28)
-    center_x = left_strip_w
-    center_w = _snap_down(w - left_strip_w - right_strip_w)
+    if booth_number:
+        c.setFont("Helvetica-Bold", booth_size)
+        c.drawRightString(_snap_down(w - margin - 2 * DOT), header_y, "B" + booth_number)
 
-    barcode_h = _snap_down(h - margin * 2 - 18 * DOT)
+    divider_y = _snap_down(header_y - 4 * DOT)
+    c.setStrokeColorRGB(0.4, 0.4, 0.4)
+    c.setLineWidth(DOT)
+    c.line(_snap_up(margin + DOT), divider_y, _snap_down(w - margin - DOT), divider_y)
+
+    barcode_text_y = _snap_up(margin + 1 * DOT)
+    barcode_y = _snap_up(barcode_text_y + 11 * DOT)
+    bar_h = max(_snap_down(divider_y - barcode_y - 4 * DOT), _snap_down(0.24 * inch))
+    avail_w = w - margin * 2
+    usable_w = avail_w - (8 * DOT * 2)
     barcode_obj = _build_pdf_barcode(
         barcode_val,
-        small_label=True,
-        usable_w=barcode_h,
-        bar_h=max(_snap_down(left_strip_w - margin * 2), 10 * DOT),
+        small_label=False,
+        usable_w=usable_w,
+        bar_h=bar_h,
     )
+    barcode_x = _snap_down((w - barcode_obj.width) / 2)
+    barcode_obj.drawOn(c, barcode_x, barcode_y)
 
-    c.saveState()
-    c.translate(_snap_up(margin + 4 * DOT), _snap_up(margin + 10 * DOT))
-    c.rotate(90)
-    barcode_obj.drawOn(c, 0, 0)
-    c.restoreState()
-
-    c.saveState()
-    c.translate(_snap_up(left_strip_w - 2 * DOT), _snap_up(margin + 6 * DOT))
-    c.rotate(90)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(0, 0, barcode_val)
-    c.restoreState()
-
-    if booth_str:
-        c.saveState()
-        c.translate(_snap_up(center_x + center_w * 0.42), _snap_up(margin + 8 * DOT))
-        c.rotate(90)
-        c.setFont("Helvetica-Bold", 12)
-        c.drawCentredString(_snap_down((h - margin * 2) / 2), 0, booth_str)
-        c.restoreState()
-
-    c.saveState()
-    c.translate(_snap_down(w - margin - 6 * DOT), _snap_up(margin + 4 * DOT))
-    c.rotate(90)
-    c.setFont("Helvetica-Bold", 26)
-    c.drawCentredString(_snap_down((h - margin * 2) / 2), 0, price_str)
-    c.restoreState()
+    c.setFont("Helvetica-Bold", 7)
+    c.drawCentredString(w / 2, barcode_text_y, barcode_val)
 
 
 def generate_dymo_xml(item, label_size: str = None) -> str:
