@@ -496,7 +496,12 @@ async def get_dymo_label(
     return Response(
         content=xml,
         media_type="text/xml",
-        headers={"Content-Disposition": f'inline; filename="label_{item_id}.xml"'},
+        headers={
+            "Content-Disposition": f'inline; filename="label_{item_id}.xml"',
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
     )
 
 

@@ -1289,7 +1289,14 @@
     async function printDymoLabel(id) {
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
         try {
-            const xml = await apiFetchText(`/api/v1/items/${id}/dymo-label`);
+            const token = sessionStorage.getItem('bmm_token');
+            const xmlRes = await fetch(`/api/v1/items/${id}/dymo-label?ts=` + Date.now(), {
+                method: 'GET',
+                cache: 'no-store',
+                headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+            });
+            if (!xmlRes.ok) throw new Error('Failed to generate Dymo label');
+            const xml = await xmlRes.text();
             const body = new URLSearchParams({ printerName: '', labelXml: xml, labelSetXml: '' });
             const resp = await fetch('http://localhost:41951/DYMO/DLS/Printing/PrintLabel', {
                 method: 'POST',
