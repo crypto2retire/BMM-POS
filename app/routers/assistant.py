@@ -1,11 +1,9 @@
 import json
-import os
 import uuid
 from datetime import date
 from typing import Optional
 
 import bcrypt
-import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +15,7 @@ from app.routers.auth import MIN_PASSWORD_LENGTH, bump_auth_version, get_passwor
 from app.routers.settings import require_role_feature
 from app.schemas.assistant import AssistantChatRequest, AssistantChatResponse
 from app.services.barcode import generate_sku
+from app.services.llm_gateway import chat_completion
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
 
@@ -318,17 +317,6 @@ TOOLS = [
     },
 ]
 
-
-def _get_api_key() -> str:
-    key = os.environ.get("OPENROUTER_API_KEY", "").strip()
-    if not key:
-        raise HTTPException(
-            status_code=503,
-            detail="Assistant not configured. Please add your OpenRouter API key.",
-        )
-    return key
-
-
 async def _execute_tool(
     tool_name: str,
     tool_args: dict,
@@ -576,45 +564,21 @@ async def _execute_tool(
     return f"ERROR: Unknown tool '{tool_name}'.", None, None
 
 
-async def _call_openrouter(
-    api_key: str,
+async def _call_assistant_llm(
     messages: list,
     include_tools: bool = True,
+    *,
+    prefer_vision: bool = False,
 ) -> dict:
-    payload: dict = {
-        "model": "google/gemini-2.0-flash-001",
-        "max_tokens": 500,
-        "messages": messages,
-    }
-    if include_tools:
-        payload["tools"] = TOOLS
-
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        try:
-            resp = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "HTTP-Referer": "https://bowenstreetmarket.com",
-                    "X-Title": "Bowenstreet Market POS",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-        except httpx.TimeoutException:
-            raise HTTPException(status_code=504, detail="Assistant timed out")
-        except httpx.RequestError as exc:
-            raise HTTPException(status_code=502, detail=f"Network error: {exc}")
-
-    if resp.status_code == 401:
-        raise HTTPException(
-            status_code=503,
-            detail="Assistant not configured. Please add your OpenRouter API key.",
-        )
-    if not resp.is_success:
-        raise HTTPException(status_code=502, detail="Assistant unavailable")
-
-    return resp.json()
+    return await chat_completion(
+        messages=messages,
+        tools=TOOLS if include_tools else None,
+        max_tokens=500,
+        referer="https://bowenstreetmarket.com",
+        title="Bowenstreet Market POS",
+        prefer_vision=prefer_vision,
+        require_local_vision=prefer_vision,
+    )
 
 
 @router.post("/chat", response_model=AssistantChatResponse)
@@ -623,8 +587,6 @@ async def chat(
     current_user: Vendor = Depends(require_role_feature("role_view_ai_assistant")),
     db: AsyncSession = Depends(get_db),
 ):
-    api_key = _get_api_key()
-
     if data.image_base64 and data.image_mime_type:
         user_content = [
             {
@@ -662,7 +624,11 @@ async def chat(
     # Multi-round tool-calling loop (max 4 rounds to prevent runaway)
     for _round in range(4):
         try:
-            body = await _call_openrouter(api_key, messages, include_tools=True)
+            body = await _call_assistant_llm(
+                messages,
+                include_tools=True,
+                prefer_vision=bool(data.image_base64 and data.image_mime_type),
+            )
         except HTTPException as exc:
             return AssistantChatResponse(
                 reply=f"Assistant error: {exc.detail}",
@@ -720,7 +686,11 @@ async def chat(
 
     # Fallback: force a final reply without tools
     try:
-        body_final = await _call_openrouter(api_key, messages, include_tools=False)
+        body_final = await _call_assistant_llm(
+            messages,
+            include_tools=False,
+            prefer_vision=bool(data.image_base64 and data.image_mime_type),
+        )
         reply = body_final["choices"][0]["message"].get("content") or ""
     except Exception:
         # Return whatever tool results we accumulated as a plain summary

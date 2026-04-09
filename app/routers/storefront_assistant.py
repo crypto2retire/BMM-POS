@@ -1,5 +1,4 @@
 import json
-import os
 import re
 import sys
 import time
@@ -7,7 +6,6 @@ from collections import defaultdict
 from datetime import date
 from typing import Optional
 
-import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select, func, or_
@@ -19,6 +17,7 @@ from app.models.vendor import Vendor
 from app.models.studio_class import StudioClass
 from app.models.class_registration import ClassRegistration
 from app.routers.settings import get_setting, DEFAULT_SETTINGS
+from app.services.llm_gateway import chat_completion
 
 router = APIRouter(prefix="/storefront/assistant", tags=["public-assistant"])
 
@@ -181,14 +180,6 @@ TOOLS = [
         }
     },
 ]
-
-
-def _get_api_key() -> str:
-    key = os.environ.get("OPENROUTER_API_KEY", "").strip()
-    if not key:
-        raise HTTPException(status_code=503, detail="Assistant not available")
-    return key
-
 
 async def _execute_tool(tool_name: str, args: dict, db: AsyncSession) -> str:
     if tool_name == "search_items":
@@ -443,7 +434,6 @@ async def public_chat(
     db: AsyncSession = Depends(get_db),
 ):
     _check_rate_limit(request)
-    api_key = _get_api_key()
 
     if not data.message or not data.message.strip():
         raise HTTPException(status_code=400, detail="Message is required")
@@ -460,39 +450,20 @@ async def public_chat(
     ]
 
     for _round in range(3):
-        payload = {
-            "model": "google/gemini-2.0-flash-001",
-            "max_tokens": 400,
-            "messages": messages,
-            "tools": TOOLS,
-        }
-
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            try:
-                resp = await client.post(
-                    "https://openrouter.ai/api/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "HTTP-Referer": "https://bowenstreetmarket.com",
-                        "X-Title": "Bowenstreet Market Public Assistant",
-                        "Content-Type": "application/json",
-                    },
-                    json=payload,
-                )
-            except httpx.TimeoutException:
-                return PublicChatResponse(reply="I'm sorry, I'm having trouble connecting right now. Please try again in a moment.")
-            except httpx.RequestError:
-                return PublicChatResponse(reply="I'm having a connection issue. Please try again shortly.")
-
-        if resp.status_code != 200:
-            return PublicChatResponse(reply="I'm temporarily unavailable. Please try again in a moment.")
-
         try:
-            body = resp.json()
+            body = await chat_completion(
+                messages=messages,
+                tools=TOOLS,
+                max_tokens=400,
+                referer="https://bowenstreetmarket.com",
+                title="Bowenstreet Market Public Assistant",
+            )
             choice = body["choices"][0]
             assistant_message = choice["message"]
             finish_reason = choice.get("finish_reason", "")
             tool_calls = assistant_message.get("tool_calls")
+        except HTTPException as exc:
+            return PublicChatResponse(reply=exc.detail or "I'm temporarily unavailable. Please try again in a moment.")
         except (KeyError, IndexError, ValueError) as exc:
             print(f"Public assistant: malformed LLM response: {exc}", file=sys.stderr, flush=True)
             return PublicChatResponse(reply="I'm having a little trouble right now. Could you try asking again?")
