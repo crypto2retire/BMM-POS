@@ -93,7 +93,15 @@ def generate_dymo_xml(item) -> str:
         </Element>
       </StyledText>
     </TextObject>
-    <Bounds X="{price_x}" Y="{price_y}" Width="{price_w}" Height="{price_h}"/>
+    <ObjectLayout>
+      <DYMOPoint><X>{price_x}</X><Y>{price_y}</Y></DYMOPoint>
+      <Size><Width>{price_w}</Width><Height>{price_h}</Height></Size>
+      <ZOrder>0</ZOrder>
+      <AlternateColors>False</AlternateColors>
+      <BorderStyle>SolidLine</BorderStyle>
+      <BorderColor Alpha="255" Red="0" Green="0" Blue="0"/>
+      <BorderThickness>0</BorderThickness>
+    </ObjectLayout>
   </ObjectInfo>"""
 
     # Booth number — center
@@ -122,7 +130,15 @@ def generate_dymo_xml(item) -> str:
         </Element>
       </StyledText>
     </TextObject>
-    <Bounds X="{booth_x}" Y="{booth_y}" Width="{booth_w}" Height="{booth_h}"/>
+    <ObjectLayout>
+      <DYMOPoint><X>{booth_x}</X><Y>{booth_y}</Y></DYMOPoint>
+      <Size><Width>{booth_w}</Width><Height>{booth_h}</Height></Size>
+      <ZOrder>1</ZOrder>
+      <AlternateColors>False</AlternateColors>
+      <BorderStyle>SolidLine</BorderStyle>
+      <BorderColor Alpha="255" Red="0" Green="0" Blue="0"/>
+      <BorderThickness>0</BorderThickness>
+    </ObjectLayout>
   </ObjectInfo>"""
 
     # Barcode — native Code128Auto rendered by printer firmware
@@ -148,7 +164,15 @@ def generate_dymo_xml(item) -> str:
       <HorizontalAlignment>Center</HorizontalAlignment>
       <QuietZonesPadding Left="200" Top="0" Right="200" Bottom="0"/>
     </BarcodeObject>
-    <Bounds X="{barcode_x}" Y="{barcode_y}" Width="{barcode_w}" Height="{barcode_h}"/>
+    <ObjectLayout>
+      <DYMOPoint><X>{barcode_x}</X><Y>{barcode_y}</Y></DYMOPoint>
+      <Size><Width>{barcode_w}</Width><Height>{barcode_h}</Height></Size>
+      <ZOrder>2</ZOrder>
+      <AlternateColors>False</AlternateColors>
+      <BorderStyle>SolidLine</BorderStyle>
+      <BorderColor Alpha="255" Red="0" Green="0" Blue="0"/>
+      <BorderThickness>0</BorderThickness>
+    </ObjectLayout>
   </ObjectInfo>"""
 
     # Barcode text — human-readable SKU next to barcode
@@ -177,7 +201,15 @@ def generate_dymo_xml(item) -> str:
         </Element>
       </StyledText>
     </TextObject>
-    <Bounds X="{barcode_text_x}" Y="{barcode_text_y}" Width="{barcode_text_w}" Height="{barcode_text_h}"/>
+    <ObjectLayout>
+      <DYMOPoint><X>{barcode_text_x}</X><Y>{barcode_text_y}</Y></DYMOPoint>
+      <Size><Width>{barcode_text_w}</Width><Height>{barcode_text_h}</Height></Size>
+      <ZOrder>3</ZOrder>
+      <AlternateColors>False</AlternateColors>
+      <BorderStyle>SolidLine</BorderStyle>
+      <BorderColor Alpha="255" Red="0" Green="0" Blue="0"/>
+      <BorderThickness>0</BorderThickness>
+    </ObjectLayout>
   </ObjectInfo>"""
 
     xml += """
