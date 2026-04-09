@@ -594,9 +594,13 @@
 
         <div class="payment-section">
             <div class="payment-label">Payment Method</div>
+            <div id="offline-mode-banner" style="display:none;margin-bottom:0.75rem;padding:0.7rem 0.85rem;background:rgba(207, 160, 62, 0.12);border:1px solid rgba(207, 160, 62, 0.35);font-size:0.85rem;line-height:1.45">
+                Offline mode is active. Use cash or Crypto / Blackbox on this screen.
+            </div>
             <div class="payment-btns">
                 <button class="pay-btn active" id="pay-cash" onclick="selectPayment('cash')">💵 Cash</button>
                 <button class="pay-btn" id="pay-card" onclick="selectPayment('card')">💳 Card</button>
+                <button class="pay-btn" id="pay-crypto" onclick="selectPayment('crypto_blackbox')" style="display:none">₿ Crypto</button>
             </div>
             <div id="cash-fields">
                 <div class="cash-input-row">
@@ -640,6 +644,36 @@
     let cart = [];
     let paymentMethod = 'cash';
     let searchTimer = null;
+    let posRuntime = {
+        offline_mode: false,
+        allowed_payment_methods: ['cash', 'card'],
+    };
+
+    function runtimeAllows(method) {
+        return (posRuntime.allowed_payment_methods || []).includes(method);
+    }
+
+    function applyRuntimeConfig() {
+        const offlineBanner = document.getElementById('offline-mode-banner');
+        const payCard = document.getElementById('pay-card');
+        const payCrypto = document.getElementById('pay-crypto');
+        if (offlineBanner) offlineBanner.style.display = posRuntime.offline_mode ? '' : 'none';
+        if (payCard) payCard.style.display = runtimeAllows('card') ? '' : 'none';
+        if (payCrypto) payCrypto.style.display = runtimeAllows('crypto_blackbox') ? '' : 'none';
+        if (!runtimeAllows(paymentMethod)) {
+            paymentMethod = runtimeAllows('cash') ? 'cash' : (runtimeAllows('crypto_blackbox') ? 'crypto_blackbox' : paymentMethod);
+        }
+        selectPayment(paymentMethod);
+    }
+
+    async function loadPosRuntime() {
+        try {
+            posRuntime = await apiGet('/api/v1/pos/runtime');
+        } catch (err) {
+            console.warn('Unable to load POS runtime config', err);
+        }
+        applyRuntimeConfig();
+    }
 
     function handleLogout() {
         window.bmmAuth.logout();
@@ -835,9 +869,11 @@
     }
 
     function selectPayment(method) {
+        if (!runtimeAllows(method)) return;
         paymentMethod = method;
         document.getElementById('pay-cash').classList.toggle('active', method === 'cash');
         document.getElementById('pay-card').classList.toggle('active', method === 'card');
+        document.getElementById('pay-crypto').classList.toggle('active', method === 'crypto_blackbox');
         document.getElementById('cash-fields').style.display = method === 'cash' ? '' : 'none';
         updateChange();
     }
@@ -885,6 +921,9 @@
         };
         if (paymentMethod === 'cash') {
             payload.cash_tendered = parseFloat(document.getElementById('cash-tendered').value);
+        }
+        if (paymentMethod === 'crypto_blackbox') {
+            payload.external_payment_reference = 'BLACKBOX-' + Date.now();
         }
 
         try {
@@ -953,9 +992,10 @@
             userNameId: 'nav-cashier',
             title: 'Register Access Restricted',
             message: 'Processing sales is not enabled for your current role.'
-        }).then(function(session) {
+        }).then(async function(session) {
             if (!session) return;
             document.getElementById('nav-cashier').textContent = session.name || session.role;
+            await loadPosRuntime();
             selectPayment('cash');
             renderCart();
         });

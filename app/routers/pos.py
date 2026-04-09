@@ -1,6 +1,5 @@
 import asyncio
 import math
-import os
 import secrets
 import uuid
 import base64
@@ -14,7 +13,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFil
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_, func, cast, Date, case
 from sqlalchemy.orm import selectinload
-import httpx
 from app.database import get_db
 from app.models.store_setting import StoreSetting
 from app.routers.settings import require_staff_feature, role_feature_allowed
@@ -35,6 +33,7 @@ from app.schemas.gift_card import (
     GiftCardResponse, GiftCardDetailResponse, GiftCardTransactionResponse,
 )
 from app.services import poynt
+from app.services.llm_gateway import ai_runtime_mode, chat_completion
 from app.services.rent_payments import apply_rent_payment, stamp_rent_notes
 from app.config import settings
 from app.routers.notifications import bg_notify_product_sold, bg_notify_order_confirmation
@@ -43,6 +42,32 @@ from app.timezone import STORE_TZ
 
 router = APIRouter(prefix="/pos", tags=["pos"])
 logger = logging.getLogger(__name__)
+
+ONLINE_PAYMENT_METHODS = ("cash", "card", "split", "gift_card", "crypto_blackbox")
+
+
+def _offline_mode_enabled() -> bool:
+    return bool(settings.offline_mode)
+
+
+def _allowed_runtime_payment_methods() -> list[str]:
+    if _offline_mode_enabled():
+        methods = settings.resolved_offline_payment_methods or ["cash", "gift_card", "split", "crypto_blackbox"]
+        return methods
+    return list(ONLINE_PAYMENT_METHODS)
+
+
+def _split_uses_card(data: SaleCreate) -> bool:
+    return bool(data.card_transaction_id)
+
+
+def _resolve_external_payment_reference(data: SaleCreate) -> Optional[str]:
+    explicit_ref = (data.external_payment_reference or "").strip()
+    if explicit_ref:
+        return explicit_ref
+    if data.payment_method == "crypto_blackbox":
+        return f"BLACKBOX-{int(datetime.now(tz=STORE_TZ).timestamp())}"
+    return data.card_transaction_id
 
 
 def _starting_cash_key(for_date: date) -> str:
@@ -134,6 +159,23 @@ def _is_tax_exempt_sale_item(item: Item) -> bool:
     if bool(item.is_tax_exempt):
         return True
     return (item.category or "").strip().lower() == "studio class"
+
+
+@router.get("/runtime")
+async def pos_runtime(
+    current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
+):
+    return {
+        "offline_mode": _offline_mode_enabled(),
+        "ai_mode": ai_runtime_mode(),
+        "local_ai_enabled": bool(settings.local_ai_enabled),
+        "allowed_payment_methods": _allowed_runtime_payment_methods(),
+        "split_allows_card": not _offline_mode_enabled(),
+        "split_allows_cash": True,
+        "split_allows_gift_card": True,
+        "crypto_payment_label": "Crypto / Blackbox",
+        "offline_snapshot_path": settings.offline_snapshot_path if _offline_mode_enabled() else None,
+    }
 
 
 @router.get("/search")
@@ -331,8 +373,28 @@ async def pos_create_sale(
     if not data.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
-    if data.payment_method not in ("cash", "card", "split", "gift_card"):
-        raise HTTPException(status_code=400, detail="payment_method must be cash, card, split, or gift_card")
+    if data.payment_method not in ONLINE_PAYMENT_METHODS:
+        raise HTTPException(
+            status_code=400,
+            detail="payment_method must be cash, card, split, gift_card, or crypto_blackbox",
+        )
+
+    if _offline_mode_enabled():
+        if data.payment_method == "card":
+            raise HTTPException(
+                status_code=400,
+                detail="Card processing is disabled in offline mode. Use cash, gift card, or Crypto / Blackbox.",
+            )
+        if data.payment_method == "split" and _split_uses_card(data):
+            raise HTTPException(
+                status_code=400,
+                detail="Offline split payments can use gift card plus cash only. Card legs are disabled.",
+            )
+        if data.payment_method not in _allowed_runtime_payment_methods():
+            raise HTTPException(
+                status_code=400,
+                detail="That payment method is not enabled in offline mode.",
+            )
 
     if data.payment_method == "card":
         if not data.card_transaction_id:
@@ -340,6 +402,9 @@ async def pos_create_sale(
                 status_code=400,
                 detail="Card transaction ID is required for card payments. Confirm payment on the terminal first.",
             )
+
+    if data.payment_method == "crypto_blackbox":
+        data.card_transaction_id = _resolve_external_payment_reference(data)
 
     if data.payment_method in ("gift_card", "split") and data.gift_card_barcode:
         if not await role_feature_allowed(db, current_user, "role_manage_gift_cards"):
@@ -455,6 +520,9 @@ async def pos_create_sale(
             (cash_tendered - total).quantize(Decimal("0.01"), ROUND_HALF_UP),
             Decimal("0.00"),
         )
+    elif data.payment_method == "crypto_blackbox":
+        cash_tendered = None
+        change_given = None
 
     sale = Sale(
         cashier_id=current_user.id,
@@ -639,6 +707,7 @@ async def pos_create_sale(
         cash_tendered=sale.cash_tendered,
         change_given=sale.change_given,
         card_transaction_id=sale.card_transaction_id,
+        external_payment_reference=sale.card_transaction_id if sale.payment_method == "crypto_blackbox" else None,
         gift_card_amount=sale.gift_card_amount,
         gift_card_barcode=sale.gift_card_barcode,
         receipt_email=sale.receipt_email,
@@ -780,6 +849,7 @@ async def void_sale(
         cash_tendered=sale.cash_tendered,
         change_given=sale.change_given,
         card_transaction_id=sale.card_transaction_id,
+        external_payment_reference=sale.card_transaction_id if sale.payment_method == "crypto_blackbox" else None,
         gift_card_amount=sale.gift_card_amount,
         gift_card_barcode=sale.gift_card_barcode,
         receipt_email=sale.receipt_email,
@@ -804,6 +874,12 @@ async def poynt_charge(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
+    if _offline_mode_enabled():
+        raise HTTPException(
+            status_code=400,
+            detail="Terminal card processing is disabled in offline mode.",
+        )
+
     amount_cents = math.ceil(data.amount * 100)
     reference_id = f"BMM-{uuid.uuid4().hex[:12]}"
 
@@ -1387,10 +1463,6 @@ async def image_search(
     mime = file.content_type or "image/jpeg"
     img_b64 = base64.b64encode(contents).decode("utf-8")
 
-    api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
-    if not api_key:
-        raise HTTPException(status_code=503, detail="AI assistant not configured")
-
     result = await db.execute(
         select(Item.id)
         .join(ItemImage, ItemImage.item_id == Item.id)
@@ -1428,31 +1500,22 @@ Respond with ONLY valid JSON, no markdown.
 """
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "HTTP-Referer": "https://bowenstreetmarket.com",
-                    "X-Title": "Bowenstreet Market POS",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "google/gemini-2.0-flash-001",
-                    "max_tokens": 500,
-                    "messages": [
-                        {"role": "user", "content": [
-                            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{img_b64}"}},
-                            {"type": "text", "text": prompt},
-                        ]},
+        body = await chat_completion(
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{img_b64}"}},
+                        {"type": "text", "text": prompt},
                     ],
                 },
-            )
-
-        if not resp.is_success:
-            raise HTTPException(status_code=502, detail="AI service unavailable")
-
-        body = resp.json()
+            ],
+            max_tokens=500,
+            referer="https://bowenstreetmarket.com",
+            title="Bowenstreet Market POS",
+            prefer_vision=True,
+            require_local_vision=_offline_mode_enabled(),
+        )
         raw_text = body["choices"][0]["message"].get("content", "")
         cleaned = raw_text.strip()
         if cleaned.startswith("```"):
@@ -1460,8 +1523,8 @@ Respond with ONLY valid JSON, no markdown.
         import json as json_lib
         ai_result = json_lib.loads(cleaned)
 
-    except (httpx.TimeoutException, httpx.RequestError):
-        raise HTTPException(status_code=504, detail="AI service timed out")
+    except HTTPException:
+        raise
     except (KeyError, IndexError, ValueError):
         return {"matches": [], "description": "Could not identify the item. Try a clearer photo."}
 
@@ -1538,7 +1601,12 @@ async def get_gift_card_balance(
     card = result.scalar_one_or_none()
     if not card:
         raise HTTPException(status_code=404, detail="Gift card not found")
-    return {"barcode": card.barcode, "balance": float(card.balance), "status": card.status}
+    return {
+        "barcode": card.barcode,
+        "balance": float(card.balance),
+        "status": "active" if card.is_active else "inactive",
+        "is_active": bool(card.is_active),
+    }
 
 
 @router.get("/gift-cards/{barcode}", response_model=GiftCardResponse)

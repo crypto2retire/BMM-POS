@@ -22,3 +22,9 @@ scraped_items.csv
 product_urls.txt
 scrape_log.txt
 scrape_resume_log.txt
+.DS_Store
+.claude/
+tmp/
+docs/operations/print/
+package 2.json
+package-lock 2.json

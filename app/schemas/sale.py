@@ -16,6 +16,7 @@ class SaleCreate(BaseModel):
     payment_method: str
     cash_tendered: Optional[Decimal] = None
     card_transaction_id: Optional[str] = None
+    external_payment_reference: Optional[str] = None
     receipt_email: Optional[str] = None
     gift_card_barcode: Optional[str] = None
     gift_card_amount: Optional[Decimal] = None
@@ -55,6 +56,7 @@ class SaleResponse(BaseModel):
     cash_tendered: Optional[Decimal] = None
     change_given: Optional[Decimal] = None
     card_transaction_id: Optional[str] = None
+    external_payment_reference: Optional[str] = None
     gift_card_amount: Optional[Decimal] = None
     gift_card_barcode: Optional[str] = None
     receipt_email: Optional[str] = None

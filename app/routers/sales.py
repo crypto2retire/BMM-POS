@@ -25,6 +25,10 @@ from app.timezone import STORE_TZ as _STORE_TZ
 router = APIRouter(prefix="/sales", tags=["sales"])
 
 
+def _offline_mode_enabled() -> bool:
+    return bool(settings.offline_mode)
+
+
 def _format_cst(dt):
     """Format a datetime as a display string in store local time."""
     if dt is None:
@@ -120,6 +124,7 @@ def sale_to_response(sale: Sale) -> SaleResponse:
         cash_tendered=sale.cash_tendered,
         change_given=sale.change_given,
         card_transaction_id=sale.card_transaction_id,
+        external_payment_reference=sale.card_transaction_id if sale.payment_method == "crypto_blackbox" else None,
         gift_card_amount=sale.gift_card_amount,
         gift_card_barcode=sale.gift_card_barcode,
         receipt_email=sale.receipt_email,
@@ -146,8 +151,18 @@ async def create_sale(
     if not data.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
-    if data.payment_method not in ("cash", "card", "split"):
-        raise HTTPException(status_code=400, detail="payment_method must be cash, card, or split")
+    if data.payment_method not in ("cash", "card", "split", "crypto_blackbox"):
+        raise HTTPException(status_code=400, detail="payment_method must be cash, card, split, or crypto_blackbox")
+    if _offline_mode_enabled() and data.payment_method == "card":
+        raise HTTPException(
+            status_code=400,
+            detail="Card processing is disabled in offline mode. Use cash or Crypto / Blackbox.",
+        )
+    if _offline_mode_enabled() and data.payment_method == "split" and data.card_transaction_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Offline split payments cannot include a card leg.",
+        )
 
     resolved_lines = []
     for cart_item in data.items:
@@ -187,6 +202,8 @@ async def create_sale(
         change_given = (cash_tendered - total).quantize(Decimal("0.01"), ROUND_HALF_UP)
     else:
         cash_tendered = None
+    if data.payment_method == "crypto_blackbox" and not data.card_transaction_id:
+        data.card_transaction_id = data.external_payment_reference or f"BLACKBOX-{datetime.now(_STORE_TZ).strftime('%Y%m%d%H%M%S')}"
 
     sale = Sale(
         cashier_id=current_user.id,

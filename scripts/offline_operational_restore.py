@@ -5,12 +5,14 @@ import gzip
 import json
 import os
 import sys
+from datetime import date, datetime, time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
 from sqlalchemy import insert, text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.sql.sqltypes import Date, DateTime, Integer, Time
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
@@ -86,6 +88,54 @@ def _load_snapshot(path: Path) -> dict[str, Any]:
         return json.load(fh)
 
 
+def _deserialize_value(column: Any, value: Any) -> Any:
+    if value is None:
+        return None
+
+    column_type = column.type
+    if isinstance(column_type, DateTime) and isinstance(value, str):
+        return datetime.fromisoformat(value)
+    if isinstance(column_type, Date) and isinstance(value, str):
+        return date.fromisoformat(value)
+    if isinstance(column_type, Time) and isinstance(value, str):
+        return time.fromisoformat(value)
+    return value
+
+
+def _coerce_rows_for_model(model: Any, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not rows:
+        return rows
+
+    coerced_rows: list[dict[str, Any]] = []
+    columns_by_name = {column.name: column for column in model.__table__.columns}
+    for row in rows:
+        coerced_row: dict[str, Any] = {}
+        for key, value in row.items():
+            column = columns_by_name.get(key)
+            coerced_row[key] = _deserialize_value(column, value) if column is not None else value
+        coerced_rows.append(coerced_row)
+    return coerced_rows
+
+
+def _sequence_reset_sql(model: Any) -> str | None:
+    pk_columns = list(model.__table__.primary_key.columns)
+    if len(pk_columns) != 1:
+        return None
+
+    pk_column = pk_columns[0]
+    if not isinstance(pk_column.type, Integer):
+        return None
+
+    table_name = model.__table__.name
+    column_name = pk_column.name
+    return (
+        f"SELECT setval("
+        f"pg_get_serial_sequence('{table_name}', '{column_name}'), "
+        f"GREATEST(COALESCE((SELECT MAX({column_name}) FROM {table_name}), 0), 1), "
+        f"true)"
+    )
+
+
 def _truncate_sql() -> str:
     _, models = _load_restore_metadata()
     table_names = ", ".join(model.__table__.name for _, model in models)
@@ -153,10 +203,17 @@ async def restore_snapshot(snapshot: dict[str, Any], database_url: str) -> dict[
     async with SessionLocal() as session:
         for table_name, model in restore_models:
             rows = snapshot.get("tables", {}).get(table_name, []) or []
+            rows = _coerce_rows_for_model(model, rows)
             if rows:
                 await session.execute(insert(model), rows)
             restored_counts[table_name] = len(rows)
         await session.commit()
+
+    async with engine.begin() as conn:
+        for _, model in restore_models:
+            reset_sql = _sequence_reset_sql(model)
+            if reset_sql:
+                await conn.execute(text(reset_sql))
 
     await engine.dispose()
     return restored_counts

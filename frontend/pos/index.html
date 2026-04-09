@@ -935,6 +935,9 @@
             <a href="/admin/reports.html?type=top_items&preset=today">Items Sold Today</a>
             <a href="/vendor/items.html?status=archive">Archived Vendor Items</a>
         </div>
+        <div id="offline-mode-banner" style="display:none;margin-bottom:0.8rem;padding:0.8rem 0.95rem;background:color-mix(in srgb, var(--warning) 16%, var(--bg));border:1px solid color-mix(in srgb, var(--warning) 46%, var(--bg));color:var(--text);font-size:0.85rem;line-height:1.45">
+            Offline mode is active. Use cash, gift cards, or Crypto / Blackbox.
+        </div>
         <div class="scan-error" id="scan-error"></div>
         <div class="cart-area" id="cart-area">
             <div id="mobile-cart-header" style="display:none;padding:0.4rem 0 0.5rem;font-size:0.8rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:0.04em">
@@ -987,6 +990,9 @@
                 💳 CARD
             </button>
         </div>
+        <button class="pay-btn card" id="crypto-btn" onclick="startCryptoPayment()" disabled style="display:none;width:100%;margin-top:6px;background:color-mix(in srgb, var(--gold) 58%, var(--bg));border-color:color-mix(in srgb, var(--gold) 58%, var(--bg))">
+            ₿ CRYPTO / BLACKBOX
+        </button>
         <button class="pay-btn card" id="gc-pay-btn" onclick="openGcPayModal()" disabled style="width:100%;margin-top:6px;background:var(--pos-payment-gift);border-color:var(--pos-payment-gift)">
             🎁 GIFT CARD
         </button>
@@ -1046,19 +1052,19 @@
 <!-- Card Payment Confirmation Overlay -->
 <div class="card-waiting-overlay hidden" id="card-overlay">
     <div class="card-waiting-box" style="max-width:380px">
-        <div style="font-size:1.8rem;margin-bottom:0.25rem">💳</div>
-        <div style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem">
+        <div id="external-payment-icon" style="font-size:1.8rem;margin-bottom:0.25rem">💳</div>
+        <div id="external-payment-title" style="font-size:1.1rem;font-weight:700;margin-bottom:0.5rem">
             Card Payment
         </div>
-        <div class="amount" id="card-amount-display" style="font-size:2rem;font-weight:800;color:var(--gold);margin-bottom:0.75rem">$0.00</div>
-        <div data-instructions style="color:var(--text-light);font-size:0.9rem;margin-bottom:1rem;line-height:1.4">
+        <div class="amount" id="external-payment-amount-display" style="font-size:2rem;font-weight:800;color:var(--gold);margin-bottom:0.75rem">$0.00</div>
+        <div id="external-payment-instructions" style="color:var(--text-light);font-size:0.9rem;margin-bottom:1rem;line-height:1.4">
             Enter this amount on the Poynt terminal and process the card. The POS will detect the payment automatically.
         </div>
         <div style="display:flex;gap:0.75rem;justify-content:center">
-            <button onclick="cancelCardPayment()" style="background:var(--text-light);color:var(--border);border:none;padding:0.75rem 1.5rem;border-radius:0;cursor:pointer;font-size:0.9rem;font-weight:600">
+            <button onclick="cancelExternalPayment()" style="background:var(--text-light);color:var(--border);border:none;padding:0.75rem 1.5rem;border-radius:0;cursor:pointer;font-size:0.9rem;font-weight:600">
                 Cancel
             </button>
-            <button onclick="confirmCardPayment()" id="card-confirm-btn" style="background:var(--success);color:var(--white);border:none;padding:0.75rem 1.5rem;border-radius:0;cursor:pointer;font-size:0.9rem;font-weight:600">
+            <button onclick="confirmExternalPayment()" id="external-payment-confirm-btn" style="background:var(--success);color:var(--white);border:none;padding:0.75rem 1.5rem;border-radius:0;cursor:pointer;font-size:0.9rem;font-weight:600">
                 Payment Received ✓
             </button>
         </div>
@@ -1285,6 +1291,9 @@
     </button>
     <button class="pay-btn card" id="mobile-card-btn" onclick="startCardPayment()" disabled style="flex:1;padding:0.75rem;min-height:48px;font-size:0.9rem">
         💳 Card
+    </button>
+    <button class="pay-btn card" id="mobile-crypto-btn" onclick="startCryptoPayment()" disabled style="display:none;flex:1;padding:0.75rem;min-height:48px;font-size:0.9rem;background:color-mix(in srgb, var(--gold) 58%, var(--bg));border-color:color-mix(in srgb, var(--gold) 58%, var(--bg))">
+        ₿ Crypto
     </button>
 </div>
 
@@ -1695,6 +1704,72 @@
     const TAX_RATE = 0.05;
     let startingCashStatus = null;
     let pendingClassRegistrations = [];
+    let pendingExternalPaymentMode = 'card';
+    let posRuntime = {
+        offline_mode: false,
+        ai_mode: 'cloud',
+        local_ai_enabled: false,
+        allowed_payment_methods: ['cash', 'card', 'gift_card', 'split'],
+        split_allows_card: true,
+        split_allows_cash: true,
+        split_allows_gift_card: true,
+        crypto_payment_label: 'Crypto / Blackbox',
+    };
+
+    function runtimeAllows(method) {
+        return (posRuntime.allowed_payment_methods || []).includes(method);
+    }
+
+    function paymentLabel(method) {
+        return {
+            gift_card: 'Gift Card',
+            split: 'Split',
+            cash: 'Cash',
+            card: 'Card',
+            crypto_blackbox: 'Crypto / Blackbox',
+        }[method] || (method || '');
+    }
+
+    function paymentLabelUpper(method) {
+        return paymentLabel(method).toUpperCase();
+    }
+
+    function applyRuntimeConfig() {
+        var offlineBanner = document.getElementById('offline-mode-banner');
+        var cardBtn = document.getElementById('card-btn');
+        var mobileCardBtn = document.getElementById('mobile-card-btn');
+        var cryptoBtn = document.getElementById('crypto-btn');
+        var mobileCryptoBtn = document.getElementById('mobile-crypto-btn');
+        var splitPayBtn = document.getElementById('split-pay-btn');
+
+        if (offlineBanner) {
+            offlineBanner.style.display = posRuntime.offline_mode ? 'block' : 'none';
+        }
+        if (cardBtn) {
+            cardBtn.style.display = runtimeAllows('card') ? '' : 'none';
+        }
+        if (mobileCardBtn) {
+            mobileCardBtn.style.display = runtimeAllows('card') ? '' : 'none';
+        }
+        if (cryptoBtn) {
+            cryptoBtn.style.display = runtimeAllows('crypto_blackbox') ? '' : 'none';
+        }
+        if (mobileCryptoBtn) {
+            mobileCryptoBtn.style.display = runtimeAllows('crypto_blackbox') ? '' : 'none';
+        }
+        if (splitPayBtn) {
+            splitPayBtn.style.display = runtimeAllows('split') ? '' : 'none';
+        }
+    }
+
+    async function loadPosRuntime() {
+        try {
+            posRuntime = await apiGet('/api/v1/pos/runtime');
+        } catch (err) {
+            console.warn('Unable to load POS runtime config', err);
+        }
+        applyRuntimeConfig();
+    }
 
     // ── Display preferences (POS) ─────────────────────────────────────────────
     function toggleDisplayPrefs() {
@@ -1780,6 +1855,7 @@
                 document.getElementById('service-tools-bar').style.display = 'flex';
             }
             window.loadDisplayPrefs();
+            await loadPosRuntime();
             await checkStartingCashPrompt();
             if (document.getElementById('opening-cash-modal').classList.contains('hidden')) {
                 document.getElementById('barcode-input').focus();
@@ -2251,11 +2327,13 @@
         const table = document.getElementById('cart-table');
         const cashBtn = document.getElementById('cash-btn');
         const cardBtn = document.getElementById('card-btn');
+        const cryptoBtn = document.getElementById('crypto-btn');
 
         clearScanError();
 
         const mobileCashBtn = document.getElementById('mobile-cash-btn');
         const mobileCardBtn = document.getElementById('mobile-card-btn');
+        const mobileCryptoBtn = document.getElementById('mobile-crypto-btn');
         const mobileTotal = document.getElementById('mobile-total');
 
         if (cart.length === 0) {
@@ -2263,19 +2341,23 @@
             table.style.display = 'none';
             cashBtn.disabled = true;
             cardBtn.disabled = true;
+            if (cryptoBtn) cryptoBtn.disabled = true;
             if (mobileCashBtn) mobileCashBtn.disabled = true;
             if (mobileCardBtn) mobileCardBtn.disabled = true;
+            if (mobileCryptoBtn) mobileCryptoBtn.disabled = true;
             document.getElementById('gc-pay-btn').disabled = true;
             document.getElementById('split-pay-btn').disabled = true;
         } else {
             empty.style.display = 'none';
             table.style.display = 'table';
-            cashBtn.disabled = false;
-            cardBtn.disabled = false;
-            if (mobileCashBtn) mobileCashBtn.disabled = false;
-            if (mobileCardBtn) mobileCardBtn.disabled = false;
-            document.getElementById('gc-pay-btn').disabled = false;
-            document.getElementById('split-pay-btn').disabled = false;
+            cashBtn.disabled = !runtimeAllows('cash');
+            cardBtn.disabled = !runtimeAllows('card');
+            if (cryptoBtn) cryptoBtn.disabled = !runtimeAllows('crypto_blackbox');
+            if (mobileCashBtn) mobileCashBtn.disabled = !runtimeAllows('cash');
+            if (mobileCardBtn) mobileCardBtn.disabled = !runtimeAllows('card');
+            if (mobileCryptoBtn) mobileCryptoBtn.disabled = !runtimeAllows('crypto_blackbox');
+            document.getElementById('gc-pay-btn').disabled = !runtimeAllows('gift_card');
+            document.getElementById('split-pay-btn').disabled = !runtimeAllows('split');
 
             tbody.innerHTML = cart.map((entry, idx) => {
                 const { item, quantity } = entry;
@@ -2330,7 +2412,7 @@
         document.getElementById('total-amount').textContent = `$${totals.total.toFixed(2)}`;
         const itemCount = cart.reduce((s, c) => s + c.quantity, 0);
         document.getElementById('item-count').textContent = itemCount;
-        if (mobileTotal) mobileTotal.textContent = `$${total.toFixed(2)}`;
+        if (mobileTotal) mobileTotal.textContent = `$${totals.total.toFixed(2)}`;
         const mobileCartHeader = document.getElementById('mobile-cart-header');
         const mobileCartCount = document.getElementById('mobile-cart-count');
         if (mobileCartHeader) mobileCartHeader.style.display = cart.length > 0 ? 'block' : 'none';
@@ -2419,23 +2501,51 @@
 
     // ─── Card Payment (manual confirmation) ────────────────────────────────────
     async function startCardPayment() {
+        if (!runtimeAllows('card')) {
+            showToast('Card payments are disabled in offline mode.', 'warning');
+            return;
+        }
         if (cart.length === 0) return;
-        const { total } = calcTotals();
+        openExternalPaymentOverlay('card');
+    }
 
-        document.getElementById('card-amount-display').textContent = `$${total.toFixed(2)}`;
-        document.getElementById('card-confirm-btn').disabled = false;
-        document.getElementById('card-confirm-btn').textContent = 'Payment Received ✓';
+    function startCryptoPayment() {
+        if (!runtimeAllows('crypto_blackbox')) {
+            showToast('Crypto / Blackbox is not enabled for this register.', 'warning');
+            return;
+        }
+        if (cart.length === 0) return;
+        openExternalPaymentOverlay('crypto_blackbox');
+    }
+
+    function openExternalPaymentOverlay(mode) {
+        const { total } = calcTotals();
+        pendingExternalPaymentMode = mode;
+        document.getElementById('external-payment-icon').textContent = mode === 'crypto_blackbox' ? '₿' : '💳';
+        document.getElementById('external-payment-title').textContent = mode === 'crypto_blackbox' ? 'Crypto / Blackbox' : 'Card Payment';
+        document.getElementById('external-payment-amount-display').textContent = `$${total.toFixed(2)}`;
+        document.getElementById('external-payment-instructions').textContent =
+            mode === 'crypto_blackbox'
+                ? 'Confirm the customer completed the Blackbox crypto payment, then record the sale locally.'
+                : 'Enter this amount on the Poynt terminal and process the card. Record the sale after payment completes.';
+        document.getElementById('external-payment-confirm-btn').disabled = false;
+        document.getElementById('external-payment-confirm-btn').textContent =
+            mode === 'crypto_blackbox' ? 'Record Crypto Payment ✓' : 'Payment Received ✓';
         document.getElementById('card-overlay').classList.remove('hidden');
     }
 
-    async function confirmCardPayment() {
-        const btn = document.getElementById('card-confirm-btn');
+    async function confirmExternalPayment() {
+        const btn = document.getElementById('external-payment-confirm-btn');
         btn.disabled = true;
         btn.textContent = 'Recording sale...';
 
         try {
-            const payload = buildSalePayload('card');
-            payload.card_transaction_id = 'MANUAL-' + Date.now();
+            const payload = buildSalePayload(pendingExternalPaymentMode);
+            if (pendingExternalPaymentMode === 'card') {
+                payload.card_transaction_id = 'MANUAL-' + Date.now();
+            } else if (pendingExternalPaymentMode === 'crypto_blackbox') {
+                payload.external_payment_reference = 'BLACKBOX-' + Date.now();
+            }
             const sale = await apiPost('/api/v1/pos/sale', payload);
             await finalizePendingClassRegistrations(sale);
             currentSale = sale;
@@ -2443,15 +2553,20 @@
             showReceiptModal(sale);
         } catch (err) {
             btn.disabled = false;
-            btn.textContent = 'Payment Received ✓';
+            btn.textContent = pendingExternalPaymentMode === 'crypto_blackbox'
+                ? 'Record Crypto Payment ✓'
+                : 'Payment Received ✓';
             showToast(`Sale recording failed: ${err.message}`, 'error');
         }
     }
 
-    function cancelCardPayment() {
+    function cancelExternalPayment() {
         document.getElementById('card-overlay').classList.add('hidden');
-        document.getElementById('card-confirm-btn').disabled = false;
-        document.getElementById('card-confirm-btn').textContent = 'Payment Received \u2713';
+        document.getElementById('external-payment-confirm-btn').disabled = false;
+        document.getElementById('external-payment-confirm-btn').textContent =
+            pendingExternalPaymentMode === 'crypto_blackbox'
+                ? 'Record Crypto Payment ✓'
+                : 'Payment Received ✓';
         document.getElementById('barcode-input').focus();
     }
 
@@ -2585,7 +2700,7 @@
             }
         }
 
-        let paymentLine = {'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[sale.payment_method] || (sale.payment_method || '').toUpperCase();
+        let paymentLine = paymentLabelUpper(sale.payment_method);
         let changeLine = '';
         if (sale.payment_method === 'split') {
             var gcAmt = sale.gift_card_amount ? parseFloat(sale.gift_card_amount) : 0;
@@ -2844,7 +2959,7 @@ table { width: 100%; border-collapse: collapse; }
     <tr class="total-line"><td>TOTAL</td><td class="val">$${parseFloat(sale.total).toFixed(2)}</td></tr>
 </table>
 <table class="totals-table">
-    <tr class="payment-line"><td>Payment</td><td class="val">${{'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[sale.payment_method] || (sale.payment_method || '').toUpperCase()}</td></tr>
+    <tr class="payment-line"><td>Payment</td><td class="val">${paymentLabelUpper(sale.payment_method)}</td></tr>
     ${cashLines}
 </table>
 <hr class="rule-light">
@@ -2886,7 +3001,7 @@ table { width: 100%; border-collapse: collapse; }
         }
         document.getElementById('void-sale-info').textContent =
             'Sale #' + currentSale.id + ' — $' + parseFloat(currentSale.total).toFixed(2) +
-            ' (' + ({'gift_card':'Gift Card','split':'Split','cash':'Cash','card':'Card'}[currentSale.payment_method] || currentSale.payment_method) + ')';
+            ' (' + paymentLabel(currentSale.payment_method) + ')';
         document.getElementById('void-reason').value = '';
         document.getElementById('void-error').textContent = '';
         document.getElementById('void-confirm-btn').disabled = false;
@@ -3387,10 +3502,11 @@ table { width: 100%; border-collapse: collapse; }
         var hasGc = splitPayments.some(function(p) { return p.type === 'gc'; });
         var hasCash = splitPayments.some(function(p) { return p.type === 'cash'; });
         var hasCard = splitPayments.some(function(p) { return p.type === 'card'; });
+        var canUseCardInSplit = runtimeAllows('card') && !!posRuntime.split_allows_card;
 
         document.getElementById('split-add-gc-btn').style.display = (hasGc || remaining <= 0) ? 'none' : '';
         document.getElementById('split-add-cash-btn').style.display = (hasCash || remaining <= 0) ? 'none' : '';
-        document.getElementById('split-add-card-btn').style.display = (hasCard || remaining <= 0) ? 'none' : '';
+        document.getElementById('split-add-card-btn').style.display = (!canUseCardInSplit || hasCard || remaining <= 0) ? 'none' : '';
         document.getElementById('split-add-buttons').style.display = (remaining <= 0) ? 'none' : '';
 
         document.getElementById('split-gc-input-section').style.display = 'none';
@@ -3435,6 +3551,10 @@ table { width: 100%; border-collapse: collapse; }
     }
 
     function splitAddCard() {
+        if (!runtimeAllows('card') || !posRuntime.split_allows_card) {
+            document.getElementById('split-error').textContent = 'Card legs are disabled in offline mode.';
+            return;
+        }
         var remaining = splitGetRemaining();
         if (remaining <= 0) return;
         splitPayments.push({ type: 'card', amount: remaining, transactionId: 'SPLIT-MANUAL-' + Date.now() });
@@ -3551,6 +3671,12 @@ table { width: 100%; border-collapse: collapse; }
             var gcPayment = splitPayments.find(function(p) { return p.type === 'gc'; });
             var cashPayment = splitPayments.find(function(p) { return p.type === 'cash'; });
             var cardPayment = splitPayments.find(function(p) { return p.type === 'card'; });
+            if (cardPayment && (!runtimeAllows('card') || !posRuntime.split_allows_card)) {
+                errEl.textContent = 'Offline split payments can only use gift card plus cash.';
+                btn.disabled = false;
+                btn.textContent = 'Complete Split Sale';
+                return;
+            }
 
             if (gcPayment) {
                 payload.gift_card_barcode = gcPayment.barcode;
@@ -3692,7 +3818,7 @@ table { width: 100%; border-collapse: collapse; }
             return '<div onclick="viewReceiptDetail(' + s.id + ')" style="background:var(--surface-2);padding:0.65rem 0.75rem;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center' + (s.is_voided ? ';opacity:0.6' : '') + '">'
                 + '<div>'
                 + '<div style="font-weight:600;color:var(--text)">Sale #' + s.id + voidTag + '</div>'
-                + '<div style="font-size:0.8rem;color:var(--text-light)">' + when + ' · ' + itemCount + ' item(s) · ' + ({'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[s.payment_method] || (s.payment_method||'').toUpperCase()) + '</div>'
+                + '<div style="font-size:0.8rem;color:var(--text-light)">' + when + ' · ' + itemCount + ' item(s) · ' + paymentLabelUpper(s.payment_method) + '</div>'
                 + '</div>'
                 + '<div style="font-weight:700;color:' + (s.is_voided ? 'var(--danger)' : 'var(--gold)') + ';font-size:1.05rem">' + (s.is_voided ? '-' : '') + '$' + parseFloat(s.total).toFixed(2) + '</div>'
                 + '</div>';
@@ -3729,7 +3855,7 @@ table { width: 100%; border-collapse: collapse; }
                 </div>`;
             }
 
-            let paymentLine = {'gift_card':'GIFT CARD','split':'SPLIT','cash':'CASH','card':'CARD'}[sale.payment_method] || (sale.payment_method || '').toUpperCase();
+            let paymentLine = paymentLabelUpper(sale.payment_method);
             let changeLine = '';
             if (sale.payment_method === 'split') {
                 var gcA = sale.gift_card_amount ? parseFloat(sale.gift_card_amount) : 0;
