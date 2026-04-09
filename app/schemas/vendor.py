@@ -42,7 +42,6 @@ class VendorUpdate(BaseModel):
     zelle_handle: Optional[str] = None
     status: Optional[str] = None
     rent_flagged: Optional[bool] = None
-    label_preference: Optional[str] = None
     notes: Optional[str] = None
 
 class VendorResponse(BaseModel):
@@ -62,8 +61,6 @@ class VendorResponse(BaseModel):
     payout_method: Optional[str] = None
     auto_payout_enabled: Optional[bool] = True
     zelle_handle: Optional[str] = None
-    label_preference: Optional[str] = "dymo"
-    pdf_label_size: Optional[str] = "2.25x1.25"
     assistant_name: Optional[str] = None
     assistant_enabled: Optional[bool] = True
     notes: Optional[str] = None

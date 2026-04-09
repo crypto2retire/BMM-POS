@@ -19,14 +19,7 @@ from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse, ItemListingRe
 from app.routers.auth import get_current_user
 from app.routers.settings import role_feature_allowed, get_setting
 from app.services.barcode import generate_sku, generate_short_barcode
-from app.services.labels import (
-    LABEL_SIZES,
-    generate_label_pdf,
-    generate_label_sheet,
-    generate_dymo_xml,
-    resolve_pdf_label_size,
-    resolve_dymo_label_size,
-)
+from app.services.labels import generate_dymo_xml
 from app.services import spaces as spaces_svc
 from app.models.store_setting import StoreSetting
 
@@ -38,30 +31,6 @@ MAX_IMAGE_DIMENSION = 800
 MAX_ITEM_PHOTOS = 10
 
 router = APIRouter(prefix="/items", tags=["items"])
-
-
-async def _resolve_user_pdf_label_size(
-    db: AsyncSession,
-    user: Vendor,
-    requested_size: Optional[str] = None,
-) -> str:
-    return resolve_pdf_label_size(
-        requested_size=requested_size,
-        label_preference=getattr(user, "label_preference", None),
-        dymo_size=None,
-        fallback_size=getattr(user, "pdf_label_size", None),
-    )
-
-
-async def _resolve_user_dymo_label_size(
-    db: AsyncSession,
-    user: Vendor,
-) -> str:
-    default_dymo_size = await get_setting(db, "dymo_label_size") or "30347"
-    return resolve_dymo_label_size(
-        fallback_size=getattr(user, "pdf_label_size", None),
-        default_dymo_size=default_dymo_size,
-    )
 
 
 def _parse_iso_date(value, field_name: str) -> date:
@@ -369,112 +338,6 @@ async def get_item_by_barcode(
     return item_to_response(item)
 
 
-@router.post("/labels/batch")
-async def get_batch_labels(
-    data: dict,
-    db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
-):
-    entries = data.get("items", None)
-    if entries:
-        item_ids = [e["item_id"] for e in entries]
-        qty_map = {e["item_id"]: max(1, min(99, int(e.get("quantity", 1)))) for e in entries}
-    else:
-        item_ids = data.get("item_ids", [])
-        qty_map = {iid: 1 for iid in item_ids}
-
-    if not item_ids or len(item_ids) > 200:
-        raise HTTPException(status_code=400, detail="Provide 1-200 item IDs")
-
-    total_labels = sum(qty_map.values())
-    if total_labels > 500:
-        raise HTTPException(status_code=400, detail="Maximum 500 labels per batch")
-
-    result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id.in_(item_ids))
-    )
-    items = result.scalars().all()
-    if not items:
-        raise HTTPException(status_code=404, detail="No items found")
-
-    if current_user.role not in ("admin", "cashier"):
-        for item in items:
-            if item.vendor_id != current_user.id:
-                raise HTTPException(status_code=403, detail="Access denied")
-
-    if not await role_feature_allowed(db, current_user, "role_print_labels"):
-        raise HTTPException(
-            status_code=403,
-            detail="Label printing is disabled for your role in Settings → User Roles.",
-        )
-
-    id_order = {iid: idx for idx, iid in enumerate(item_ids)}
-    items_sorted = sorted(items, key=lambda it: id_order.get(it.id, 0))
-
-    expanded = []
-    for item in items_sorted:
-        count = qty_map.get(item.id, 1)
-        for _ in range(count):
-            expanded.append(item)
-
-    label_size = await _resolve_user_pdf_label_size(db, current_user, data.get("label_size"))
-    pdf_bytes = generate_label_sheet(expanded, label_size=label_size)
-
-    for item in items:
-        item.label_printed = True
-    await db.commit()
-
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": 'inline; filename="labels_batch.pdf"',
-            "X-Label-Size-Key": label_size,
-            "X-Label-Size-Name": LABEL_SIZES[label_size]["name"],
-        },
-    )
-
-
-@router.get("/{item_id}/label")
-async def get_item_label(
-    item_id: int,
-    label_size: Optional[str] = Query(None, description="Label size key e.g. 2.625x1"),
-    db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
-):
-    result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id)
-    )
-    item = result.scalar_one_or_none()
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-
-    if current_user.role not in ("admin", "cashier") and item.vendor_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
-
-    if not await role_feature_allowed(db, current_user, "role_print_labels"):
-        raise HTTPException(
-            status_code=403,
-            detail="Label printing is disabled for your role in Settings → User Roles.",
-        )
-
-    size = await _resolve_user_pdf_label_size(db, current_user, label_size)
-    pdf_bytes = generate_label_pdf(item, label_size=size)
-
-    item.label_printed = True
-    await db.commit()
-
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'inline; filename="label_{item_id}.pdf"',
-            "X-Label-Size-Key": size,
-            "X-Label-Size-Name": LABEL_SIZES[size]["name"],
-        },
-    )
-
-
 @router.get("/{item_id}/dymo-label")
 async def get_dymo_label(
     item_id: int,
@@ -497,8 +360,7 @@ async def get_dymo_label(
             detail="Label printing is disabled for your role in Settings → User Roles.",
         )
 
-    dymo_size = await _resolve_user_dymo_label_size(db, current_user)
-    xml = generate_dymo_xml(item, label_size=dymo_size)
+    xml = generate_dymo_xml(item)
 
     item.label_printed = True
     await db.commit()

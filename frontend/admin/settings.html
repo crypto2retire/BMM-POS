@@ -635,25 +635,9 @@
     <!-- ─── Labels ─────────────────────────────────────────── -->
     <div class="settings-panel" id="panel-labels">
         <div class="settings-section">
-            <div class="settings-section-header">Label Configuration</div>
+            <div class="settings-section-header">Labels</div>
             <div class="settings-section-body">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Default Label Format</label>
-                        <select id="s-default_label_format">
-                            <option value="standard">Standard PDF (2.25" x 1.25" thermal)</option>
-                            <option value="dymo">Dymo LabelWriter</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Dymo Label Size</label>
-                        <select id="s-dymo_label_size">
-                            <option value="30347">1" x 1.5" — DYMO 30347 (Book Spine)</option>
-                            <option value="30336">1" x 2-1/8" — DYMO 30336</option>
-                            <option value="30252">1-1/8" x 3.5" — DYMO 30252 (Address)</option>
-                        </select>
-                    </div>
-                </div>
+                <p style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.75rem">All labels print to Dymo LabelWriter 30347 (1" × 1.5").</p>
                 <div class="setting-row">
                     <div><div class="setting-label">Show Price on Label</div><div class="setting-desc">Display item price on printed labels</div></div>
                     <label class="toggle-switch"><input type="checkbox" id="s-label_show_price" checked><span class="toggle-slider"></span></label>
@@ -661,10 +645,6 @@
                 <div class="setting-row">
                     <div><div class="setting-label">Show Booth Number on Label</div><div class="setting-desc">Display vendor booth number on printed labels</div></div>
                     <label class="toggle-switch"><input type="checkbox" id="s-label_show_booth" checked><span class="toggle-slider"></span></label>
-                </div>
-                <div class="setting-row">
-                    <div><div class="setting-label">Aging on Labels</div><div class="setting-desc">Show the date an item was added on its label</div></div>
-                    <label class="toggle-switch"><input type="checkbox" id="s-label_show_aging"><span class="toggle-slider"></span></label>
                 </div>
             </div>
         </div>

@@ -205,12 +205,6 @@ async def create_vendor(
     await db.refresh(db_vendor)
     return db_vendor
 
-@router.get("/label-sizes")
-async def list_label_sizes():
-    from app.services.labels import LABEL_SIZES
-    return [{"key": k, "name": v["name"], "width": v["w"], "height": v["h"]} for k, v in LABEL_SIZES.items()]
-
-
 @router.get("/{vendor_id}", response_model=VendorResponse)
 async def get_vendor(
     vendor_id: int,
@@ -323,65 +317,6 @@ async def update_assistant_settings(
         "assistant_name": current_user.assistant_name,
         "assistant_enabled": getattr(current_user, "assistant_enabled", True),
     }
-
-@router.patch("/me/label-preference")
-async def update_label_preference(
-    body: dict = Body(...),
-    db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(get_current_user),
-):
-    pref = body.get("label_preference", "dymo")
-    if pref not in ("standard", "dymo"):
-        raise HTTPException(status_code=400, detail="Must be 'standard' or 'dymo'")
-    current_user.label_preference = pref
-
-    pdf_size = body.get("pdf_label_size")
-    if pdf_size is not None:
-        from app.services.labels import LABEL_SIZES
-        if pdf_size not in LABEL_SIZES:
-            raise HTTPException(status_code=400, detail=f"Invalid label size. Options: {', '.join(LABEL_SIZES.keys())}")
-        current_user.pdf_label_size = pdf_size
-
-    await db.commit()
-    return {
-        "label_preference": current_user.label_preference,
-        "pdf_label_size": current_user.pdf_label_size,
-    }
-
-
-@router.patch("/{vendor_id}/label-preference")
-async def update_vendor_label_preference(
-    vendor_id: int,
-    body: dict = Body(...),
-    db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_staff_feature("role_print_labels")),
-):
-    pref = body.get("label_preference", "dymo")
-    if pref not in ("standard", "dymo"):
-        raise HTTPException(status_code=400, detail="Must be 'standard' or 'dymo'")
-
-    result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
-    vendor = result.scalar_one_or_none()
-    if not vendor:
-        raise HTTPException(status_code=404, detail="Vendor not found")
-    if vendor.role != "vendor":
-        raise HTTPException(status_code=400, detail="Label preferences can only be updated for vendor accounts")
-
-    vendor.label_preference = pref
-
-    pdf_size = body.get("pdf_label_size")
-    if pdf_size is not None:
-        from app.services.labels import LABEL_SIZES
-        if pdf_size not in LABEL_SIZES:
-            raise HTTPException(status_code=400, detail=f"Invalid label size. Options: {', '.join(LABEL_SIZES.keys())}")
-        vendor.pdf_label_size = pdf_size
-
-    await db.commit()
-    return {
-        "label_preference": vendor.label_preference,
-        "pdf_label_size": vendor.pdf_label_size,
-    }
-
 
 @router.post("/{vendor_id}/reset-password")
 async def reset_vendor_password(

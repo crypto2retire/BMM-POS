@@ -548,18 +548,7 @@
                     <button data-status="archive" onclick="setStatusFilter('archive')">Archive</button>
                     <button data-status="all" onclick="setStatusFilter('all')">All</button>
                 </div>
-                <div style="display:flex;align-items:center;gap:6px" id="label-pref-wrap">
-                    <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Label Type:</label>
-                    <select id="label-pref-select" class="form-control" onchange="saveLabelPref()" style="width:auto;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
-                        <option value="standard">Standard PDF</option>
-                        <option value="dymo">Dymo LabelWriter</option>
-                    </select>
-                </div>
-                <div style="display:flex;align-items:center;gap:6px" id="label-size-container">
-                    <label style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Label Size:</label>
-                    <select id="label-size-select" class="form-control" onchange="saveLabelSize()" style="width:auto;font-size:0.78rem;padding:0.3rem 0.5rem;height:auto">
-                    </select>
-                </div>
+                <span style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);white-space:nowrap">Dymo 30347</span>
             </div>
         </div>
     </div>
@@ -767,12 +756,8 @@
                         <input class="form-control" type="number" id="f-quantity"
                             value="1" min="0" inputmode="numeric">
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Label Type</label>
-                        <select class="form-control" id="f-label-style">
-                            <option value="standard">Standard PDF</option>
-                            <option value="dymo">Dymo LabelWriter</option>
-                        </select>
+                    <div class="form-group" style="display:none">
+                        <input type="hidden" id="f-label-style" value="dymo">
                     </div>
                 </div>
 
@@ -943,9 +928,7 @@
     let miniChatOpen = false;
     let miniChatBusy = false;
     let selectedItemIds = new Set();
-    let vendorLabelPref = 'standard';
-    let vendorLabelSize = '2.25x1.25';
-    let labelSizesLoaded = false;
+    let vendorLabelPref = 'dymo';
     let canMutateItems = true;
     let canPrintLabels = false;
     let canReactivateArchivedItems = false;
@@ -1243,74 +1226,9 @@
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
     });
 
-    const LABEL_SIZE_META = {
-        '1.5x1': { display: '1 x 1.5 in', page: '1.5in 1in' },
-        '2.125x1': { display: '1 x 2-1/8 in', page: '2.125in 1in' },
-        '2.25x1.25': { display: '2.25 x 1.25 in', page: '2.25in 1.25in' },
-        '2.625x1': { display: '2-5/8 x 1 in', page: '2.625in 1in' },
-        '3.5x1.125': { display: '3.5 x 1-1/8 in', page: '3.5in 1.125in' },
-        '2x2': { display: '2 x 2 in', page: '2in 2in' },
-        '3x2': { display: '3 x 2 in', page: '3in 2in' },
-        '4x2': { display: '4 x 2 in', page: '4in 2in' },
-        '4x1.33': { display: '4 x 1-1/3 in', page: '4in 1.33in' },
-        '4x3.33': { display: '4 x 3-1/3 in', page: '4in 3.33in' }
-    };
-
-    function openLabelPdf(blob, labelSizeKey, labelSizeName) {
-        var effectiveKey = labelSizeKey || (vendorLabelPref === 'standard' ? vendorLabelSize : null);
-        var labelMeta = effectiveKey ? LABEL_SIZE_META[effectiveKey] : null;
-        var displaySize = labelSizeName || (labelMeta ? labelMeta.display : 'label PDF');
-        var url = URL.createObjectURL(blob);
-
-        showAlert(
-            'alert-container',
-            'Opened ' + displaySize + '. In the print dialog, use Actual Size / 100% and no margins.',
-            'info'
-        );
-
-        var popup = window.open(url, '_blank', 'noopener');
-        if (!popup) {
-            var link = document.createElement('a');
-            link.href = url;
-            link.target = '_blank';
-            link.rel = 'noopener';
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-        }
-
-        setTimeout(function() { URL.revokeObjectURL(url); }, 600000);
-    }
-
-    function labelPrefSavePath() {
-        if (currentRole !== 'vendor' && selectedVendorId) return '/api/v1/vendors/' + selectedVendorId + '/label-preference';
-        return '/api/v1/vendors/me/label-preference';
-    }
-
-    async function printPdfLabel(id, forcedSize) {
-        document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
-        const token = sessionStorage.getItem('bmm_token');
-        try {
-            var requestedSize = forcedSize || vendorLabelSize || '';
-            var sizeParam = requestedSize ? '?label_size=' + encodeURIComponent(requestedSize) : '';
-            const res = await fetch(`/api/v1/items/${id}/label` + sizeParam, {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            if (!res.ok) throw new Error('Failed to generate label');
-            const blob = await res.blob();
-            openLabelPdf(blob, res.headers.get('X-Label-Size-Key'), res.headers.get('X-Label-Size-Name'));
-        } catch (e) {
-            showAlert('alert-container', e.message || 'Label generation failed.', 'error');
-        }
-    }
-
     async function printDymoLabel(id) {
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
         try {
-            if (vendorLabelSize === '1.5x1') {
-                await printPdfLabel(id, '1.5x1');
-                return;
-            }
             const token = sessionStorage.getItem('bmm_token');
             const xmlRes = await fetch(`/api/v1/items/${id}/dymo-label?ts=` + Date.now(), {
                 method: 'GET',
@@ -1339,13 +1257,8 @@
         }
     }
 
-    async function printLabelAuto(id, style) {
-        if (vendorLabelSize === '1.5x1') {
-            await printPdfLabel(id, '1.5x1');
-            return;
-        }
-        if (style === 'dymo') await printDymoLabel(id);
-        else await printPdfLabel(id);
+    async function printLabelAuto(id) {
+        await printDymoLabel(id);
     }
 
     function toggleItemSelect(id) {
@@ -1500,23 +1413,15 @@
         btn.textContent = 'Generating…';
         var token = sessionStorage.getItem('bmm_token');
         try {
-            var payload = { items: entries };
-            if (vendorLabelPref !== 'dymo' && vendorLabelSize) {
-                payload.label_size = vendorLabelSize;
-            }
-            var res = await fetch('/api/v1/items/labels/batch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                body: JSON.stringify(payload),
-            });
-            if (!res.ok) {
-                var err = await res.json().catch(function() { return { detail: 'Failed' }; });
-                throw new Error(err.detail || 'Label generation failed');
-            }
-            var blob = await res.blob();
-            openLabelPdf(blob, res.headers.get('X-Label-Size-Key'), res.headers.get('X-Label-Size-Name'));
+            /* Batch Dymo: print each item sequentially */
             var totalLabels = entries.reduce(function(s, e) { return s + e.quantity; }, 0);
-            showAlert('alert-container', totalLabels + ' label(s) generated for ' + entries.length + ' item(s).', 'success');
+            for (var ei = 0; ei < entries.length; ei++) {
+                var entry = entries[ei];
+                for (var qi = 0; qi < entry.quantity; qi++) {
+                    await printDymoLabel(entry.item_id);
+                }
+            }
+            showAlert('alert-container', totalLabels + ' label(s) sent to Dymo for ' + entries.length + ' item(s).', 'success');
             closeLabelQtyModal();
             selectedItemIds.clear();
             await loadItems();
@@ -1648,7 +1553,7 @@
         const rateVal = item?.consignment_rate ? (parseFloat(item.consignment_rate) * 100).toFixed(2) : '';
         document.getElementById('f-consignment-rate').value = rateVal;
         toggleConsignmentRate();
-        document.getElementById('f-label-style').value = item?.label_style || vendorLabelPref || 'standard';
+        document.getElementById('f-label-style').value = 'dymo';
 
         clearPhotoPreview();
         // Show image_path preview if available
@@ -2452,11 +2357,8 @@
             const vendorMeta = currentRole !== 'vendor' && item.booth_number
                 ? ` &middot; Booth ${item.booth_number}` : '';
 
-            const style = item.label_style || 'standard';
             const isReprint = !!item.label_printed;
-            const labelBtnText = isReprint
-                ? (style === 'dymo' ? 'Reprint Dymo' : 'Reprint Label')
-                : (style === 'dymo' ? 'Print Dymo' : 'Print Label');
+            const labelBtnText = isReprint ? 'Reprint Label' : 'Print Label';
             const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
 
             const selChecked = selectedItemIds.has(item.id) ? 'checked' : '';
@@ -2478,21 +2380,12 @@
                         <div class="item-card-name">${item.name}</div>
                         <div class="item-card-price">${priceHtml}</div>
                         <div class="item-card-meta">${item.category || '—'} &middot; Qty: ${item.quantity}${vendorMeta}</div>
-                        <div style="margin-top:4px">${statusBadge(item.status)} ${labelBadge(style)}${!item.label_printed ? ' <span class="item-needs-label-chip">NEEDS LABEL</span>' : ''}</div>
+                        <div style="margin-top:4px">${statusBadge(item.status)}${!item.label_printed ? ' <span class="item-needs-label-chip">NEEDS LABEL</span>' : ''}</div>
                     </div>
                 </div>
                 <div class="item-card-actions">
                     <button class="btn btn-outline" onclick="openModal(${itemJson})">${canMutate ? 'Edit' : 'View'}</button>
-                    ${canPrintLabels ? `<div class="label-btn-wrap" onclick="event.stopPropagation()" style="flex:1;display:flex">
-                        <button class="btn btn-secondary label-btn-main" style="flex:1;border-radius:0"
-                            onclick="printLabelAuto(${item.id}, '${style}')">${labelBtnText}</button>
-                        <button class="btn btn-secondary label-btn-toggle"
-                            onclick="toggleLabelDropdown(event, ${item.id})">▾</button>
-                        <div class="ldd" id="ldd-${item.id}">
-                            <button onclick="printPdfLabel(${item.id})">${isReprint ? 'Reprint PDF Label' : 'Print PDF Label'}</button>
-                            <button onclick="printDymoLabel(${item.id})">${isReprint ? 'Reprint Dymo Label' : 'Print Dymo Label'}</button>
-                        </div>
-                    </div>` : ''}
+                    ${canPrintLabels ? `<button class="btn btn-secondary" onclick="printDymoLabel(${item.id})">${labelBtnText}</button>` : ''}
                     ${canMutate && (item.status === 'active' || item.status === 'inactive') ? `<div style="display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
                         <label class="status-toggle" title="${isActive ? 'Mark not for sale' : 'Mark for sale'}">
                             <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
@@ -2578,7 +2471,6 @@
                 : (item.sale_price ? `$${parseFloat(item.sale_price).toFixed(2)}` : '&mdash;');
 
             const photoHtml = getItemPhotoHtml(item, 40);
-            const style = item.label_style || 'standard';
             const isReprint = !!item.label_printed;
             const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
             const selChecked = selectedItemIds.has(item.id) ? 'checked' : '';
@@ -2599,7 +2491,7 @@
                 <td>${statusBadge(item.status)}${!item.label_printed ? ' <span class="item-needs-label-chip item-needs-label-chip--compact">NEW</span>' : ''}</td>
                 <td><div class="actions-cell">
                     <button class="btn btn-outline" onclick="openModal(${itemJson})">${canMutate ? 'Edit' : 'View'}</button>
-                    ${canPrintLabels ? `<button class="btn btn-secondary" onclick="printLabelAuto(${item.id}, '${style}')">${isReprint ? 'Reprint' : 'Print Label'}</button>` : ''}
+                    ${canPrintLabels ? `<button class="btn btn-secondary" onclick="printDymoLabel(${item.id})">${isReprint ? 'Reprint' : 'Print Label'}</button>` : ''}
                     ${canMutate && (item.status === 'active' || item.status === 'inactive') ? `<label class="status-toggle" title="${isActive ? 'Mark not for sale' : 'Mark for sale'}">
                         <input type="checkbox" ${isActive ? 'checked' : ''} onchange="toggleItemStatus(${item.id})">
                         <span class="slider"></span>
@@ -2802,81 +2694,11 @@
             document.getElementById('page-title').textContent = 'Archived Items';
         }
 
-        if (selectedVendorId) {
-            try {
-                var vendorInfo = await apiGet('/api/v1/vendors/' + selectedVendorId);
-                vendorLabelPref = vendorInfo.label_preference || 'dymo';
-                vendorLabelSize = vendorInfo.pdf_label_size || '2.25x1.25';
-                updateLabelPrefUI();
-            } catch (e) { vendorLabelPref = 'dymo'; }
-        }
-
-        await loadLabelSizes();
-
         document.getElementById('page-size-select').value = pageSize;
         document.getElementById('sort-order').value = sortDirection;
         setView(currentView);
         await loadItems();
         await openItemFromQueryParam();
-    }
-
-    async function loadLabelSizes() {
-        if (labelSizesLoaded) return;
-        try {
-            var sizes = await apiGet('/api/v1/vendors/label-sizes');
-            var sel = document.getElementById('label-size-select');
-            if (!sel) return;
-            sel.innerHTML = '';
-            sizes.forEach(function(s) {
-                var opt = document.createElement('option');
-                opt.value = s.key;
-                opt.textContent = s.name;
-                sel.appendChild(opt);
-            });
-            sel.value = vendorLabelSize;
-            labelSizesLoaded = true;
-        } catch (e) {
-            console.error('Failed to load label sizes', e);
-        }
-        toggleLabelSizeVisibility();
-    }
-
-    function toggleLabelSizeVisibility() {
-        var container = document.getElementById('label-size-container');
-        if (container) container.style.display = 'flex';
-    }
-
-    function updateLabelPrefUI() {
-        var sel = document.getElementById('label-pref-select');
-        if (sel) sel.value = vendorLabelPref;
-        var sizeSel = document.getElementById('label-size-select');
-        if (sizeSel) sizeSel.value = vendorLabelSize;
-        toggleLabelSizeVisibility();
-    }
-
-    async function saveLabelPref() {
-        var sel = document.getElementById('label-pref-select');
-        var newPref = sel.value;
-        try {
-            await apiFetch('PATCH', labelPrefSavePath(), { label_preference: newPref });
-            vendorLabelPref = newPref;
-            toggleLabelSizeVisibility();
-            showAlert('alert-container', 'Label type set to ' + (newPref === 'dymo' ? 'Dymo LabelWriter' : 'Standard PDF') + '.', 'success');
-        } catch (e) {
-            showAlert('alert-container', e.message || 'Failed to save label preference.', 'error');
-        }
-    }
-
-    async function saveLabelSize() {
-        var sel = document.getElementById('label-size-select');
-        var newSize = sel.value;
-        try {
-            await apiFetch('PATCH', labelPrefSavePath(), { label_preference: vendorLabelPref, pdf_label_size: newSize });
-            vendorLabelSize = newSize;
-            showAlert('alert-container', 'Label size saved.', 'success');
-        } catch (e) {
-            showAlert('alert-container', e.message || 'Failed to save label size.', 'error');
-        }
     }
 
     init();
