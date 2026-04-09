@@ -28,3 +28,4 @@ tmp/
 docs/operations/print/
 package 2.json
 package-lock 2.json
+frontend/static/uploads/items/rico_*
