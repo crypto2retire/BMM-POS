@@ -83,10 +83,12 @@ def generate_label_pdf(item) -> bytes:
         )
         module_count = probe.width  # total width in points = number of modules
 
-        # Target barWidth: fill available width, but cap at 0.015" for very short codes
+        # Target barWidth: fill available width, but cap to prevent thermal bleed
+        # Thermal printers cause "dot gain" — bars expand and fill white spaces.
+        # 0.010" = 3 dots at 300 DPI — sweet spot for thermal printing.
         target_bar_width = barcode_avail_w / module_count
-        min_bar_width = 0.01 * inch   # minimum 0.01" = ~3 dots at 300 DPI
-        max_bar_width = 0.015 * inch  # cap so short codes don't look absurdly wide
+        min_bar_width = 0.010 * inch  # floor: 3 dots at 300 DPI
+        max_bar_width = 0.010 * inch  # cap: prevents thermal bleed on label printers
         bar_width = max(min_bar_width, min(max_bar_width, target_bar_width))
 
         bc = code128.Code128(
