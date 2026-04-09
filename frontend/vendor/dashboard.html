@@ -258,20 +258,18 @@
 
     <div class="stats-grid">
         <div class="card">
-            <div class="card-title">Sales Balance</div>
-            <div class="card-value green" id="sales-balance">—</div>
+            <div class="card-title">Total Sales</div>
+            <div class="card-value" id="total-sales">—</div>
         </div>
         <div class="card">
-            <div class="card-title">Rent Credit / Owed</div>
-            <div class="card-value green" id="rent-balance">—</div>
+            <div class="card-title">Rent Due</div>
+            <div class="card-value" id="rent-due">—</div>
+            <div id="rent-paid-badge" style="font-size:0.75rem;margin-top:0.2rem;display:none;color:var(--success)">&#10003; Paid this month</div>
         </div>
         <div class="card">
-            <div class="card-title">Current Balance</div>
-            <div class="card-value green" id="balance">—</div>
-        </div>
-        <div class="card">
-            <div class="card-title">Next Rent Due</div>
-            <div class="card-value" id="next-rent-due">—</div>
+            <div class="card-title" id="payout-label">Net Payout</div>
+            <div class="card-value" id="net-payout">—</div>
+            <div id="carry-over-note" style="font-size:0.72rem;margin-top:0.2rem;color:var(--text-light);display:none"></div>
         </div>
         <div class="card">
             <div class="card-title">Active Items</div>
@@ -809,26 +807,46 @@
         try {
             const vendor = await apiGet(`/api/v1/vendors/${session.vendor_id}`);
             document.getElementById("booth-number").textContent = vendor.booth_number || "N/A";
-            const salesBal = parseFloat(vendor.sales_balance != null ? vendor.sales_balance : 0);
-            const actualBal = parseFloat(
-                vendor.actual_balance != null
-                    ? vendor.actual_balance
-                    : (vendor.current_balance != null ? vendor.current_balance : 0)
-            );
-            const rentBal = actualBal - salesBal;
-            const nextRentDue = parseFloat(vendor.upcoming_rent_due != null ? vendor.upcoming_rent_due : 0);
-            const salesEl = document.getElementById("sales-balance");
-            salesEl.textContent = `$${salesBal.toFixed(2)}`;
-            salesEl.className = "card-value " + (salesBal < 0 ? "red" : "green");
-            const rentEl = document.getElementById("rent-balance");
-            rentEl.textContent = `$${rentBal.toFixed(2)}`;
-            rentEl.className = "card-value " + (rentBal < 0 ? "red" : "green");
-            const balEl = document.getElementById("balance");
-            balEl.textContent = `$${actualBal.toFixed(2)}`;
-            balEl.className = "card-value " + (actualBal < 0 ? "red" : "green");
-            const nextRentEl = document.getElementById("next-rent-due");
-            nextRentEl.textContent = `$${nextRentDue.toFixed(2)}`;
-            nextRentEl.className = "card-value " + (nextRentDue > 0 ? "gold" : "");
+            // Total Sales
+            const totalSales = parseFloat(vendor.total_sales != null ? vendor.total_sales : 0);
+            const totalSalesEl = document.getElementById("total-sales");
+            totalSalesEl.textContent = `$${totalSales.toFixed(2)}`;
+            totalSalesEl.className = "card-value";
+
+            // Rent Due
+            const rentDue = parseFloat(vendor.rent_due != null ? vendor.rent_due : 0);
+            const rentDueEl = document.getElementById("rent-due");
+            rentDueEl.textContent = `$${rentDue.toFixed(2)}`;
+            rentDueEl.className = "card-value";
+            var rentPaidBadge = document.getElementById("rent-paid-badge");
+            rentPaidBadge.style.display = vendor.rent_paid_this_month ? "block" : "none";
+
+            // Net Payout — green if >= 0, red if < 0
+            const netPayout = parseFloat(vendor.net_payout != null ? vendor.net_payout : 0);
+            const netPayoutEl = document.getElementById("net-payout");
+            const payoutLabelEl = document.getElementById("payout-label");
+            netPayoutEl.textContent = `$${Math.abs(netPayout).toFixed(2)}`;
+            if (netPayout >= 0) {
+                netPayoutEl.className = "card-value green";
+                payoutLabelEl.textContent = "Net Payout";
+            } else {
+                netPayoutEl.className = "card-value red";
+                netPayoutEl.textContent = `-$${Math.abs(netPayout).toFixed(2)}`;
+                payoutLabelEl.textContent = "Balance Due";
+            }
+
+            // Carry-over note
+            const carryOver = parseFloat(vendor.carry_over != null ? vendor.carry_over : 0);
+            var carryEl = document.getElementById("carry-over-note");
+            if (carryOver !== 0) {
+                carryEl.style.display = "block";
+                carryEl.textContent = carryOver > 0
+                    ? `Includes $${Math.abs(carryOver).toFixed(2)} carry-over credit`
+                    : `Includes -$${Math.abs(carryOver).toFixed(2)} prior balance`;
+            } else {
+                carryEl.style.display = "none";
+            }
+
             const rent = parseFloat(vendor.monthly_rent || 0);
             document.getElementById("rent-amount").textContent = `$${rent.toFixed(2)}/mo`;
             var rentAmountInput = document.getElementById('vendor-rent-amount');
@@ -836,19 +854,14 @@
             var rentPeriodInput = document.getElementById('vendor-rent-period');
             var reportMonthInput = document.getElementById('vendor-report-month');
             if (rentPeriodInput) {
-                var defaultPeriod = vendor.upcoming_rent_due_date
-                    ? vendor.upcoming_rent_due_date.slice(0, 7)
-                    : (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0'));
+                var defaultPeriod = new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0');
                 rentPeriodInput.value = defaultPeriod;
             }
             if (reportMonthInput) reportMonthInput.value = new Date().toISOString().slice(0, 7);
             const nextSummaryEl = document.getElementById('next-rent-summary');
-            if (nextRentDue > 0) {
-                var dueDateLabel = formatRentDueDate(vendor.upcoming_rent_due_date);
+            if (rentDue > 0 && !vendor.rent_paid_this_month) {
                 nextSummaryEl.style.display = 'block';
-                nextSummaryEl.textContent = dueDateLabel
-                    ? `Upcoming rent due ${dueDateLabel}: $${nextRentDue.toFixed(2)}. This is shown separately until it is actually charged.`
-                    : `Upcoming rent due: $${nextRentDue.toFixed(2)}. This is shown separately until it is actually charged.`;
+                nextSummaryEl.textContent = `Rent of $${rentDue.toFixed(2)} will be deducted from your payout.`;
             } else {
                 nextSummaryEl.style.display = 'none';
                 nextSummaryEl.textContent = '';

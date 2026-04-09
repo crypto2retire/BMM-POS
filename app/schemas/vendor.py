@@ -67,13 +67,11 @@ class VendorResponse(BaseModel):
     theme_preference: Optional[str] = "dark"
     font_size_preference: Optional[str] = "medium"
     created_at: datetime
-    current_balance: Optional[Decimal] = Decimal("0.00")
-    sales_balance: Optional[Decimal] = Decimal("0.00")
-    rent_balance: Optional[Decimal] = Decimal("0.00")
-    actual_balance: Optional[Decimal] = Decimal("0.00")
-    projected_balance_after_rent: Optional[Decimal] = Decimal("0.00")
-    upcoming_rent_due: Optional[Decimal] = Decimal("0.00")
-    upcoming_rent_due_date: Optional[str] = None
+    total_sales: Optional[Decimal] = Decimal("0.00")
+    rent_due: Optional[Decimal] = Decimal("0.00")
+    net_payout: Optional[Decimal] = Decimal("0.00")
+    carry_over: Optional[Decimal] = Decimal("0.00")
+    rent_paid_this_month: Optional[bool] = False
 
     class Config:
         from_attributes = True

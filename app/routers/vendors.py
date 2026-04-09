@@ -63,71 +63,34 @@ async def _can_access_vendor_directory(db: AsyncSession, user: Vendor) -> bool:
     return False
 
 
-def _display_rent_balance_for_admin_list(
-    rent_ledger: Decimal,
-    monthly_rent: Decimal,
-    current_month_rent_paid: bool,
-) -> Decimal:
-    """
-    Match admin vendor hub / vendor-overview: when this month's rent is not paid,
-    net monthly_rent from ledger so balance shows negative rent owed (e.g. 0 - 200 = -200).
-    """
-    rl = rent_ledger if rent_ledger is not None else Decimal("0.00")
-    mr = monthly_rent if monthly_rent is not None else Decimal("0.00")
-    if mr > 0 and not current_month_rent_paid:
-        return (rl - mr).quantize(Decimal("0.01"), ROUND_HALF_UP)
-    return rl.quantize(Decimal("0.01"), ROUND_HALF_UP)
-
-
-def _vendor_actual_balance(
-    sales_balance: Decimal,
-    rent_ledger: Decimal,
-) -> Decimal:
-    sb = sales_balance if sales_balance is not None else Decimal("0.00")
-    rl = rent_ledger if rent_ledger is not None else Decimal("0.00")
-    return (sb + rl).quantize(Decimal("0.01"), ROUND_HALF_UP)
-
-
-def _next_rent_due_date(
-    today: date,
-    rent_due_day: int,
-    current_month_rent_paid: bool,
-) -> date:
-    due_day = max(1, min(int(rent_due_day or 1), 28))
-    year = today.year
-    month = today.month
-    if current_month_rent_paid:
-        if month == 12:
-            year += 1
-            month = 1
-        else:
-            month += 1
-    return date(year, month, due_day)
-
-
 def _hydrate_vendor_balance_fields(
     vendor: Vendor,
     sales_balance: Decimal,
     rent_ledger: Decimal,
     current_month_rent_paid: bool,
 ):
-    monthly = vendor.monthly_rent or Decimal("0.00")
-    actual_balance = _vendor_actual_balance(sales_balance, rent_ledger)
-    projected_balance = (
-        actual_balance if monthly <= 0 else (actual_balance - monthly).quantize(Decimal("0.01"), ROUND_HALF_UP)
-    )
+    """Populate the 3 display fields: total_sales, rent_due, net_payout.
 
-    vendor.sales_balance = sales_balance.quantize(Decimal("0.01"), ROUND_HALF_UP)
-    vendor.rent_balance = _display_rent_balance_for_admin_list(rent_ledger, monthly, current_month_rent_paid)
-    vendor.current_balance = vendor.rent_balance + vendor.sales_balance
-    vendor.actual_balance = actual_balance
-    vendor.projected_balance_after_rent = projected_balance
-    vendor.upcoming_rent_due = monthly.quantize(Decimal("0.01"), ROUND_HALF_UP)
-    vendor.upcoming_rent_due_date = _next_rent_due_date(
-        date.today(),
-        vendor.rent_due_day or 1,
-        current_month_rent_paid,
-    ).isoformat()
+    Business rules:
+    - total_sales = VendorBalance.balance (net of consignment, already deducted at POS)
+    - rent_due = Vendor.monthly_rent
+    - net_payout = total_sales - rent_due + carry_over
+      (if rent already paid this month, don't subtract rent again)
+    - carry_over = VendorBalance.rent_balance (positive = prepaid credit, negative = owes)
+    """
+    monthly = vendor.monthly_rent or Decimal("0.00")
+    sb = sales_balance if sales_balance is not None else Decimal("0.00")
+    rl = rent_ledger if rent_ledger is not None else Decimal("0.00")
+
+    vendor.total_sales = sb.quantize(Decimal("0.01"), ROUND_HALF_UP)
+    vendor.rent_due = monthly.quantize(Decimal("0.01"), ROUND_HALF_UP)
+    vendor.carry_over = rl.quantize(Decimal("0.01"), ROUND_HALF_UP)
+    vendor.rent_paid_this_month = current_month_rent_paid
+
+    if monthly > 0 and not current_month_rent_paid:
+        vendor.net_payout = (sb - monthly + rl).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    else:
+        vendor.net_payout = (sb + rl).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
 
 @router.get("/", response_model=List[VendorResponse])

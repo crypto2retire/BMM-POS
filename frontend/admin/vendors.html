@@ -349,16 +349,18 @@
 
         <div class="detail-stats">
             <div class="detail-stat-card">
-                <div class="detail-stat-title">Current Balance</div>
-                <div class="detail-stat-value" style="color:var(--success)" id="detail-balance">$0.00</div>
+                <div class="detail-stat-title">Total Sales</div>
+                <div class="detail-stat-value" style="color:var(--text)" id="detail-total-sales">$0.00</div>
             </div>
             <div class="detail-stat-card">
-                <div class="detail-stat-title">Sales This Month</div>
-                <div class="detail-stat-value" style="color:var(--gold)" id="detail-sales">$0.00</div>
+                <div class="detail-stat-title">Rent Due</div>
+                <div class="detail-stat-value" style="color:var(--text)" id="detail-rent-due">$0.00</div>
+                <div id="detail-rent-paid-badge" style="font-size:0.7rem;margin-top:0.15rem;display:none;color:var(--success)">&#10003; Paid</div>
             </div>
             <div class="detail-stat-card">
-                <div class="detail-stat-title">Member Since</div>
-                <div class="detail-stat-value" id="detail-since">&mdash;</div>
+                <div class="detail-stat-title" id="detail-payout-label">Net Payout</div>
+                <div class="detail-stat-value" id="detail-net-payout">$0.00</div>
+                <div id="detail-carry-over" style="font-size:0.65rem;margin-top:0.15rem;color:var(--text-light);display:none"></div>
             </div>
         </div>
 
@@ -699,7 +701,7 @@
                 <td>${esc(v.booth_number || '—')}</td>
                 <td>${v.monthly_rent ? '$' + parseFloat(v.monthly_rent).toFixed(2) : '—'}</td>
                 <td>${v.consignment_rate && parseFloat(v.consignment_rate) > 0 ? parseFloat(v.consignment_rate * 100).toFixed(1) + '%' : '—'}</td>
-                <td><strong>$${formatBalanceAmount(v.current_balance)}</strong></td>
+                <td><strong style="color:${parseFloat(v.net_payout||0) >= 0 ? 'var(--success)' : 'var(--danger)'}">$${formatBalanceAmount(v.net_payout)}</strong></td>
                 <td>${roleBadge(v.role)}</td>
                 <td>${statusBadge(v.status)}</td>
                 <td>
@@ -729,7 +731,7 @@
                     </div>
                     <div class="vendor-card-right">
                         ${statusBadge(v.status)}
-                        <span class="vendor-card-balance">$${formatBalanceAmount(v.current_balance)}</span>
+                        <span class="vendor-card-balance" style="color:${parseFloat(v.net_payout||0) >= 0 ? 'var(--success)' : 'var(--danger)'}">$${formatBalanceAmount(v.net_payout)}</span>
                         <span class="vendor-card-chevron">&rsaquo;</span>
                     </div>
                 </div>
@@ -828,27 +830,45 @@
         editingVendor = v;
 
         document.getElementById('detail-name').textContent = v.name;
-        document.getElementById('detail-balance').textContent = '$' + formatBalanceAmount(v.current_balance);
-        document.getElementById('detail-since').textContent = v.created_at ? window.bmmFormatDate(v.created_at, { month: 'short', year: 'numeric' }) : '—';
 
-        // Load monthly sales
-        document.getElementById('detail-sales').textContent = '...';
-        try {
-            const sales = await apiGet(`/api/v1/sales/?vendor_id=${id}&limit=500`);
-            const now = new Date();
-            const thisMonth = now.getMonth();
-            const thisYear = now.getFullYear();
-            let monthTotal = 0;
-            for (const s of sales) {
-                const d = new Date(s.created_at);
-                if (d.getMonth() === thisMonth && d.getFullYear() === thisYear) {
-                    for (const li of s.line_items) {
-                        if (li.vendor_id === id) monthTotal += parseFloat(li.line_total);
-                    }
-                }
+        // Total Sales
+        document.getElementById('detail-total-sales').textContent = '$' + formatBalanceAmount(v.total_sales);
+
+        // Rent Due
+        document.getElementById('detail-rent-due').textContent = '$' + formatBalanceAmount(v.rent_due);
+        var rentPaidBadge = document.getElementById('detail-rent-paid-badge');
+        if (v.rent_paid_this_month) {
+            rentPaidBadge.style.display = 'block';
+        } else {
+            rentPaidBadge.style.display = 'none';
+        }
+
+        // Net Payout — green if >= 0, red if < 0; label changes to "BALANCE DUE" when negative
+        var netPayout = parseFloat(v.net_payout || 0);
+        var netPayoutEl = document.getElementById('detail-net-payout');
+        var payoutLabel = document.getElementById('detail-payout-label');
+        netPayoutEl.textContent = '$' + formatBalanceAmount(v.net_payout);
+        if (netPayout >= 0) {
+            netPayoutEl.style.color = 'var(--success)';
+            payoutLabel.textContent = 'Net Payout';
+        } else {
+            netPayoutEl.style.color = 'var(--danger)';
+            payoutLabel.textContent = 'Balance Due';
+        }
+
+        // Carry-over subtitle
+        var carryOver = parseFloat(v.carry_over || 0);
+        var carryEl = document.getElementById('detail-carry-over');
+        if (carryOver !== 0) {
+            carryEl.style.display = 'block';
+            if (carryOver > 0) {
+                carryEl.textContent = 'Includes $' + Math.abs(carryOver).toFixed(2) + ' carry-over credit';
+            } else {
+                carryEl.textContent = 'Includes -$' + Math.abs(carryOver).toFixed(2) + ' prior balance';
             }
-            document.getElementById('detail-sales').textContent = '$' + monthTotal.toFixed(2);
-        } catch { document.getElementById('detail-sales').textContent = '$0.00'; }
+        } else {
+            carryEl.style.display = 'none';
+        }
 
         // Populate form
         document.getElementById('e-name').value = v.name || '';

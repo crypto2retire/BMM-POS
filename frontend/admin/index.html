@@ -2081,23 +2081,21 @@
         container.innerHTML = '';
         var cards = _rpData.vendor_cards || [];
         cards.forEach(function (v) {
-            var balanceRaw = v.balance != null && v.balance !== undefined ? v.balance : v.sales_balance;
-            var balance = parseFloat(balanceRaw);
-            if (isNaN(balance)) balance = 0;
-            var combColor =
-                balance > 0 ? 'var(--success-light)' : balance < 0 ? 'var(--danger)' : 'var(--text-light)';
+            var netPayout = parseFloat(v.net_payout != null ? v.net_payout : 0);
+            if (isNaN(netPayout)) netPayout = 0;
+            var payoutColor = netPayout > 0 ? 'var(--success-light)' : netPayout < 0 ? 'var(--danger)' : 'var(--text-light)';
+            var payoutLabel = netPayout < 0 ? 'Balance Due' : 'Net Payout';
             var card = document.createElement('div');
             card.className = 'rp-vendor-card';
             card.innerHTML =
                 '<div style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">' + escapeHtml(v.booth_number || '—') + '</div>' +
                 '<div style="font-family:\'EB Garamond\',serif;font-size:0.95rem;color:var(--text);margin-top:0.15rem">' + escapeHtml(v.name) + '</div>' +
                 '<div style="margin-top:0.35rem">' +
-                '<div style="font-size:0.75rem;color:var(--text-light)">Sales: ' + rpFmt(v.sales_balance) + '</div>' +
-                '<div style="font-size:0.75rem;color:var(--text-light)">Rent: <span style="color:' +
-                (parseFloat(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--text-light)') +
-                '">' + rpFmt(v.rent_balance) + '</span></div>' +
-                '<div style="font-size:0.7rem;color:var(--text-light);margin-top:0.2rem">Current sales balance</div>' +
-                '<div style="font-size:1.1rem;font-weight:600;color:' + combColor + ';margin-top:0.05rem">' + rpFmt(balanceRaw) + '</div>' +
+                '<div style="font-size:0.75rem;color:var(--text-light)">Sales: ' + rpFmt(v.total_sales) + '</div>' +
+                '<div style="font-size:0.75rem;color:var(--text-light)">Rent: ' + rpFmt(v.rent_due) +
+                (v.rent_paid_this_month ? ' <span style="color:var(--success)">&#10003;</span>' : '') + '</div>' +
+                '<div style="font-size:0.7rem;color:var(--text-light);margin-top:0.2rem">' + payoutLabel + '</div>' +
+                '<div style="font-size:1.1rem;font-weight:600;color:' + payoutColor + ';margin-top:0.05rem">' + rpFmt(netPayout) + '</div>' +
                 '</div>';
             container.appendChild(card);
         });
