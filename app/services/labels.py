@@ -1,8 +1,6 @@
 import io
 import datetime
-import xml.sax.saxutils as saxutils
 from reportlab.lib.units import inch
-from reportlab.lib.pagesizes import landscape
 from reportlab.pdfgen import canvas
 from reportlab.graphics.barcode import code128
 
@@ -40,21 +38,15 @@ def generate_label_pdf(item) -> bytes:
     buf = io.BytesIO()
     c = canvas.Canvas(buf, pagesize=(label_w, label_h))
 
-    # Margins
-    mx = 0.06 * inch  # horizontal margin
-    quiet = 0.1 * inch  # barcode quiet zone
+    # Margins and quiet zones
+    mx = 0.06 * inch       # horizontal margin for text
+    quiet = 0.1 * inch     # barcode quiet zone (min 0.1" per Code128 spec)
+    barcode_avail_w = label_w - 2 * quiet  # ~1.18" for barcode bars
 
-    # Y positions (bottom-up in PDF coordinate system)
-    # Bottom: barcode text at ~0.04"
-    # Then: barcode above that
-    # Then: price/booth line
-    # Top: item name
-
-    y_cursor = label_h - 0.12 * inch  # start from top
+    y_cursor = label_h - 0.10 * inch  # start from top
 
     # 1) Item name — bold 7pt, top of label
     c.setFont("Helvetica-Bold", 7)
-    # Truncate to fit width
     name_display = item_name
     while c.stringWidth(name_display, "Helvetica-Bold", 7) > (label_w - 2 * mx) and len(name_display) > 1:
         name_display = name_display[:-1]
@@ -62,7 +54,7 @@ def generate_label_pdf(item) -> bytes:
         name_display = name_display.rstrip() + "…"
     c.drawCentredString(label_w / 2, y_cursor, name_display)
 
-    y_cursor -= 0.15 * inch
+    y_cursor -= 0.14 * inch
 
     # 2) Price (left, bold 12pt) and Booth (right, bold 10pt)
     c.setFont("Helvetica-Bold", 12)
@@ -72,50 +64,52 @@ def generate_label_pdf(item) -> bytes:
         booth_width = c.stringWidth(booth_str, "Helvetica-Bold", 10)
         c.drawString(label_w - mx - booth_width, y_cursor, booth_str)
 
-    y_cursor -= 0.12 * inch
+    y_cursor -= 0.10 * inch
 
-    # 3) Code128 barcode — centered with quiet zones
+    # 3) Code128 barcode — fill available width, minimum 0.3" tall
     if raw_barcode:
-        barcode_avail_w = label_w - 2 * quiet
-        barcode_height = 0.32 * inch
+        barcode_height = 0.38 * inch  # well above 0.3" minimum for scanners
+
+        # Calculate optimal barWidth to fill the available space
+        # Code128: each char = 11 modules + start(11) + stop(13) + checksum(11) + 2 quiet
+        # For a 6-char barcode: ~101 modules; for 16-char: ~211 modules
+        # We want the barcode to fill barcode_avail_w
+        probe = code128.Code128(
+            raw_barcode,
+            barWidth=1.0,  # 1 point per module to measure module count
+            barHeight=barcode_height,
+            humanReadable=False,
+            quiet=False,
+        )
+        module_count = probe.width  # total width in points = number of modules
+
+        # Target barWidth: fill available width, but cap at 0.015" for very short codes
+        target_bar_width = barcode_avail_w / module_count
+        min_bar_width = 0.01 * inch   # minimum 0.01" = ~3 dots at 300 DPI
+        max_bar_width = 0.015 * inch  # cap so short codes don't look absurdly wide
+        bar_width = max(min_bar_width, min(max_bar_width, target_bar_width))
 
         bc = code128.Code128(
             raw_barcode,
-            barWidth=0.008 * inch,
+            barWidth=bar_width,
             barHeight=barcode_height,
             humanReadable=False,
             quiet=False,
         )
 
-        # Scale to fit if needed
-        bc_actual_w = bc.width
-        if bc_actual_w > barcode_avail_w:
-            scale = barcode_avail_w / bc_actual_w
-            bc.barWidth = bc.barWidth * scale
-            bc = code128.Code128(
-                raw_barcode,
-                barWidth=bc.barWidth,
-                barHeight=barcode_height,
-                humanReadable=False,
-                quiet=False,
-            )
-            bc_actual_w = bc.width
-
-        bc_x = (label_w - bc_actual_w) / 2
+        bc_x = (label_w - bc.width) / 2
         bc_y = y_cursor - barcode_height
         bc.drawOn(c, bc_x, bc_y)
 
         # 4) Human-readable barcode text below barcode
-        c.setFont("Helvetica", 5)
-        c.drawCentredString(label_w / 2, bc_y - 0.06 * inch, raw_barcode)
+        c.setFont("Helvetica-Bold", 6)
+        c.drawCentredString(label_w / 2, bc_y - 0.07 * inch, raw_barcode)
 
     c.showPage()
     c.save()
     return buf.getvalue()
 
 
-# Keep generate_dymo_xml as a thin wrapper for backward compat if anything
-# still references it, but the router should call generate_label_pdf directly.
 def generate_dymo_xml(item) -> str:
     """Deprecated — use generate_label_pdf() instead."""
     raise NotImplementedError(
