@@ -252,6 +252,12 @@ async def vendor_overview(
             "phone": v.phone or "",
             "booth_number": v.booth_number or "—",
             "monthly_rent": rent,
+            "total_sales": round(sales_balance, 2),
+            "rent_due": rent,
+            "net_payout": net_payout,
+            "carry_over": round(rent_bal, 2),
+            "rent_paid_this_month": rent_paid,
+            # Legacy fields kept for any other consumers
             "balance": effective_balance,
             "sales_balance": round(sales_balance, 2),
             "rent_balance": rent_display,
@@ -1008,9 +1014,15 @@ async def send_weekly_reports(
         total_sales = float(row[1] or 0)
 
         bal_result = await db.execute(
-            select(VendorBalance.balance).where(VendorBalance.vendor_id == v.id)
+            select(VendorBalance.balance, VendorBalance.rent_balance)
+            .where(VendorBalance.vendor_id == v.id)
         )
-        current_balance = float(bal_result.scalar_one_or_none() or 0)
+        bal_row = bal_result.one_or_none()
+        sb = float(bal_row[0] or 0) if bal_row else 0.0
+        rb = float(bal_row[1] or 0) if bal_row else 0.0
+        rent = float(v.monthly_rent or 0)
+        # Compute net payout for the email
+        net_payout = round(sb - rent + rb, 2) if rent > 0 else round(sb + rb, 2)
 
         active_result = await db.execute(
             select(func.count(Item.id)).where(Item.vendor_id == v.id, Item.status == "active")
@@ -1019,7 +1031,7 @@ async def send_weekly_reports(
 
         await notify_weekly_report(
             db, v, period_label,
-            total_sales, items_sold, current_balance, active_items,
+            total_sales, items_sold, net_payout, active_items,
         )
         sent += 1
 
@@ -1220,14 +1232,20 @@ async def rent_payout_ledger(
         sb = balances.get(v.id, 0.0)
         rb = rent_balances.get(v.id, 0.0)
         rent = float(v.monthly_rent or 0)
-        rb_disp = _admin_display_rent_balance(rb, rent, v.id in paid_current_period)
+        rent_paid = v.id in paid_current_period
+        if rent > 0 and not rent_paid:
+            np = round(sb - rent + rb, 2)
+        else:
+            np = round(sb + rb, 2)
         vendor_cards.append({
             "id": v.id,
             "name": v.name,
             "booth_number": v.booth_number or "—",
-            "balance": _admin_effective_balance(sb, rb),
-            "sales_balance": round(sb, 2),
-            "rent_balance": rb_disp,
+            "total_sales": round(sb, 2),
+            "rent_due": round(rent, 2),
+            "net_payout": np,
+            "carry_over": round(rb, 2),
+            "rent_paid_this_month": rent_paid,
         })
 
     return {

@@ -29,11 +29,11 @@
 
     function displayBalance(v) {
         if (v == null) return 0;
+        if (v.net_payout != null && v.net_payout !== '') {
+            return num(v.net_payout);
+        }
         if (v.balance != null && v.balance !== '') {
             return num(v.balance);
-        }
-        if (Object.prototype.hasOwnProperty.call(v, 'sales_balance')) {
-            return num(v.sales_balance);
         }
         return 0;
     }
@@ -216,14 +216,14 @@
                     ' · ' +
                     rentBadge(v.rent_status) +
                     '<br>Sales ' +
-                    fmt(num(v.sales_balance)) +
+                    fmt(num(v.total_sales)) +
                     ' · Rent ' +
-                    fmt(num(v.rent_balance)) +
+                    fmt(num(v.rent_due)) +
                     '</div>' +
                     '</div>' +
                     '<div class="vendor-browser-balance">' +
                     '<div class="balance-amount" style="color:' + selectionTone(current) + '">' + fmt(current) + '</div>' +
-                    '<div class="balance-caption">Current</div>' +
+                    '<div class="balance-caption">Net Payout</div>' +
                     '</div>' +
                     '</button>'
                 );
@@ -313,7 +313,8 @@
 
         var balance = displayBalance(v);
         var pp = v.payout_preview || {};
-        var rentTone = num(v.rent_balance) < 0 ? 'var(--danger)' : 'var(--gold)';
+        var carryOver = num(v.carry_over);
+        var rentTone = carryOver < 0 ? 'var(--danger)' : 'var(--gold)';
         var balanceTone = selectionTone(balance);
         var actions = '';
         if (isVendorHubAdmin()) {
@@ -346,9 +347,9 @@
             '</div>' +
 
             '<div class="vendor-inspector-grid">' +
-            '<div class="vendor-stat"><div class="vendor-stat-label">Current balance</div><div class="vendor-stat-value" style="color:' + balanceTone + '">' + fmt(balance) + '</div><div class="vendor-stat-note">Sales plus any past-due rent only</div></div>' +
-            '<div class="vendor-stat"><div class="vendor-stat-label">Sales balance</div><div class="vendor-stat-value" style="color:var(--gold)">' + fmt(num(v.sales_balance)) + '</div><div class="vendor-stat-note">Available sales total</div></div>' +
-            '<div class="vendor-stat"><div class="vendor-stat-label">Rent ledger</div><div class="vendor-stat-value" style="color:' + rentTone + '">' + fmt(num(v.rent_balance)) + '</div><div class="vendor-stat-note">' + (num(v.rent_balance) < 0 ? 'Past-due rent is reducing balance' : 'Positive value is prepaid credit') + '</div></div>' +
+            '<div class="vendor-stat"><div class="vendor-stat-label">Total Sales</div><div class="vendor-stat-value" style="color:var(--gold)">' + fmt(num(v.total_sales)) + '</div><div class="vendor-stat-note">Cumulative sales balance</div></div>' +
+            '<div class="vendor-stat"><div class="vendor-stat-label">Rent Due</div><div class="vendor-stat-value">' + fmt(num(v.rent_due)) + '</div><div class="vendor-stat-note">' + (v.rent_paid_this_month ? '✓ Paid this month' : 'Due this month') + '</div></div>' +
+            '<div class="vendor-stat"><div class="vendor-stat-label">' + (balance < 0 ? 'Balance Due' : 'Net Payout') + '</div><div class="vendor-stat-value" style="color:' + balanceTone + '">' + fmt(balance) + '</div><div class="vendor-stat-note">' + (carryOver !== 0 ? 'Carry-over: ' + fmt(carryOver) : 'Payout method: ' + esc(v.payout_method || '—')) + '</div></div>' +
             '<div class="vendor-stat"><div class="vendor-stat-label">Monthly rent</div><div class="vendor-stat-value">' + fmt(num(v.monthly_rent)) + '</div><div class="vendor-stat-note">Payout method: ' + esc(v.payout_method || '—') + '</div></div>' +
             '</div>' +
 

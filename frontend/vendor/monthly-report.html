@@ -62,12 +62,12 @@
             <div class="metric"><div class="metric-label">Gross Sales</div><div class="metric-value" id="metric-gross">$0.00</div></div>
             <div class="metric"><div class="metric-label">Items Sold</div><div class="metric-value" id="metric-items">0</div></div>
             <div class="metric"><div class="metric-label">Transactions</div><div class="metric-value" id="metric-transactions">0</div></div>
-            <div class="metric"><div class="metric-label">Current Balance</div><div class="metric-value" id="metric-balance">$0.00</div></div>
+            <div class="metric"><div class="metric-label">Net Payout</div><div class="metric-value" id="metric-net-payout">$0.00</div></div>
         </div>
 
         <div class="report-grid">
-            <div class="metric"><div class="metric-label">Sales Balance</div><div class="metric-value" id="metric-sales-balance">$0.00</div></div>
-            <div class="metric"><div class="metric-label">Rent Credit / Owed</div><div class="metric-value" id="metric-rent-balance">$0.00</div></div>
+            <div class="metric"><div class="metric-label">Total Sales</div><div class="metric-value" id="metric-total-sales">$0.00</div></div>
+            <div class="metric"><div class="metric-label">Rent Due</div><div class="metric-value" id="metric-rent-due">$0.00</div></div>
             <div class="metric"><div class="metric-label">Monthly Rent</div><div class="metric-value" id="metric-monthly-rent">$0.00</div></div>
             <div class="metric"><div class="metric-label">Payout Method</div><div class="metric-value" id="metric-payout-method">—</div></div>
         </div>
@@ -147,9 +147,9 @@ async function loadReport() {
     document.getElementById('metric-gross').textContent = '$' + Number(data.summary.gross_sales || 0).toFixed(2);
     document.getElementById('metric-items').textContent = Number(data.summary.items_sold || 0);
     document.getElementById('metric-transactions').textContent = Number(data.summary.transactions || 0);
-    document.getElementById('metric-balance').textContent = '$' + Number(data.summary.current_balance || 0).toFixed(2);
-    document.getElementById('metric-sales-balance').textContent = '$' + Number(data.summary.sales_balance || 0).toFixed(2);
-    document.getElementById('metric-rent-balance').textContent = '$' + Number(data.summary.rent_balance || 0).toFixed(2);
+    document.getElementById('metric-net-payout').textContent = '$' + Number(data.summary.net_payout || 0).toFixed(2);
+    document.getElementById('metric-total-sales').textContent = '$' + Number(data.summary.total_sales || 0).toFixed(2);
+    document.getElementById('metric-rent-due').textContent = '$' + Number(data.summary.rent_due || 0).toFixed(2);
     document.getElementById('metric-monthly-rent').textContent = '$' + Number(data.vendor.monthly_rent || 0).toFixed(2);
     document.getElementById('metric-payout-method').textContent = (data.vendor.payout_method || 'check').replace(/^./, function(c) { return c.toUpperCase(); });
 

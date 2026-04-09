@@ -229,7 +229,7 @@ async def bg_notify_product_sold(
             subject, html_body, plain_body = await product_sold_email(
                 vendor_name=vendor_name, item_name=item_name, item_sku=item_sku,
                 sale_price=sale_price, sale_id=sale_id, sold_at=sold_at,
-                current_balance=current_balance, db=db,
+                net_payout=current_balance, db=db,
             )
             result = await send_email_safe(vendor_email, subject, html_body, plain_body)
             _log_email_delivery_result(result, context="background product sold notification", email=vendor_email)
@@ -268,7 +268,7 @@ async def notify_weekly_report(
     period_label: str,
     total_sales: float,
     items_sold: int,
-    current_balance: float,
+    net_payout: float,
     active_items: int,
     expiring_count: int = 0,
 ):
@@ -282,7 +282,7 @@ async def notify_weekly_report(
         period_label=period_label,
         total_sales=total_sales,
         items_sold=items_sold,
-        current_balance=current_balance,
+        net_payout=net_payout,
         active_items=active_items,
         expiring_count=expiring_count,
         db=db,
@@ -401,7 +401,7 @@ async def send_sale_digests(
                 period_label=period_label,
                 items=items,
                 total_revenue=total_revenue,
-                current_balance=current_balance,
+                net_payout=current_balance,
                 db=db,
             )
             result = await send_email_safe(vendor.email, subject, html_body, plain_body)

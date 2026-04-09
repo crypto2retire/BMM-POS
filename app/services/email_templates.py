@@ -88,7 +88,7 @@ EMAIL_TEMPLATE_DEFAULTS = {
         "greeting": "Hello {vendor_name},",
         "body": "Here is your weekly summary for {period_label}.",
         "closing": "Log into your vendor dashboard for full details.",
-        "variables": ["vendor_name", "period_label", "total_sales", "items_sold", "current_balance", "active_items"],
+        "variables": ["vendor_name", "period_label", "total_sales", "items_sold", "net_payout", "active_items"],
     },
     "order_confirmation": {
         "label": "Order Confirmation",
@@ -112,7 +112,7 @@ EMAIL_TEMPLATE_DEFAULTS = {
         "greeting": "Hello {vendor_name},",
         "body": "Here is your {period_label} sales summary from Bowenstreet Market.",
         "closing": "View your full sales history and balance on your vendor dashboard.",
-        "variables": ["vendor_name", "period_label", "items_sold", "total_revenue", "current_balance"],
+        "variables": ["vendor_name", "period_label", "items_sold", "total_revenue", "net_payout"],
     },
 }
 
@@ -224,7 +224,7 @@ async def product_sold_email(
     sale_price: float,
     sale_id: int,
     sold_at: str,
-    current_balance: float = None,
+    net_payout: float = None,
     db=None,
 ) -> tuple[str, str, str]:
     custom = await get_custom_template("product_sold", db)
@@ -242,10 +242,10 @@ async def product_sold_email(
             ("Sale Price", f"${sale_price:.2f}"),
             ("Sale #", str(sale_id)),
             ("Date", sold_at),
-        ] + ([("Current Balance", f"${current_balance:.2f}")] if current_balance is not None else []))
+        ] + ([("Net Payout", f"${net_payout:.2f}")] if net_payout is not None else []))
         + (_p(closing) if closing else "")
     )
-    balance_str = f" Current balance: ${current_balance:.2f}." if current_balance is not None else ""
+    balance_str = f" Net payout: ${net_payout:.2f}." if net_payout is not None else ""
     plain = f"{greeting} {body_text} Item: {item_name}, SKU: {item_sku}, ${sale_price:.2f}. Sale #{sale_id} on {sold_at}.{balance_str}"
     return subject, _base_template("Item Sold", body), plain
 
@@ -309,7 +309,7 @@ async def weekly_report_email(
     period_label: str,
     total_sales: float,
     items_sold: int,
-    current_balance: float,
+    net_payout: float,
     active_items: int,
     expiring_count: int = 0,
     db=None,
@@ -317,7 +317,7 @@ async def weekly_report_email(
     custom = await get_custom_template("weekly_report", db)
     variables = dict(vendor_name=vendor_name, period_label=period_label,
                      total_sales=f"{total_sales:.2f}", items_sold=str(items_sold),
-                     current_balance=f"{current_balance:.2f}", active_items=str(active_items))
+                     net_payout=f"{net_payout:.2f}", active_items=str(active_items))
     defaults = EMAIL_TEMPLATE_DEFAULTS["weekly_report"]
     subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
 
@@ -327,13 +327,13 @@ async def weekly_report_email(
         + _info_table([
             ("Items Sold", str(items_sold)),
             ("Total Sales", f"${total_sales:.2f}"),
-            ("Current Balance", f"${current_balance:.2f}"),
+            ("Net Payout", f"${net_payout:.2f}"),
             ("Active Items", str(active_items)),
         ])
         + (_p(f"&#9888; You have {expiring_count} item{'s' if expiring_count != 1 else ''} that may need attention.") if expiring_count else "")
         + (_p(closing) if closing else "")
     )
-    plain = f"{greeting} {body_text} {items_sold} items sold, ${total_sales:.2f} total, balance ${current_balance:.2f}."
+    plain = f"{greeting} {body_text} {items_sold} items sold, ${total_sales:.2f} total, net payout ${net_payout:.2f}."
     return subject, _base_template("Weekly Sales Report", body), plain
 
 
@@ -601,7 +601,7 @@ async def sale_digest_email(
     period_label: str,
     items: list[dict],
     total_revenue: float,
-    current_balance: float,
+    net_payout: float,
     db=None,
 ) -> tuple[str, str, str]:
     """
@@ -614,7 +614,7 @@ async def sale_digest_email(
         period_label=period_label,
         items_sold=str(items_sold),
         total_revenue=f"{total_revenue:.2f}",
-        current_balance=f"{current_balance:.2f}",
+        net_payout=f"{net_payout:.2f}",
     )
     defaults = EMAIL_TEMPLATE_DEFAULTS["sale_digest"]
     subject, greeting, body_text, closing = _apply_custom(defaults, custom, variables)
@@ -632,7 +632,7 @@ async def sale_digest_email(
         + _info_table([
             ("Items Sold", str(items_sold)),
             ("Total Revenue", f"${total_revenue:.2f}"),
-            ("Current Balance", f"${current_balance:.2f}"),
+            ("Net Payout", f"${net_payout:.2f}"),
         ])
         + (_p(closing) if closing else "")
     )
@@ -642,6 +642,6 @@ async def sale_digest_email(
     plain = (
         f"{greeting} {body_text} "
         f"Items sold: {items_plain}. "
-        f"Total revenue: ${total_revenue:.2f}. Current balance: ${current_balance:.2f}."
+        f"Total revenue: ${total_revenue:.2f}. Net payout: ${net_payout:.2f}."
     )
     return subject, _base_template(f"{period_label} Sales Summary", body), plain

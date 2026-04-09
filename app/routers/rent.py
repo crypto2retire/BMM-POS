@@ -189,9 +189,26 @@ async def monthly_report(
         select(VendorBalance).where(VendorBalance.vendor_id == vendor.id)
     )
     balance = balance_result.scalar_one_or_none()
-    sales_balance = float(balance.balance or 0) if balance and balance.balance is not None else 0.0
-    rent_balance = float(balance.rent_balance or 0) if balance and balance.rent_balance is not None else 0.0
-    current_balance = round(sales_balance + rent_balance, 2)
+    total_sales = float(balance.balance or 0) if balance and balance.balance is not None else 0.0
+    carry_over = float(balance.rent_balance or 0) if balance and balance.rent_balance is not None else 0.0
+    rent_due_amt = float(vendor.monthly_rent or 0)
+
+    # Check if rent already paid this month
+    today_check = date.today()
+    current_period_check = date(today_check.year, today_check.month, 1)
+    rp_check = await db.execute(
+        select(RentPayment).where(
+            RentPayment.vendor_id == vendor.id,
+            RentPayment.period_month == current_period_check,
+            RentPayment.status == "paid",
+        )
+    )
+    rent_paid_this_month = rp_check.scalar_one_or_none() is not None
+
+    if rent_due_amt > 0 and not rent_paid_this_month:
+        net_payout = round(total_sales - rent_due_amt + carry_over, 2)
+    else:
+        net_payout = round(total_sales + carry_over, 2)
 
     sales_summary = await db.execute(
         select(
@@ -259,9 +276,11 @@ async def monthly_report(
             "gross_sales": round(float(summary_row.gross_sales or 0), 2),
             "items_sold": int(summary_row.items_sold or 0),
             "transactions": int(summary_row.transactions or 0),
-            "sales_balance": round(sales_balance, 2),
-            "rent_balance": round(rent_balance, 2),
-            "current_balance": current_balance,
+            "total_sales": round(total_sales, 2),
+            "rent_due": round(rent_due_amt, 2),
+            "net_payout": net_payout,
+            "carry_over": round(carry_over, 2),
+            "rent_paid_this_month": rent_paid_this_month,
         },
         "sold_items": [
             {

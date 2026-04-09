@@ -536,34 +536,67 @@ async def report_vendor_balances(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
+    from app.models.vendor import VendorBalance
+    from app.models.rent import RentPayment as RP
+
     result = await db.execute(
         select(Vendor)
         .where(Vendor.status == "active")
         .order_by(Vendor.name)
     )
     vendors = result.scalars().all()
-    vendors = [v for v in vendors if v.role == "vendor" or float(v.current_balance or 0) > 0]
 
-    total_balance = sum(float(v.current_balance or 0) for v in vendors)
-    avg_balance = round(total_balance / len(vendors), 2) if vendors else 0
+    # Fetch balances
+    bal_result = await db.execute(
+        select(VendorBalance.vendor_id, VendorBalance.balance, VendorBalance.rent_balance)
+    )
+    sb_map = {}
+    rb_map = {}
+    for row in bal_result.all():
+        sb_map[row.vendor_id] = float(row.balance or 0)
+        rb_map[row.vendor_id] = float(row.rent_balance or 0)
+
+    # Check rent paid this month
+    today = date.today()
+    current_period = date(today.year, today.month, 1)
+    rp_result = await db.execute(
+        select(RP.vendor_id, RP.status).where(RP.period_month == current_period)
+    )
+    paid_ids = {row.vendor_id for row in rp_result.all() if row.status == "paid"}
 
     rows = []
+    total_net = 0
     for v in vendors:
+        if v.role != "vendor":
+            continue
+        sb = sb_map.get(v.id, 0.0)
+        rb = rb_map.get(v.id, 0.0)
+        rent = float(v.monthly_rent or 0)
+        rent_paid = v.id in paid_ids
+        if rent > 0 and not rent_paid:
+            net_payout = round(sb - rent + rb, 2)
+        else:
+            net_payout = round(sb + rb, 2)
+        total_net += net_payout
         rows.append({
             "vendor_name": v.name,
             "booth": v.booth_number or "",
-            "balance": round(float(v.current_balance or 0), 2),
-            "monthly_rent": round(float(v.monthly_rent or 0), 2),
+            "total_sales": round(sb, 2),
+            "rent_due": round(rent, 2),
+            "net_payout": net_payout,
+            "rent_paid_this_month": rent_paid,
             "status": v.status,
         })
 
+    avg_net = round(total_net / len(rows), 2) if rows else 0
+
     return {
         "summary": {
-            "total_vendors": len(vendors),
-            "total_balance": round(total_balance, 2),
-            "avg_balance": avg_balance,
+            "total_vendors": len(rows),
+            "total_net_payout": round(total_net, 2),
+            "avg_net_payout": avg_net,
         },
-        "columns": ["vendor_name", "booth", "balance", "monthly_rent", "status"],
+        "columns": ["vendor_name", "booth", "total_sales", "rent_due", "net_payout", "status"],
         "rows": rows,
     }
 
