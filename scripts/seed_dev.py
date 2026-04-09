@@ -116,7 +116,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Hand-Quilted Lap Blanket",
-            "category": "Handcrafted",
+            "category": "Handmade items",
             "price": 85.00,
             "quantity": 1,
             "is_online": False,
@@ -142,7 +142,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Beeswax Pillar Candles Set of 3",
-            "category": "Handcrafted",
+            "category": "Handmade items",
             "price": 22.00,
             "quantity": 6,
             "is_online": False,
@@ -155,7 +155,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Pressed Flower Framed Art",
-            "category": "Art",
+            "category": "Original Art",
             "price": 35.00,
             "quantity": 3,
             "is_online": True,
@@ -181,7 +181,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Crocheted Cotton Market Bag",
-            "category": "Handcrafted",
+            "category": "Handmade items",
             "price": 20.00,
             "quantity": 4,
             "is_online": True,
@@ -207,7 +207,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Wooden Recipe Card Box",
-            "category": "Handcrafted",
+            "category": "Handmade items",
             "price": 32.00,
             "quantity": 2,
             "is_online": True,
@@ -262,7 +262,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Hand-Thrown Stoneware Mug",
-            "category": "Handcrafted",
+            "category": "Handmade items",
             "price": 18.00,
             "quantity": 8,
             "is_online": True,
@@ -288,7 +288,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Carved Walnut Charcuterie Board",
-            "category": "Handcrafted",
+            "category": "Handmade items",
             "price": 48.00,
             "quantity": 3,
             "is_online": True,
@@ -314,7 +314,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Original Watercolor Botanical Study",
-            "category": "Art",
+            "category": "Original Art",
             "price": 42.00,
             "quantity": 4,
             "is_online": True,
@@ -327,7 +327,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Reclaimed Barn Wood Floating Shelf",
-            "category": "Handcrafted",
+            "category": "Handmade items",
             "price": 55.00,
             "quantity": 2,
             "is_online": False,
@@ -353,7 +353,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Hand-Poured Cedarwood Soy Candle",
-            "category": "Handcrafted",
+            "category": "Handmade items",
             "price": 16.00,
             "quantity": 10,
             "is_online": False,
@@ -395,7 +395,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Needlepoint Floral Wall Hanging",
-            "category": "Art",
+            "category": "Original Art",
             "price": 40.00,
             "quantity": 1,
             "is_online": True,
@@ -421,7 +421,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Hand-Dyed Ice-Dye Silk Scarf",
-            "category": "Handcrafted",
+            "category": "Handmade items",
             "price": 60.00,
             "quantity": 3,
             "is_online": True,
@@ -460,7 +460,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Linocut Print — Great Lakes Map",
-            "category": "Art",
+            "category": "Original Art",
             "price": 30.00,
             "quantity": 5,
             "is_online": False,
@@ -473,7 +473,7 @@ ITEMS_DATA = {
         },
         {
             "name": "Vegetable-Tanned Leather Journal",
-            "category": "Handcrafted",
+            "category": "Handmade items",
             "price": 24.00,
             "quantity": 6,
             "is_online": True,
@@ -505,7 +505,7 @@ TEST_ITEMS_DATA = {
     "paula@email.com": [
         {
             "name": "Vintage Cast Iron Skillet 8-Inch",
-            "category": "Kitchen",
+            "category": "Decorations",
             "price": 35.00,
             "quantity": 1,
             "is_online": True,
@@ -518,7 +518,7 @@ TEST_ITEMS_DATA = {
         },
         {
             "name": "Quilted Potholder Set of 2",
-            "category": "Handcrafted",
+            "category": "Handmade items",
             "price": 12.00,
             "quantity": 5,
             "is_online": False,
@@ -557,7 +557,7 @@ TEST_ITEMS_DATA = {
         },
         {
             "name": "Hand-Painted Cardinal Ceramic Mug",
-            "category": "Handcrafted",
+            "category": "Handmade items",
             "price": 22.00,
             "quantity": 6,
             "is_online": True,
@@ -609,7 +609,7 @@ TEST_ITEMS_DATA = {
         },
         {
             "name": "Embroidered Linen Tea Towels Set of 2",
-            "category": "Handcrafted",
+            "category": "Handmade items",
             "price": 20.00,
             "quantity": 4,
             "is_online": True,

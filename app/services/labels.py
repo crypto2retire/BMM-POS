@@ -9,7 +9,7 @@ from reportlab.graphics.barcode import code39
 from PIL import Image, ImageDraw, ImageFont
 
 
-THERMAL_DPI = 203
+THERMAL_DPI = 300
 DOT = 72.0 / THERMAL_DPI
 
 LABEL_SIZES = {
@@ -432,8 +432,8 @@ def _draw_label(c, item, x_offset, y_offset, w=None, h=None):
         bar_h = _snap_down(price_y - 8 * scale_h - barcode_y)
         bar_h = max(bar_h, min_bar_h)
 
-        # Keep quiet zones, but keep them tighter on the smallest label.
-        quiet_zone = (10 if small_label else 10) * DOT
+        # Quiet zones: minimum 0.07" for reliable scanning on thermal printers.
+        quiet_zone = (18 if small_label else 14) * DOT
         usable_w = avail_w - quiet_zone * 2
 
         barcode_obj = _build_pdf_barcode(
@@ -701,8 +701,8 @@ def generate_dymo_xml(item, label_size: str = None) -> str:
     if barcode_str:
         small_dymo_uses_code39 = is_small_dymo and _supports_small_label_code39(raw_barcode)
         dymo_barcode_type = "Code39" if small_dymo_uses_code39 else "Code128Auto"
-        dymo_barcode_size = "Medium" if small_dymo_uses_code39 else "Large"
-        dymo_quiet_zone = "0" if small_dymo_uses_code39 else "14"
+        dymo_barcode_size = "Medium" if small_dymo_uses_code39 else "Medium"
+        dymo_quiet_zone = "0" if small_dymo_uses_code39 else "100"
         xml += f"""
   <ObjectInfo>
     <BarcodeObject>

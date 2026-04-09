@@ -296,7 +296,7 @@ async def get_categories(
     return [{"name": row[0], "count": row[1]} for row in rows]
 
 CATEGORY_GROUPS = {
-    "Handmade": ["Handmade items", "Candles", "Jewelry", "Cards", "Stickers", "Specialty Items", "Accesories"],
+    "Handmade": ["Handmade items", "Candles", "Jewelry", "Cards", "Stickers", "Specialty Items", "Accessories"],
     "Vintage & Antique": ["Vintage", "Vintage Clothing", "Vintage Furniture"],
     "Upcycled & Resale": ["Upcycled Items", "BowenStreet Repeats", "Second hand clothes"],
     "Furniture & Home": ["Furniture", "Used furniture", "Decorations", "Outside"],

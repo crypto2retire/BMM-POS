@@ -709,15 +709,28 @@
                     <label class="form-label">Category</label>
                     <select class="form-control" id="f-category">
                         <option value="">Select category</option>
-                        <option>Jewelry</option>
-                        <option>Furniture</option>
-                        <option>Vintage</option>
-                        <option>Art</option>
-                        <option>Handcrafted</option>
-                        <option>Clothing</option>
+                        <option>Accessories</option>
                         <option>Books</option>
+                        <option>BowenStreet Repeats</option>
+                        <option>Candles</option>
+                        <option>Cards</option>
+                        <option>Clothing</option>
                         <option>Collectibles</option>
-                        <option>Home Decor</option>
+                        <option>Decorations</option>
+                        <option>Furniture</option>
+                        <option>Handmade items</option>
+                        <option>Jewelry</option>
+                        <option>Original Art</option>
+                        <option>Outside</option>
+                        <option>Second hand clothes</option>
+                        <option>Specialty Items</option>
+                        <option>Stickers</option>
+                        <option>Studio Class</option>
+                        <option>Upcycled Items</option>
+                        <option>Used furniture</option>
+                        <option>Vintage</option>
+                        <option>Vintage Clothing</option>
+                        <option>Vintage Furniture</option>
                         <option>Other</option>
                     </select>
                 </div>
@@ -1791,7 +1804,7 @@
 
         let message, body;
         if (pendingPhotoBase64 && pendingPhotoMime) {
-            message = 'Analyze this item photo. Respond ONLY with valid JSON (no markdown, no code fences): {"name":"...","category":"...","description":"...","price_range":"$X-$Y"}. Category must be one of: Jewelry, Furniture, Vintage, Art, Handcrafted, Clothing, Books, Collectibles, Home Decor, Other.';
+            message = 'Analyze this item photo. Respond ONLY with valid JSON (no markdown, no code fences): {"name":"...","category":"...","description":"...","price_range":"$X-$Y"}. Category must be one of: Accessories, Books, BowenStreet Repeats, Candles, Cards, Clothing, Collectibles, Decorations, Furniture, Handmade items, Jewelry, Original Art, Outside, Second hand clothes, Specialty Items, Stickers, Studio Class, Upcycled Items, Used furniture, Vintage, Vintage Clothing, Vintage Furniture, Other.';
             body = { message, form_context: formContext, image_base64: pendingPhotoBase64, image_mime_type: pendingPhotoMime };
         } else {
             message = `This item is called "${itemName}" in the "${itemCat}" category. Write an improved 2-3 sentence product description and confirm the best category. Respond ONLY with valid JSON: {"name":"...","category":"...","description":"...","price_range":"$X-$Y"}.`;

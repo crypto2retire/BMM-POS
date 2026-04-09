@@ -184,7 +184,7 @@ TOOLS = [
                 "properties": {
                     "name": {"type": "string", "description": "Item name"},
                     "vendor_id": {"type": "integer", "description": "Vendor ID — required when acting on behalf of a specific vendor (admin/cashier use)"},
-                    "category": {"type": "string", "description": "Category such as Jewelry, Furniture, Vintage, Art, Handcrafted, Clothing, Books, Decor"},
+                    "category": {"type": "string", "description": "Category such as Accessories, Books, BowenStreet Repeats, Candles, Cards, Clothing, Collectibles, Decorations, Furniture, Handmade items, Jewelry, Original Art, Outside, Second hand clothes, Specialty Items, Stickers, Studio Class, Upcycled Items, Used furniture, Vintage, Vintage Clothing, Vintage Furniture, Other"},
                     "price": {"type": "number", "description": "Regular price in dollars"},
                     "description": {"type": "string", "description": "Item description"},
                     "quantity": {"type": "integer", "description": "Number in stock, default 1"},
