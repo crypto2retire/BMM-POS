@@ -1226,33 +1226,80 @@
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
     });
 
+    var _cachedDymoPrinter = null;
+
+    async function getDymoPrinterName() {
+        if (_cachedDymoPrinter) return _cachedDymoPrinter;
+        try {
+            var resp = await fetch('https://localhost:41951/DYMO/DLS/Printing/GetPrinters', {
+                method: 'GET',
+                mode: 'cors',
+            });
+            if (!resp.ok) throw new Error('GetPrinters failed');
+            var xml = await resp.text();
+            /* Response is XML like: <Printers><LabelWriterPrinter><Name>DYMO LabelWriter 450</Name>... */
+            var match = xml.match(/<Name>([^<]+)<\/Name>/);
+            if (match && match[1]) {
+                _cachedDymoPrinter = match[1];
+                return _cachedDymoPrinter;
+            }
+        } catch (_) { /* fall through */ }
+        /* Retry with http if https failed (older Dymo Web Service versions) */
+        try {
+            var resp2 = await fetch('http://localhost:41951/DYMO/DLS/Printing/GetPrinters', {
+                method: 'GET',
+            });
+            if (!resp2.ok) throw new Error('GetPrinters failed');
+            var xml2 = await resp2.text();
+            var match2 = xml2.match(/<Name>([^<]+)<\/Name>/);
+            if (match2 && match2[1]) {
+                _cachedDymoPrinter = match2[1];
+                return _cachedDymoPrinter;
+            }
+        } catch (_) { /* fall through */ }
+        return null;
+    }
+
     async function printDymoLabel(id) {
         document.querySelectorAll('.ldd').forEach(d => d.style.display = 'none');
         try {
+            /* Step 1: discover the printer */
+            var printerName = await getDymoPrinterName();
+            if (!printerName) {
+                showAlert('alert-container', 'No Dymo printer found. Make sure DYMO Connect is running and a printer is connected.', 'error');
+                return;
+            }
+
+            /* Step 2: get the label XML from our API */
             const token = sessionStorage.getItem('bmm_token');
             const xmlRes = await fetch(`/api/v1/items/${id}/dymo-label?ts=` + Date.now(), {
                 method: 'GET',
                 cache: 'no-store',
                 headers: token ? { 'Authorization': 'Bearer ' + token } : {},
             });
-            if (!xmlRes.ok) throw new Error('Failed to generate Dymo label');
+            if (!xmlRes.ok) throw new Error('Failed to generate label XML');
             const xml = await xmlRes.text();
-            const body = new URLSearchParams({ printerName: '', labelXml: xml, labelSetXml: '' });
-            const resp = await fetch('http://localhost:41951/DYMO/DLS/Printing/PrintLabel', {
+
+            /* Step 3: send to printer with the real printer name */
+            var printUrl = (_cachedDymoPrinter ? 'https' : 'http') + '://localhost:41951/DYMO/DLS/Printing/PrintLabel';
+            const body = new URLSearchParams({ printerName: printerName, labelXml: xml, labelSetXml: '' });
+            const resp = await fetch(printUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: body.toString(),
             });
             if (resp.ok) {
-                showAlert('alert-container', 'Label sent to Dymo printer.', 'success');
+                showAlert('alert-container', 'Label sent to ' + printerName + '.', 'success');
             } else {
-                showAlert('alert-container', 'Dymo printer error. Check the printer is connected.', 'error');
+                var errText = '';
+                try { errText = await resp.text(); } catch(_){}
+                showAlert('alert-container', 'Dymo printer error: ' + (errText || 'Check printer is connected.'), 'error');
             }
         } catch (e) {
-            if (String(e).includes('fetch') || String(e).includes('Failed')) {
-                showAlert('alert-container', 'Dymo software is not running on this computer.', 'error');
+            if (String(e).includes('fetch') || String(e).includes('Failed to fetch') || String(e).includes('NetworkError')) {
+                showAlert('alert-container', 'Cannot reach Dymo software. Make sure DYMO Connect is running on this computer.', 'error');
             } else {
-                showAlert('alert-container', e.message || 'Dymo label failed.', 'error');
+                showAlert('alert-container', e.message || 'Label printing failed.', 'error');
             }
         }
     }
