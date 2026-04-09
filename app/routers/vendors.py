@@ -195,6 +195,7 @@ async def create_vendor(
         is_vendor=normalized.get("is_vendor", False),
         monthly_rent=normalized.get("monthly_rent", Decimal("0.00")),
         commission_rate=normalized.get("commission_rate", Decimal("0.10")),
+        consignment_rate=normalized.get("consignment_rate", Decimal("0.0000")),
         payout_method=normalized.get("payout_method"),
         zelle_handle=normalized.get("zelle_handle"),
         auto_payout_enabled=normalized.get("auto_payout_enabled", True),

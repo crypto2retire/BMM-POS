@@ -576,8 +576,6 @@ async def update_item(
                 raise HTTPException(status_code=400, detail="Items must have a photo to be listed online")
     update_data.pop("is_consignment", None)
     update_data.pop("consignment_rate", None)
-    update_data["is_consignment"] = False
-    update_data["consignment_rate"] = None
     for field, value in update_data.items():
         setattr(item, field, value)
 

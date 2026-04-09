@@ -258,6 +258,7 @@ async def pos_manual_item(
     price = body.get("price")
     quantity = body.get("quantity", 1)
     is_tax_exempt = body.get("is_tax_exempt", False)
+    # Consignment fields left as defaults — vendor-level rate is applied at sale time
     is_consignment = False
     consignment_rate = None
 
@@ -547,7 +548,18 @@ async def pos_create_sale(
     vendor_totals: dict[int, Decimal] = {}
     for item, cart_item, unit_price, line_total, line_total_after_discount, i_disc_type, i_disc_val, i_disc_amt in resolved_lines:
         qty = cart_item.quantity
-        # Safety: no consignment — vendors receive 100% of line total (ignore stale DB flags)
+        # Consignment: check vendor's consignment_rate for store's cut
+        vendor_consign_rate = Decimal("0")
+        if item.vendor and getattr(item.vendor, "consignment_rate", None):
+            vendor_consign_rate = Decimal(str(item.vendor.consignment_rate))
+
+        is_consignment = vendor_consign_rate > 0
+        consignment_amount = None
+        if is_consignment:
+            consignment_amount = (line_total_after_discount * vendor_consign_rate).quantize(
+                Decimal("0.01"), ROUND_HALF_UP
+            )
+
         sale_item = SaleItem(
             sale_id=sale.id,
             item_id=item.id,
@@ -555,9 +567,9 @@ async def pos_create_sale(
             quantity=qty,
             unit_price=unit_price,
             line_total=line_total_after_discount,
-            is_consignment=False,
-            consignment_rate=None,
-            consignment_amount=None,
+            is_consignment=is_consignment,
+            consignment_rate=vendor_consign_rate if is_consignment else None,
+            consignment_amount=consignment_amount,
             discount_type=i_disc_type if i_disc_amt > 0 else None,
             discount_value=i_disc_val if i_disc_amt > 0 else None,
             discount_amount=i_disc_amt if i_disc_amt > 0 else None,
@@ -569,7 +581,12 @@ async def pos_create_sale(
         if new_qty <= 0:
             item.status = "sold"
 
+        # Vendor receives sale amount minus store's consignment cut
         vendor_credit = line_total_after_discount
+        if consignment_amount:
+            vendor_credit = (line_total_after_discount - consignment_amount).quantize(
+                Decimal("0.01"), ROUND_HALF_UP
+            )
 
         vendor_totals[item.vendor_id] = (
             vendor_totals.get(item.vendor_id, Decimal("0")) + vendor_credit

@@ -70,6 +70,17 @@ async def lifespan(app: FastAPI):
 
     try:
         async with AsyncSessionLocal() as session:
+            await session.execute(text(
+                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
+                "consignment_rate NUMERIC(5,4) NOT NULL DEFAULT 0.0000"
+            ))
+            await session.commit()
+        _record_startup_ok("add_consignment_rate_column")
+    except Exception as e:
+        _record_startup_failure("add_consignment_rate_column", e)
+
+    try:
+        async with AsyncSessionLocal() as session:
             result = await session.execute(text("""
                 INSERT INTO vendor_balances (vendor_id, balance, rent_balance)
                 SELECT v.id, 0.00, 0.00

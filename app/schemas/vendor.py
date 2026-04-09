@@ -11,8 +11,9 @@ class VendorCreate(BaseModel):
     booth_number: Optional[str] = None
     role: str = "vendor"
     is_vendor: bool = False
-    monthly_rent: Decimal = Decimal("200.00")
+    monthly_rent: Decimal = Decimal("0.00")
     commission_rate: Decimal = Decimal("0.10")
+    consignment_rate: Decimal = Decimal("0.00")
     payout_method: Optional[str] = "check"
     auto_payout_enabled: bool = True
     zelle_handle: Optional[str] = None
@@ -35,6 +36,7 @@ class VendorUpdate(BaseModel):
     is_vendor: Optional[bool] = None
     monthly_rent: Optional[Decimal] = None
     commission_rate: Optional[Decimal] = None
+    consignment_rate: Optional[Decimal] = None
     payout_method: Optional[str] = None
     auto_payout_enabled: Optional[bool] = None
     zelle_handle: Optional[str] = None
@@ -54,6 +56,7 @@ class VendorResponse(BaseModel):
     is_vendor: bool = False
     monthly_rent: Decimal
     commission_rate: Decimal
+    consignment_rate: Optional[Decimal] = Decimal("0.00")
     status: Optional[str] = "active"
     rent_flagged: Optional[bool] = False
     payout_method: Optional[str] = None

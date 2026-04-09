@@ -315,6 +315,7 @@
                             <th>Name</th>
                             <th>Booth</th>
                             <th>Monthly Rent</th>
+                            <th>Consignment</th>
                             <th>Balance</th>
                             <th>Role</th>
                             <th>Status</th>
@@ -401,6 +402,15 @@
                             <input class="form-control" type="number" id="e-rent" step="0.01" min="0">
                         </div>
                     </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Consignment Rate %</label>
+                            <input class="form-control" type="number" id="e-consignment" step="0.1" min="0" max="100" placeholder="0 = no consignment">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" style="font-size:0.72rem;color:var(--text-light);">Store keeps this % of each sale. 0 = vendor keeps 100%.</label>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -481,6 +491,15 @@
                     <div class="form-group">
                         <label class="form-label">Monthly Rent</label>
                         <input class="form-control" type="number" id="a-rent" step="0.01" min="0" value="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Consignment Rate %</label>
+                        <input class="form-control" type="number" id="a-consignment" step="0.1" min="0" max="100" value="0" placeholder="0 = no consignment">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" style="font-size:0.72rem;color:var(--text-light);">Store keeps this % of each sale. 0 = vendor keeps 100%.</label>
                     </div>
                 </div>
                 <div class="form-row">
@@ -679,6 +698,7 @@
                 </td>
                 <td>${esc(v.booth_number || '—')}</td>
                 <td>${v.monthly_rent ? '$' + parseFloat(v.monthly_rent).toFixed(2) : '—'}</td>
+                <td>${v.consignment_rate && parseFloat(v.consignment_rate) > 0 ? parseFloat(v.consignment_rate * 100).toFixed(1) + '%' : '—'}</td>
                 <td><strong>$${formatBalanceAmount(v.current_balance)}</strong></td>
                 <td>${roleBadge(v.role)}</td>
                 <td>${statusBadge(v.status)}</td>
@@ -716,6 +736,7 @@
                 <div class="vendor-card-detail collapsed" id="vcard-detail-${v.id}">
                     <div class="vendor-card-meta">
                         <span><label>Rent</label>${v.monthly_rent ? '$' + parseFloat(v.monthly_rent).toFixed(2) : '—'}</span>
+                        <span><label>Consignment</label>${v.consignment_rate && parseFloat(v.consignment_rate) > 0 ? parseFloat(v.consignment_rate * 100).toFixed(1) + '%' : '—'}</span>
                         <span><label>Payout</label>${v.payout_method || '—'}</span>
                         <span><label>Email</label>${esc(v.email)}</span>
                     </div>
@@ -835,6 +856,7 @@
         document.getElementById('e-phone').value = v.phone || '';
         document.getElementById('e-booth').value = v.booth_number || '';
         document.getElementById('e-rent').value = v.monthly_rent || 0;
+        document.getElementById('e-consignment').value = v.consignment_rate ? parseFloat(v.consignment_rate * 100).toFixed(1) : 0;
         document.getElementById('e-role').value = v.role || 'vendor';
         document.getElementById('e-status').value = v.status || 'active';
         document.getElementById('e-payout').value = v.payout_method || 'check';
@@ -893,6 +915,7 @@
             phone: document.getElementById('e-phone').value || null,
             booth_number: isVendor ? (document.getElementById('e-booth').value || null) : null,
             monthly_rent: isVendor ? (parseFloat(document.getElementById('e-rent').value) || 0) : 0,
+            consignment_rate: parseFloat(document.getElementById('e-consignment').value || 0) / 100,
             role,
             is_vendor: isVendor,
             status: document.getElementById('e-status').value,
@@ -1012,6 +1035,7 @@
         document.getElementById('a-phone').value = '';
         document.getElementById('a-booth').value = '';
         document.getElementById('a-rent').value = '0';
+        document.getElementById('a-consignment').value = '0';
         document.getElementById('a-role').value = 'vendor';
         document.getElementById('a-payout').value = 'check';
         document.getElementById('a-zelle').value = '';
@@ -1044,6 +1068,7 @@
             phone: document.getElementById('a-phone').value || null,
             booth_number: document.getElementById('a-booth').value || null,
             monthly_rent: parseFloat(document.getElementById('a-rent').value) || 0,
+            consignment_rate: parseFloat(document.getElementById('a-consignment').value || 0) / 100,
             role: document.getElementById('a-role').value,
             payout_method: document.getElementById('a-payout').value,
             zelle_handle: document.getElementById('a-zelle').value || null,
