@@ -146,7 +146,7 @@ def generate_dymo_xml(item) -> str:
       <TextEmbedding>None</TextEmbedding>
       <ECLevel>0</ECLevel>
       <HorizontalAlignment>Center</HorizontalAlignment>
-      <QuietZonesPadding Left="100" Top="0" Right="100" Bottom="0"/>
+      <QuietZonesPadding Left="200" Top="0" Right="200" Bottom="0"/>
     </BarcodeObject>
     <Bounds X="{barcode_x}" Y="{barcode_y}" Width="{barcode_w}" Height="{barcode_h}"/>
   </ObjectInfo>"""
