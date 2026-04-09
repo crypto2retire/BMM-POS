@@ -19,7 +19,7 @@ from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse, ItemListingRe
 from app.routers.auth import get_current_user
 from app.routers.settings import role_feature_allowed, get_setting
 from app.services.barcode import generate_sku, generate_short_barcode
-from app.services.labels import generate_dymo_xml
+from app.services.labels import generate_label_pdf
 from app.services import spaces as spaces_svc
 from app.models.store_setting import StoreSetting
 
@@ -339,7 +339,7 @@ async def get_item_by_barcode(
 
 
 @router.get("/{item_id}/dymo-label")
-async def get_dymo_label(
+async def get_label_pdf(
     item_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
@@ -360,15 +360,15 @@ async def get_dymo_label(
             detail="Label printing is disabled for your role in Settings → User Roles.",
         )
 
-    xml = generate_dymo_xml(item)
+    pdf_bytes = generate_label_pdf(item)
 
     item.label_printed = True
     await db.commit()
     return Response(
-        content=xml,
-        media_type="text/xml",
+        content=pdf_bytes,
+        media_type="application/pdf",
         headers={
-            "Content-Disposition": f'inline; filename="label_{item_id}.xml"',
+            "Content-Disposition": f'inline; filename="label_{item_id}.pdf"',
             "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
             "Pragma": "no-cache",
             "Expires": "0",

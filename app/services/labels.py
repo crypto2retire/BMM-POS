@@ -1,12 +1,17 @@
+import io
 import datetime
 import xml.sax.saxutils as saxutils
+from reportlab.lib.units import inch
+from reportlab.lib.pagesizes import landscape
+from reportlab.pdfgen import canvas
+from reportlab.graphics.barcode import code128
 
 
-def generate_dymo_xml(item) -> str:
-    """Generate Dymo XML for a 30347 (1" x 1.5") label using native Dymo objects.
+def generate_label_pdf(item) -> bytes:
+    """Generate a 1.5" x 1" PDF label for browser-based printing.
 
-    Uses Code128Auto BarcodeObject so the printer firmware renders the barcode
-    at full thermal resolution — far better quality than pre-rendered images.
+    Bypasses the Dymo SDK entirely — the user prints via File > Print
+    with the Dymo printer selected. Works with ANY label printer.
     """
     booth_number = ""
     vendor = getattr(item, "vendor", None)
@@ -23,195 +28,97 @@ def generate_dymo_xml(item) -> str:
     ):
         active_price = item.sale_price
 
-    price_str = saxutils.escape(f"${active_price:.2f}")
+    price_str = f"${active_price:.2f}"
     raw_barcode = item.barcode or ""
-    barcode_str = saxutils.escape(raw_barcode)
-    booth_str = saxutils.escape(f"B{booth_number}") if booth_number else ""
+    booth_str = f"B{booth_number}" if booth_number else ""
+    item_name = (item.name or "")[:35]
 
-    # 30347 label: 1" wide x 1.5" tall = 1440 x 2160 twips
-    # Portrait orientation: the label feeds long-edge first
-    # Layout (rotated 90° so text reads correctly when label is on item):
-    #   Left strip: barcode + barcode text
-    #   Center: booth number
-    #   Right strip: price (large)
-    m = 44  # margin in twips
+    # Label dimensions: 1.5" wide x 1.0" tall
+    label_w = 1.5 * inch
+    label_h = 1.0 * inch
 
-    # Barcode zone — left third of label
-    barcode_x = m
-    barcode_y = m
-    barcode_w = 420
-    barcode_h = 2160 - (m * 2)
+    buf = io.BytesIO()
+    c = canvas.Canvas(buf, pagesize=(label_w, label_h))
 
-    # Barcode text — narrow column right of barcode
-    barcode_text_x = barcode_x + barcode_w + 8
-    barcode_text_y = m
-    barcode_text_w = 80
-    barcode_text_h = barcode_h
+    # Margins
+    mx = 0.06 * inch  # horizontal margin
+    quiet = 0.1 * inch  # barcode quiet zone
 
-    # Booth number — center area
-    booth_x = barcode_text_x + barcode_text_w + 16
-    booth_y = m
-    booth_w = 280
-    booth_h = barcode_h
+    # Y positions (bottom-up in PDF coordinate system)
+    # Bottom: barcode text at ~0.04"
+    # Then: barcode above that
+    # Then: price/booth line
+    # Top: item name
 
-    # Price — right strip, large
-    price_x = 1440 - 380
-    price_y = m
-    price_w = 380 - m
-    price_h = barcode_h
+    y_cursor = label_h - 0.12 * inch  # start from top
 
-    xml = f"""<?xml version="1.0" encoding="utf-8"?>
-<DieCutLabel Version="8.0" Units="twips" MediaType="Default">
-  <PaperOrientation>Portrait</PaperOrientation>
-  <Id>Address</Id>
-  <PaperName>30347 1 in x 1-1/2 in</PaperName>
-  <DrawCommands/>
-"""
+    # 1) Item name — bold 7pt, top of label
+    c.setFont("Helvetica-Bold", 7)
+    # Truncate to fit width
+    name_display = item_name
+    while c.stringWidth(name_display, "Helvetica-Bold", 7) > (label_w - 2 * mx) and len(name_display) > 1:
+        name_display = name_display[:-1]
+    if len(name_display) < len(item_name):
+        name_display = name_display.rstrip() + "…"
+    c.drawCentredString(label_w / 2, y_cursor, name_display)
 
-    # Price object — large, right side
-    xml += f"""
-  <ObjectInfo>
-    <TextObject>
-      <Name>PRICE</Name>
-      <ForeColor Alpha="255" Red="0" Green="0" Blue="0"/>
-      <BackColor Alpha="0" Red="255" Green="255" Blue="255"/>
-      <LinkedObjectName></LinkedObjectName>
-      <Rotation>Rotation90</Rotation>
-      <IsMirrored>False</IsMirrored>
-      <IsVariable>False</IsVariable>
-      <HorizontalAlignment>Center</HorizontalAlignment>
-      <VerticalAlignment>Middle</VerticalAlignment>
-      <TextFitMode>ShrinkToFit</TextFitMode>
-      <UseFullFontHeight>True</UseFullFontHeight>
-      <Verticalized>False</Verticalized>
-      <StyledText>
-        <Element>
-          <String>{price_str}</String>
-          <Attributes>
-            <Font Family="Arial" Size="14" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
-          </Attributes>
-        </Element>
-      </StyledText>
-    </TextObject>
-    <ObjectLayout>
-      <DYMOPoint><X>{price_x}</X><Y>{price_y}</Y></DYMOPoint>
-      <Size><Width>{price_w}</Width><Height>{price_h}</Height></Size>
-      <ZOrder>0</ZOrder>
-      <AlternateColors>False</AlternateColors>
-      <BorderStyle>SolidLine</BorderStyle>
-      <BorderColor Alpha="255" Red="0" Green="0" Blue="0"/>
-      <BorderThickness>0</BorderThickness>
-    </ObjectLayout>
-  </ObjectInfo>"""
+    y_cursor -= 0.15 * inch
 
-    # Booth number — center
+    # 2) Price (left, bold 12pt) and Booth (right, bold 10pt)
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(mx, y_cursor, price_str)
     if booth_str:
-        xml += f"""
-  <ObjectInfo>
-    <TextObject>
-      <Name>BOOTH</Name>
-      <ForeColor Alpha="255" Red="0" Green="0" Blue="0"/>
-      <BackColor Alpha="0" Red="255" Green="255" Blue="255"/>
-      <LinkedObjectName></LinkedObjectName>
-      <Rotation>Rotation90</Rotation>
-      <IsMirrored>False</IsMirrored>
-      <IsVariable>False</IsVariable>
-      <HorizontalAlignment>Center</HorizontalAlignment>
-      <VerticalAlignment>Middle</VerticalAlignment>
-      <TextFitMode>ShrinkToFit</TextFitMode>
-      <UseFullFontHeight>True</UseFullFontHeight>
-      <Verticalized>False</Verticalized>
-      <StyledText>
-        <Element>
-          <String>{booth_str}</String>
-          <Attributes>
-            <Font Family="Arial" Size="12" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
-          </Attributes>
-        </Element>
-      </StyledText>
-    </TextObject>
-    <ObjectLayout>
-      <DYMOPoint><X>{booth_x}</X><Y>{booth_y}</Y></DYMOPoint>
-      <Size><Width>{booth_w}</Width><Height>{booth_h}</Height></Size>
-      <ZOrder>1</ZOrder>
-      <AlternateColors>False</AlternateColors>
-      <BorderStyle>SolidLine</BorderStyle>
-      <BorderColor Alpha="255" Red="0" Green="0" Blue="0"/>
-      <BorderThickness>0</BorderThickness>
-    </ObjectLayout>
-  </ObjectInfo>"""
+        c.setFont("Helvetica-Bold", 10)
+        booth_width = c.stringWidth(booth_str, "Helvetica-Bold", 10)
+        c.drawString(label_w - mx - booth_width, y_cursor, booth_str)
 
-    # Barcode — native Code128Auto rendered by printer firmware
-    if barcode_str:
-        xml += f"""
-  <ObjectInfo>
-    <BarcodeObject>
-      <Name>BARCODE</Name>
-      <ForeColor Alpha="255" Red="0" Green="0" Blue="0"/>
-      <BackColor Alpha="0" Red="255" Green="255" Blue="255"/>
-      <LinkedObjectName></LinkedObjectName>
-      <Rotation>Rotation90</Rotation>
-      <IsMirrored>False</IsMirrored>
-      <IsVariable>False</IsVariable>
-      <Text>{barcode_str}</Text>
-      <Type>Code128Auto</Type>
-      <Size>Small</Size>
-      <TextPosition>None</TextPosition>
-      <TextFont Family="Arial" Size="6" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
-      <CheckSumFont Family="Arial" Size="6" Bold="False" Italic="False" Underline="False" StrikeOut="False"/>
-      <TextEmbedding>None</TextEmbedding>
-      <ECLevel>0</ECLevel>
-      <HorizontalAlignment>Center</HorizontalAlignment>
-      <QuietZonesPadding Left="200" Top="0" Right="200" Bottom="0"/>
-    </BarcodeObject>
-    <ObjectLayout>
-      <DYMOPoint><X>{barcode_x}</X><Y>{barcode_y}</Y></DYMOPoint>
-      <Size><Width>{barcode_w}</Width><Height>{barcode_h}</Height></Size>
-      <ZOrder>2</ZOrder>
-      <AlternateColors>False</AlternateColors>
-      <BorderStyle>SolidLine</BorderStyle>
-      <BorderColor Alpha="255" Red="0" Green="0" Blue="0"/>
-      <BorderThickness>0</BorderThickness>
-    </ObjectLayout>
-  </ObjectInfo>"""
+    y_cursor -= 0.12 * inch
 
-    # Barcode text — human-readable SKU next to barcode
-    if barcode_str:
-        xml += f"""
-  <ObjectInfo>
-    <TextObject>
-      <Name>BARCODE_TEXT</Name>
-      <ForeColor Alpha="255" Red="0" Green="0" Blue="0"/>
-      <BackColor Alpha="0" Red="255" Green="255" Blue="255"/>
-      <LinkedObjectName></LinkedObjectName>
-      <Rotation>Rotation90</Rotation>
-      <IsMirrored>False</IsMirrored>
-      <IsVariable>False</IsVariable>
-      <HorizontalAlignment>Center</HorizontalAlignment>
-      <VerticalAlignment>Middle</VerticalAlignment>
-      <TextFitMode>ShrinkToFit</TextFitMode>
-      <UseFullFontHeight>True</UseFullFontHeight>
-      <Verticalized>False</Verticalized>
-      <StyledText>
-        <Element>
-          <String>{barcode_str}</String>
-          <Attributes>
-            <Font Family="Arial" Size="7" Bold="True" Italic="False" Underline="False" StrikeOut="False"/>
-          </Attributes>
-        </Element>
-      </StyledText>
-    </TextObject>
-    <ObjectLayout>
-      <DYMOPoint><X>{barcode_text_x}</X><Y>{barcode_text_y}</Y></DYMOPoint>
-      <Size><Width>{barcode_text_w}</Width><Height>{barcode_text_h}</Height></Size>
-      <ZOrder>3</ZOrder>
-      <AlternateColors>False</AlternateColors>
-      <BorderStyle>SolidLine</BorderStyle>
-      <BorderColor Alpha="255" Red="0" Green="0" Blue="0"/>
-      <BorderThickness>0</BorderThickness>
-    </ObjectLayout>
-  </ObjectInfo>"""
+    # 3) Code128 barcode — centered with quiet zones
+    if raw_barcode:
+        barcode_avail_w = label_w - 2 * quiet
+        barcode_height = 0.32 * inch
 
-    xml += """
-</DieCutLabel>"""
-    return xml
+        bc = code128.Code128(
+            raw_barcode,
+            barWidth=0.008 * inch,
+            barHeight=barcode_height,
+            humanReadable=False,
+            quiet=False,
+        )
+
+        # Scale to fit if needed
+        bc_actual_w = bc.width
+        if bc_actual_w > barcode_avail_w:
+            scale = barcode_avail_w / bc_actual_w
+            bc.barWidth = bc.barWidth * scale
+            bc = code128.Code128(
+                raw_barcode,
+                barWidth=bc.barWidth,
+                barHeight=barcode_height,
+                humanReadable=False,
+                quiet=False,
+            )
+            bc_actual_w = bc.width
+
+        bc_x = (label_w - bc_actual_w) / 2
+        bc_y = y_cursor - barcode_height
+        bc.drawOn(c, bc_x, bc_y)
+
+        # 4) Human-readable barcode text below barcode
+        c.setFont("Helvetica", 5)
+        c.drawCentredString(label_w / 2, bc_y - 0.06 * inch, raw_barcode)
+
+    c.showPage()
+    c.save()
+    return buf.getvalue()
+
+
+# Keep generate_dymo_xml as a thin wrapper for backward compat if anything
+# still references it, but the router should call generate_label_pdf directly.
+def generate_dymo_xml(item) -> str:
+    """Deprecated — use generate_label_pdf() instead."""
+    raise NotImplementedError(
+        "Dymo XML generation has been replaced by PDF label generation. "
+        "Use generate_label_pdf() instead."
+    )
