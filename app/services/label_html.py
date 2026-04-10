@@ -113,7 +113,7 @@ def generate_label_html(items, label_width_in: float = 1.5, label_height_in: flo
         " font-family: Arial, Helvetica, sans-serif;"
         " -webkit-print-color-adjust: exact; print-color-adjust: exact; }"
         ".label { box-sizing: border-box; width: " + page_w + "; height: " + page_h + ";"
-        " padding: 0.05in 0.08in; page-break-after: always; break-after: page;"
+        " padding: 0.08in 0.14in; page-break-after: always; break-after: page;"
         " display: flex; flex-direction: column; justify-content: flex-start; overflow: hidden; }"
         ".label:last-child { page-break-after: auto; break-after: auto; }"
         ".name { font-weight: 700; font-size: 8pt; line-height: 1.05;"
