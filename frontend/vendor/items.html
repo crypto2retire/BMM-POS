@@ -1418,15 +1418,45 @@
                 var err = await res.json().catch(function() { return { detail: 'Failed' }; });
                 throw new Error(err.detail || 'Label generation failed');
             }
-            var htmlText = await res.text();
-            var htmlBlob = new Blob([htmlText], { type: 'text/html' });
-            var htmlUrl = URL.createObjectURL(htmlBlob);
-            var popup = window.open(htmlUrl, '_blank', 'noopener');
+            /* Backend returns a multi-page PDF (one label per page), rendered by
+               the same precision Code128 logic as the single-label path. We wrap
+               it in a tiny HTML shim whose only job is to iframe the PDF and
+               call window.print() on iframe load — one fetch, one popup, one
+               print dialog, all N labels in a single print job. */
+            var pdfBytes = await res.arrayBuffer();
+            var pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+            var pdfUrl = URL.createObjectURL(pdfBlob);
+            var wrapperHtml = '<!doctype html><html><head><meta charset="utf-8">'
+                + '<title>Print labels</title>'
+                + '<style>html,body{margin:0;padding:0;height:100%;background:#222}'
+                + 'iframe{border:0;width:100%;height:100%}</style>'
+                + '</head><body>'
+                + '<iframe id="pdf" src="' + pdfUrl + '"></iframe>'
+                + '<script>'
+                + 'var f=document.getElementById("pdf");'
+                + 'f.addEventListener("load",function(){'
+                + 'setTimeout(function(){'
+                + 'try{f.contentWindow.focus();f.contentWindow.print();}'
+                + 'catch(e){window.print();}'
+                + '},500);'
+                + '});'
+                + '<\/script>'
+                + '</body></html>';
+            var wrapperBlob = new Blob([wrapperHtml], { type: 'text/html' });
+            var wrapperUrl = URL.createObjectURL(wrapperBlob);
+            var popup = window.open(wrapperUrl, '_blank', 'noopener');
             if (!popup) {
+                URL.revokeObjectURL(pdfUrl);
+                URL.revokeObjectURL(wrapperUrl);
                 showAlert('alert-container', 'Popup blocked. Allow popups for this site and try again.', 'error');
                 throw new Error('Popup blocked');
             }
-            setTimeout(function() { URL.revokeObjectURL(htmlUrl); }, 600000);
+            /* Keep the blobs alive long enough for the iframe + print dialog
+               to finish; revoke after 10 minutes. */
+            setTimeout(function() {
+                URL.revokeObjectURL(pdfUrl);
+                URL.revokeObjectURL(wrapperUrl);
+            }, 600000);
             showAlert('alert-container', totalLabels + ' label(s) sent to printer.', 'success');
             closeLabelQtyModal();
             selectedItemIds.clear();
