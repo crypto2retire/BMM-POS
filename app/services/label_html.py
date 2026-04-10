@@ -15,6 +15,39 @@ automatically on page load.
 
 import datetime
 import html as html_escape
+from pathlib import Path
+
+
+_JSBARCODE_SOURCE_CACHE: str | None = None
+
+
+def _get_jsbarcode_source() -> str:
+    """Load the JsBarcode minified source once and cache it.
+
+    We inline JsBarcode into the generated label HTML instead of using
+    <script src="/static/js/JsBarcode.all.min.js"> because the frontend
+    opens the label document via a blob: URL (URL.createObjectURL +
+    window.open). In that context, relative script-src resolution is
+    unreliable across browsers and has been observed to silently fail
+    in production, which results in the SVG barcode elements never
+    being populated -- only the human-readable <div class="barcode-text">
+    prints, with no bars above it.
+
+    Inlining the library makes the rendered document fully
+    self-contained, eliminating the network + origin variables.
+    """
+    global _JSBARCODE_SOURCE_CACHE
+    if _JSBARCODE_SOURCE_CACHE is None:
+        path = (
+            Path(__file__).resolve().parent.parent.parent
+            / "frontend" / "static" / "js" / "JsBarcode.all.min.js"
+        )
+        source = path.read_text(encoding="utf-8")
+        # Escape </ so an embedded <script> block cannot be prematurely
+        # closed by the HTML parser. This is the standard safe-embed
+        # pattern for inlining third-party JS into HTML documents.
+        _JSBARCODE_SOURCE_CACHE = source.replace("</", "<\\/")
+    return _JSBARCODE_SOURCE_CACHE
 
 
 def _fmt_price(value) -> str:
@@ -123,7 +156,7 @@ def generate_label_html(items, label_width_in: float = 1.5, label_height_in: flo
         "<head>\n"
         '<meta charset="utf-8">\n'
         "<title>Print labels</title>\n"
-        '<script src="/static/js/JsBarcode.all.min.js"></script>\n'
+        "<script>" + _get_jsbarcode_source() + "</script>\n"
         "<style>" + css + "</style>\n"
         "</head>\n"
         "<body>\n"
