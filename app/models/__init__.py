@@ -13,5 +13,6 @@ from app.models.booth_showcase import BoothShowcase
 from app.models.poynt_payment import PoyntPayment
 from app.models.eod_report import EodReport
 from app.models.legacy_history import LegacyFinancialHistory
+from app.models.security_deposit import SecurityDepositLog
 
-__all__ = ["Vendor", "VendorBalance", "Item", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting", "StudioClass", "ItemImage", "StudioImage", "ClassRegistration", "BoothShowcase", "PoyntPayment", "EodReport", "LegacyFinancialHistory"]
+__all__ = ["Vendor", "VendorBalance", "Item", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting", "StudioClass", "ItemImage", "StudioImage", "ClassRegistration", "BoothShowcase", "PoyntPayment", "EodReport", "LegacyFinancialHistory", "SecurityDepositLog"]

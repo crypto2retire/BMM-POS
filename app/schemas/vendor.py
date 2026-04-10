@@ -17,6 +17,7 @@ class VendorCreate(BaseModel):
     payout_method: Optional[str] = "check"
     auto_payout_enabled: bool = True
     zelle_handle: Optional[str] = None
+    security_deposit_amount: Decimal = Decimal("0.00")
     notes: Optional[str] = None
 
     @field_validator('role')
@@ -41,6 +42,8 @@ class VendorUpdate(BaseModel):
     auto_payout_enabled: Optional[bool] = None
     zelle_handle: Optional[str] = None
     status: Optional[str] = None
+    security_deposit_amount: Optional[Decimal] = None
+    security_deposit_balance: Optional[Decimal] = None
     rent_flagged: Optional[bool] = None
     notes: Optional[str] = None
 
@@ -63,6 +66,8 @@ class VendorResponse(BaseModel):
     zelle_handle: Optional[str] = None
     assistant_name: Optional[str] = None
     assistant_enabled: Optional[bool] = True
+    security_deposit_amount: Optional[Decimal] = Decimal("0.00")
+    security_deposit_balance: Optional[Decimal] = Decimal("0.00")
     notes: Optional[str] = None
     theme_preference: Optional[str] = "dark"
     font_size_preference: Optional[str] = "medium"

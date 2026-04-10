@@ -44,7 +44,7 @@ try:
     print("BMM-POS: importing database...", file=sys.stderr, flush=True)
     from app.database import AsyncSessionLocal, engine, Base
     print("BMM-POS: importing routers...", file=sys.stderr, flush=True)
-    from app.routers import auth, vendors, items, sales, pos, assistant, storefront, storefront_assistant, rent, admin, reports, settings, studio, bulk_import, notifications, booth_showcase, data_sync, ai_writer
+    from app.routers import auth, vendors, items, sales, pos, assistant, storefront, storefront_assistant, rent, admin, reports, settings, studio, bulk_import, notifications, booth_showcase, data_sync, ai_writer, security_deposits
     from app.routers.inventory_verify import router as inventory_verify_router
     print("BMM-POS: all imports OK", file=sys.stderr, flush=True)
 except Exception as _import_err:
@@ -78,6 +78,21 @@ async def lifespan(app: FastAPI):
         _record_startup_ok("add_consignment_rate_column")
     except Exception as e:
         _record_startup_failure("add_consignment_rate_column", e)
+
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(text(
+                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
+                "security_deposit_amount NUMERIC(10,2) NOT NULL DEFAULT 0.00"
+            ))
+            await session.execute(text(
+                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
+                "security_deposit_balance NUMERIC(10,2) NOT NULL DEFAULT 0.00"
+            ))
+            await session.commit()
+        _record_startup_ok("add_security_deposit_columns")
+    except Exception as e:
+        _record_startup_failure("add_security_deposit_columns", e)
 
     try:
         async with AsyncSessionLocal() as session:
@@ -287,6 +302,7 @@ app.include_router(bulk_import.router, prefix="/api/v1")
 app.include_router(inventory_verify_router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(booth_showcase.router, prefix="/api/v1")
+app.include_router(security_deposits.router, prefix="/api/v1")
 app.include_router(data_sync.router, prefix="/api/v1")
 app.include_router(ai_writer.router, prefix="/api/v1")
 

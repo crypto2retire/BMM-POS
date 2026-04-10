@@ -315,6 +315,7 @@
                             <th>Name</th>
                             <th>Booth</th>
                             <th>Monthly Rent</th>
+                            <th>Deposit</th>
                             <th>Consignment</th>
                             <th>Balance</th>
                             <th>Role</th>
@@ -323,7 +324,7 @@
                         </tr>
                     </thead>
                     <tbody id="vendors-table-body">
-                        <tr><td colspan="7" class="loading">Loading vendors&hellip;</td></tr>
+                        <tr><td colspan="9" class="loading">Loading vendors&hellip;</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -361,6 +362,28 @@
                 <div class="detail-stat-title" id="detail-payout-label">Net Payout</div>
                 <div class="detail-stat-value" id="detail-net-payout">$0.00</div>
                 <div id="detail-carry-over" style="font-size:0.65rem;margin-top:0.15rem;color:var(--text-light);display:none"></div>
+            </div>
+            <div class="detail-stat-card" id="detail-deposit-card">
+                <div class="detail-stat-title">Security Deposit</div>
+                <div style="display:flex;align-items:baseline;gap:0.5rem;">
+                    <div class="detail-stat-value" id="detail-deposit-balance">$0.00</div>
+                    <span id="detail-deposit-status" style="font-size:0.7rem;"></span>
+                </div>
+                <div id="detail-deposit-required" style="font-size:0.65rem;margin-top:0.15rem;color:var(--text-light);"></div>
+            </div>
+        </div>
+
+        <!-- Security Deposit Actions -->
+        <div id="deposit-actions-section" style="display:none;">
+            <div class="card" style="padding:1.25rem;margin-bottom:1.5rem;">
+                <h3 style="margin-bottom:1rem;font-family:'EB Garamond',serif;font-size:1.1rem;">Deposit Actions</h3>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+                    <button class="btn btn-primary btn-sm" onclick="openDepositModal('received')">Record Payment</button>
+                    <button class="btn btn-outline btn-sm" onclick="openDepositModal('deduction')">Deduct</button>
+                    <button class="btn btn-outline btn-sm" onclick="openDepositModal('refund')">Refund</button>
+                    <button class="btn btn-outline btn-sm" id="apply-rent-btn" onclick="applyDepositToRent()">Apply to Rent</button>
+                </div>
+                <div id="deposit-history" style="font-size:0.82rem;"></div>
             </div>
         </div>
 
@@ -411,6 +434,16 @@
                         </div>
                         <div class="form-group">
                             <label class="form-label" style="font-size:0.72rem;color:var(--text-light);">Store keeps this % of each sale. 0 = vendor keeps 100%.</label>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Security Deposit Required</label>
+                            <input class="form-control" type="number" id="e-deposit-amount" step="0.01" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Security Deposit Balance</label>
+                            <input class="form-control" type="number" id="e-deposit-balance" step="0.01" min="0">
                         </div>
                     </div>
                 </div>
@@ -492,7 +525,16 @@
                     </div>
                     <div class="form-group">
                         <label class="form-label">Monthly Rent</label>
-                        <input class="form-control" type="number" id="a-rent" step="0.01" min="0" value="0">
+                        <input class="form-control" type="number" id="a-rent" step="0.01" min="0" value="0" onchange="document.getElementById('a-deposit').value=this.value">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Security Deposit</label>
+                        <input class="form-control" type="number" id="a-deposit" step="0.01" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" style="font-size:0.72rem;color:var(--text-light);">Auto-fills from rent. Override if needed.</label>
                     </div>
                 </div>
                 <div class="form-row">
@@ -564,6 +606,31 @@
     </div>
 </div>
 
+<!-- Deposit Action Modal -->
+<div class="modal-overlay hidden" id="deposit-modal-overlay">
+    <div class="modal" style="max-width:420px;">
+        <div class="modal-header">
+            <h3 class="modal-title" id="deposit-modal-title">Deposit Action</h3>
+            <button type="button" class="modal-close" onclick="closeDepositModal()" aria-label="Close deposit dialog">&#10005;</button>
+        </div>
+        <div class="modal-body">
+            <div id="deposit-modal-alert"></div>
+            <div class="form-group" style="margin-bottom:1rem;">
+                <label class="form-label">Amount</label>
+                <input class="form-control" type="number" id="dep-amount" step="0.01" min="0.01">
+            </div>
+            <div class="form-group" id="dep-reason-group">
+                <label class="form-label">Reason</label>
+                <input class="form-control" type="text" id="dep-reason" placeholder="e.g. Damage to booth fixture">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeDepositModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="submitDepositAction()" id="dep-save-btn">Submit</button>
+        </div>
+    </div>
+</div>
+
 <!-- Mobile bottom nav -->
 <nav class="admin-bottom-nav">
     <a href="/admin/index.html">
@@ -618,6 +685,15 @@
         return `<span class="role-badge ${cls}">${r}</span>`;
     }
 
+    function depositDot(v) {
+        const amt = parseFloat(v.security_deposit_amount || 0);
+        const bal = parseFloat(v.security_deposit_balance || 0);
+        if (amt <= 0) return '';
+        if (bal >= amt) return '<span style="color:var(--success);font-size:0.9rem;" title="Deposit held">&#9679;</span>';
+        if (bal > 0) return '<span style="color:var(--warning);font-size:0.9rem;" title="Partial deposit">&#9679;</span>';
+        return '<span style="color:var(--rust-light);font-size:0.9rem;" title="Deposit not received">&#9679;</span>';
+    }
+
     /** API may send negative combined balance as number or string; avoid (x||0) which breaks -0 */
     function formatBalanceAmount(raw) {
         const n = parseFloat(raw);
@@ -668,7 +744,7 @@
         const cards = document.getElementById('vendor-cards');
         const pagDiv = document.getElementById('vendor-pagination');
         const safe = esc(message || 'Failed to load vendors.');
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">' + safe + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-state">' + safe + '</td></tr>';
         cards.innerHTML = '<div style="color:var(--danger);padding:1rem;text-align:center">' + safe + '</div>';
         if (pagDiv) pagDiv.innerHTML = '';
     }
@@ -679,7 +755,7 @@
         const pagDiv = document.getElementById('vendor-pagination');
 
         if (vendors.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No vendors found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No vendors found.</td></tr>';
             cards.innerHTML = '<div style="color:var(--text-light);padding:1rem;text-align:center">No vendors found.</div>';
             if (pagDiv) pagDiv.innerHTML = '';
             return;
@@ -700,6 +776,7 @@
                 </td>
                 <td>${esc(v.booth_number || '—')}</td>
                 <td>${v.monthly_rent ? '$' + parseFloat(v.monthly_rent).toFixed(2) : '—'}</td>
+                <td style="text-align:center">${depositDot(v)}</td>
                 <td>${v.consignment_rate && parseFloat(v.consignment_rate) > 0 ? parseFloat(v.consignment_rate * 100).toFixed(1) + '%' : '—'}</td>
                 <td><strong style="color:${parseFloat(v.net_payout||0) >= 0 ? 'var(--success)' : 'var(--danger)'}">$${formatBalanceAmount(v.net_payout)}</strong></td>
                 <td>${roleBadge(v.role)}</td>
@@ -738,6 +815,7 @@
                 <div class="vendor-card-detail collapsed" id="vcard-detail-${v.id}">
                     <div class="vendor-card-meta">
                         <span><label>Rent</label>${v.monthly_rent ? '$' + parseFloat(v.monthly_rent).toFixed(2) : '—'}</span>
+                        <span><label>Deposit</label>${depositDot(v)}</span>
                         <span><label>Consignment</label>${v.consignment_rate && parseFloat(v.consignment_rate) > 0 ? parseFloat(v.consignment_rate * 100).toFixed(1) + '%' : '—'}</span>
                         <span><label>Payout</label>${v.payout_method || '—'}</span>
                         <span><label>Email</label>${esc(v.email)}</span>
@@ -882,6 +960,35 @@
         document.getElementById('e-payout').value = v.payout_method || 'check';
         document.getElementById('e-zelle').value = v.zelle_handle || '';
         document.getElementById('e-notes').value = v.notes || '';
+        document.getElementById('e-deposit-amount').value = v.security_deposit_amount || 0;
+        document.getElementById('e-deposit-balance').value = v.security_deposit_balance || 0;
+
+        // Populate deposit stat card
+        const depAmt = parseFloat(v.security_deposit_amount || 0);
+        const depBal = parseFloat(v.security_deposit_balance || 0);
+        document.getElementById('detail-deposit-balance').textContent = '$' + depBal.toFixed(2);
+        document.getElementById('detail-deposit-required').textContent = 'Required: $' + depAmt.toFixed(2);
+        const depStatus = document.getElementById('detail-deposit-status');
+        if (depAmt <= 0) {
+            depStatus.textContent = '';
+            document.getElementById('deposit-actions-section').style.display = 'none';
+        } else if (depBal <= 0) {
+            depStatus.innerHTML = '<span style="color:var(--warning)">&#9888; Not received</span>';
+            document.getElementById('deposit-actions-section').style.display = 'block';
+        } else if (depBal >= depAmt) {
+            depStatus.innerHTML = '<span style="color:var(--success)">&#10003; Held</span>';
+            document.getElementById('deposit-actions-section').style.display = 'block';
+        } else {
+            depStatus.innerHTML = '<span style="color:var(--warning)">Partial &mdash; $' + depBal.toFixed(2) + ' of $' + depAmt.toFixed(2) + '</span>';
+            document.getElementById('deposit-actions-section').style.display = 'block';
+        }
+
+        // Apply to Rent button state
+        const applyBtn = document.getElementById('apply-rent-btn');
+        applyBtn.disabled = !(depBal > 0 && parseFloat(v.monthly_rent || 0) > 0);
+
+        // Load deposit history
+        loadDepositHistory(v.id);
 
         const statusBtn = document.getElementById('toggle-status-btn');
         const statusSel = document.getElementById('e-status');
@@ -941,6 +1048,8 @@
             status: document.getElementById('e-status').value,
             payout_method: document.getElementById('e-payout').value,
             zelle_handle: isVendor ? (document.getElementById('e-zelle').value || null) : null,
+            security_deposit_amount: parseFloat(document.getElementById('e-deposit-amount').value) || 0,
+            security_deposit_balance: parseFloat(document.getElementById('e-deposit-balance').value) || 0,
             notes: document.getElementById('e-notes').value || null,
         };
 
@@ -1055,6 +1164,7 @@
         document.getElementById('a-phone').value = '';
         document.getElementById('a-booth').value = '';
         document.getElementById('a-rent').value = '0';
+        document.getElementById('a-deposit').value = '0';
         document.getElementById('a-consignment').value = '0';
         document.getElementById('a-role').value = 'vendor';
         document.getElementById('a-payout').value = 'check';
@@ -1088,6 +1198,7 @@
             phone: document.getElementById('a-phone').value || null,
             booth_number: document.getElementById('a-booth').value || null,
             monthly_rent: parseFloat(document.getElementById('a-rent').value) || 0,
+            security_deposit_amount: parseFloat(document.getElementById('a-deposit').value) || 0,
             consignment_rate: parseFloat(document.getElementById('a-consignment').value || 0) / 100,
             role: document.getElementById('a-role').value,
             payout_method: document.getElementById('a-payout').value,
@@ -1146,6 +1257,132 @@
         } finally {
             btn.disabled = false;
             btn.textContent = 'Reset Password';
+        }
+    }
+
+    /* ── Security Deposit Modal & Actions ────────────────── */
+
+    let currentDepositAction = null;
+
+    function openDepositModal(action) {
+        if (!editingVendor) return;
+        currentDepositAction = action;
+        document.getElementById('deposit-modal-alert').innerHTML = '';
+        const depBal = parseFloat(editingVendor.security_deposit_balance || 0);
+        const depAmt = parseFloat(editingVendor.security_deposit_amount || 0);
+        const titleMap = { received: 'Record Deposit Payment', deduction: 'Deduct from Deposit', refund: 'Refund Deposit' };
+        document.getElementById('deposit-modal-title').textContent = titleMap[action] || 'Deposit Action';
+
+        if (action === 'received') {
+            document.getElementById('dep-amount').value = Math.max(0, depAmt - depBal).toFixed(2);
+            document.getElementById('dep-reason-group').style.display = 'none';
+        } else if (action === 'refund') {
+            document.getElementById('dep-amount').value = depBal.toFixed(2);
+            document.getElementById('dep-reason-group').style.display = 'block';
+        } else {
+            document.getElementById('dep-amount').value = '';
+            document.getElementById('dep-reason-group').style.display = 'block';
+        }
+        document.getElementById('dep-reason').value = '';
+        document.getElementById('deposit-modal-overlay').classList.remove('hidden');
+        setTimeout(() => document.getElementById('dep-amount').focus(), 100);
+    }
+
+    function closeDepositModal() {
+        document.getElementById('deposit-modal-overlay').classList.add('hidden');
+        currentDepositAction = null;
+    }
+
+    async function submitDepositAction() {
+        if (!editingVendor || !currentDepositAction) return;
+        const amount = parseFloat(document.getElementById('dep-amount').value);
+        if (!amount || amount <= 0) {
+            showAlert('deposit-modal-alert', 'Enter a valid amount.', 'error');
+            return;
+        }
+        const reason = document.getElementById('dep-reason').value.trim() || null;
+        if (currentDepositAction === 'deduction' && !reason) {
+            showAlert('deposit-modal-alert', 'Reason is required for deductions.', 'error');
+            return;
+        }
+
+        const btn = document.getElementById('dep-save-btn');
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+        try {
+            await apiPost(`/api/v1/vendors/${editingVendor.id}/deposit`, {
+                action: currentDepositAction,
+                amount,
+                reason,
+            });
+            showAlert('alert-container', 'Deposit action recorded.', 'success');
+            closeDepositModal();
+            await loadVendors();
+            const updated = allVendors.find(x => x.id === editingVendor.id);
+            if (updated) editVendor(updated.id);
+        } catch (err) {
+            showAlert('deposit-modal-alert', err.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Submit';
+        }
+    }
+
+    async function applyDepositToRent() {
+        if (!editingVendor) return;
+        const depBal = parseFloat(editingVendor.security_deposit_balance || 0);
+        const rent = parseFloat(editingVendor.monthly_rent || 0);
+        if (depBal <= 0 || rent <= 0) return;
+        const applyAmt = Math.min(depBal, rent);
+        if (!confirm(`Apply $${applyAmt.toFixed(2)} from security deposit to cover this month's rent?`)) return;
+        try {
+            await apiPost(`/api/v1/vendors/${editingVendor.id}/deposit`, {
+                action: 'applied_to_rent',
+                amount: applyAmt,
+                reason: 'Applied to monthly rent',
+            });
+            showAlert('alert-container', `$${applyAmt.toFixed(2)} applied from deposit to rent.`, 'success');
+            await loadVendors();
+            const updated = allVendors.find(x => x.id === editingVendor.id);
+            if (updated) editVendor(updated.id);
+        } catch (err) {
+            showAlert('alert-container', err.message, 'error');
+        }
+    }
+
+    async function loadDepositHistory(vendorId) {
+        const container = document.getElementById('deposit-history');
+        try {
+            const logs = await apiGet(`/api/v1/vendors/${vendorId}/deposit/history`);
+            if (!logs || logs.length === 0) {
+                container.innerHTML = '<div style="color:var(--text-light);font-size:0.78rem;">No deposit history.</div>';
+                return;
+            }
+            const actionLabels = { received: 'Received', deduction: 'Deduction', refund: 'Refund', applied_to_rent: 'Applied to Rent' };
+            const actionColors = { received: 'var(--success)', deduction: 'var(--rust-light)', refund: 'var(--rust-light)', applied_to_rent: 'var(--info)' };
+            container.innerHTML = `
+                <table style="width:100%;font-size:0.78rem;">
+                    <thead><tr>
+                        <th style="text-align:left;padding:4px 8px;font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;">Date</th>
+                        <th style="text-align:left;padding:4px 8px;font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;">Action</th>
+                        <th style="text-align:right;padding:4px 8px;font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;">Amount</th>
+                        <th style="text-align:right;padding:4px 8px;font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;">Balance</th>
+                        <th style="text-align:left;padding:4px 8px;font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;">Reason</th>
+                    </tr></thead>
+                    <tbody>${logs.map(l => `
+                        <tr style="border-top:1px solid var(--border);">
+                            <td style="padding:4px 8px;color:var(--text-light)">${new Date(l.created_at).toLocaleDateString()}</td>
+                            <td style="padding:4px 8px;color:${actionColors[l.action] || 'var(--text)'}">${actionLabels[l.action] || l.action}</td>
+                            <td style="padding:4px 8px;text-align:right;color:${l.action === 'received' ? 'var(--success)' : 'var(--rust-light)'}">
+                                ${l.action === 'received' ? '+' : '-'}$${parseFloat(l.amount).toFixed(2)}
+                            </td>
+                            <td style="padding:4px 8px;text-align:right">$${parseFloat(l.balance_after).toFixed(2)}</td>
+                            <td style="padding:4px 8px;color:var(--text-light)">${esc(l.reason || '')}</td>
+                        </tr>
+                    `).join('')}</tbody>
+                </table>`;
+        } catch (err) {
+            container.innerHTML = '<div style="color:var(--rust-light);font-size:0.78rem;">Failed to load deposit history.</div>';
         }
     }
 

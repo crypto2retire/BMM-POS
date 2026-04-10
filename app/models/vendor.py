@@ -37,6 +37,8 @@ class Vendor(Base):
     theme_preference: Mapped[str] = mapped_column(String(10), default="dark", nullable=False, server_default="dark")
     font_size_preference: Mapped[str] = mapped_column(String(10), default="medium", nullable=False, server_default="medium")
     sale_notify_preference: Mapped[str] = mapped_column(String(10), default="instant", nullable=False, server_default="instant")
+    security_deposit_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False, server_default="0.00")
+    security_deposit_balance: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False, server_default="0.00")
 
     items = relationship("Item", back_populates="vendor")
     sales = relationship("Sale", back_populates="cashier", foreign_keys="[Sale.cashier_id]")

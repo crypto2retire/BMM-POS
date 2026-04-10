@@ -162,6 +162,7 @@ async def create_vendor(
         payout_method=normalized.get("payout_method"),
         zelle_handle=normalized.get("zelle_handle"),
         auto_payout_enabled=normalized.get("auto_payout_enabled", True),
+        security_deposit_amount=normalized.get("security_deposit_amount", Decimal("0.00")),
     )
     db.add(db_vendor)
     await db.commit()
