@@ -1407,15 +1407,27 @@
         btn.textContent = 'Generating…';
         var token = sessionStorage.getItem('bmm_token');
         try {
-            /* Batch: open each label PDF in a new tab */
             var totalLabels = entries.reduce(function(s, e) { return s + e.quantity; }, 0);
-            for (var ei = 0; ei < entries.length; ei++) {
-                var entry = entries[ei];
-                for (var qi = 0; qi < entry.quantity; qi++) {
-                    await printDymoLabel(entry.item_id);
-                }
+            var payload = { items: entries };
+            var res = await fetch('/api/v1/items/labels/batch-print', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify(payload),
+            });
+            if (!res.ok) {
+                var err = await res.json().catch(function() { return { detail: 'Failed' }; });
+                throw new Error(err.detail || 'Label generation failed');
             }
-            showAlert('alert-container', totalLabels + ' label PDF(s) opened for ' + entries.length + ' item(s). Use File > Print for each.', 'success');
+            var htmlText = await res.text();
+            var htmlBlob = new Blob([htmlText], { type: 'text/html' });
+            var htmlUrl = URL.createObjectURL(htmlBlob);
+            var popup = window.open(htmlUrl, '_blank', 'noopener');
+            if (!popup) {
+                showAlert('alert-container', 'Popup blocked. Allow popups for this site and try again.', 'error');
+                throw new Error('Popup blocked');
+            }
+            setTimeout(function() { URL.revokeObjectURL(htmlUrl); }, 600000);
+            showAlert('alert-container', totalLabels + ' label(s) sent to printer.', 'success');
             closeLabelQtyModal();
             selectedItemIds.clear();
             await loadItems();

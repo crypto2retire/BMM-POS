@@ -20,6 +20,7 @@ from app.routers.auth import get_current_user
 from app.routers.settings import role_feature_allowed, get_setting
 from app.services.barcode import generate_sku, generate_short_barcode
 from app.services.labels import generate_label_pdf
+from app.services.label_html import generate_label_html
 from app.services import spaces as spaces_svc
 from app.models.store_setting import StoreSetting
 
@@ -373,6 +374,74 @@ async def get_label_pdf(
             "Pragma": "no-cache",
             "Expires": "0",
         },
+    )
+
+
+@router.post("/labels/batch-print")
+async def get_batch_labels_html(
+    data: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    """
+    HTML variant of batch label printing. Returns a self-printing HTML
+    page the browser can render and print directly, bypassing the PDF
+    viewer which drops pages on multi-page custom-size prints.
+    """
+    entries = data.get("items", None)
+    if entries:
+        item_ids = [e["item_id"] for e in entries]
+        qty_map = {e["item_id"]: max(1, min(99, int(e.get("quantity", 1)))) for e in entries}
+    else:
+        item_ids = data.get("item_ids", [])
+        qty_map = {iid: 1 for iid in item_ids}
+
+    if not item_ids or len(item_ids) > 200:
+        raise HTTPException(status_code=400, detail="Provide 1-200 item IDs")
+
+    total_labels = sum(qty_map.values())
+    if total_labels > 500:
+        raise HTTPException(status_code=400, detail="Maximum 500 labels per batch")
+
+    result = await db.execute(
+        select(Item).options(selectinload(Item.vendor)).where(Item.id.in_(item_ids))
+    )
+    items = result.scalars().all()
+    if not items:
+        raise HTTPException(status_code=404, detail="No items found")
+
+    if current_user.role not in ("admin", "cashier"):
+        for item in items:
+            if item.vendor_id != current_user.id:
+                raise HTTPException(status_code=403, detail="Access denied")
+
+    if not await role_feature_allowed(db, current_user, "role_print_labels"):
+        raise HTTPException(
+            status_code=403,
+            detail="Label printing is disabled for your role in Settings -> User Roles.",
+        )
+
+    id_order = {iid: idx for idx, iid in enumerate(item_ids)}
+    items_sorted = sorted(items, key=lambda it: id_order.get(it.id, 0))
+
+    expanded = []
+    for item in items_sorted:
+        count = qty_map.get(item.id, 1)
+        for _ in range(count):
+            expanded.append(item)
+
+    # Dymo 30347 physical dimensions: 1" feed width, 1.5" length.
+    # Render landscape (1.5 x 1) to match the existing PDF path.
+    html_body = generate_label_html(expanded, label_width_in=1.5, label_height_in=1.0)
+
+    for item in items:
+        item.label_printed = True
+    await db.commit()
+
+    return Response(
+        content=html_body,
+        media_type="text/html; charset=utf-8",
+        headers={"Cache-Control": "no-store"},
     )
 
 
