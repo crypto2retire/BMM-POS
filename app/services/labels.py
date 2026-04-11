@@ -57,7 +57,7 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
     item_name = (item.name or "")[:35]
 
     mx = 0.04 * inch       # horizontal margin for text (tight)
-    quiet = 0.04 * inch    # barcode quiet zone — reduced to maximize bar width
+    quiet = 0.10 * inch    # Code128 minimum practical quiet zone (30 dots)
 
     # ── Top text band: one line with booth (left), name (center), price (right) ──
     text_top = _LABEL_H - 0.05 * inch
@@ -104,7 +104,8 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
         # Snap UP to dot boundary so bars are as wide as possible.
         barcode_avail_w = _LABEL_W - 2 * quiet
         raw_bar_w = barcode_avail_w / module_count
-        bar_w = max(math.ceil(raw_bar_w / _DOT), 1) * _DOT
+        # Snap DOWN so barcode fits within avail_w; floor at 3 dots (0.010") for thermal scan
+        bar_w = max(math.floor(raw_bar_w / _DOT), 3) * _DOT
 
         bc = code128.Code128(
             raw_barcode,
