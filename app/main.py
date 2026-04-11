@@ -195,6 +195,39 @@ async def lifespan(app: FastAPI):
         print(f"BMM-POS: auto-seed FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("auto_seed_accounts", e)
 
+    # One-time migration: regenerate any non-digit barcodes so ReportLab
+    # Code128 subset C produces scannable bars on 1.5" Dymo labels.
+    try:
+        from app.models.item import Item
+        from app.services.barcode import generate_short_barcode
+        from sqlalchemy import select
+
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(select(Item))
+            items = result.scalars().all()
+            migrated = 0
+            for item in items:
+                if item.barcode and not item.barcode.isdigit():
+                    item.barcode = await generate_short_barcode(session)
+                    migrated += 1
+            if migrated > 0:
+                await session.commit()
+                print(
+                    f"[barcode-migration] regenerated {migrated} non-digit barcodes to digits-only",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            else:
+                print(
+                    "[barcode-migration] no non-digit barcodes found, skipping",
+                    file=sys.stderr,
+                    flush=True,
+                )
+        _record_startup_ok("barcode_digits_migration")
+    except Exception as e:
+        print(f"[barcode-migration] failed: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("barcode_digits_migration", e)
+
     startup_summary = _startup_health_payload()
     if startup_summary["startup_failure_count"]:
         print(

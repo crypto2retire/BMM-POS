@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from app.models.item import Item
 
-BARCODE_CHARS = string.digits + string.ascii_uppercase
+BARCODE_CHARS = string.digits
 BARCODE_LENGTH = 6
 
 
