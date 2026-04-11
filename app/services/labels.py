@@ -6,9 +6,9 @@ from reportlab.pdfgen import canvas
 from reportlab.graphics.barcode import code128
 
 
-# Label dimensions: Dymo 30347 — 1"W × 1.5"H portrait (feeds short-edge-first)
-_LABEL_W = 1.0 * inch
-_LABEL_H = 1.5 * inch
+# Label dimensions: Dymo 30347 — 1.5"W × 1.0"H landscape (barcode runs long way)
+_LABEL_W = 1.5 * inch
+_LABEL_H = 1.0 * inch
 
 # Thermal printer dot size at 300 DPI
 _DOT = 1 / 300 * inch
@@ -22,10 +22,10 @@ def _snap_down(val: float) -> float:
 def _draw_single_label(c: canvas.Canvas, item) -> None:
     """Draw one label onto the current page of canvas c.
 
-    Layout for 1"W × 1.5"H portrait label (Dymo 450 feed direction):
-    - Item name at top
-    - Price and booth below name
-    - Code128 barcode filling width with proper quiet zones
+    Layout for 1.5"W × 1.0"H landscape label (Dymo 450):
+    - Item name at top-left, price at top-right
+    - Booth below name (left)
+    - Code128 barcode filling the 1.5" width with proper quiet zones
     - Human-readable barcode text at bottom
 
     Used by both the single-label path (generate_label_pdf) and the
@@ -55,32 +55,34 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
     mx = 0.06 * inch       # horizontal margin for text
     quiet = 0.1 * inch     # barcode quiet zone (min 0.1" per Code128 spec)
 
-    y_cursor = _LABEL_H - 0.10 * inch  # start from top
+    y_cursor = _LABEL_H - 0.08 * inch  # start from top
 
-    # 1) Item name — bold 7pt, top of label
+    # 1) Item name (left) and Price (right) — same baseline, top of label
     c.setFont("Helvetica-Bold", 7)
     name_display = item_name
-    while c.stringWidth(name_display, "Helvetica-Bold", 7) > (_LABEL_W - 2 * mx) and len(name_display) > 1:
+    price_width = c.stringWidth(price_str, "Helvetica-Bold", 12) + 0.04 * inch
+    name_max_w = _LABEL_W - 2 * mx - price_width
+    while c.stringWidth(name_display, "Helvetica-Bold", 7) > name_max_w and len(name_display) > 1:
         name_display = name_display[:-1]
     if len(name_display) < len(item_name):
         name_display = name_display.rstrip() + "…"
-    c.drawCentredString(_LABEL_W / 2, y_cursor, name_display)
+    c.drawString(mx, y_cursor, name_display)
 
-    y_cursor -= 0.14 * inch
-
-    # 2) Price (left, bold 12pt) and Booth (right, bold 10pt)
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(mx, y_cursor, price_str)
+    c.drawRightString(_LABEL_W - mx, y_cursor, price_str)
+
+    y_cursor -= 0.12 * inch
+
+    # 2) Booth number (left, below name)
     if booth_str:
         c.setFont("Helvetica-Bold", 10)
-        booth_width = c.stringWidth(booth_str, "Helvetica-Bold", 10)
-        c.drawString(_LABEL_W - mx - booth_width, y_cursor, booth_str)
+        c.drawString(mx, y_cursor, booth_str)
 
-    y_cursor -= 0.10 * inch
+    y_cursor -= 0.06 * inch
 
-    # 3) Code128 barcode — fill available width with proper quiet zones
+    # 3) Code128 barcode — fill the 1.5" width with proper quiet zones
     if raw_barcode:
-        barcode_height = 0.38 * inch  # well above 0.3" minimum for scanners
+        barcode_height = y_cursor - 0.10 * inch  # leave room for human-readable text at bottom
 
         # Measure module count using a 1-point-per-module probe
         probe = code128.Code128(
@@ -108,16 +110,16 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
 
         # Position barcode: left edge at quiet zone, snap to dot grid
         bc_x = _snap_down(quiet)
-        bc_y = y_cursor - barcode_height
+        bc_y = 0.10 * inch  # leave room for human-readable text below
         bc.drawOn(c, bc_x, bc_y)
 
         # 4) Human-readable barcode text below barcode
         c.setFont("Helvetica-Bold", 6)
-        c.drawCentredString(_LABEL_W / 2, bc_y - 0.07 * inch, raw_barcode)
+        c.drawCentredString(_LABEL_W / 2, 0.03 * inch, raw_barcode)
 
 
 def generate_label_pdf(item) -> bytes:
-    """Generate a 1"W × 1.5"H single-label PDF for browser-based printing.
+    """Generate a 1.5"W × 1.0"H single-label PDF for browser-based printing.
 
     Bypasses the Dymo SDK entirely — the user prints via File > Print
     with the Dymo printer selected. Works with ANY label printer.
@@ -132,7 +134,7 @@ def generate_label_pdf(item) -> bytes:
 
 
 def generate_label_pdf_batch(items) -> bytes:
-    """Generate a multi-page 1"W × 1.5"H PDF, one label per page.
+    """Generate a multi-page 1.5"W × 1.0"H PDF, one label per page.
 
     Shares the exact same precision drawing logic as the single-label
     path (_draw_single_label) so batch-printed labels are pixel-
