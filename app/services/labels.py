@@ -19,13 +19,17 @@ def _snap_down(val: float) -> float:
     return math.floor(val / _DOT) * _DOT
 
 
+def _snap_up(val: float) -> float:
+    """Snap a coordinate up to the nearest printer dot boundary."""
+    return math.ceil(val / _DOT) * _DOT
+
+
 def _draw_single_label(c: canvas.Canvas, item) -> None:
     """Draw one label onto the current page of canvas c.
 
     Layout for 1.5"W × 1.0"H landscape label (Dymo 450):
-    - Item name at top-left, price at top-right
-    - Booth below name (left)
-    - Code128 barcode filling the 1.5" width with proper quiet zones
+    - Single compact text line: booth (left), name (center), price (right)
+    - Code128 barcode filling maximum available width and height
     - Human-readable barcode text at bottom
 
     Used by both the single-label path (generate_label_pdf) and the
@@ -52,37 +56,39 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
     booth_str = f"B{booth_number}" if booth_number else ""
     item_name = (item.name or "")[:35]
 
-    mx = 0.06 * inch       # horizontal margin for text
-    quiet = 0.1 * inch     # barcode quiet zone (min 0.1" per Code128 spec)
+    mx = 0.04 * inch       # horizontal margin for text (tight)
+    quiet = 0.04 * inch    # barcode quiet zone — reduced to maximize bar width
 
-    y_cursor = _LABEL_H - 0.08 * inch  # start from top
+    # ── Top text band: one line with booth (left), name (center), price (right) ──
+    text_top = _LABEL_H - 0.05 * inch
+    text_band_h = 0.11 * inch  # height consumed by text band
 
-    # 1) Item name (left) and Price (right) — same baseline, top of label
-    c.setFont("Helvetica-Bold", 7)
+    c.setFont("Helvetica-Bold", 6)
+    if booth_str:
+        c.drawString(mx, text_top, booth_str)
+
+    c.setFont("Helvetica-Bold", 5)
     name_display = item_name
-    price_width = c.stringWidth(price_str, "Helvetica-Bold", 12) + 0.04 * inch
-    name_max_w = _LABEL_W - 2 * mx - price_width
-    while c.stringWidth(name_display, "Helvetica-Bold", 7) > name_max_w and len(name_display) > 1:
+    price_width = c.stringWidth(price_str, "Helvetica-Bold", 9) + 0.03 * inch
+    booth_width = c.stringWidth(booth_str, "Helvetica-Bold", 6) + 0.03 * inch if booth_str else 0
+    name_max_w = _LABEL_W - mx - booth_width - price_width - mx
+    while c.stringWidth(name_display, "Helvetica-Bold", 5) > name_max_w and len(name_display) > 1:
         name_display = name_display[:-1]
     if len(name_display) < len(item_name):
         name_display = name_display.rstrip() + "…"
-    c.drawString(mx, y_cursor, name_display)
+    c.drawCentredString(_LABEL_W / 2, text_top, name_display)
 
-    c.setFont("Helvetica-Bold", 12)
-    c.drawRightString(_LABEL_W - mx, y_cursor, price_str)
+    c.setFont("Helvetica-Bold", 9)
+    c.drawRightString(_LABEL_W - mx, text_top, price_str)
 
-    y_cursor -= 0.12 * inch
+    # ── Bottom text: human-readable barcode ──
+    bottom_text_h = 0.07 * inch  # space for barcode digits at bottom
 
-    # 2) Booth number (left, below name)
-    if booth_str:
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(mx, y_cursor, booth_str)
-
-    y_cursor -= 0.06 * inch
-
-    # 3) Code128 barcode — fill the 1.5" width with proper quiet zones
+    # ── Barcode: fill all remaining vertical space ──
     if raw_barcode:
-        barcode_height = y_cursor - 0.10 * inch  # leave room for human-readable text at bottom
+        barcode_top = _LABEL_H - text_band_h
+        barcode_bottom = bottom_text_h
+        barcode_height = barcode_top - barcode_bottom
 
         # Measure module count using a 1-point-per-module probe
         probe = code128.Code128(
@@ -95,10 +101,10 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
         module_count = probe.width
 
         # Calculate barWidth to fill available width between quiet zones.
-        # Snap down to dot boundary so bars align to thermal print grid.
+        # Snap UP to dot boundary so bars are as wide as possible.
         barcode_avail_w = _LABEL_W - 2 * quiet
         raw_bar_w = barcode_avail_w / module_count
-        bar_w = max(math.floor(raw_bar_w / _DOT), 1) * _DOT
+        bar_w = max(math.ceil(raw_bar_w / _DOT), 1) * _DOT
 
         bc = code128.Code128(
             raw_barcode,
@@ -108,14 +114,16 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
             quiet=False,
         )
 
-        # Position barcode: left edge at quiet zone, snap to dot grid
-        bc_x = _snap_down(quiet)
-        bc_y = 0.10 * inch  # leave room for human-readable text below
+        # Position barcode: center horizontally, bottom edge at barcode_bottom
+        actual_bc_w = module_count * bar_w
+        bc_x = (_LABEL_W - actual_bc_w) / 2
+        bc_x = _snap_down(bc_x)
+        bc_y = barcode_bottom
         bc.drawOn(c, bc_x, bc_y)
 
-        # 4) Human-readable barcode text below barcode
-        c.setFont("Helvetica-Bold", 6)
-        c.drawCentredString(_LABEL_W / 2, 0.03 * inch, raw_barcode)
+        # Human-readable barcode text at very bottom
+        c.setFont("Helvetica-Bold", 5)
+        c.drawCentredString(_LABEL_W / 2, 0.015 * inch, raw_barcode)
 
 
 def generate_label_pdf(item) -> bytes:
