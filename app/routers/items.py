@@ -18,7 +18,7 @@ from app.models.vendor import Vendor
 from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse, ItemListingResponse
 from app.routers.auth import get_current_user
 from app.routers.settings import role_feature_allowed, get_setting
-from app.services.barcode import generate_sku, generate_short_barcode
+from app.services.barcode import generate_sku, generate_short_barcode, maybe_upgrade_barcode
 from app.services.labels import generate_label_pdf, generate_label_pdf_batch
 from app.services import spaces as spaces_svc
 from app.models.store_setting import StoreSetting
@@ -360,6 +360,9 @@ async def get_label_pdf(
             detail="Label printing is disabled for your role in Settings → User Roles.",
         )
 
+    # Lazy barcode upgrade on single-label reprint.
+    await maybe_upgrade_barcode(item, db)
+
     pdf_bytes = generate_label_pdf(item)
 
     item.label_printed = True
@@ -424,6 +427,12 @@ async def get_batch_labels_pdf(
 
     id_order = {iid: idx for idx, iid in enumerate(item_ids)}
     items_sorted = sorted(items, key=lambda it: id_order.get(it.id, 0))
+
+    # Lazy barcode upgrade: on reprint, convert any non-scanable codes to
+    # fresh 6-digit numeric codes so the new label prints with Subset C.
+    # Skip MAN-* manual items and codes that are already 6 digits.
+    for item in items_sorted:
+        await maybe_upgrade_barcode(item, db)
 
     expanded = []
     for item in items_sorted:
