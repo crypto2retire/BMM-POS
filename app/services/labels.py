@@ -28,7 +28,8 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
     """Draw one label onto the current page of canvas c.
 
     Layout for 1.5"W × 1.0"H landscape label (Dymo 450):
-    - Single compact text line: booth (left), name (center), price (right)
+    - Row 1: item name, centered
+    - Row 2: price, centered and large
     - Code128 barcode filling maximum available width and height
     - Human-readable barcode text at bottom
 
@@ -36,11 +37,6 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
     batch path (generate_label_pdf_batch) so both paths render
     identically on the Dymo LabelWriter 450.
     """
-    booth_number = ""
-    vendor = getattr(item, "vendor", None)
-    if vendor:
-        booth_number = getattr(vendor, "booth_number", "") or ""
-
     today = datetime.date.today()
     active_price = item.price
     if (
@@ -53,7 +49,6 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
 
     price_str = f"${active_price:.2f}"
     raw_barcode = item.barcode or ""
-    booth_str = f"B{booth_number}" if booth_number else ""
     item_name = (item.name or "")[:35]
 
     mx = 0.10 * inch       # horizontal margin for text (matches barcode quiet zone, clears Dymo printable edge)
@@ -61,7 +56,7 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
 
     # ── Top text band: taller two-row layout ──
     # Row 1 (top):    item name, centered, readable
-    # Row 2 (middle): booth (left) + price (right), large and bold
+    # Row 2 (middle): price, centered and large
     text_band_h = 0.30 * inch  # total height consumed by top text region
 
     # Row 1 — item name (truncate + ellipsis to fit full label width)
@@ -79,13 +74,10 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
         name_display = name_display.rstrip() + "…"
     c.drawCentredString(_LABEL_W / 2, name_baseline, name_display)
 
-    # Row 2 — booth (left) and price (right), large
+    # Row 2 — price, centered and large (no booth number, no edge clipping)
     row2_baseline = _LABEL_H - 0.24 * inch
-    if booth_str:
-        c.setFont("Helvetica-Bold", 10)
-        c.drawString(mx, row2_baseline, booth_str)
     c.setFont("Helvetica-Bold", 13)
-    c.drawRightString(_LABEL_W - mx, row2_baseline, price_str)
+    c.drawCentredString(_LABEL_W / 2, row2_baseline, price_str)
 
     # ── Bottom text: human-readable barcode ──
     bottom_text_h = 0.07 * inch  # space for barcode digits at bottom
