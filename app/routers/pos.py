@@ -236,12 +236,50 @@ async def pos_barcode_lookup(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
+    # Forgiving lookup. Search field works via substring match; scan input
+    # historically used strict exact match, which failed when the scanner
+    # dropped a character or the stored value had invisible whitespace.
+    # Try exact barcode, then exact SKU, then a single-match substring
+    # fallback on barcode.
+    needle = (barcode or "").strip()
+    if not needle:
+        raise HTTPException(status_code=404, detail="Item not found or not available")
+    needle_up = needle.upper()
+
+    # 1) Exact match on Item.barcode (normal case)
     result = await db.execute(
         select(Item)
         .options(selectinload(Item.vendor))
-        .where(func.upper(Item.barcode) == barcode.upper(), Item.status == "active")
+        .where(func.upper(Item.barcode) == needle_up, Item.status == "active")
     )
     item = result.scalar_one_or_none()
+
+    # 2) Fallback: exact match on Item.sku (covers labels that carry the full SKU)
+    if not item:
+        result = await db.execute(
+            select(Item)
+            .options(selectinload(Item.vendor))
+            .where(
+                func.upper(func.coalesce(Item.sku, "")) == needle_up,
+                Item.status == "active",
+            )
+        )
+        item = result.scalar_one_or_none()
+
+    # 3) Fallback: substring match on Item.barcode. Only accept if exactly
+    #    one active item matches, so we never add the wrong item to cart.
+    #    Requires >=4 chars to avoid absurd false positives.
+    if not item and len(needle) >= 4:
+        result = await db.execute(
+            select(Item)
+            .options(selectinload(Item.vendor))
+            .where(Item.barcode.ilike(f"%{needle}%"), Item.status == "active")
+            .limit(2)
+        )
+        candidates = result.scalars().all()
+        if len(candidates) == 1:
+            item = candidates[0]
+
     if not item:
         raise HTTPException(status_code=404, detail="Item not found or not available")
     return _item_to_pos_dict(item)

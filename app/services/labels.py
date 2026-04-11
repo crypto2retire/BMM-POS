@@ -59,27 +59,33 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
     mx = 0.04 * inch       # horizontal margin for text (tight)
     quiet = 0.10 * inch    # Code128 minimum practical quiet zone (30 dots)
 
-    # ── Top text band: one line with booth (left), name (center), price (right) ──
-    text_top = _LABEL_H - 0.05 * inch
-    text_band_h = 0.11 * inch  # height consumed by text band
+    # ── Top text band: taller two-row layout ──
+    # Row 1 (top):    item name, centered, readable
+    # Row 2 (middle): booth (left) + price (right), large and bold
+    text_band_h = 0.30 * inch  # total height consumed by top text region
 
-    c.setFont("Helvetica-Bold", 6)
-    if booth_str:
-        c.drawString(mx, text_top, booth_str)
-
-    c.setFont("Helvetica-Bold", 5)
+    # Row 1 — item name (truncate + ellipsis to fit full label width)
+    name_baseline = _LABEL_H - 0.09 * inch
+    name_font_size = 7
+    c.setFont("Helvetica-Bold", name_font_size)
     name_display = item_name
-    price_width = c.stringWidth(price_str, "Helvetica-Bold", 9) + 0.03 * inch
-    booth_width = c.stringWidth(booth_str, "Helvetica-Bold", 6) + 0.03 * inch if booth_str else 0
-    name_max_w = _LABEL_W - mx - booth_width - price_width - mx
-    while c.stringWidth(name_display, "Helvetica-Bold", 5) > name_max_w and len(name_display) > 1:
+    name_max_w = _LABEL_W - 2 * mx
+    while (
+        c.stringWidth(name_display, "Helvetica-Bold", name_font_size) > name_max_w
+        and len(name_display) > 1
+    ):
         name_display = name_display[:-1]
     if len(name_display) < len(item_name):
         name_display = name_display.rstrip() + "…"
-    c.drawCentredString(_LABEL_W / 2, text_top, name_display)
+    c.drawCentredString(_LABEL_W / 2, name_baseline, name_display)
 
-    c.setFont("Helvetica-Bold", 9)
-    c.drawRightString(_LABEL_W - mx, text_top, price_str)
+    # Row 2 — booth (left) and price (right), large
+    row2_baseline = _LABEL_H - 0.24 * inch
+    if booth_str:
+        c.setFont("Helvetica-Bold", 10)
+        c.drawString(mx, row2_baseline, booth_str)
+    c.setFont("Helvetica-Bold", 13)
+    c.drawRightString(_LABEL_W - mx, row2_baseline, price_str)
 
     # ── Bottom text: human-readable barcode ──
     bottom_text_h = 0.07 * inch  # space for barcode digits at bottom
