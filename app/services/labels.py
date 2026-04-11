@@ -56,7 +56,7 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
     booth_str = f"B{booth_number}" if booth_number else ""
     item_name = (item.name or "")[:35]
 
-    mx = 0.04 * inch       # horizontal margin for text (tight)
+    mx = 0.10 * inch       # horizontal margin for text (matches barcode quiet zone, clears Dymo printable edge)
     quiet = 0.10 * inch    # Code128 minimum practical quiet zone (30 dots)
 
     # ── Top text band: taller two-row layout ──
