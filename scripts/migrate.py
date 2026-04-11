@@ -486,6 +486,29 @@ async def run():
                 flush=True,
             )
 
+        # 6h: Regenerate any non-digit barcodes so ReportLab Code128 auto-selects
+        # subset C. 6-digit codes produce ~68 modules = 5+ dot bars at 300 DPI,
+        # which is thermally scannable on a 1.5" Dymo label. 6-char alphanumeric
+        # codes produced ~101 modules = 3-dot bars, too narrow to scan reliably.
+        marker = "startup_task_barcode_digits_only_v1"
+        if not await _has_marker(session, marker):
+            from app.services.barcode import generate_short_barcode
+
+            result = await session.execute(select(Item).where(Item.barcode.isnot(None)))
+            items = result.scalars().all()
+
+            migrated = 0
+            for item in items:
+                if item.barcode and not item.barcode.isdigit():
+                    item.barcode = await generate_short_barcode(session)
+                    migrated += 1
+
+            await _set_marker(session, marker, "One-time regeneration of non-digit barcodes to digits-only for Code128 subset C")
+            print(
+                f"BMM-POS migrate: barcode digits-only — regenerated {migrated} items",
+                flush=True,
+            )
+
         await session.commit()
 
     print("BMM-POS migrate: all migrations complete", flush=True)
