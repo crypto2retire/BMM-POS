@@ -286,6 +286,20 @@
             .period-tab { padding: 0.45rem 0.9rem; font-size: 0.75rem; }
             .table-wrapper { display: none; }
             .vendor-cards-mobile { display: flex; }
+            .main-tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+            .main-tabs::-webkit-scrollbar { display: none; }
+            .main-tab {
+                white-space: nowrap;
+                padding: 0.65rem 1rem;
+                font-size: 0.82rem;
+                flex-shrink: 0;
+            }
+            .chart-bars { gap: 2px; }
+            .chart-label { font-size: 0.55rem; }
         }
         @media (min-width: 768px) and (max-width: 1023px) {
             .store-summary { grid-template-columns: repeat(3, 1fr); }

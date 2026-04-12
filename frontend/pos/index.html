@@ -72,6 +72,93 @@
                 z-index: 50;
             }
             .cart-area { padding-bottom: 80px; }
+
+            /* Mobile cart: convert table to stacked cards */
+            .cart-table thead { display: none; }
+            .cart-table, .cart-table tbody, .cart-table tr, .cart-table td {
+                display: block;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            .cart-table tr {
+                background: var(--surface-2);
+                border: 1px solid var(--border);
+                margin-bottom: 0.5rem;
+                padding: 0.65rem 0.75rem;
+                position: relative;
+            }
+            .cart-table td {
+                border: none;
+                padding: 0.15rem 0;
+                font-size: 0.85rem;
+            }
+            .cart-table .item-name-cell {
+                max-width: none;
+                padding-right: 2.5rem; /* space for remove btn */
+            }
+            .cart-table .item-name-cell strong {
+                font-size: 1rem;
+                display: block;
+                margin-bottom: 0.1rem;
+            }
+            .cart-table .item-name-cell small {
+                display: block;
+                font-size: 0.72rem;
+            }
+            .cart-table tr:hover td { background: transparent; }
+            /* Hide price-cell on mobile, show total inline */
+            .cart-table .price-cell {
+                display: inline;
+                font-family: 'EB Garamond', serif;
+                font-size: 1.1rem;
+                color: var(--gold);
+            }
+            /* First price cell (unit price) hidden on mobile */
+            .cart-table td:nth-child(3) { display: none; }
+            /* Show line total prominently */
+            .cart-table td:nth-child(4) {
+                display: inline;
+                font-family: 'EB Garamond', serif;
+                font-size: 1.1rem;
+                font-weight: 500;
+                color: var(--text);
+            }
+            /* Action buttons: position in top-right */
+            .cart-table td:last-child {
+                position: absolute;
+                top: 0.5rem;
+                right: 0.5rem;
+                display: flex;
+                gap: 0.25rem;
+                width: auto;
+            }
+            /* Qty row: inline with total */
+            .cart-table td:nth-child(2) {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                margin-top: 0.3rem;
+                padding: 0.25rem 0 0;
+                border-top: 1px solid var(--border);
+            }
+            .cart-table td:nth-child(2) .qty-control {
+                flex-shrink: 0;
+            }
+            /* Mobile line total label */
+            .cart-table td:nth-child(4)::before {
+                content: 'Total: ';
+                font-size: 0.72rem;
+                color: var(--text-light);
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+            }
+            /* Discount rows */
+            .cart-table tr[style*="background:transparent"] {
+                background: transparent;
+                border: none;
+                padding: 0 0 0 0.75rem;
+                margin-bottom: 0;
+            }
         }
 
         /* ── Tablet (768-1023) ───────────────────────────────────────── */
