@@ -71,6 +71,7 @@
             border-bottom: 1px solid var(--border);
         }
         .report-table tr:hover td { background: var(--gold-glow); }
+        .report-table tr.row-voided td { opacity: 0.45; text-decoration: line-through; }
 
         .empty-msg {
             color: var(--text-light);
@@ -84,6 +85,118 @@
             -webkit-overflow-scrolling: touch;
         }
 
+        /* Items Sold: search bar */
+        .items-sold-search {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .items-sold-search input {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+            font-family: 'Roboto', sans-serif;
+        }
+        .items-sold-search input::placeholder { color: var(--text-light); }
+
+        .btn-edit-vendor {
+            background: transparent;
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            padding: 0.25rem 0.6rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            white-space: nowrap;
+        }
+        .btn-edit-vendor:hover { background: var(--gold); color: var(--bg); }
+
+        /* Reassign modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.65);
+            z-index: 9000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal-box {
+            background: var(--surface);
+            border: 1px solid var(--gold);
+            padding: 1.5rem;
+            width: 90%;
+            max-width: 460px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-box h2 {
+            font-family: 'EB Garamond', serif;
+            font-style: italic;
+            color: var(--gold);
+            margin: 0 0 1rem 0;
+            font-size: 1.3rem;
+        }
+        .modal-box label {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.25rem;
+            margin-top: 0.75rem;
+        }
+        .modal-box .info-val {
+            color: var(--text);
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+        .modal-box select {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+            font-family: 'Roboto', sans-serif;
+        }
+        .modal-box .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.25rem;
+            justify-content: flex-end;
+        }
+        .modal-box .modal-actions .btn { min-width: 100px; }
+        .modal-error { color: #e74c3c; font-size: 0.85rem; margin-top: 0.5rem; }
+        .modal-success { color: #2ecc71; font-size: 0.85rem; margin-top: 0.5rem; }
+
+        /* Pagination */
+        .pagination-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.85rem;
+            color: var(--text-light);
+        }
+        .pagination-bar button {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.35rem 0.75rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.85rem;
+        }
+        .pagination-bar button:disabled { opacity: 0.35; cursor: default; }
+
         @media (max-width: 767px) {
             .main-content { padding-bottom: 70px; }
             .report-controls { flex-direction: column; align-items: stretch; }
@@ -92,6 +205,7 @@
             .report-controls button { width: 100%; min-height: 44px; }
             .summary-grid { grid-template-columns: 1fr 1fr; }
             .summary-card .val { font-size: 1.4rem; }
+            .items-sold-search { flex-direction: column; }
         }
     </style>
 </head>
@@ -139,10 +253,11 @@
 
     <div class="card" style="margin-bottom:1.5rem">
         <div class="report-controls">
-            <select id="reportType" onchange="loadReport()">
+            <select id="reportType" onchange="onReportTypeChange()">
                 <option value="daily_sales">Daily Sales Summary</option>
                 <option value="vendor_performance">Vendor Performance</option>
                 <option value="top_items">Top Selling Items</option>
+                <option value="items_sold">Items Sold</option>
                 <option value="hourly_sales">Hourly Sales Pattern</option>
                 <option value="payment_methods">Payment Methods</option>
                 <option value="vendor_balances">Vendor Balances</option>
@@ -160,6 +275,31 @@
     <div class="card">
         <div id="reportContent" style="padding:1rem">
             <p class="empty-msg">Select a report and click Generate</p>
+        </div>
+    </div>
+</div>
+
+<!-- Reassign Vendor Modal -->
+<div class="modal-overlay" id="reassignModal">
+    <div class="modal-box">
+        <h2>Reassign Vendor</h2>
+        <label>Item</label>
+        <div class="info-val" id="modalItemName">—</div>
+        <label>SKU</label>
+        <div class="info-val" id="modalItemSku">—</div>
+        <label>Line Total</label>
+        <div class="info-val" id="modalLineTotal">—</div>
+        <label>Current Vendor</label>
+        <div class="info-val" id="modalCurrentVendor">—</div>
+        <label for="modalVendorSelect">New Vendor</label>
+        <select id="modalVendorSelect">
+            <option value="">Loading vendors…</option>
+        </select>
+        <div id="modalError" class="modal-error" style="display:none"></div>
+        <div id="modalSuccess" class="modal-success" style="display:none"></div>
+        <div class="modal-actions">
+            <button class="btn btn-sm" onclick="closeReassignModal()">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="modalConfirmBtn" onclick="confirmReassign()">Reassign</button>
         </div>
     </div>
 </div>
@@ -193,6 +333,14 @@
     document.getElementById('reportDateTo').value = today.toISOString().split('T')[0];
 
     var currentReportData = [];
+    var currentSession = null;
+    var itemsSoldOffset = 0;
+    var itemsSoldLimit = 100;
+    var itemsSoldTotal = 0;
+    var itemsSoldSearchQ = '';
+
+    // Vendor cache for reassign modal
+    var vendorListCache = [];
 
     function localDateInputValue(d) {
         var year = d.getFullYear();
@@ -237,6 +385,13 @@
         if (to) document.getElementById('reportDateTo').value = resolveDateParam(to);
     }
 
+    function onReportTypeChange() {
+        // Reset search when switching away from items_sold
+        itemsSoldSearchQ = '';
+        itemsSoldOffset = 0;
+        loadReport();
+    }
+
     async function loadReport() {
         var type = document.getElementById('reportType').value;
         var from = document.getElementById('reportDateFrom').value;
@@ -248,14 +403,106 @@
         summary.innerHTML = '';
 
         try {
-            var data = await apiGet('/api/v1/admin/reports/' + type + '?from_date=' + from + '&to_date=' + to);
-            currentReportData = data.rows || [];
-            renderSummary(type, data);
-            renderTable(type, data);
+            var data;
+            if (type === 'items_sold') {
+                var url = '/api/v1/admin/reports/items-sold?from_date=' + from + '&to_date=' + to
+                    + '&limit=' + itemsSoldLimit + '&offset=' + itemsSoldOffset;
+                if (itemsSoldSearchQ) url += '&q=' + encodeURIComponent(itemsSoldSearchQ);
+                data = await apiGet(url);
+                currentReportData = data.rows || [];
+                itemsSoldTotal = data.total || 0;
+                renderItemsSold(data);
+            } else {
+                data = await apiGet('/api/v1/admin/reports/' + type + '?from_date=' + from + '&to_date=' + to);
+                currentReportData = data.rows || [];
+                renderSummary(type, data);
+                renderTable(type, data);
+            }
         } catch (e) {
             content.innerHTML = '<p style="color:var(--danger);text-align:center;padding:2rem">' + (e.message || 'Failed to load report') + '</p>';
             summary.innerHTML = '';
         }
+    }
+
+    function renderItemsSold(data) {
+        var el = document.getElementById('reportContent');
+        var rows = data.rows || [];
+
+        var isStaff = currentSession && (currentSession.role === 'admin' || currentSession.role === 'cashier');
+
+        var html = '';
+
+        // Search bar
+        html += '<div class="items-sold-search">';
+        html += '<input type="text" id="itemsSoldSearch" placeholder="Search by item name, barcode, or SKU…" value="' + escHtml(itemsSoldSearchQ) + '" onkeydown="if(event.key===\'Enter\'){itemsSoldSearchQ=this.value;itemsSoldOffset=0;loadReport();}">';
+        html += '<button class="btn btn-primary btn-sm" onclick="itemsSoldSearchQ=document.getElementById(\'itemsSoldSearch\').value;itemsSoldOffset=0;loadReport();">Search</button>';
+        html += '</div>';
+
+        if (!rows.length) {
+            html += '<p class="empty-msg">No sold items found</p>';
+            el.innerHTML = html;
+            return;
+        }
+
+        html += '<div class="report-table-wrap"><table class="report-table"><thead><tr>';
+        html += '<th>Sale</th><th>Item</th><th>SKU</th><th>Barcode</th><th>Vendor</th><th>Booth</th><th>Qty</th><th>Price</th><th>Total</th><th>Payment</th><th>Date</th>';
+        if (isStaff) html += '<th></th>';
+        html += '</tr></thead><tbody>';
+
+        rows.forEach(function(row) {
+            var rowClass = row.is_voided ? ' class="row-voided"' : '';
+            html += '<tr' + rowClass + '>';
+            html += '<td>#' + row.sale_id + '</td>';
+            html += '<td>' + escHtml(row.item_name) + '</td>';
+            html += '<td>' + escHtml(row.sku) + '</td>';
+            html += '<td style="font-family:monospace;font-size:0.8rem">' + escHtml(row.barcode) + '</td>';
+            html += '<td>' + escHtml(row.vendor_name) + '</td>';
+            html += '<td>' + escHtml(row.vendor_booth) + '</td>';
+            html += '<td>' + row.quantity + '</td>';
+            html += '<td>$' + row.unit_price.toFixed(2) + '</td>';
+            html += '<td>$' + row.line_total.toFixed(2) + '</td>';
+            html += '<td>' + escHtml(row.payment_method) + '</td>';
+            html += '<td>' + formatDate(row.sale_date) + '</td>';
+            if (isStaff) {
+                if (row.is_voided) {
+                    html += '<td><span style="font-size:0.75rem;color:var(--text-light)">Voided</span></td>';
+                } else {
+                    html += '<td><button class="btn-edit-vendor" onclick="openReassignModal(' + row.sale_item_id + ', ' + JSON.stringify(JSON.stringify(row)) + ')">Edit Vendor</button></td>';
+                }
+            }
+            html += '</tr>';
+        });
+
+        html += '</tbody></table></div>';
+
+        // Pagination
+        var totalPages = Math.ceil(itemsSoldTotal / itemsSoldLimit);
+        var currentPage = Math.floor(itemsSoldOffset / itemsSoldLimit) + 1;
+        if (totalPages > 1) {
+            html += '<div class="pagination-bar">';
+            html += '<button onclick="itemsSoldOffset=0;loadReport();"' + (currentPage === 1 ? ' disabled' : '') + '>First</button>';
+            html += '<button onclick="itemsSoldOffset=Math.max(0,itemsSoldOffset-itemsSoldLimit);loadReport();"' + (currentPage === 1 ? ' disabled' : '') + '>Prev</button>';
+            html += '<span>Page ' + currentPage + ' of ' + totalPages + ' (' + itemsSoldTotal + ' items)</span>';
+            html += '<button onclick="itemsSoldOffset+=itemsSoldLimit;loadReport();"' + (currentPage === totalPages ? ' disabled' : '') + '>Next</button>';
+            html += '<button onclick="itemsSoldOffset=(totalPages-1)*itemsSoldLimit;loadReport();"' + (currentPage === totalPages ? ' disabled' : '') + '>Last</button>';
+            html += '</div>';
+        }
+
+        el.innerHTML = html;
+    }
+
+    function escHtml(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function formatDate(iso) {
+        if (!iso) return '—';
+        try {
+            var d = new Date(iso);
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                + ' ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+        } catch (e) { return iso; }
     }
 
     function fmtMoney(v) { return '$' + (v || 0).toFixed(2); }
@@ -358,6 +605,102 @@
         a.click();
     }
 
+    // -------------------------------------------------------------------------
+    // Vendor Reassign Modal
+    // -------------------------------------------------------------------------
+
+    var reassignTarget = null; // the sale_item row being edited
+
+    async function loadVendorList() {
+        if (vendorListCache.length) return vendorListCache;
+        try {
+            var vendors = await apiGet('/api/v1/vendors/?limit=500');
+            vendorListCache = vendors || [];
+        } catch (e) {
+            vendorListCache = [];
+        }
+        return vendorListCache;
+    }
+
+    async function openReassignModal(saleItemId, rowJson) {
+        var row = JSON.parse(rowJson);
+        reassignTarget = row;
+
+        document.getElementById('modalItemName').textContent = row.item_name;
+        document.getElementById('modalItemSku').textContent = row.sku || '—';
+        document.getElementById('modalLineTotal').textContent = '$' + row.line_total.toFixed(2);
+        document.getElementById('modalCurrentVendor').textContent = row.vendor_name + (row.vendor_booth ? ' (Booth ' + row.vendor_booth + ')' : '');
+        document.getElementById('modalError').style.display = 'none';
+        document.getElementById('modalSuccess').style.display = 'none';
+        document.getElementById('modalConfirmBtn').disabled = false;
+
+        // Populate vendor dropdown
+        var select = document.getElementById('modalVendorSelect');
+        select.innerHTML = '<option value="">Loading vendors…</option>';
+
+        var vendors = await loadVendorList();
+        select.innerHTML = '<option value="">— Select new vendor —</option>';
+        vendors.forEach(function(v) {
+            if (v.id === row.vendor_id) return; // skip current vendor
+            var opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = v.name + (v.booth_number ? ' (Booth ' + v.booth_number + ')' : '');
+            select.appendChild(opt);
+        });
+
+        document.getElementById('reassignModal').classList.add('open');
+    }
+
+    function closeReassignModal() {
+        document.getElementById('reassignModal').classList.remove('open');
+        reassignTarget = null;
+    }
+
+    async function confirmReassign() {
+        if (!reassignTarget) return;
+        var newVendorId = parseInt(document.getElementById('modalVendorSelect').value, 10);
+        if (!newVendorId) {
+            document.getElementById('modalError').textContent = 'Please select a vendor.';
+            document.getElementById('modalError').style.display = 'block';
+            return;
+        }
+
+        var btn = document.getElementById('modalConfirmBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+        document.getElementById('modalError').style.display = 'none';
+
+        try {
+            var result = await apiPut(
+                '/api/v1/admin/reports/items-sold/' + reassignTarget.sale_item_id + '/reassign-vendor',
+                { new_vendor_id: newVendorId }
+            );
+            document.getElementById('modalSuccess').textContent = result.message || 'Vendor reassigned successfully.';
+            document.getElementById('modalSuccess').style.display = 'block';
+            setTimeout(function() {
+                closeReassignModal();
+                loadReport(); // refresh the table
+            }, 1200);
+        } catch (e) {
+            document.getElementById('modalError').textContent = e.message || 'Failed to reassign vendor.';
+            document.getElementById('modalError').style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = 'Reassign';
+        }
+    }
+
+    // Close modal on overlay click
+    document.getElementById('reassignModal').addEventListener('click', function(e) {
+        if (e.target === this) closeReassignModal();
+    });
+
+    // Close modal on Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('reassignModal').classList.contains('open')) {
+            closeReassignModal();
+        }
+    });
+
     async function init() {
         var session = await window.bmmAuth.requirePageAccess({
             access: 'canViewReports',
@@ -366,6 +709,7 @@
             message: 'Sales reports are not enabled for your current role.'
         });
         if (!session) return;
+        currentSession = session;
         applyQueryPreset();
         loadReport();
     }

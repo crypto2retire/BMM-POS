@@ -1,15 +1,17 @@
 import logging
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, extract, cast, Date
+from sqlalchemy import select, func, extract, cast, Date, or_, ilike_op
 from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models.sale import Sale, SaleItem
-from app.models.vendor import Vendor
+from app.models.vendor import Vendor, VendorBalance, BalanceAdjustment
 from app.models.rent import RentPayment
 from app.models.payout import Payout
 from app.models.reservation import Reservation
@@ -810,3 +812,249 @@ async def mark_reservation_pickup(
     await db.commit()
 
     return {"message": "Reservation marked as picked up"}
+
+
+# ---------------------------------------------------------------------------
+# Items Sold — searchable line-item view with vendor reassignment
+# ---------------------------------------------------------------------------
+
+
+@router.get("/items-sold")
+async def report_items_sold(
+    q: Optional[str] = Query(None, description="Search item name, barcode, or SKU"),
+    sale_id: Optional[int] = Query(None),
+    vendor_id: Optional[int] = Query(None),
+    from_date: Optional[str] = Query(None, alias="from_date"),
+    to_date: Optional[str] = Query(None, alias="to_date"),
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
+):
+    query = (
+        select(
+            SaleItem.id.label("sale_item_id"),
+            Sale.id.label("sale_id"),
+            SaleItem.item_id.label("item_id"),
+            Item.name.label("item_name"),
+            Item.sku.label("sku"),
+            Item.barcode.label("barcode"),
+            SaleItem.vendor_id.label("vendor_id"),
+            Vendor.name.label("vendor_name"),
+            Vendor.booth_number.label("vendor_booth"),
+            SaleItem.quantity.label("quantity"),
+            SaleItem.unit_price.label("unit_price"),
+            SaleItem.line_total.label("line_total"),
+            Sale.payment_method.label("payment_method"),
+            Sale.is_voided.label("is_voided"),
+            Sale.created_at.label("sale_date"),
+        )
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .join(Item, Item.id == SaleItem.item_id)
+        .join(Vendor, Vendor.id == SaleItem.vendor_id)
+        .order_by(Sale.created_at.desc())
+    )
+
+    # Broad search: item name, barcode, or SKU
+    if q and q.strip():
+        term = f"%{q.strip()}%"
+        query = query.where(
+            or_(
+                Item.name.ilike(term),
+                Item.barcode.ilike(term),
+                Item.sku.ilike(term),
+            )
+        )
+
+    if sale_id is not None:
+        query = query.where(Sale.id == sale_id)
+
+    if vendor_id is not None:
+        query = query.where(SaleItem.vendor_id == vendor_id)
+
+    # Date range
+    if from_date or to_date:
+        start_dt, end_dt = _parse_dates(from_date, to_date)
+        query = query.where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+
+    # Get total count for pagination
+    count_query = select(func.count()).select_from(query.subquery())
+    count_result = await db.execute(count_query)
+    total_count = count_result.scalar() or 0
+
+    query = query.offset(offset).limit(limit)
+    result = await db.execute(query)
+    rows = result.all()
+
+    items = []
+    for r in rows:
+        items.append({
+            "sale_item_id": r.sale_item_id,
+            "sale_id": r.sale_id,
+            "item_id": r.item_id,
+            "item_name": r.item_name or "Unknown",
+            "sku": r.sku or "",
+            "barcode": r.barcode or "",
+            "vendor_id": r.vendor_id,
+            "vendor_name": r.vendor_name or "",
+            "vendor_booth": r.vendor_booth or "",
+            "quantity": int(r.quantity),
+            "unit_price": float(r.unit_price),
+            "line_total": float(r.line_total),
+            "payment_method": r.payment_method or "",
+            "is_voided": r.is_voided,
+            "sale_date": _to_local(r.sale_date).isoformat() if r.sale_date else None,
+        })
+
+    return {
+        "total": total_count,
+        "offset": offset,
+        "limit": limit,
+        "rows": items,
+    }
+
+
+class ReassignVendorRequest(BaseModel):
+    new_vendor_id: int
+
+
+@router.put("/items-sold/{sale_item_id}/reassign-vendor")
+async def reassign_sale_item_vendor(
+    sale_item_id: int,
+    data: ReassignVendorRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_vendors")),
+):
+    """Move sale credit for a line item from one vendor to another.
+
+    Updates: SaleItem.vendor_id, Item.vendor_id, and both VendorBalances.
+    Creates BalanceAdjustment audit records for both vendors.
+    """
+    # 1. Load the sale item with related sale and item
+    result = await db.execute(
+        select(SaleItem)
+        .options(
+            selectinload(SaleItem.sale),
+            selectinload(SaleItem.item),
+        )
+        .where(SaleItem.id == sale_item_id)
+    )
+    sale_item = result.scalar_one_or_none()
+    if not sale_item:
+        raise HTTPException(status_code=404, detail="Sale item not found")
+
+    sale = sale_item.sale
+    if sale.is_voided:
+        raise HTTPException(status_code=400, detail="Cannot reassign a voided sale item")
+
+    old_vendor_id = sale_item.vendor_id
+    new_vendor_id = data.new_vendor_id
+
+    if old_vendor_id == new_vendor_id:
+        raise HTTPException(status_code=400, detail="Item is already assigned to this vendor")
+
+    # 2. Validate new vendor exists and is active
+    new_vendor_result = await db.execute(
+        select(Vendor).where(Vendor.id == new_vendor_id)
+    )
+    new_vendor = new_vendor_result.scalar_one_or_none()
+    if not new_vendor:
+        raise HTTPException(status_code=404, detail="New vendor not found")
+    if not new_vendor.is_active:
+        raise HTTPException(status_code=400, detail="New vendor is not active")
+
+    # 3. Get old vendor info
+    old_vendor_result = await db.execute(
+        select(Vendor).where(Vendor.id == old_vendor_id)
+    )
+    old_vendor = old_vendor_result.scalar_one_or_none()
+    old_vendor_name = old_vendor.name if old_vendor else f"Vendor #{old_vendor_id}"
+
+    line_total = Decimal(str(sale_item.line_total))
+    item_name = sale_item.item.name if sale_item.item else f"Item #{sale_item.item_id}"
+
+    # 4. Debit old vendor balance
+    old_bal_result = await db.execute(
+        select(VendorBalance).where(VendorBalance.vendor_id == old_vendor_id)
+    )
+    old_balance_row = old_bal_result.scalar_one_or_none()
+    if not old_balance_row:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No balance record found for old vendor ({old_vendor_name}). "
+                   "This may indicate data corruption — contact support.",
+        )
+
+    old_balance_before = Decimal(str(old_balance_row.balance))
+    old_balance_after = (old_balance_before - line_total).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    old_balance_row.balance = old_balance_after
+
+    # 5. Credit new vendor balance
+    new_bal_result = await db.execute(
+        select(VendorBalance).where(VendorBalance.vendor_id == new_vendor_id)
+    )
+    new_balance_row = new_bal_result.scalar_one_or_none()
+    if new_balance_row:
+        new_balance_before = Decimal(str(new_balance_row.balance))
+        new_balance_after = (new_balance_before + line_total).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        new_balance_row.balance = new_balance_after
+    else:
+        new_balance_before = Decimal("0.00")
+        new_balance_after = line_total
+        db.add(VendorBalance(vendor_id=new_vendor_id, balance=new_balance_after))
+
+    # 6. Update SaleItem vendor
+    sale_item.vendor_id = new_vendor_id
+
+    # 7. Update Item vendor (inventory ownership)
+    if sale_item.item:
+        sale_item.item.vendor_id = new_vendor_id
+
+    # 8. Audit trail — debit from old vendor
+    reason_out = (
+        f"Reassigned sale item #{sale_item_id} ({item_name}) "
+        f"from {old_vendor_name} to {new_vendor.name}"
+    )
+    db.add(BalanceAdjustment(
+        vendor_id=old_vendor_id,
+        adjusted_by=current_user.id,
+        amount=-line_total,
+        adjustment_type="reassign",
+        reason=reason_out,
+        balance_before=old_balance_before,
+        balance_after=old_balance_after,
+    ))
+
+    # 9. Audit trail — credit to new vendor
+    db.add(BalanceAdjustment(
+        vendor_id=new_vendor_id,
+        adjusted_by=current_user.id,
+        amount=line_total,
+        adjustment_type="reassign",
+        reason=reason_out,
+        balance_before=new_balance_before,
+        balance_after=new_balance_after,
+    ))
+
+    await db.commit()
+
+    logger.info(
+        "Vendor reassignment: sale_item=%d item=%d '%s' "
+        "old_vendor=%d→%d line_total=%s by user=%d (%s)",
+        sale_item_id, sale_item.item_id, item_name,
+        old_vendor_id, new_vendor_id, str(line_total),
+        current_user.id, current_user.name,
+    )
+
+    return {
+        "message": f"Reassigned '{item_name}' from {old_vendor_name} to {new_vendor.name}",
+        "sale_item_id": sale_item_id,
+        "item_id": sale_item.item_id,
+        "old_vendor_id": old_vendor_id,
+        "new_vendor_id": new_vendor_id,
+        "line_total": float(line_total),
+        "old_vendor_balance_before": float(old_balance_before),
+        "old_vendor_balance_after": float(old_balance_after),
+        "new_vendor_balance_before": float(new_balance_before),
+        "new_vendor_balance_after": float(new_balance_after),
+    }
