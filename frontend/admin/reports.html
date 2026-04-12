@@ -449,9 +449,9 @@
         if (isStaff) html += '<th></th>';
         html += '</tr></thead><tbody>';
 
-        rows.forEach(function(row) {
+        rows.forEach(function(row, idx) {
             var rowClass = row.is_voided ? ' class="row-voided"' : '';
-            html += '<tr' + rowClass + '>';
+            html += '<tr' + rowClass + ' data-ridx="' + idx + '">';
             html += '<td>#' + row.sale_id + '</td>';
             html += '<td>' + escHtml(row.item_name) + '</td>';
             html += '<td>' + escHtml(row.sku) + '</td>';
@@ -467,7 +467,7 @@
                 if (row.is_voided) {
                     html += '<td><span style="font-size:0.75rem;color:var(--text-light)">Voided</span></td>';
                 } else {
-                    html += '<td><button class="btn-edit-vendor" onclick="openReassignModal(' + row.sale_item_id + ', ' + JSON.stringify(JSON.stringify(row)) + ')">Edit Vendor</button></td>';
+                    html += '<td><button class="btn-edit-vendor" data-sale-item-id="' + row.sale_item_id + '" data-ridx="' + idx + '">Edit Vendor</button></td>';
                 }
             }
             html += '</tr>';
@@ -622,8 +622,7 @@
         return vendorListCache;
     }
 
-    async function openReassignModal(saleItemId, rowJson) {
-        var row = JSON.parse(rowJson);
+    async function openReassignModal(saleItemId, row) {
         reassignTarget = row;
 
         document.getElementById('modalItemName').textContent = row.item_name;
@@ -692,6 +691,18 @@
     // Close modal on overlay click
     document.getElementById('reassignModal').addEventListener('click', function(e) {
         if (e.target === this) closeReassignModal();
+    });
+
+    // Delegated click handler for Edit Vendor buttons
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.btn-edit-vendor');
+        if (!btn) return;
+        var saleItemId = parseInt(btn.getAttribute('data-sale-item-id'), 10);
+        var ridx = parseInt(btn.getAttribute('data-ridx'), 10);
+        var row = currentReportData[ridx];
+        if (saleItemId && row) {
+            openReassignModal(saleItemId, row);
+        }
     });
 
     // Close modal on Escape
