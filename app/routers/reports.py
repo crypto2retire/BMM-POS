@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, extract, cast, Date, or_, ilike_op
+from sqlalchemy import select, func, extract, cast, Date, or_
 from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models.sale import Sale, SaleItem
