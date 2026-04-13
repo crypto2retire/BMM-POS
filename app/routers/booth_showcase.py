@@ -837,7 +837,7 @@ async def get_landing_page(
         select(BoothShowcase).where(
             BoothShowcase.landing_slug == slug,
             BoothShowcase.landing_page_enabled == True,
-            BoothShowcase.is_published == True,
+        )
         )
     )
     sc = result.scalar_one_or_none()
