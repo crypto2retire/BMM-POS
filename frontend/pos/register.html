@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Cash Register — BMM-POS</title>
     <link rel="stylesheet" href="/static/css/main.css">
     <style>
@@ -506,8 +506,9 @@
             .reg-layout {
                 flex-direction: column;
                 height: auto;
-                min-height: calc(100vh - 56px);
+                min-height: calc(100dvh - 56px);
                 overflow: auto;
+                padding-bottom: env(safe-area-inset-bottom);
             }
             .reg-left {
                 flex: none;
@@ -517,14 +518,16 @@
             .reg-right {
                 flex: none;
                 overflow: visible;
+                padding-bottom: env(safe-area-inset-bottom);
             }
             .results-area {
-                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
             }
-            .pay-btn { min-height: 44px; font-size: 0.9rem; padding: 0.65rem; }
-            .cash-input-row input { min-height: 44px; font-size: 1rem; padding: 0.6rem; }
-            .btn-charge { min-height: 52px; font-size: 0.95rem; }
+            .pay-btn { min-height: 48px; font-size: 0.9rem; padding: 0.65rem; }
+            .cash-input-row input { min-height: 48px; font-size: 16px; padding: 0.6rem; }
+            .btn-charge { min-height: 56px; font-size: 0.95rem; }
             .receipt-card { width: calc(100% - 2rem); max-width: 420px; }
+            .search-bar-wrap input { font-size: 16px; }
         }
 
         @media (max-width: 1023px) and (min-width: 768px) {

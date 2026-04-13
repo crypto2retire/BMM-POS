@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>POS Terminal — BMM-POS</title>
     <meta name="description" content="Point of sale register for Bowenstreet Market — ring up sales, scan barcodes, process payments.">
     <meta property="og:title" content="POS Terminal — Bowenstreet Market">
@@ -66,12 +66,13 @@
                 position: fixed;
                 bottom: 0; left: 0; right: 0;
                 padding: 0.5rem 0.75rem;
+                padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
                 background: var(--bg);
                 border-top: 1px solid color-mix(in srgb, var(--gold) 15%, transparent);
                 gap: 0.5rem;
                 z-index: 50;
             }
-            .cart-area { padding-bottom: 80px; }
+            .cart-area { padding-bottom: 90px; }
 
             /* Mobile cart: convert table to stacked cards */
             .cart-table thead { display: none; }
@@ -664,7 +665,7 @@
         /* Toast notifications */
         .toast-container {
             position: fixed;
-            bottom: 1.5rem;
+            bottom: 5.5rem;
             left: 50%;
             transform: translateX(-50%);
             z-index: 2000;
@@ -768,7 +769,7 @@
             transition: background 0.15s;
         }
         .camera-scan-btn:hover { background: var(--surface-2); }
-        @media (max-width: 1023px) { .camera-scan-btn { display: flex; } }
+        @media (max-width: 767px) { .camera-scan-btn { display: flex; } }
 
         /* Scanner overlay */
         #scanner-overlay {
@@ -1120,6 +1121,8 @@
                 min="0"
                 step="0.01"
                 placeholder="0.00"
+                inputmode="decimal"
+                style="font-size:16px"
                 oninput="updateChange()"
             >
         </div>
@@ -1369,19 +1372,21 @@
 
 <!-- Mobile fixed payment bar (hidden on desktop via CSS) -->
 <div class="mobile-pay-bar" id="mobile-pay-bar" style="display:none">
-    <div style="flex:1;display:flex;flex-direction:column;justify-content:center">
-        <div style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em">Total</div>
-        <div style="font-size:1.25rem;font-weight:800;color:var(--surface-2)" id="mobile-total">$0.00</div>
+    <div style="flex:1;display:flex;flex-direction:column;justify-content:center;min-width:0">
+        <div style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.05em">Total</div>
+        <div style="font-size:1.25rem;font-weight:800;color:var(--text)" id="mobile-total">$0.00</div>
     </div>
-    <button class="pay-btn cash" id="mobile-cash-btn" onclick="openCashModal()" disabled style="flex:1;padding:0.75rem;min-height:48px;font-size:0.9rem">
-        💵 Cash
-    </button>
-    <button class="pay-btn card" id="mobile-card-btn" onclick="startCardPayment()" disabled style="flex:1;padding:0.75rem;min-height:48px;font-size:0.9rem">
-        💳 Card
-    </button>
-    <button class="pay-btn card" id="mobile-crypto-btn" onclick="startCryptoPayment()" disabled style="display:none;flex:1;padding:0.75rem;min-height:48px;font-size:0.9rem;background:color-mix(in srgb, var(--gold) 58%, var(--bg));border-color:color-mix(in srgb, var(--gold) 58%, var(--bg))">
-        ₿ Crypto
-    </button>
+    <div style="display:flex;gap:0.35rem;flex-shrink:0">
+        <button class="pay-btn card" id="mobile-gc-btn" onclick="openGcPayModal()" disabled style="padding:0.6rem 0.65rem;min-height:48px;font-size:0.85rem;background:var(--pos-payment-gift);border-color:var(--pos-payment-gift);flex:none">
+            🎁
+        </button>
+        <button class="pay-btn cash" id="mobile-cash-btn" onclick="openCashModal()" disabled style="padding:0.6rem 1rem;min-height:48px;font-size:0.9rem;flex:none">
+            💵 Cash
+        </button>
+        <button class="pay-btn card" id="mobile-card-btn" onclick="startCardPayment()" disabled style="padding:0.6rem 1rem;min-height:48px;font-size:0.9rem;flex:none">
+            💳 Card
+        </button>
+    </div>
 </div>
 
 <!-- Gift Card Payment Modal -->
@@ -2420,7 +2425,7 @@
 
         const mobileCashBtn = document.getElementById('mobile-cash-btn');
         const mobileCardBtn = document.getElementById('mobile-card-btn');
-        const mobileCryptoBtn = document.getElementById('mobile-crypto-btn');
+        const mobileGcBtn = document.getElementById('mobile-gc-btn');
         const mobileTotal = document.getElementById('mobile-total');
 
         if (cart.length === 0) {
@@ -2431,7 +2436,7 @@
             if (cryptoBtn) cryptoBtn.disabled = true;
             if (mobileCashBtn) mobileCashBtn.disabled = true;
             if (mobileCardBtn) mobileCardBtn.disabled = true;
-            if (mobileCryptoBtn) mobileCryptoBtn.disabled = true;
+            if (mobileGcBtn) mobileGcBtn.disabled = true;
             document.getElementById('gc-pay-btn').disabled = true;
             document.getElementById('split-pay-btn').disabled = true;
         } else {
@@ -2442,7 +2447,7 @@
             if (cryptoBtn) cryptoBtn.disabled = !runtimeAllows('crypto_blackbox');
             if (mobileCashBtn) mobileCashBtn.disabled = !runtimeAllows('cash');
             if (mobileCardBtn) mobileCardBtn.disabled = !runtimeAllows('card');
-            if (mobileCryptoBtn) mobileCryptoBtn.disabled = !runtimeAllows('crypto_blackbox');
+            if (mobileGcBtn) mobileGcBtn.disabled = !runtimeAllows('gift_card');
             document.getElementById('gc-pay-btn').disabled = !runtimeAllows('gift_card');
             document.getElementById('split-pay-btn').disabled = !runtimeAllows('split');
 
