@@ -270,11 +270,28 @@
 
         @media (max-width: 767px) {
             .main-content { padding-bottom: 70px; }
-            .settings-tab { font-size: 0.65rem; padding: 0.55rem 0.75rem; }
+            .settings-tabs {
+                scrollbar-width: none;
+            }
+            .settings-tabs::-webkit-scrollbar { display: none; }
+            .settings-tab {
+                font-size: 0.68rem;
+                padding: 0.65rem 0.85rem;
+                min-height: 44px;
+                display: inline-flex;
+                align-items: center;
+                flex-shrink: 0;
+            }
             .role-grid { grid-template-columns: 1fr repeat(3, 50px); font-size: 0.75rem; }
             .role-grid-header { font-size: 0.62rem; }
             .setting-row { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
             .setting-row .toggle-switch { align-self: flex-end; }
+            .settings-section-body { padding: 1rem; }
+            .form-group label, .form-group .form-label { font-size: 0.72rem; }
+            .form-group input, .form-group select, .form-group textarea {
+                font-size: 16px;
+                min-height: 44px;
+            }
         }
         @media (max-width: 380px) {
             .role-grid { grid-template-columns: 1fr repeat(3, 42px); font-size: 0.7rem; }

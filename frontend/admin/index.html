@@ -717,14 +717,23 @@
             .vendor-action-more { display: inline-flex; align-items: center; justify-content: center; width: 100%; }
             .vendor-workspace {
                 grid-template-columns: 1fr;
+                min-height: 0;
             }
             .vendor-browser {
                 border-right: 0;
                 border-bottom: 1px solid var(--border);
-                min-height: 340px;
+                min-height: 44px;
+                max-height: 45vh;
+                overflow-y: auto;
+            }
+            .vendor-inspector-placeholder {
+                min-height: 200px;
             }
             .vendor-inspector-head {
                 flex-direction: column;
+            }
+            .vendor-inspector-name {
+                font-size: 1.5rem;
             }
             .vendor-inspector-actions {
                 width: 100%;
@@ -734,13 +743,35 @@
             .vendor-inspector-actions a {
                 flex: 1 1 calc(50% - 0.55rem);
                 text-align: center;
+                min-height: 44px;
             }
             .vendor-inspector-grid {
                 grid-template-columns: 1fr 1fr;
+                gap: 0.5rem;
             }
+            .vendor-stat {
+                padding: 0.65rem 0.75rem;
+            }
+            .vendor-stat-value { font-size: 1.3rem; }
             .vendor-inspector-sections,
             .vendor-info-grid {
                 grid-template-columns: 1fr;
+            }
+            .vendor-inspector-body {
+                padding: 1rem;
+            }
+            .vendor-panel {
+                padding: 0.85rem;
+            }
+            /* Vendor card chevron touch target */
+            .vendor-card-chevron {
+                font-size: 1.2rem;
+                min-width: 32px;
+                min-height: 44px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--text-light);
             }
             .vendor-history-controls {
                 flex-direction: column;
