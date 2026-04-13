@@ -656,8 +656,10 @@
   async function loadLandingPage() {
     try {
       var res = await fetch(API_LANDING + encodeURIComponent(vendorSlug));
+      if (res.status === 404) { show404(); return; }
       if (!res.ok) { show404(); return; }
       vendorData = await res.json();
+      if (!vendorData || !vendorData.vendor_name) { show404(); return; }
     } catch (_) {
       show404();
       return;
