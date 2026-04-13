@@ -318,7 +318,6 @@
         var balanceTone = selectionTone(balance);
         var actions = '';
         if (isVendorHubAdmin()) {
-            actions += '<button type="button" class="btn btn-sm btn-primary" onclick="window.openEditModalHub(' + v.id + ')">Edit Vendor</button>';
             actions += '<button type="button" class="btn btn-sm" style="background:var(--gold);color:var(--charcoal-deep)" onclick="window.openAdjustFromHub(' + v.id + ')">Adjust Balance</button>';
             actions += '<button type="button" class="btn btn-sm" style="background:color-mix(in srgb,var(--success-light) 20%,transparent);color:var(--success-light);border:1px solid color-mix(in srgb,var(--success-light) 35%,transparent)" onclick="window.openRentModalHub(' + v.id + ')">Record Rent</button>';
             actions += '<button type="button" class="btn btn-sm" onclick="window.toggleFlagHub(' + v.id + ', this)">' + (v.rent_flagged ? 'Unflag Rent' : 'Flag Rent') + '</button>';
