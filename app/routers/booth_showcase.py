@@ -190,6 +190,9 @@ def _to_response(sc: BoothShowcase, item_count: int = 0) -> dict:
         "landing_etsy": sc.landing_etsy,
         "landing_meta_title": sc.landing_meta_title,
         "landing_meta_desc": sc.landing_meta_desc,
+        "landing_faq": sc.landing_faq,
+        "show_facebook_feed": sc.show_facebook_feed,
+        "show_instagram_feed": sc.show_instagram_feed,
     }
 
 
