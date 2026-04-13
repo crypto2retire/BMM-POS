@@ -479,6 +479,30 @@
                         <textarea class="form-control" id="e-notes" placeholder="Internal notes about this vendor&hellip;"></textarea>
                     </div>
                 </div>
+                <!-- Landing Page Section -->
+                <div class="form-row" style="margin-top:0.5rem;padding-top:0.75rem;border-top:1px solid var(--border)">
+                    <div class="form-group form-full">
+                        <label class="form-label" style="display:flex;align-items:center;gap:0.5rem">
+                            Vendor Landing Page
+                            <span id="landing-status-badge" style="font-size:0.7rem;padding:2px 8px;border-radius:10px;background:var(--border);color:var(--text-dim)">—</span>
+                        </label>
+                        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+                            <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.85rem">
+                                <input type="checkbox" id="e-landing-enabled" onchange="toggleLandingPage()" style="accent-color:var(--gold)">
+                                Enable Landing Page (+$10/mo rent)
+                            </label>
+                            <div id="landing-slug-row" style="display:none;align-items:center;gap:0.4rem">
+                                <span style="font-size:0.8rem;color:var(--text-dim)">URL:</span>
+                                <input type="text" id="e-landing-slug" placeholder="vendor-name" style="width:160px;padding:0.3rem 0.5rem;font-size:0.8rem;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:4px">
+                                <button class="btn btn-secondary" style="padding:0.3rem 0.6rem;font-size:0.75rem" onclick="saveLandingSlug()">Save URL</button>
+                                <a id="landing-preview-link" href="#" target="_blank" style="font-size:0.75rem;color:var(--gold);text-decoration:none;display:none">Preview ↗</a>
+                            </div>
+                        </div>
+                        <div id="landing-fee-note" style="display:none;font-size:0.75rem;color:var(--text-dim);margin-top:0.35rem">
+                            $10.00/mo added to vendor rent. Effective rent: <span id="landing-effective-rent">—</span>
+                        </div>
+                    </div>
+                </div>
                 <div class="edit-actions">
                     <button class="btn btn-primary" id="save-edit-btn" onclick="saveEdit()">Save Changes</button>
                     <button class="btn btn-secondary" onclick="showGrid()">Cancel</button>
@@ -986,6 +1010,35 @@
         const applyBtn = document.getElementById('apply-rent-btn');
         applyBtn.disabled = !(depBal > 0 && parseFloat(v.monthly_rent || 0) > 0);
 
+        // Landing page state
+        var lpEnabled = v.landing_page_enabled || false;
+        document.getElementById('e-landing-enabled').checked = lpEnabled;
+        document.getElementById('e-landing-slug').value = v.landing_slug || '';
+        var slugRow = document.getElementById('landing-slug-row');
+        var feeNote = document.getElementById('landing-fee-note');
+        var previewLink = document.getElementById('landing-preview-link');
+        var badge = document.getElementById('landing-status-badge');
+        if (lpEnabled) {
+            slugRow.style.display = 'flex';
+            feeNote.style.display = 'block';
+            badge.textContent = 'ACTIVE';
+            badge.style.background = 'rgba(76,175,80,0.18)';
+            badge.style.color = '#66bb6a';
+            var slug = v.landing_slug || '';
+            if (slug) {
+                previewLink.style.display = 'inline';
+                previewLink.href = '/v/' + slug;
+            }
+        } else {
+            slugRow.style.display = 'none';
+            feeNote.style.display = 'none';
+            badge.textContent = 'OFF';
+            badge.style.background = 'var(--border)';
+            badge.style.color = 'var(--text-dim)';
+            previewLink.style.display = 'none';
+        }
+        updateEffectiveRentDisplay();
+
         // Load deposit history
         loadDepositHistory(v.id);
 
@@ -1021,6 +1074,71 @@
         document.getElementById('view-detail').classList.remove('active');
         document.getElementById('view-grid').classList.remove('hidden');
         editingVendor = null;
+    }
+
+    function updateEffectiveRentDisplay() {
+        if (!editingVendor) return;
+        var baseRent = parseFloat(editingVendor.monthly_rent || 0);
+        var lpEnabled = document.getElementById('e-landing-enabled').checked;
+        var fee = lpEnabled ? 10 : 0;
+        document.getElementById('landing-effective-rent').textContent = '$' + (baseRent + fee).toFixed(2);
+    }
+
+    async function toggleLandingPage() {
+        if (!editingVendor) return;
+        var checkbox = document.getElementById('e-landing-enabled');
+        try {
+            var res = await apiPost('/api/v1/booth-showcase/admin/landing-page/' + editingVendor.id);
+            var enabled = res.landing_page_enabled;
+            checkbox.checked = enabled;
+            var slugRow = document.getElementById('landing-slug-row');
+            var feeNote = document.getElementById('landing-fee-note');
+            var badge = document.getElementById('landing-status-badge');
+            var previewLink = document.getElementById('landing-preview-link');
+            if (enabled) {
+                slugRow.style.display = 'flex';
+                feeNote.style.display = 'block';
+                badge.textContent = 'ACTIVE';
+                badge.style.background = 'rgba(76,175,80,0.18)';
+                badge.style.color = '#66bb6a';
+                showAlert('alert-container', 'Landing page enabled. $10.00/mo added to rent.', 'success');
+            } else {
+                slugRow.style.display = 'none';
+                feeNote.style.display = 'none';
+                badge.textContent = 'OFF';
+                badge.style.background = 'var(--border)';
+                badge.style.color = 'var(--text-dim)';
+                previewLink.style.display = 'none';
+                showAlert('alert-container', 'Landing page disabled. $10.00/mo fee removed.', 'success');
+            }
+            updateEffectiveRentDisplay();
+            // Refresh vendor data
+            editingVendor.landing_page_enabled = enabled;
+            editingVendor.landing_page_fee = res.landing_page_fee;
+        } catch (e) {
+            checkbox.checked = !checkbox.checked;
+            showAlert('alert-container', e.message || 'Failed to toggle landing page', 'error');
+        }
+    }
+
+    async function saveLandingSlug() {
+        if (!editingVendor) return;
+        var slug = document.getElementById('e-landing-slug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        if (!slug || slug.length < 3) {
+            showAlert('alert-container', 'URL must be at least 3 characters (lowercase letters, numbers, hyphens)', 'error');
+            return;
+        }
+        try {
+            var res = await apiPut('/api/v1/booth-showcase/admin/landing-slug/' + editingVendor.id, { slug: slug });
+            document.getElementById('e-landing-slug').value = res.landing_slug || slug;
+            var previewLink = document.getElementById('landing-preview-link');
+            previewLink.style.display = 'inline';
+            previewLink.href = '/v/' + (res.landing_slug || slug);
+            editingVendor.landing_slug = res.landing_slug || slug;
+            showAlert('alert-container', 'Landing page URL saved: ' + (res.landing_slug || slug) + '.bowenstreetmarket.com', 'success');
+        } catch (e) {
+            showAlert('alert-container', e.message || 'Failed to save URL', 'error');
+        }
     }
 
     async function saveEdit() {

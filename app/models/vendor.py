@@ -14,6 +14,7 @@ class Vendor(Base):
     phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     booth_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     monthly_rent: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"))
+    landing_page_fee: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), server_default=text("0.00"))
     rent_due_day: Mapped[int] = mapped_column(Integer, default=1)
     password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(20), default="vendor")

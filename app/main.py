@@ -96,6 +96,17 @@ async def lifespan(app: FastAPI):
 
     try:
         async with AsyncSessionLocal() as session:
+            await session.execute(text(
+                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
+                "landing_page_fee NUMERIC(10,2) NOT NULL DEFAULT 0.00"
+            ))
+            await session.commit()
+        _record_startup_ok("add_landing_page_fee_column")
+    except Exception as e:
+        _record_startup_failure("add_landing_page_fee_column", e)
+
+    try:
+        async with AsyncSessionLocal() as session:
             result = await session.execute(text("""
                 INSERT INTO vendor_balances (vendor_id, balance, rent_balance)
                 SELECT v.id, 0.00, 0.00
@@ -261,6 +272,29 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
     allow_credentials=True,
 )
+
+
+@app.middleware("http")
+async def subdomain_landing_redirect(request: Request, call_next):
+    """Route *.bowenstreetmarket.com subdomains to /v/{slug}."""
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+    # Match vendor.bowenstreetmarket.com or vendor.bowenstreetmm.com
+    for domain in ("bowenstreetmarket.com", "bowenstreetmm.com", "www.bowenstreetmarket.com", "www.bowenstreetmm.com"):
+        if host == domain or host == f"www.{domain}":
+            break
+    else:
+        # It's a subdomain — extract slug
+        slug = host.split(".")[0]
+        if slug and slug not in ("www", "api", "admin", "pos", "shop"):
+            # Rewrite path to /v/{slug} so it hits the landing page route
+            if request.url.path in ("/", ""):
+                from starlette.datastructures import URL
+                scope = request.scope.copy()
+                new_path = f"/v/{slug}"
+                scope["path"] = new_path
+                scope["raw_path"] = new_path.encode()
+                request = Request(scope, request.receive)
+    return await call_next(request)
 
 
 @app.exception_handler(Exception)

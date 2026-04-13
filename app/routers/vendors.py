@@ -79,16 +79,18 @@ def _hydrate_vendor_balance_fields(
     - carry_over = VendorBalance.rent_balance (positive = prepaid credit, negative = owes)
     """
     monthly = vendor.monthly_rent or Decimal("0.00")
+    landing_fee = vendor.landing_page_fee or Decimal("0.00")
+    effective_rent = monthly + landing_fee
     sb = sales_balance if sales_balance is not None else Decimal("0.00")
     rl = rent_ledger if rent_ledger is not None else Decimal("0.00")
 
     vendor.total_sales = sb.quantize(Decimal("0.01"), ROUND_HALF_UP)
-    vendor.rent_due = monthly.quantize(Decimal("0.01"), ROUND_HALF_UP)
+    vendor.rent_due = effective_rent.quantize(Decimal("0.01"), ROUND_HALF_UP)
     vendor.carry_over = rl.quantize(Decimal("0.01"), ROUND_HALF_UP)
     vendor.rent_paid_this_month = current_month_rent_paid
 
-    if monthly > 0 and not current_month_rent_paid:
-        vendor.net_payout = (sb - monthly + rl).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    if effective_rent > 0 and not current_month_rent_paid:
+        vendor.net_payout = (sb - effective_rent + rl).quantize(Decimal("0.01"), ROUND_HALF_UP)
     else:
         vendor.net_payout = (sb + rl).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
@@ -133,6 +135,18 @@ async def list_vendors(
         rb_ledger = rent_balance_map.get(v.id, Decimal("0.00"))
         rent_paid = v.id in paid_rent_vendor_ids
         _hydrate_vendor_balance_fields(v, sb, rb_ledger, rent_paid)
+
+    # Fetch all landing page data in one query
+    from app.models.booth_showcase import BoothShowcase
+    lp_result = await db.execute(
+        select(BoothShowcase.vendor_id, BoothShowcase.landing_page_enabled, BoothShowcase.landing_slug)
+    )
+    lp_map = {row.vendor_id: row for row in lp_result.all()}
+
+    for v in vendors:
+        lp = lp_map.get(v.id)
+        v.landing_page_enabled = lp.landing_page_enabled if lp else False
+        v.landing_slug = lp.landing_slug if lp else None
 
     return vendors
 
@@ -210,6 +224,15 @@ async def get_vendor(
     rp_row = rp_one.scalar_one_or_none()
     rent_paid = rp_row is not None and rp_row.status == "paid"
     _hydrate_vendor_balance_fields(vendor, sb, rb_ledger, rent_paid)
+
+    # Attach landing page data
+    from app.models.booth_showcase import BoothShowcase
+    lp_result = await db.execute(
+        select(BoothShowcase).where(BoothShowcase.vendor_id == vendor_id)
+    )
+    lp = lp_result.scalar_one_or_none()
+    vendor.landing_page_enabled = lp.landing_page_enabled if lp else False
+    vendor.landing_slug = lp.landing_slug if lp else None
 
     return vendor
 

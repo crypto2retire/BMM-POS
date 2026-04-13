@@ -13,35 +13,31 @@
 <meta name="twitter:card" content="summary_large_image">
 <link id="canonical" rel="canonical" href="">
 <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+<link rel="stylesheet" href="/static/css/main.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
-    --bg:       #38383B;
-    --bg-card:  #3a3a3e;
-    --bg-dark:  #1a1a1c;
-    --accent:   #A8A6A1;
-    --accent-lt:#C5C3BE;
-    --text:     #F0EDE8;
-    --text-dim: #A8A6A1;
-    --gold:     #C9A96E;
-    --gold-dim: rgba(201,169,110,0.22);
-    --border:   #4A4A4D;
-    --warm-border: rgba(201,169,110,0.22);
+    --bg-card: var(--surface);
+    --bg-dark: var(--charcoal-deep);
+    --accent: var(--text-light);
+    --accent-lt: var(--gold-light);
+    --text-dim: var(--text-light);
+    --sale: var(--gold);
   }
-
   html { scroll-behavior: smooth; }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  @keyframes slideOut { from { transform: translateX(0); } to { transform: translateX(100%); } }
 
   body {
     background: var(--bg);
     background-image:
-      radial-gradient(ellipse at 50% 0%,  rgba(201,169,110,0.06) 0%, transparent 55%),
-      radial-gradient(ellipse at 15% 100%, rgba(168,166,161,0.04) 0%, transparent 50%);
+      radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--gold) 6%, transparent) 0%, transparent 55%),
+      radial-gradient(ellipse at 15% 100%, color-mix(in srgb, var(--text-light) 4%, transparent) 0%, transparent 50%);
     background-attachment: fixed;
     color: var(--text);
     font-family: 'Roboto', sans-serif;
@@ -50,816 +46,1061 @@
     line-height: 1.7;
   }
 
-  .vendor-hero {
-    position: relative;
-    width: 100%;
-    min-height: 340px;
-    overflow: hidden;
+  /* ── NAV ── */
+  .top-nav {
+    position: sticky; top: 0; z-index: 100;
     background: var(--bg-dark);
+    border-bottom: 1px solid var(--gold-glow);
+    padding: 0 1.5rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 56px;
   }
-  .vendor-hero img {
-    width: 100%;
-    height: 340px;
-    object-fit: cover;
-    display: block;
+  .top-nav a { color: var(--text); text-decoration: none; }
+  .nav-brand {
+    font-family: 'EB Garamond', serif;
+    font-style: italic;
+    font-size: 1.15rem;
+    color: var(--gold);
+    letter-spacing: 0.03em;
+  }
+  .nav-links { display: flex; gap: 1.25rem; align-items: center; }
+  .nav-links a { font-size: 0.82rem; color: var(--text-light); transition: color 0.2s; }
+  .nav-links a:hover { color: var(--gold); }
+  .cart-btn {
+    position: relative; background: none; border: none; cursor: pointer;
+    color: var(--text); font-size: 1.2rem; padding: 0.25rem;
+    transition: color 0.2s;
+  }
+  .cart-btn:hover { color: var(--gold); }
+  .cart-badge {
+    position: absolute; top: -6px; right: -8px;
+    background: var(--gold); color: var(--bg-dark);
+    font-size: 0.65rem; font-weight: 600;
+    width: 18px; height: 18px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  .cart-badge:empty, .cart-badge[data-count="0"] { display: none; }
+
+  /* ── HERO ── */
+  .vendor-hero {
+    position: relative; width: 100%; min-height: 380px; overflow: hidden;
+    background: var(--bg-dark);
+    display: flex; align-items: flex-end;
+    animation: fadeIn 0.6s ease;
+  }
+  .vendor-hero-bg {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
     filter: brightness(0.55);
+    transition: opacity 0.4s;
   }
-  .vendor-hero-overlay {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem 1.5rem;
-    text-align: center;
-    background: linear-gradient(180deg, rgba(26,26,28,0.3) 0%, rgba(26,26,28,0.7) 100%);
+  .vendor-hero-gradient {
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(26,26,28,0.95) 0%, rgba(26,26,28,0.3) 50%, transparent 100%);
   }
-  .vendor-hero-badge {
-    display: inline-block;
-    background: var(--gold);
-    color: var(--bg-dark);
-    font-size: 0.65rem;
-    font-weight: 500;
-    padding: 0.2rem 0.7rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    margin-bottom: 0.75rem;
+  .vendor-hero-content {
+    position: relative; z-index: 2;
+    padding: 3rem 2rem 2.5rem;
+    max-width: 900px; margin: 0 auto; width: 100%;
+    animation: fadeUp 0.7s ease;
   }
   .vendor-hero h1 {
     font-family: 'EB Garamond', serif;
-    font-style: italic;
     font-size: clamp(2rem, 5vw, 3.2rem);
-    font-weight: 500;
-    color: var(--text);
-    letter-spacing: 0.03em;
-    margin-bottom: 0.3rem;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    font-weight: 500; font-style: italic;
+    color: var(--text); line-height: 1.1;
+    margin-bottom: 0.4rem;
   }
-  .vendor-hero .subtitle {
-    font-size: 0.85rem;
-    color: var(--accent-lt);
-    letter-spacing: 0.08em;
+  .vendor-hero .booth-tag {
+    display: inline-block;
+    font-size: 0.8rem; color: var(--gold);
+    border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent);
+    padding: 0.2rem 0.65rem; border-radius: 20px;
+    letter-spacing: 0.04em; margin-bottom: 0.75rem;
   }
+  .vendor-hero .hero-cta {
+    display: inline-block; margin-top: 0.5rem;
+    background: var(--gold); color: var(--bg-dark);
+    padding: 0.6rem 1.6rem; border-radius: 4px;
+    font-size: 0.85rem; font-weight: 500;
+    text-decoration: none; letter-spacing: 0.03em;
+    transition: background 0.2s;
+  }
+  .vendor-hero .hero-cta:hover { background: color-mix(in srgb, var(--gold) 85%, white); }
 
-  .nav-bar {
-    background: var(--bg-dark);
-    border-bottom: 1px solid rgba(201,169,110,0.12);
-    padding: 0.6rem 1.5rem;
-    display: flex;
-    justify-content: center;
-    gap: 1.5rem;
-    flex-wrap: wrap;
-    position: sticky;
-    top: 0;
-    z-index: 10;
+  /* ── ABOUT ── */
+  .about-section {
+    max-width: 900px; margin: 0 auto;
+    padding: 2.5rem 2rem;
+    animation: fadeUp 0.5s ease;
   }
-  .nav-bar a {
-    font-size: 0.72rem;
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
-    color: var(--accent);
-    text-decoration: none;
-    padding: 0.3rem 0;
-    border-bottom: 1px solid transparent;
-    transition: all 0.2s;
-  }
-  .nav-bar a:hover, .nav-bar a.active { color: var(--gold); border-bottom-color: var(--gold); }
-
-  .vendor-container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 0 1.5rem 4rem;
-  }
-
-  .vendor-section {
-    margin-top: 2.5rem;
-    animation: fadeUp 0.4s ease both;
-  }
-  .vendor-section h2 {
+  .about-section h2 {
     font-family: 'EB Garamond', serif;
-    font-style: italic;
-    font-size: 1.4rem;
-    color: var(--text);
-    margin-bottom: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--warm-border);
+    font-size: 1.5rem; font-style: italic;
+    color: var(--text); margin-bottom: 1rem;
   }
-  .vendor-section p, .vendor-section .about-text {
-    font-size: 0.88rem;
-    color: var(--accent-lt);
-    line-height: 1.8;
-    white-space: pre-line;
+  .about-text {
+    font-size: 0.95rem; line-height: 1.8;
+    color: var(--text); white-space: pre-wrap;
+    margin-bottom: 1.5rem;
   }
-
-  .photo-gallery {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 0.75rem;
-    margin-top: 1rem;
-  }
-  .photo-gallery img {
-    width: 100%;
-    aspect-ratio: 4/3;
-    object-fit: cover;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    transition: transform 0.2s, border-color 0.2s;
-  }
-  .photo-gallery img:hover { transform: scale(1.02); border-color: var(--gold); }
-
-  .video-section video {
-    width: 100%;
-    max-width: 640px;
-    border: 1px solid var(--border);
-    margin-top: 0.5rem;
-  }
-
-  .contact-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
-  }
-  .contact-item {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    padding: 1rem 1.25rem;
-  }
-  .contact-item .label {
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-dim);
-    margin-bottom: 0.25rem;
-  }
-  .contact-item .value {
-    font-size: 0.9rem;
-    color: var(--text);
-    word-break: break-word;
-  }
-  .contact-item a {
-    color: var(--gold);
-    text-decoration: none;
-  }
-  .contact-item a:hover { text-decoration: underline; }
-
   .social-links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-top: 1rem;
+    display: flex; gap: 1rem; flex-wrap: wrap;
+    margin-bottom: 1rem;
   }
-  .social-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    padding: 0.5rem 1rem;
-    color: var(--text);
-    text-decoration: none;
-    font-size: 0.82rem;
-    transition: border-color 0.2s, color 0.2s;
+  .social-links a {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    font-size: 0.82rem; color: var(--gold);
+    text-decoration: none; transition: opacity 0.2s;
   }
-  .social-link:hover { border-color: var(--gold); color: var(--gold); }
-  .social-link .icon { font-size: 1.1rem; }
+  .social-links a:hover { opacity: 0.75; }
+  .contact-info {
+    font-size: 0.82rem; color: var(--text-light); line-height: 1.8;
+  }
+  .contact-info a { color: var(--gold); text-decoration: none; }
 
-  .social-divider {
-    width: 100%;
-    border: none;
-    border-top: 1px solid var(--warm-border);
-    margin: 1.25rem 0 0.75rem;
+  /* ── PHOTO GALLERY ── */
+  .photo-gallery {
+    max-width: 900px; margin: 0 auto; padding: 0 2rem 2rem;
   }
-  .social-section-label {
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--text-dim);
-    margin-bottom: 0.5rem;
+  .photo-scroll {
+    display: flex; gap: 0.75rem; overflow-x: auto;
+    padding-bottom: 0.5rem;
+    scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+  }
+  .photo-scroll img {
+    height: 200px; width: auto; border-radius: 6px;
+    object-fit: cover; flex-shrink: 0;
+    border: 1px solid var(--border);
+    transition: transform 0.2s;
+  }
+  .photo-scroll img:hover { transform: scale(1.03); }
+
+  /* ── ITEMS SECTION ── */
+  .items-section {
+    max-width: 1200px; margin: 0 auto; padding: 2rem;
+  }
+  .items-header {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;
+  }
+  .items-header h2 {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.4rem; font-style: italic; color: var(--text);
+  }
+  .items-header .item-count {
+    font-size: 0.8rem; color: var(--text-light);
+  }
+  .browse-toggle {
+    background: none; border: 1px solid var(--border);
+    color: var(--gold); padding: 0.4rem 1rem; border-radius: 4px;
+    font-size: 0.78rem; cursor: pointer; transition: all 0.2s;
+  }
+  .browse-toggle:hover { border-color: var(--gold); }
+
+  .category-filters {
+    display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+  }
+  .cat-btn {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-light); padding: 0.3rem 0.85rem; border-radius: 20px;
+    font-size: 0.75rem; cursor: pointer; transition: all 0.2s;
+  }
+  .cat-btn:hover, .cat-btn.active {
+    border-color: var(--gold); color: var(--gold);
+    background: color-mix(in srgb, var(--gold) 10%, var(--surface));
   }
 
-  .inventory-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-  .inventory-header h2 {
-    border-bottom: none !important;
-    padding-bottom: 0 !important;
-    margin-bottom: 0 !important;
-  }
-  .inventory-count {
-    font-size: 0.78rem;
-    color: var(--text-dim);
-  }
-  .inventory-controls {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-    margin-bottom: 1rem;
-  }
-  .inventory-search {
-    flex: 1;
-    min-width: 180px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 0.5rem 0.75rem;
-    font-size: 0.82rem;
-    font-family: 'Roboto', sans-serif;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .inventory-search:focus { border-color: var(--gold); }
-  .inventory-search::placeholder { color: var(--text-dim); }
-  .inventory-select {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 0.5rem 0.75rem;
-    font-size: 0.82rem;
-    font-family: 'Roboto', sans-serif;
-    outline: none;
-    cursor: pointer;
-  }
-  .inventory-select:focus { border-color: var(--gold); }
-  .inventory-category-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-    margin-bottom: 1rem;
-  }
-  .cat-pill {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    font-size: 0.7rem;
-    padding: 0.3rem 0.7rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-transform: capitalize;
-  }
-  .cat-pill:hover, .cat-pill.active {
-    border-color: var(--gold);
-    color: var(--gold);
-    background: var(--gold-dim);
-  }
   .items-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 0.75rem;
-    margin-top: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.25rem;
   }
+
   .item-card {
-    background: var(--bg-card);
+    background: var(--surface);
     border: 1px solid var(--border);
-    overflow: hidden;
-    transition: border-color 0.2s;
+    border-radius: 6px; overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    animation: fadeUp 0.4s ease both;
   }
-  .item-card:hover { border-color: var(--gold); }
-  .item-card img {
-    width: 100%;
-    aspect-ratio: 1;
-    object-fit: cover;
-    display: block;
-    background: var(--bg-dark);
+  .item-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
   }
-  .item-card-body {
-    padding: 0.6rem 0.75rem;
+  .item-card-img {
+    width: 100%; height: 180px;
+    object-fit: cover; display: block;
+    background: var(--surface-2);
   }
+  .item-card-body { padding: 0.85rem; }
   .item-card-name {
-    font-size: 0.8rem;
-    color: var(--text);
-    margin-bottom: 0.15rem;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    font-size: 0.88rem; color: var(--text);
+    margin-bottom: 0.25rem; line-height: 1.3;
+    overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .item-card-vendor {
+    font-size: 0.72rem; color: var(--text-light);
+    margin-bottom: 0.35rem;
   }
   .item-card-price {
-    font-size: 0.85rem;
-    color: var(--gold);
-    font-weight: 400;
+    font-size: 0.95rem; color: var(--gold);
+    font-weight: 500; margin-bottom: 0.6rem;
   }
-  .item-card-category {
-    font-size: 0.65rem;
-    color: var(--text-dim);
-    margin-top: 0.15rem;
-    text-transform: capitalize;
+  .item-card-price .sale-price {
+    text-decoration: line-through; color: var(--text-light);
+    font-weight: 300; font-size: 0.82rem; margin-left: 0.35rem;
   }
-  .pagination {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-top: 1.5rem;
-  }
-  .page-btn {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: 0.4rem 0.8rem;
-    font-size: 0.78rem;
-    cursor: pointer;
+  .add-cart-btn {
+    width: 100%; padding: 0.45rem;
+    background: color-mix(in srgb, var(--gold) 15%, transparent);
+    border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+    color: var(--gold); border-radius: 4px;
+    font-size: 0.78rem; cursor: pointer;
     transition: all 0.2s;
-    font-family: 'Roboto', sans-serif;
   }
-  .page-btn:hover { border-color: var(--gold); color: var(--gold); }
-  .page-btn:disabled { opacity: 0.4; cursor: default; }
-  .page-btn:disabled:hover { border-color: var(--border); color: var(--text); }
-  .page-info { font-size: 0.75rem; color: var(--text-dim); }
-  .inventory-empty {
-    text-align: center;
-    padding: 2rem 1rem;
-    color: var(--text-dim);
-    font-size: 0.85rem;
+  .add-cart-btn:hover {
+    background: color-mix(in srgb, var(--gold) 25%, transparent);
+  }
+  .add-cart-btn.carted {
+    background: color-mix(in srgb, var(--success) 15%, transparent);
+    border-color: color-mix(in srgb, var(--success) 30%, transparent);
+    color: var(--success);
   }
 
-  .market-info {
-    margin-top: 3rem;
-    padding: 1.5rem;
+  .load-more-wrap { text-align: center; margin-top: 1.5rem; }
+  .load-more-btn {
+    background: none; border: 1px solid var(--border);
+    color: var(--text-light); padding: 0.5rem 2rem;
+    border-radius: 4px; font-size: 0.82rem;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .load-more-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* ── CART SIDEBAR ── */
+  .cart-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.5);
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .cart-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .cart-sidebar {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 380px; max-width: 100vw; z-index: 201;
     background: var(--bg-dark);
-    border: 1px solid var(--warm-border);
-    text-align: center;
+    border-left: 1px solid var(--border);
+    transform: translateX(100%);
+    transition: transform 0.3s ease;
+    display: flex; flex-direction: column;
   }
-  .market-info h3 {
-    font-family: 'EB Garamond', serif;
-    font-style: italic;
-    font-size: 1.1rem;
-    color: var(--text);
-    margin-bottom: 0.5rem;
-  }
-  .market-info p {
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    margin-bottom: 0.2rem;
-  }
-  .market-info a { color: var(--gold); text-decoration: none; }
-  .market-info a:hover { text-decoration: underline; }
+  .cart-sidebar.open { transform: translateX(0); }
 
-  .loading-state {
-    text-align: center;
-    padding: 4rem 1.5rem;
-    color: var(--text-dim);
-    font-size: 0.9rem;
+  .cart-sidebar-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .cart-sidebar-header h3 {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.15rem; font-style: italic; color: var(--text);
+  }
+  .cart-close-btn {
+    background: none; border: none; color: var(--text-light);
+    font-size: 1.3rem; cursor: pointer;
+  }
+  .cart-sidebar-body {
+    flex: 1; overflow-y: auto; padding: 1rem 1.5rem;
+  }
+  .cart-line {
+    display: flex; gap: 0.75rem; align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .cart-line-img {
+    width: 50px; height: 50px; border-radius: 4px;
+    object-fit: cover; flex-shrink: 0;
+  }
+  .cart-line-info { flex: 1; min-width: 0; }
+  .cart-line-name {
+    font-size: 0.82rem; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .cart-line-price { font-size: 0.8rem; color: var(--gold); }
+  .cart-line-remove {
+    background: none; border: none; color: var(--text-light);
+    font-size: 0.9rem; cursor: pointer; padding: 0.25rem;
+  }
+  .cart-line-remove:hover { color: var(--danger); }
+
+  .cart-empty-msg {
+    text-align: center; color: var(--text-light);
+    padding: 2rem 0; font-size: 0.88rem;
   }
 
-  .error-state {
-    text-align: center;
-    padding: 4rem 1.5rem;
+  .cart-sidebar-footer {
+    padding: 1.25rem 1.5rem;
+    border-top: 1px solid var(--border);
   }
-  .error-state h2 {
-    font-family: 'EB Garamond', serif;
-    font-style: italic;
-    font-size: 1.5rem;
-    color: var(--text);
-    margin-bottom: 0.5rem;
-  }
-  .error-state p {
-    font-size: 0.85rem;
-    color: var(--text-dim);
+  .cart-totals {
     margin-bottom: 1rem;
   }
-  .error-state a {
-    color: var(--gold);
-    text-decoration: none;
-    font-size: 0.85rem;
+  .cart-totals-row {
+    display: flex; justify-content: space-between;
+    font-size: 0.85rem; margin-bottom: 0.35rem;
   }
+  .cart-totals-row.total {
+    font-size: 1rem; font-weight: 500;
+    color: var(--gold); padding-top: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
+  .cart-checkout-btn {
+    width: 100%; padding: 0.7rem;
+    background: var(--gold); color: var(--bg-dark);
+    border: none; border-radius: 4px;
+    font-size: 0.9rem; font-weight: 500;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .cart-checkout-btn:hover { background: color-mix(in srgb, var(--gold) 85%, white); }
+  .cart-checkout-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  .lightbox-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.92);
-    z-index: 100;
-    align-items: center;
-    justify-content: center;
+  /* ── CHECKOUT MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; z-index: 300;
+    background: rgba(0,0,0,0.6);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+  .modal-box {
+    background: var(--bg-dark);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-width: 460px; width: 90%;
+    max-height: 90vh; overflow-y: auto;
     padding: 2rem;
-    cursor: pointer;
+    animation: fadeUp 0.3s ease;
   }
-  .lightbox-overlay.open { display: flex; }
-  .lightbox-overlay img {
-    max-width: 90vw;
-    max-height: 85vh;
-    object-fit: contain;
-    cursor: default;
+  .modal-box h2 {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.3rem; font-style: italic;
+    color: var(--text); margin-bottom: 0.5rem;
   }
-  .lightbox-close {
-    position: absolute;
-    top: 1rem;
-    right: 1.5rem;
-    background: none;
-    border: none;
-    color: var(--text);
-    font-size: 2rem;
-    cursor: pointer;
+  .modal-box p { font-size: 0.82rem; color: var(--text-light); margin-bottom: 1.25rem; }
+  .form-field { margin-bottom: 1rem; }
+  .form-field label {
+    display: block; font-size: 0.75rem;
+    color: var(--text-light); margin-bottom: 0.3rem;
+    text-transform: uppercase; letter-spacing: 0.05em;
   }
-  .lightbox-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(0,0,0,0.5);
-    border: 1px solid rgba(255,255,255,0.15);
-    color: white;
-    font-size: 1.5rem;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
+  .form-field input {
+    width: 100%; padding: 0.6rem 0.75rem;
+    background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); border-radius: 4px; font-size: 0.88rem;
+    font-family: 'Roboto', sans-serif;
   }
-  .lightbox-prev { left: 1rem; }
-  .lightbox-next { right: 1rem; }
+  .form-field input:focus { outline: none; border-color: var(--gold); }
+  .form-field .field-error {
+    font-size: 0.72rem; color: var(--danger); margin-top: 0.25rem; display: none;
+  }
+  .modal-actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+  .btn-cancel {
+    flex: 1; padding: 0.6rem; background: none;
+    border: 1px solid var(--border); color: var(--text-light);
+    border-radius: 4px; font-size: 0.85rem; cursor: pointer;
+  }
+  .btn-cancel:hover { border-color: var(--text-light); }
+  .btn-submit {
+    flex: 2; padding: 0.6rem;
+    background: var(--gold); color: var(--bg-dark);
+    border: none; border-radius: 4px;
+    font-size: 0.85rem; font-weight: 500;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .btn-submit:hover { background: color-mix(in srgb, var(--gold) 85%, white); }
+  .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
-  @media (max-width: 600px) {
-    .vendor-hero { min-height: 240px; }
-    .vendor-hero img { height: 240px; }
-    .photo-gallery { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-    .items-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  /* ── 404 ── */
+  .not-found {
+    text-align: center; padding: 6rem 2rem;
+    animation: fadeIn 0.5s ease;
   }
+  .not-found h1 {
+    font-family: 'EB Garamond', serif;
+    font-size: 2.5rem; color: var(--text); margin-bottom: 0.5rem;
+  }
+  .not-found p { color: var(--text-light); margin-bottom: 1.5rem; }
+  .not-found a {
+    color: var(--gold); text-decoration: none;
+    border: 1px solid var(--gold); padding: 0.5rem 1.5rem;
+    border-radius: 4px; transition: all 0.2s;
+  }
+  .not-found a:hover { background: color-mix(in srgb, var(--gold) 15%, transparent); }
+
+  /* ── FOOTER ── */
+  .site-footer {
+    background: var(--bg-dark);
+    border-top: 1px solid var(--border);
+    padding: 2.5rem 2rem; margin-top: 3rem;
+    text-align: center;
+  }
+  .footer-brand {
+    font-family: 'EB Garamond', serif;
+    font-style: italic; font-size: 1.1rem;
+    color: var(--gold); margin-bottom: 0.5rem;
+  }
+  .footer-brand a { color: var(--gold); text-decoration: none; }
+  .footer-address { font-size: 0.78rem; color: var(--text-light); margin-bottom: 0.75rem; }
+  .footer-socials { display: flex; gap: 1rem; justify-content: center; margin-bottom: 0.75rem; }
+  .footer-socials a { font-size: 0.78rem; color: var(--text-light); text-decoration: none; }
+  .footer-socials a:hover { color: var(--gold); }
+  .footer-copy { font-size: 0.7rem; color: var(--text-light); opacity: 0.6; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 640px) {
+    .vendor-hero { min-height: 280px; }
+    .vendor-hero-content { padding: 2rem 1.25rem 1.75rem; }
+    .vendor-hero h1 { font-size: 1.8rem; }
+    .items-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; }
+    .item-card-img { height: 140px; }
+    .about-section, .items-section, .photo-gallery { padding-left: 1.25rem; padding-right: 1.25rem; }
+    .cart-sidebar { width: 100vw; }
+    .nav-links a.hide-mobile { display: none; }
+  }
+
+  /* loading skeleton */
+  .skeleton { background: var(--surface); border-radius: 6px; animation: fadeIn 1s infinite alternate; min-height: 200px; }
 </style>
 </head>
 <body>
 
-<div id="loading" class="loading-state">Loading vendor page...</div>
-<div id="error" class="error-state" style="display:none"></div>
-<div id="page-content" style="display:none">
-  <div class="vendor-hero" id="hero-section">
-    <img id="hero-img" src="" alt="">
-    <div class="vendor-hero-overlay">
-      <div class="vendor-hero-badge" id="hero-badge"></div>
+<!-- NAV -->
+<nav class="top-nav">
+  <a href="/shop/index.html" class="nav-brand">Bowenstreet Market</a>
+  <div class="nav-links">
+    <a href="/shop/index.html" class="hide-mobile">Shop All</a>
+    <a href="/shop/booths.html" class="hide-mobile">Vendors</a>
+    <button class="cart-btn" id="cart-toggle" aria-label="Open cart">
+      🛒 <span class="cart-badge" id="cart-badge"></span>
+    </button>
+  </div>
+</nav>
+
+<!-- 404 STATE -->
+<div class="not-found" id="not-found" style="display:none">
+  <h1>Page not found</h1>
+  <p>This vendor page doesn't exist or hasn't been published yet.</p>
+  <a href="/shop/index.html">Browse the Market</a>
+</div>
+
+<!-- VENDOR CONTENT -->
+<div id="vendor-content" style="display:none">
+
+  <!-- HERO -->
+  <section class="vendor-hero" id="hero-section">
+    <div class="vendor-hero-bg" id="hero-bg"></div>
+    <div class="vendor-hero-gradient"></div>
+    <div class="vendor-hero-content">
+      <div class="booth-tag" id="hero-booth"></div>
       <h1 id="hero-name"></h1>
-      <div class="subtitle">at Bowenstreet Market &nbsp;&middot;&nbsp; Oshkosh, WI</div>
+      <a href="#items-section" class="hero-cta">Shop This Vendor</a>
     </div>
+  </section>
+
+  <!-- ABOUT -->
+  <section class="about-section" id="about-section" style="display:none">
+    <h2>About <span id="about-vendor-name"></span></h2>
+    <div class="about-text" id="about-text"></div>
+    <div class="social-links" id="social-links"></div>
+    <div class="contact-info" id="contact-info"></div>
+  </section>
+
+  <!-- PHOTOS -->
+  <div class="photo-gallery" id="photo-gallery" style="display:none">
+    <div class="photo-scroll" id="photo-scroll"></div>
   </div>
 
-  <nav class="nav-bar">
-    <a href="/shop/index.html">Shop</a>
-    <a href="/shop/booths.html">Booths</a>
-    <a href="/shop/classes.html">Classes</a>
-  </nav>
-
-  <div class="vendor-container">
-    <div id="about-section" class="vendor-section" style="display:none">
-      <h2>About</h2>
-      <div id="about-text" class="about-text"></div>
-    </div>
-
-    <div id="desc-section" class="vendor-section" style="display:none">
-      <h2>Our Booth</h2>
-      <p id="desc-text"></p>
-    </div>
-
-    <div id="photos-section" class="vendor-section" style="display:none">
-      <h2>Gallery</h2>
-      <div id="photo-gallery" class="photo-gallery"></div>
-    </div>
-
-    <div id="video-section" class="vendor-section" style="display:none">
-      <h2>Video Tour</h2>
-      <div class="video-section">
-        <video id="vendor-video" controls preload="metadata"></video>
+  <!-- ITEMS -->
+  <section class="items-section" id="items-section">
+    <div class="items-header">
+      <div>
+        <h2 id="items-title">Inventory</h2>
+        <div class="item-count" id="item-count"></div>
       </div>
+      <button class="browse-toggle" id="browse-toggle">Browse All Market Items</button>
     </div>
-
-    <div id="items-section" class="vendor-section" style="display:none">
-      <div class="inventory-header">
-        <h2>Inventory</h2>
-        <span class="inventory-count" id="inventory-count"></span>
-      </div>
-      <div class="inventory-controls">
-        <input type="text" class="inventory-search" id="inv-search" placeholder="Search items..." oninput="debounceSearch()">
-        <select class="inventory-select" id="inv-sort" onchange="loadInventory(1)">
-          <option value="newest">Newest</option>
-          <option value="price_asc">Price: Low to High</option>
-          <option value="price_desc">Price: High to Low</option>
-          <option value="name">Name A-Z</option>
-        </select>
-      </div>
-      <div class="inventory-category-pills" id="category-pills"></div>
-      <div id="items-grid" class="items-grid"></div>
-      <div id="inv-empty" class="inventory-empty" style="display:none">No items found.</div>
-      <div id="inv-pagination" class="pagination" style="display:none">
-        <button class="page-btn" id="prev-btn" onclick="loadInventory(currentPage-1)">&laquo; Prev</button>
-        <span class="page-info" id="page-info"></span>
-        <button class="page-btn" id="next-btn" onclick="loadInventory(currentPage+1)">Next &raquo;</button>
-      </div>
+    <div class="category-filters" id="category-filters"></div>
+    <div class="items-grid" id="items-grid"></div>
+    <div class="load-more-wrap" id="load-more-wrap" style="display:none">
+      <button class="load-more-btn" id="load-more-btn">Load More</button>
     </div>
+  </section>
+</div>
 
-    <div id="contact-section" class="vendor-section" style="display:none">
-      <h2>Contact</h2>
-      <div id="contact-grid" class="contact-grid"></div>
+<!-- CART OVERLAY -->
+<div class="cart-overlay" id="cart-overlay"></div>
+
+<!-- CART SIDEBAR -->
+<div class="cart-sidebar" id="cart-sidebar">
+  <div class="cart-sidebar-header">
+    <h3>Your Cart</h3>
+    <button class="cart-close-btn" id="cart-close" aria-label="Close cart">&times;</button>
+  </div>
+  <div class="cart-sidebar-body" id="cart-body"></div>
+  <div class="cart-sidebar-footer" id="cart-footer">
+    <div class="cart-totals" id="cart-totals"></div>
+    <button class="cart-checkout-btn" id="cart-checkout" disabled>Checkout</button>
+  </div>
+</div>
+
+<!-- CHECKOUT MODAL -->
+<div class="modal-overlay" id="checkout-modal">
+  <div class="modal-box">
+    <h2>Complete Your Order</h2>
+    <p>Enter your details to reserve these items for pickup.</p>
+    <div class="form-field">
+      <label for="c-name">Full Name *</label>
+      <input type="text" id="c-name" autocomplete="name" required>
+      <div class="field-error" id="c-name-error">Name is required</div>
     </div>
-
-    <div id="social-section" class="vendor-section" style="display:none">
-      <h2>Follow Us</h2>
-      <div id="vendor-socials" class="social-links"></div>
-      <div id="market-socials-area" style="display:none">
-        <hr class="social-divider">
-        <div class="social-section-label">Bowenstreet Market</div>
-        <div id="market-socials" class="social-links"></div>
-      </div>
+    <div class="form-field">
+      <label for="c-phone">Phone *</label>
+      <input type="tel" id="c-phone" autocomplete="tel" required>
+      <div class="field-error" id="c-phone-error">Phone is required</div>
     </div>
-
-    <div class="market-info">
-      <h3>Visit Us at Bowenstreet Market</h3>
-      <p>2837 Bowen St, Oshkosh, WI 54901</p>
-      <p>Tue&ndash;Sat 10am&ndash;6pm &nbsp;&middot;&nbsp; Sun 11am&ndash;4pm</p>
-      <p style="margin-top:0.5rem"><a href="/shop/booths.html">Explore all vendor booths &rarr;</a></p>
+    <div class="form-field">
+      <label for="c-email">Email (optional)</label>
+      <input type="email" id="c-email" autocomplete="email">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="checkout-cancel">Cancel</button>
+      <button class="btn-submit" id="checkout-submit">Pay &amp; Reserve</button>
     </div>
   </div>
 </div>
 
-<div class="lightbox-overlay" id="lightbox" onclick="if(event.target===this)closeLightbox()">
-  <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
-  <button class="lightbox-nav lightbox-prev" onclick="event.stopPropagation();navLightbox(-1)">&#8249;</button>
-  <img id="lightbox-img" src="" alt="">
-  <button class="lightbox-nav lightbox-next" onclick="event.stopPropagation();navLightbox(1)">&#8250;</button>
-</div>
+<!-- FOOTER -->
+<footer class="site-footer">
+  <div class="footer-brand"><a href="/">Bowenstreet Market</a></div>
+  <div class="footer-address">2837 Bowen St, Oshkosh, WI 54901</div>
+  <div class="footer-socials" id="footer-socials"></div>
+  <div class="footer-copy">&copy; 2026 Bowenstreet Market. All rights reserved.</div>
+</footer>
 
 <script>
-function escHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+(function () {
+  'use strict';
 
-var vendorData = null;
-var lightboxPhotos = [];
-var lightboxIndex = 0;
+  var CART_KEY = 'bmm_shop_cart_v1';
+  var API_TAX = '/api/v1/storefront/tax-rate';
+  var API_CHECKOUT = '/api/v1/storefront/create-cart-payment';
+  var API_LANDING = '/api/v1/booth-showcase/landing/';
+  var API_ITEMS = '/api/v1/storefront/items';
+  var API_CATS = '/api/v1/storefront/categories';
+  var TAX_RATE = 0.05;
 
-function getSlug() {
-  var path = window.location.pathname;
-  var parts = path.split('/');
-  return parts[parts.length - 1] || '';
-}
+  var vendorSlug = '';
+  var vendorData = null;
+  var cart = loadCart();
+  var vendorItems = [];
+  var allItems = [];
+  var allLoaded = false;
+  var activeCat = '';
+  var currentMode = 'vendor'; // 'vendor' or 'all'
+  var itemPage = 0;
+  var isLoading = false;
 
-async function loadPage() {
-  var slug = getSlug();
-  if (!slug) { showError(); return; }
+  // ── INIT ──
+  function init() {
+    var path = window.location.pathname;
+    var parts = path.split('/');
+    vendorSlug = parts[parts.length - 1] || parts[parts.length - 2];
 
-  try {
-    var resp = await fetch('/api/v1/booth-showcase/landing/' + encodeURIComponent(slug));
-    if (resp.status === 404) { showError(); return; }
-    if (!resp.ok) throw new Error('Failed to load');
-    vendorData = await resp.json();
-    renderPage();
-  } catch (err) {
-    showError();
-  }
-}
+    if (!vendorSlug) {
+      show404();
+      return;
+    }
 
-function showError() {
-  document.getElementById('loading').style.display = 'none';
-  var el = document.getElementById('error');
-  el.innerHTML = '<h2>Page Not Found</h2><p>This vendor page does not exist or is not currently published.</p><a href="/shop/booths.html">&larr; Browse all vendor booths</a>';
-  el.style.display = 'block';
-}
-
-function renderPage() {
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('page-content').style.display = 'block';
-
-  var v = vendorData;
-  var displayName = v.title || v.vendor_name;
-
-  var metaTitle = v.landing_meta_title || (displayName + ' — Bowenstreet Market');
-  var metaDesc = v.landing_meta_desc || ('Visit ' + displayName + ' at Bowenstreet Market in Oshkosh, Wisconsin.');
-  var pageUrl = 'https://www.bowenstreetmm.com/v/' + getSlug();
-
-  document.title = metaTitle;
-  document.getElementById('page-title').textContent = metaTitle;
-  document.getElementById('meta-desc').setAttribute('content', metaDesc);
-  document.getElementById('og-title').setAttribute('content', metaTitle);
-  document.getElementById('og-desc').setAttribute('content', metaDesc);
-  document.getElementById('og-url').setAttribute('content', pageUrl);
-  document.getElementById('canonical').setAttribute('href', pageUrl);
-
-  if (v.photo_urls && v.photo_urls.length > 0) {
-    var heroUrl = v.photo_urls[0];
-    document.getElementById('hero-img').src = heroUrl;
-    document.getElementById('hero-img').alt = escHtml(displayName);
-    document.getElementById('og-image').setAttribute('content', heroUrl);
+    loadTaxRate();
+    loadLandingPage();
+    bindEvents();
   }
 
-  document.getElementById('hero-badge').textContent = v.booth_number ? 'Booth ' + v.booth_number : 'Vendor';
-  document.getElementById('hero-name').textContent = displayName;
-
-  if (v.landing_about) {
-    document.getElementById('about-section').style.display = 'block';
-    document.getElementById('about-text').textContent = v.landing_about;
+  function loadCart() {
+    try {
+      var raw = localStorage.getItem(CART_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (_) { return {}; }
   }
 
-  if (v.description) {
-    document.getElementById('desc-section').style.display = 'block';
-    document.getElementById('desc-text').textContent = v.description;
+  function saveCart() {
+    localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }
 
-  if (v.photo_urls && v.photo_urls.length > 0) {
-    document.getElementById('photos-section').style.display = 'block';
-    lightboxPhotos = v.photo_urls;
+  async function loadTaxRate() {
+    try {
+      var res = await fetch(API_TAX);
+      if (res.ok) {
+        var data = await res.json();
+        TAX_RATE = parseFloat(data.tax_rate || 0.05);
+      }
+    } catch (_) {}
+  }
+
+  // ── LANDING PAGE ──
+  async function loadLandingPage() {
+    try {
+      var res = await fetch(API_LANDING + encodeURIComponent(vendorSlug));
+      if (!res.ok) { show404(); return; }
+      vendorData = await res.json();
+    } catch (_) {
+      show404();
+      return;
+    }
+
+    document.getElementById('not-found').style.display = 'none';
+    document.getElementById('vendor-content').style.display = 'block';
+
+    renderHero();
+    renderAbout();
+    renderPhotos();
+    renderSEO();
+    renderFooterSocials();
+
+    vendorItems = (vendorData.items || []).map(normalizeItem);
+    renderItems(vendorItems);
+    renderCategoryFilters(vendorItems);
+    updateCartUI();
+  }
+
+  function normalizeItem(item) {
+    return {
+      id: item.id,
+      name: item.name || 'Untitled',
+      price: parseFloat(item.price || 0),
+      sale_price: item.sale_price ? parseFloat(item.sale_price) : null,
+      image_url: item.image_url || item.image_path || item.photo_url || '',
+      category: item.category || '',
+      vendor_name: item.vendor_name || vendorData.vendor_name || '',
+      booth_number: item.booth_number || vendorData.booth_number || '',
+      description: item.description || '',
+    };
+  }
+
+  // ── RENDER ──
+  function renderHero() {
+    var photos = vendorData.photo_urls || [];
+    var bg = document.getElementById('hero-bg');
+    if (photos.length > 0) {
+      bg.style.backgroundImage = 'url(' + photos[0] + ')';
+    } else {
+      bg.style.background = 'linear-gradient(135deg, #1a1a1c 0%, #2a2a2e 50%, #1a1a1c 100%)';
+    }
+    document.getElementById('hero-name').textContent = vendorData.vendor_name || 'Vendor';
+    document.getElementById('hero-booth').textContent = vendorData.booth_number ? 'Booth ' + vendorData.booth_number : '';
+    if (!vendorData.booth_number) {
+      document.getElementById('hero-booth').style.display = 'none';
+    }
+  }
+
+  function renderAbout() {
+    var hasAbout = vendorData.landing_about || vendorData.description;
+    var hasSocials = vendorData.landing_facebook || vendorData.landing_instagram || vendorData.landing_tiktok || vendorData.landing_twitter || vendorData.landing_etsy || vendorData.landing_website;
+    var hasContact = vendorData.landing_contact_email || vendorData.landing_contact_phone;
+
+    if (!hasAbout && !hasSocials && !hasContact) return;
+
+    var section = document.getElementById('about-section');
+    section.style.display = 'block';
+    document.getElementById('about-vendor-name').textContent = vendorData.vendor_name || '';
+
+    if (vendorData.landing_about) {
+      document.getElementById('about-text').textContent = vendorData.landing_about;
+    } else if (vendorData.description) {
+      document.getElementById('about-text').textContent = vendorData.description;
+    }
+
+    var socials = document.getElementById('social-links');
+    socials.innerHTML = '';
+    var links = [
+      { url: vendorData.landing_website, label: 'Website', icon: '🔗' },
+      { url: vendorData.landing_facebook, label: 'Facebook', icon: '📘' },
+      { url: vendorData.landing_instagram, label: 'Instagram', icon: '📷' },
+      { url: vendorData.landing_tiktok, label: 'TikTok', icon: '🎵' },
+      { url: vendorData.landing_twitter, label: 'Twitter', icon: '🐦' },
+      { url: vendorData.landing_etsy, label: 'Etsy', icon: '🧶' },
+    ];
+    links.forEach(function (l) {
+      if (l.url) {
+        socials.innerHTML += '<a href="' + escAttr(l.url) + '" target="_blank" rel="noopener">' + l.icon + ' ' + escHtml(l.label) + '</a>';
+      }
+    });
+
+    var contact = document.getElementById('contact-info');
+    contact.innerHTML = '';
+    if (vendorData.landing_contact_email) {
+      contact.innerHTML += '📧 <a href="mailto:' + escAttr(vendorData.landing_contact_email) + '">' + escHtml(vendorData.landing_contact_email) + '</a><br>';
+    }
+    if (vendorData.landing_contact_phone) {
+      contact.innerHTML += '📞 ' + escHtml(vendorData.landing_contact_phone);
+    }
+  }
+
+  function renderPhotos() {
+    var photos = vendorData.photo_urls || [];
+    if (photos.length <= 1) return;
     var gallery = document.getElementById('photo-gallery');
-    gallery.innerHTML = v.photo_urls.map(function(url, i) {
-      return '<img src="' + escHtml(url) + '" alt="Booth photo" loading="lazy" onclick="openLightbox(' + i + ')">';
+    gallery.style.display = 'block';
+    var scroll = document.getElementById('photo-scroll');
+    scroll.innerHTML = photos.map(function (url) {
+      return '<img src="' + escAttr(url) + '" alt="Booth photo" loading="lazy">';
     }).join('');
   }
 
-  if (v.video_url) {
-    document.getElementById('video-section').style.display = 'block';
-    document.getElementById('vendor-video').src = v.video_url;
+  function renderSEO() {
+    var title = vendorData.landing_meta_title || (vendorData.vendor_name + ' — Bowenstreet Market');
+    var desc = vendorData.landing_meta_desc || ('Shop ' + vendorData.vendor_name + ' at Bowenstreet Market in Oshkosh, WI. Handcrafted, vintage, and antique goods.');
+    var slug = vendorSlug;
+    var photos = vendorData.photo_urls || [];
+
+    document.title = title;
+    document.getElementById('page-title').textContent = title;
+    document.getElementById('meta-desc').setAttribute('content', desc);
+    document.getElementById('og-title').setAttribute('content', title);
+    document.getElementById('og-desc').setAttribute('content', desc);
+    document.getElementById('og-url').setAttribute('content', 'https://www.bowenstreetmarket.com/v/' + slug);
+    document.getElementById('canonical').setAttribute('href', 'https://www.bowenstreetmarket.com/v/' + slug);
+    if (photos.length > 0) {
+      document.getElementById('og-image').setAttribute('content', photos[0]);
+    }
   }
 
-  if (v.item_count > 0) {
-    document.getElementById('items-section').style.display = 'block';
-    loadInventory(1);
-    loadCategories();
+  function renderFooterSocials() {
+    var socials = vendorData.market_socials || {};
+    var el = document.getElementById('footer-socials');
+    var html = '';
+    if (socials.facebook) html += '<a href="' + escAttr(socials.facebook) + '" target="_blank" rel="noopener">Facebook</a>';
+    if (socials.instagram) html += '<a href="' + escAttr(socials.instagram) + '" target="_blank" rel="noopener">Instagram</a>';
+    if (socials.tiktok) html += '<a href="' + escAttr(socials.tiktok) + '" target="_blank" rel="noopener">TikTok</a>';
+    el.innerHTML = html;
   }
 
-  var hasContact = v.landing_contact_email || v.landing_contact_phone || v.landing_website;
-  if (hasContact) {
-    document.getElementById('contact-section').style.display = 'block';
-    var contactHtml = '';
-    if (v.landing_contact_email) {
-      contactHtml += '<div class="contact-item"><div class="label">Email</div><div class="value"><a href="mailto:' + escHtml(v.landing_contact_email) + '">' + escHtml(v.landing_contact_email) + '</a></div></div>';
-    }
-    if (v.landing_contact_phone) {
-      contactHtml += '<div class="contact-item"><div class="label">Phone</div><div class="value"><a href="tel:' + escHtml(v.landing_contact_phone) + '">' + escHtml(v.landing_contact_phone) + '</a></div></div>';
-    }
-    if (v.landing_website) {
-      var url = v.landing_website;
-      if (url && !url.startsWith('http')) url = 'https://' + url;
-      contactHtml += '<div class="contact-item"><div class="label">Website</div><div class="value"><a href="' + escHtml(url) + '" target="_blank" rel="noopener">' + escHtml(v.landing_website) + '</a></div></div>';
-    }
-    document.getElementById('contact-grid').innerHTML = contactHtml;
-  }
-
-  var socialMap = [
-    { key: 'landing_facebook', label: 'Facebook', icon: 'f' },
-    { key: 'landing_instagram', label: 'Instagram', icon: '&#9679;' },
-    { key: 'landing_tiktok', label: 'TikTok', icon: '&#9835;' },
-    { key: 'landing_twitter', label: 'X (Twitter)', icon: 'X' },
-    { key: 'landing_etsy', label: 'Etsy', icon: '&#10047;' },
-  ];
-  var vendorSocialHtml = '';
-  socialMap.forEach(function(s) {
-    if (v[s.key]) {
-      var url = v[s.key];
-      if (!url.startsWith('http')) url = 'https://' + url;
-      vendorSocialHtml += '<a href="' + escHtml(url) + '" target="_blank" rel="noopener" class="social-link"><span class="icon">' + s.icon + '</span> ' + escHtml(s.label) + '</a>';
-    }
-  });
-
-  var marketSocialHtml = '';
-  if (v.market_socials) {
-    var mMap = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok' };
-    var mIcons = { facebook: 'f', instagram: '&#9679;', tiktok: '&#9835;' };
-    Object.keys(v.market_socials).forEach(function(k) {
-      marketSocialHtml += '<a href="' + escHtml(v.market_socials[k]) + '" target="_blank" rel="noopener" class="social-link"><span class="icon">' + mIcons[k] + '</span> ' + escHtml(mMap[k]) + '</a>';
+  function renderCategoryFilters(items) {
+    var cats = [];
+    var seen = {};
+    items.forEach(function (item) {
+      var c = (item.category || '').trim();
+      if (c && !seen[c]) { seen[c] = true; cats.push(c); }
     });
+    cats.sort();
+
+    var el = document.getElementById('category-filters');
+    if (cats.length <= 1) { el.innerHTML = ''; return; }
+
+    var html = '<button class="cat-btn active" data-cat="">All</button>';
+    cats.forEach(function (c) {
+      html += '<button class="cat-btn" data-cat="' + escAttr(c) + '">' + escHtml(c) + '</button>';
+    });
+    el.innerHTML = html;
   }
 
-  if (vendorSocialHtml || marketSocialHtml) {
-    document.getElementById('social-section').style.display = 'block';
-    if (vendorSocialHtml) {
-      document.getElementById('vendor-socials').innerHTML = vendorSocialHtml;
-    }
-    if (marketSocialHtml) {
-      document.getElementById('market-socials-area').style.display = 'block';
-      document.getElementById('market-socials').innerHTML = marketSocialHtml;
-    }
-  }
-}
-
-var currentPage = 1;
-var totalPages = 1;
-var searchTimeout = null;
-var activeCategory = '';
-var PER_PAGE = 24;
-
-function debounceSearch() {
-  clearTimeout(searchTimeout);
-  searchTimeout = setTimeout(function() { loadInventory(1); }, 300);
-}
-
-async function loadInventory(page) {
-  if (!vendorData || !vendorData.vendor_id) return;
-  currentPage = page;
-  var search = document.getElementById('inv-search').value.trim();
-  var sort = document.getElementById('inv-sort').value;
-  var params = new URLSearchParams({
-    sort: sort,
-    page: page,
-    per_page: PER_PAGE,
-  });
-  if (search) params.set('search', search);
-  if (activeCategory) params.set('category', activeCategory);
-
-  try {
-    var resp = await fetch('/api/v1/storefront/vendor-inventory/' + vendorData.vendor_id + '?' + params.toString());
-    if (!resp.ok) throw new Error('Failed');
-    var data = await resp.json();
-    var items = data.items || [];
-    var total = data.total || 0;
-    totalPages = Math.ceil(total / PER_PAGE) || 1;
-
-    document.getElementById('inventory-count').textContent = total + ' item' + (total !== 1 ? 's' : '');
-
+  function renderItems(items) {
     var grid = document.getElementById('items-grid');
-    var emptyEl = document.getElementById('inv-empty');
+    var countEl = document.getElementById('item-count');
 
-    if (items.length === 0) {
-      grid.innerHTML = '';
-      emptyEl.style.display = 'block';
-    } else {
-      emptyEl.style.display = 'none';
-      grid.innerHTML = items.map(function(item) {
-        var imgUrl = item.photo_url || item.image_path;
-        var imgHtml = imgUrl
-          ? '<img src="' + escHtml(imgUrl) + '" alt="' + escHtml(item.name) + '" loading="lazy">'
-          : '<div style="width:100%;aspect-ratio:1;background:var(--bg-dark);display:flex;align-items:center;justify-content:center;color:var(--text-dim);font-size:0.7rem">No photo</div>';
-        var priceHtml = '$' + Number(item.price).toFixed(2);
-        if (item.sale_price) {
-          priceHtml = '<span style="text-decoration:line-through;color:var(--text-dim);font-size:0.75rem">$' + Number(item.price).toFixed(2) + '</span> <span style="color:#e07070">$' + Number(item.sale_price).toFixed(2) + '</span>';
-        }
-        return '<div class="item-card">' + imgHtml +
-          '<div class="item-card-body">' +
-          '<div class="item-card-name">' + escHtml(item.name) + '</div>' +
+    var filtered = activeCat ? items.filter(function (i) { return i.category === activeCat; }) : items;
+    countEl.textContent = filtered.length + ' item' + (filtered.length !== 1 ? 's' : '');
+
+    if (filtered.length === 0) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-light);padding:2rem">No items found</div>';
+      return;
+    }
+
+    grid.innerHTML = filtered.map(function (item, i) {
+      var inCart = !!cart[item.id];
+      var imgUrl = item.image_url || '/static/images/placeholder-item.png';
+      var priceHtml = '';
+      if (item.sale_price) {
+        priceHtml = '$' + item.sale_price.toFixed(2) + '<span class="sale-price">$' + item.price.toFixed(2) + '</span>';
+      } else {
+        priceHtml = '$' + item.price.toFixed(2);
+      }
+      var vendorLine = currentMode === 'all' && item.vendor_name ? '<div class="item-card-vendor">' + escHtml(item.vendor_name) + (item.booth_number ? ' · Booth ' + escHtml(item.booth_number) : '') + '</div>' : '';
+      return '<div class="item-card" style="animation-delay:' + (i * 0.04) + 's">' +
+        '<img class="item-card-img" src="' + escAttr(imgUrl) + '" alt="' + escAttr(item.name) + '" loading="lazy" onerror="this.src=\'/static/images/placeholder-item.png\'">' +
+        '<div class="item-card-body">' +
+          '<div class="item-card-name" title="' + escAttr(item.name) + '">' + escHtml(item.name) + '</div>' +
+          vendorLine +
           '<div class="item-card-price">' + priceHtml + '</div>' +
-          (item.category ? '<div class="item-card-category">' + escHtml(item.category) + '</div>' : '') +
-          '</div></div>';
-      }).join('');
-    }
-
-    var pagEl = document.getElementById('inv-pagination');
-    if (totalPages > 1) {
-      pagEl.style.display = 'flex';
-      document.getElementById('prev-btn').disabled = (currentPage <= 1);
-      document.getElementById('next-btn').disabled = (currentPage >= totalPages);
-      document.getElementById('page-info').textContent = 'Page ' + currentPage + ' of ' + totalPages;
-    } else {
-      pagEl.style.display = 'none';
-    }
-  } catch (err) {
-    document.getElementById('items-grid').innerHTML = '<div class="inventory-empty">Unable to load inventory.</div>';
+          '<button class="add-cart-btn' + (inCart ? ' carted' : '') + '" data-id="' + item.id + '" onclick="window.__toggleCart(' + item.id + ')">' +
+            (inCart ? '✓ In Cart' : '+ Add to Cart') +
+          '</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
   }
-}
 
-async function loadCategories() {
-  if (!vendorData || !vendorData.vendor_id) return;
-  try {
-    var resp = await fetch('/api/v1/storefront/categories?vendor_id=' + vendorData.vendor_id + '&format=simple');
-    if (!resp.ok) return;
-    var cats = await resp.json();
-    if (!cats || cats.length === 0) return;
-    var pillsEl = document.getElementById('category-pills');
-    pillsEl.innerHTML = '';
-    var allPill = document.createElement('span');
-    allPill.className = 'cat-pill active';
-    allPill.textContent = 'All';
-    allPill.dataset.cat = '';
-    allPill.addEventListener('click', function() { filterCategory(this, ''); });
-    pillsEl.appendChild(allPill);
-    cats.forEach(function(c) {
-      var pill = document.createElement('span');
-      pill.className = 'cat-pill';
-      pill.textContent = c;
-      pill.dataset.cat = c;
-      pill.addEventListener('click', function() { filterCategory(this, c); });
-      pillsEl.appendChild(pill);
+  // ── CART ──
+  window.__toggleCart = function (itemId) {
+    if (cart[itemId]) {
+      delete cart[itemId];
+    } else {
+      var items = currentMode === 'all' ? allItems : vendorItems;
+      var item = items.find(function (i) { return i.id === itemId; });
+      if (item) {
+        cart[itemId] = { id: item.id, name: item.name, price: item.sale_price || item.price, image_url: item.image_url };
+      }
+    }
+    saveCart();
+    updateCartUI();
+    refreshItemButtons();
+  };
+
+  function updateCartUI() {
+    var keys = Object.keys(cart);
+    var badge = document.getElementById('cart-badge');
+    badge.textContent = keys.length;
+    badge.setAttribute('data-count', keys.length);
+
+    var body = document.getElementById('cart-body');
+    var totals = document.getElementById('cart-totals');
+    var checkoutBtn = document.getElementById('cart-checkout');
+
+    if (keys.length === 0) {
+      body.innerHTML = '<div class="cart-empty-msg">Your cart is empty</div>';
+      totals.innerHTML = '';
+      checkoutBtn.disabled = true;
+      return;
+    }
+
+    var subtotal = 0;
+    body.innerHTML = keys.map(function (id) {
+      var item = cart[id];
+      subtotal += item.price;
+      var img = item.image_url || '/static/images/placeholder-item.png';
+      return '<div class="cart-line">' +
+        '<img class="cart-line-img" src="' + escAttr(img) + '" alt="" onerror="this.style.display=\'none\'">' +
+        '<div class="cart-line-info">' +
+          '<div class="cart-line-name">' + escHtml(item.name) + '</div>' +
+          '<div class="cart-line-price">$' + item.price.toFixed(2) + '</div>' +
+        '</div>' +
+        '<button class="cart-line-remove" onclick="window.__toggleCart(' + id + ')">&times;</button>' +
+      '</div>';
+    }).join('');
+
+    var tax = subtotal * TAX_RATE;
+    var total = subtotal + tax;
+    totals.innerHTML =
+      '<div class="cart-totals-row"><span>Subtotal</span><span>$' + subtotal.toFixed(2) + '</span></div>' +
+      '<div class="cart-totals-row"><span>Tax (' + (TAX_RATE * 100).toFixed(1) + '%)</span><span>$' + tax.toFixed(2) + '</span></div>' +
+      '<div class="cart-totals-row total"><span>Total</span><span>$' + total.toFixed(2) + '</span></div>';
+    checkoutBtn.disabled = false;
+  }
+
+  function refreshItemButtons() {
+    var items = currentMode === 'all' ? allItems : vendorItems;
+    renderItems(items);
+  }
+
+  // ── BROWSE ALL ──
+  async function loadAllItems(append) {
+    if (isLoading) return;
+    isLoading = true;
+    try {
+      var url = API_ITEMS + '?page=' + itemPage;
+      var res = await fetch(url);
+      if (!res.ok) return;
+      var data = await res.json();
+      var newItems = (data.items || []).map(normalizeItem);
+      if (append) {
+        allItems = allItems.concat(newItems);
+      } else {
+        allItems = newItems;
+      }
+      renderItems(allItems);
+      renderCategoryFilters(allItems);
+      var hasMore = newItems.length >= 100;
+      document.getElementById('load-more-wrap').style.display = hasMore ? 'block' : 'none';
+    } catch (_) {}
+    isLoading = false;
+  }
+
+  // ── CHECKOUT ──
+  async function doCheckout(name, phone, email) {
+    var itemIds = Object.keys(cart).map(Number);
+    if (itemIds.length === 0) return;
+
+    var btn = document.getElementById('checkout-submit');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    try {
+      var res = await fetch(API_CHECKOUT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_ids: itemIds,
+          customer_name: name,
+          customer_phone: phone,
+          customer_email: email || null,
+        }),
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Checkout failed');
+
+      // Clear cart
+      cart = {};
+      saveCart();
+      updateCartUI();
+
+      if (data.payment_url) {
+        window.location.href = data.payment_url;
+      } else {
+        alert('Order placed! Reference: ' + (data.reference_id || ''));
+        closeCheckoutModal();
+      }
+    } catch (e) {
+      alert(e.message || 'Checkout failed. Please try again.');
+      btn.disabled = false;
+      btn.textContent = 'Pay & Reserve';
+    }
+  }
+
+  // ── EVENTS ──
+  function bindEvents() {
+    // Cart sidebar
+    document.getElementById('cart-toggle').addEventListener('click', openCart);
+    document.getElementById('cart-close').addEventListener('click', closeCart);
+    document.getElementById('cart-overlay').addEventListener('click', closeCart);
+
+    // Checkout
+    document.getElementById('cart-checkout').addEventListener('click', openCheckoutModal);
+    document.getElementById('checkout-cancel').addEventListener('click', closeCheckoutModal);
+    document.getElementById('checkout-submit').addEventListener('click', function () {
+      var name = document.getElementById('c-name').value.trim();
+      var phone = document.getElementById('c-phone').value.trim();
+      var email = document.getElementById('c-email').value.trim();
+      var valid = true;
+
+      if (!name) {
+        document.getElementById('c-name-error').style.display = 'block';
+        valid = false;
+      } else {
+        document.getElementById('c-name-error').style.display = 'none';
+      }
+      if (!phone || phone.length < 7) {
+        document.getElementById('c-phone-error').style.display = 'block';
+        valid = false;
+      } else {
+        document.getElementById('c-phone-error').style.display = 'none';
+      }
+      if (valid) doCheckout(name, phone, email);
     });
-  } catch (e) {}
-}
 
-function filterCategory(el, cat) {
-  activeCategory = cat;
-  var pills = document.querySelectorAll('.cat-pill');
-  pills.forEach(function(p) { p.classList.remove('active'); });
-  el.classList.add('active');
-  loadInventory(1);
-}
+    // Browse toggle
+    document.getElementById('browse-toggle').addEventListener('click', function () {
+      if (currentMode === 'vendor') {
+        currentMode = 'all';
+        document.getElementById('browse-toggle').textContent = 'Back to Vendor';
+        document.getElementById('items-title').textContent = 'All Market Items';
+        itemPage = 0;
+        allItems = [];
+        loadAllItems(false);
+      } else {
+        currentMode = 'vendor';
+        document.getElementById('browse-toggle').textContent = 'Browse All Market Items';
+        document.getElementById('items-title').textContent = 'Inventory';
+        document.getElementById('load-more-wrap').style.display = 'none';
+        renderItems(vendorItems);
+        renderCategoryFilters(vendorItems);
+      }
+    });
 
-function openLightbox(index) {
-  lightboxIndex = index;
-  document.getElementById('lightbox-img').src = lightboxPhotos[index];
-  document.getElementById('lightbox').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
+    // Load more
+    document.getElementById('load-more-btn').addEventListener('click', function () {
+      itemPage++;
+      loadAllItems(true);
+    });
 
-function closeLightbox() {
-  document.getElementById('lightbox').classList.remove('open');
-  document.body.style.overflow = '';
-}
+    // Category filters (delegated)
+    document.getElementById('category-filters').addEventListener('click', function (e) {
+      if (!e.target.classList.contains('cat-btn')) return;
+      activeCat = e.target.getAttribute('data-cat');
+      var btns = e.target.parentElement.querySelectorAll('.cat-btn');
+      btns.forEach(function (b) { b.classList.remove('active'); });
+      e.target.classList.add('active');
+      refreshItemButtons();
+    });
+  }
 
-function navLightbox(dir) {
-  lightboxIndex = (lightboxIndex + dir + lightboxPhotos.length) % lightboxPhotos.length;
-  document.getElementById('lightbox-img').src = lightboxPhotos[lightboxIndex];
-}
+  function openCart() {
+    document.getElementById('cart-sidebar').classList.add('open');
+    document.getElementById('cart-overlay').classList.add('open');
+  }
+  function closeCart() {
+    document.getElementById('cart-sidebar').classList.remove('open');
+    document.getElementById('cart-overlay').classList.remove('open');
+  }
+  function openCheckoutModal() {
+    document.getElementById('checkout-modal').classList.add('open');
+  }
+  function closeCheckoutModal() {
+    document.getElementById('checkout-modal').classList.remove('open');
+  }
 
-document.addEventListener('keydown', function(e) {
-  if (!document.getElementById('lightbox').classList.contains('open')) return;
-  if (e.key === 'Escape') closeLightbox();
-  if (e.key === 'ArrowLeft') navLightbox(-1);
-  if (e.key === 'ArrowRight') navLightbox(1);
-});
+  function show404() {
+    document.getElementById('not-found').style.display = 'block';
+    document.getElementById('vendor-content').style.display = 'none';
+  }
 
-loadPage();
+  // ── UTILS ──
+  function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+  function escAttr(s) { return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
+
+  // JSON-LD
+  function injectJsonLd() {
+    if (!vendorData) return;
+    var ld = {
+      '@context': 'https://schema.org',
+      '@type': 'LocalBusiness',
+      'name': vendorData.vendor_name,
+      'description': vendorData.landing_meta_desc || vendorData.description || '',
+      'image': (vendorData.photo_urls || [])[0] || '',
+      'url': 'https://www.bowenstreetmarket.com/v/' + vendorSlug,
+      'address': {
+        '@type': 'PostalAddress',
+        'streetAddress': '2837 Bowen St',
+        'addressLocality': 'Oshkosh',
+        'addressRegion': 'WI',
+        'postalCode': '54901',
+        'addressCountry': 'US'
+      },
+      'parentOrganization': {
+        '@type': 'Store',
+        'name': 'Bowenstreet Market',
+        'url': 'https://www.bowenstreetmarket.com'
+      }
+    };
+    if (vendorData.landing_contact_phone) ld.telephone = vendorData.landing_contact_phone;
+    var script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.textContent = JSON.stringify(ld);
+    document.head.appendChild(script);
+  }
+
+  // Run
+  init();
+  // Inject JSON-LD after data loads
+  var origLoad = loadLandingPage;
+  var _orig = null;
+  // Just call it after a tick
+  setTimeout(function () { if (vendorData) injectJsonLd(); }, 500);
+})();
 </script>
 </body>
 </html>

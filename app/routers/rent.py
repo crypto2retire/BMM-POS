@@ -124,8 +124,13 @@ async def rent_status(
     balance = balance_result.scalar_one_or_none()
     rent_credit = float(balance.rent_balance or 0) if balance and balance.rent_balance is not None else 0.0
 
+    landing_fee = float(vendor.landing_page_fee or 0)
+    effective_rent = float(vendor.monthly_rent or 0) + landing_fee
+
     return {
         "monthly_rent": float(vendor.monthly_rent or 0),
+        "landing_page_fee": landing_fee,
+        "effective_rent": effective_rent,
         "current_month": today.strftime("%B %Y"),
         "paid_this_month": current_payment is not None and current_payment.status == "paid",
         "pending_this_month": current_payment is not None and current_payment.status == "pending",
@@ -191,7 +196,7 @@ async def monthly_report(
     balance = balance_result.scalar_one_or_none()
     total_sales = float(balance.balance or 0) if balance and balance.balance is not None else 0.0
     carry_over = float(balance.rent_balance or 0) if balance and balance.rent_balance is not None else 0.0
-    rent_due_amt = float(vendor.monthly_rent or 0)
+    rent_due_amt = float(vendor.monthly_rent or 0) + float(vendor.landing_page_fee or 0)
 
     # Check if rent already paid this month
     today_check = date.today()
@@ -266,6 +271,8 @@ async def monthly_report(
             "email": vendor.email,
             "booth_number": vendor.booth_number or "—",
             "monthly_rent": float(vendor.monthly_rent or 0),
+            "landing_page_fee": float(vendor.landing_page_fee or 0),
+            "effective_rent": float(vendor.monthly_rent or 0) + float(vendor.landing_page_fee or 0),
             "payout_method": vendor.payout_method or "check",
         },
         "month": start_local.strftime("%Y-%m"),
@@ -318,7 +325,7 @@ async def pay_rent(
         raise HTTPException(status_code=403, detail="Vendor access required.")
 
     vendor = current_vendor
-    configured_rent = Decimal(str(vendor.monthly_rent or 0))
+    configured_rent = Decimal(str(vendor.monthly_rent or 0)) + Decimal(str(vendor.landing_page_fee or 0))
     if configured_rent <= 0:
         raise HTTPException(status_code=400, detail="No rent amount configured for this vendor.")
 
@@ -379,7 +386,7 @@ async def rent_confirmed(
 
     vendor = current_vendor
     try:
-        amount = Decimal(str(body.amount if body.amount is not None else vendor.monthly_rent))
+        amount = Decimal(str(body.amount if body.amount is not None else vendor.monthly_rent)) + Decimal(str(vendor.landing_page_fee or 0))
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid amount.")
 

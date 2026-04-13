@@ -57,6 +57,9 @@ class VendorResponse(BaseModel):
     is_active: bool
     is_vendor: bool = False
     monthly_rent: Decimal
+    landing_page_fee: Decimal = Decimal("0.00")
+    landing_page_enabled: Optional[bool] = False
+    landing_slug: Optional[str] = None
     commission_rate: Decimal
     consignment_rate: Optional[Decimal] = Decimal("0.00")
     status: Optional[str] = "active"

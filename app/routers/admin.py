@@ -212,7 +212,7 @@ async def vendor_overview(
     for v in vendors:
         sales_balance = balance_map.get(v.id, 0.0)
         rent_bal = rent_balance_map.get(v.id, 0.0)
-        rent = float(v.monthly_rent or 0)
+        rent = float(v.monthly_rent or 0) + float(v.landing_page_fee or 0) + float(v.landing_page_fee or 0)
         rent_info = rent_map.get(v.id)
         rent_paid = rent_info is not None and rent_info["paid"]
         rent_display = _admin_display_rent_balance(rent_bal, rent, rent_paid)
@@ -332,7 +332,7 @@ async def rent_status(
 
     for v in vendors:
         last = latest_by_vendor.get(v.id)
-        status = _rent_status(today, last, float(v.monthly_rent or 0))
+        status = _rent_status(today, last, float(v.monthly_rent or 0) + float(v.landing_page_fee or 0))
         if last and last.period_month >= current_period:
             total_collected_this_month += float(last.amount or 0)
         rows.append({
@@ -407,7 +407,7 @@ async def vendor_rent_history(
 
     today = date.today()
     latest = payments[0] if payments else None
-    status = _rent_status(today, latest, float(vendor.monthly_rent or 0))
+    status = _rent_status(today, latest, float(vendor.monthly_rent or 0) + float(vendor.landing_page_fee or 0))
 
     return {
         "vendor": {
@@ -602,7 +602,7 @@ async def rent_charge_card(
         except (ValueError, TypeError):
             raise HTTPException(status_code=400, detail="Invalid amount.")
     else:
-        amount = float(vendor.monthly_rent or 0)
+        amount = float(vendor.monthly_rent or 0) + float(vendor.landing_page_fee or 0)
 
     if amount <= 0:
         raise HTTPException(status_code=400, detail="No rent amount to charge.")
@@ -677,7 +677,7 @@ async def payout_preview(
         )
         bal = bal_result.scalar_one_or_none()
         gross = float(bal.balance) if bal else 0.0
-        rent = float(v.monthly_rent or 0)
+        rent = float(v.monthly_rent or 0) + float(v.landing_page_fee or 0)
 
         rent_paid_result = await db.execute(
             select(RentPayment).where(
@@ -771,7 +771,7 @@ async def process_payouts(
         bal = bal_result.scalar_one_or_none()
         sales = Decimal(str(bal.balance)) if bal and bal.balance else Decimal("0")
         rent_bal = Decimal(str(bal.rent_balance)) if bal and bal.rent_balance else Decimal("0")
-        rent = Decimal(str(v.monthly_rent or 0))
+        rent = Decimal(str(v.monthly_rent or 0)) + Decimal(str(vendor.landing_page_fee or 0))
 
         # ── Step 1: Deduct this month's rent from rent_balance ──
         rent_bal -= rent  # can go negative
@@ -937,7 +937,7 @@ async def send_rent_reminders(
         else:
             days_overdue = 999
 
-        rent_amount = float(v.monthly_rent or 0)
+        rent_amount = float(v.monthly_rent or 0) + float(vendor.landing_page_fee or 0)
         booth = v.booth_number or "—"
         period_label = current_period.strftime("%B %Y")
 
@@ -1020,7 +1020,7 @@ async def send_weekly_reports(
         bal_row = bal_result.one_or_none()
         sb = float(bal_row[0] or 0) if bal_row else 0.0
         rb = float(bal_row[1] or 0) if bal_row else 0.0
-        rent = float(v.monthly_rent or 0)
+        rent = float(v.monthly_rent or 0) + float(v.landing_page_fee or 0)
         # Compute net payout for the email
         net_payout = round(sb - rent + rb, 2) if rent > 0 else round(sb + rb, 2)
 
@@ -1218,7 +1218,7 @@ async def rent_payout_ledger(
 
     total_sales_balances = sum(balances.get(v.id, 0.0) for v in all_vendors)
     total_rent_balances = round(
-        sum(_admin_display_rent_balance(rent_balances.get(v.id, 0.0), float(v.monthly_rent or 0), v.id in paid_current_period) for v in all_vendors),
+        sum(_admin_display_rent_balance(rent_balances.get(v.id, 0.0), float(v.monthly_rent or 0) + float(v.landing_page_fee or 0), v.id in paid_current_period) for v in all_vendors),
         2,
     )
     total_balances = round(
@@ -1231,7 +1231,7 @@ async def rent_payout_ledger(
     for v in all_vendors:
         sb = balances.get(v.id, 0.0)
         rb = rent_balances.get(v.id, 0.0)
-        rent = float(v.monthly_rent or 0)
+        rent = float(v.monthly_rent or 0) + float(v.landing_page_fee or 0)
         rent_paid = v.id in paid_current_period
         if rent > 0 and not rent_paid:
             np = round(sb - rent + rb, 2)

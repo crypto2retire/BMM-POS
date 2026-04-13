@@ -2,7 +2,8 @@ import io
 import os
 import uuid
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -722,8 +723,70 @@ async def admin_toggle_landing_page(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier only")
+
+    # Load vendor
+    vendor_result = await db.execute(
+        select(Vendor).where(Vendor.id == vendor_id)
+    )
+    vendor = vendor_result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    # Load or create showcase
+    result = await db.execute(
+        select(BoothShowcase).where(BoothShowcase.vendor_id == vendor_id)
+    )
+    sc = result.scalar_one_or_none()
+    if not sc:
+        sc = BoothShowcase(vendor_id=vendor_id)
+        db.add(sc)
+        await db.flush()
+
+    # Toggle
+    enabling = not sc.landing_page_enabled
+    sc.landing_page_enabled = enabling
+    sc.updated_at = datetime.now(timezone.utc)
+
+    # Manage $10/month fee
+    LANDING_PAGE_FEE = Decimal("10.00")
+    if enabling:
+        vendor.landing_page_fee = LANDING_PAGE_FEE
+    else:
+        vendor.landing_page_fee = Decimal("0.00")
+
+    await db.commit()
+    await db.refresh(sc)
+    await db.refresh(vendor)
+
+    effective_rent = (vendor.monthly_rent or Decimal("0")) + (vendor.landing_page_fee or Decimal("0"))
+
+    return {
+        "landing_page_enabled": sc.landing_page_enabled,
+        "vendor_id": vendor_id,
+        "landing_page_fee": float(vendor.landing_page_fee),
+        "base_monthly_rent": float(vendor.monthly_rent or 0),
+        "effective_monthly_rent": float(effective_rent),
+    }
+
+
+@router.put("/admin/landing-slug/{vendor_id}")
+async def admin_update_landing_slug(
+    vendor_id: int,
+    data: LandingSlugUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier only")
+
+    vendor_result = await db.execute(
+        select(Vendor).where(Vendor.id == vendor_id)
+    )
+    vendor = vendor_result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
 
     result = await db.execute(
         select(BoothShowcase).where(BoothShowcase.vendor_id == vendor_id)
@@ -734,12 +797,34 @@ async def admin_toggle_landing_page(
         db.add(sc)
         await db.flush()
 
-    sc.landing_page_enabled = not sc.landing_page_enabled
+    slug = data.slug.strip().lower()
+    slug = re.sub(r'[^a-z0-9\-]', '', slug)
+    slug = re.sub(r'-+', '-', slug).strip('-')
+
+    if not slug or not SLUG_PATTERN.match(slug):
+        raise HTTPException(status_code=400, detail="URL must be 3-100 characters, lowercase letters, numbers, and hyphens only")
+    if slug in RESERVED_SLUGS:
+        raise HTTPException(status_code=400, detail="This URL is reserved. Please choose a different one.")
+
+    existing = await db.execute(
+        select(BoothShowcase).where(
+            BoothShowcase.landing_slug == slug,
+            BoothShowcase.vendor_id != vendor_id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="This URL is already taken. Please choose a different one.")
+
+    sc.landing_slug = slug
     sc.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(sc)
 
-    return {"landing_page_enabled": sc.landing_page_enabled, "vendor_id": vendor_id}
+    return {
+        "landing_slug": sc.landing_slug,
+        "vendor_id": vendor_id,
+        "landing_page_enabled": sc.landing_page_enabled,
+    }
 
 
 @router.get("/landing/{slug}")
