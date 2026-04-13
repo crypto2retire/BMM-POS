@@ -838,7 +838,6 @@ async def get_landing_page(
             BoothShowcase.landing_slug == slug,
             BoothShowcase.landing_page_enabled == True,
         )
-        )
     )
     sc = result.scalar_one_or_none()
     if not sc:
