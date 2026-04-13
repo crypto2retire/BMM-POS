@@ -201,11 +201,117 @@
             .main-content { padding-bottom: 70px; }
             .report-controls { flex-direction: column; align-items: stretch; }
             .report-controls select,
-            .report-controls input { max-width: 100%; }
+            .report-controls input { max-width: 100%; font-size: 16px; }
             .report-controls button { width: 100%; min-height: 44px; }
             .summary-grid { grid-template-columns: 1fr 1fr; }
             .summary-card .val { font-size: 1.4rem; }
             .items-sold-search { flex-direction: column; }
+            .items-sold-search input { font-size: 16px; min-height: 44px; }
+            .items-sold-search button { min-height: 44px; width: 100%; }
+            .pagination-bar { flex-wrap: wrap; }
+            .pagination-bar button { min-height: 44px; padding: 0.5rem 1rem; }
+
+            /* Items Sold: always card layout (too many columns for table) */
+        .report-table.items-sold-table thead { display: none; }
+        .report-table.items-sold-table,
+        .report-table.items-sold-table tbody,
+        .report-table.items-sold-table tr,
+        .report-table.items-sold-table td {
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .report-table.items-sold-table tr {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            margin-bottom: 0.6rem;
+            padding: 0.75rem;
+            position: relative;
+        }
+        .report-table.items-sold-table td {
+            border: none;
+            padding: 0.15rem 0;
+            font-size: 0.85rem;
+        }
+        .report-table.items-sold-table tr:hover td { background: transparent; }
+        .report-table.items-sold-table .td-sale-id {
+            font-size: 0.7rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .report-table.items-sold-table .td-item-name {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text);
+            padding: 0.1rem 0 0.35rem;
+        }
+        .report-table.items-sold-table .td-item-meta {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-bottom: 0.4rem;
+        }
+        .report-table.items-sold-table .td-item-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            padding-top: 0.4rem;
+            border-top: 1px solid var(--border);
+        }
+        .report-table.items-sold-table .td-vendor-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .report-table.items-sold-table .td-vendor-name {
+            font-size: 0.9rem;
+            color: var(--text);
+        }
+        .report-table.items-sold-table .td-vendor-booth {
+            font-size: 0.72rem;
+            color: var(--text-light);
+        }
+        .report-table.items-sold-table .td-line-total {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: var(--gold);
+        }
+        .report-table.items-sold-table .td-actions {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border);
+        }
+        .report-table.items-sold-table .btn-edit-vendor {
+            min-height: 36px;
+            padding: 0.35rem 0.8rem;
+            font-size: 0.8rem;
+        }
+        .report-table.items-sold-table .row-voided { opacity: 0.45; }
+
+            /* Standard report tables on mobile: scroll with better touch */
+            .report-table:not(.items-sold-table) {
+                font-size: 0.8rem;
+            }
+            .report-table:not(.items-sold-table) td,
+            .report-table:not(.items-sold-table) th {
+                padding: 0.5rem;
+            }
+
+            /* Modal on mobile */
+            .modal-box {
+                width: calc(100% - 1.5rem);
+                max-height: 85vh;
+            }
+            .modal-box select {
+                font-size: 16px;
+                min-height: 44px;
+            }
+            .modal-box .modal-actions .btn {
+                min-height: 44px;
+                flex: 1;
+            }
         }
     </style>
 </head>
@@ -427,9 +533,7 @@
     function renderItemsSold(data) {
         var el = document.getElementById('reportContent');
         var rows = data.rows || [];
-
         var isStaff = currentSession && (currentSession.role === 'admin' || currentSession.role === 'cashier');
-
         var html = '';
 
         // Search bar
@@ -444,32 +548,43 @@
             return;
         }
 
-        html += '<div class="report-table-wrap"><table class="report-table"><thead><tr>';
-        html += '<th>Sale</th><th>Item</th><th>SKU</th><th>Barcode</th><th>Vendor</th><th>Booth</th><th>Qty</th><th>Price</th><th>Total</th><th>Payment</th><th>Date</th>';
-        if (isStaff) html += '<th></th>';
-        html += '</tr></thead><tbody>';
+        html += '<div class="report-table-wrap"><table class="report-table items-sold-table"><tbody>';
 
         rows.forEach(function(row, idx) {
-            var rowClass = row.is_voided ? ' class="row-voided"' : '';
-            html += '<tr' + rowClass + ' data-ridx="' + idx + '">';
-            html += '<td>#' + row.sale_id + '</td>';
-            html += '<td>' + escHtml(row.item_name) + '</td>';
-            html += '<td>' + escHtml(row.sku) + '</td>';
-            html += '<td style="font-family:monospace;font-size:0.8rem">' + escHtml(row.barcode) + '</td>';
-            html += '<td>' + escHtml(row.vendor_name) + '</td>';
-            html += '<td>' + escHtml(row.vendor_booth) + '</td>';
-            html += '<td>' + row.quantity + '</td>';
-            html += '<td>$' + row.unit_price.toFixed(2) + '</td>';
-            html += '<td>$' + row.line_total.toFixed(2) + '</td>';
-            html += '<td>' + escHtml(row.payment_method) + '</td>';
-            html += '<td>' + formatDate(row.sale_date) + '</td>';
+            var voidClass = row.is_voided ? ' row-voided' : '';
+            html += '<tr class="items-sold-row' + voidClass + '" data-ridx="' + idx + '">';
+
+            // Row 1: Sale ID + date
+            html += '<td class="td-sale-id">Sale #' + row.sale_id + ' · ' + formatDate(row.sale_date) + '</td>';
+
+            // Row 2: Item name
+            html += '<td class="td-item-name">' + escHtml(row.item_name) + '</td>';
+
+            // Row 3: Meta (SKU, barcode, qty, price, payment)
+            html += '<td class="td-item-meta">';
+            if (row.sku) html += 'SKU: ' + escHtml(row.sku) + ' · ';
+            if (row.barcode) html += escHtml(row.barcode) + ' · ';
+            html += 'Qty: ' + row.quantity + ' × $' + row.unit_price.toFixed(2);
+            html += ' · ' + escHtml(row.payment_method);
+            html += '</td>';
+
+            // Row 4: Vendor + total
+            html += '<td class="td-item-details">';
+            html += '<div class="td-vendor-info"><span class="td-vendor-name">' + escHtml(row.vendor_name) + '</span><span class="td-vendor-booth">Booth ' + escHtml(row.vendor_booth || '—') + '</span></div>';
+            html += '<span class="td-line-total">$' + row.line_total.toFixed(2) + '</span>';
+            html += '</td>';
+
+            // Row 5: Edit button (staff only)
             if (isStaff) {
+                html += '<td class="td-actions">';
                 if (row.is_voided) {
-                    html += '<td><span style="font-size:0.75rem;color:var(--text-light)">Voided</span></td>';
+                    html += '<span style="font-size:0.75rem;color:var(--text-light)">Voided</span>';
                 } else {
-                    html += '<td><button class="btn-edit-vendor" data-sale-item-id="' + row.sale_item_id + '" data-ridx="' + idx + '">Edit Vendor</button></td>';
+                    html += '<button class="btn-edit-vendor" data-sale-item-id="' + row.sale_item_id + '" data-ridx="' + idx + '">Edit Vendor</button>';
                 }
+                html += '</td>';
             }
+
             html += '</tr>';
         });
 
