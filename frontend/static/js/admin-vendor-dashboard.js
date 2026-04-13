@@ -322,6 +322,7 @@
             actions += '<button type="button" class="btn btn-sm" style="background:var(--gold);color:var(--charcoal-deep)" onclick="window.openAdjustFromHub(' + v.id + ')">Adjust Balance</button>';
             actions += '<button type="button" class="btn btn-sm" style="background:color-mix(in srgb,var(--success-light) 20%,transparent);color:var(--success-light);border:1px solid color-mix(in srgb,var(--success-light) 35%,transparent)" onclick="window.openRentModalHub(' + v.id + ')">Record Rent</button>';
             actions += '<button type="button" class="btn btn-sm" onclick="window.toggleFlagHub(' + v.id + ', this)">' + (v.rent_flagged ? 'Unflag Rent' : 'Flag Rent') + '</button>';
+            actions += '<button type="button" class="btn btn-sm" id="landing-toggle-btn-' + v.id + '" style="background:' + (v.landing_page_enabled ? 'color-mix(in srgb,var(--gold) 20%,transparent);color:var(--gold);border:1px solid color-mix(in srgb,var(--gold) 35%,transparent)' : 'var(--surface-2);color:var(--text-light)') + '" onclick="window.toggleLandingPageHub(' + v.id + ', this)">🌐 Landing Page ' + (v.landing_page_enabled ? 'Active' : 'Inactive') + '</button>';
         }
         actions += '<button type="button" class="btn btn-sm" onclick="window.openMonthlyVendorReport(' + v.id + ', false)">Open Report</button>';
         actions += '<button type="button" class="btn btn-sm" onclick="window.openMonthlyVendorReport(' + v.id + ', true)">Print Report</button>';
@@ -350,7 +351,7 @@
             '<div class="vendor-stat"><div class="vendor-stat-label">Total Sales</div><div class="vendor-stat-value" style="color:var(--gold)">' + fmt(num(v.total_sales)) + '</div><div class="vendor-stat-note">Cumulative sales balance</div></div>' +
             '<div class="vendor-stat"><div class="vendor-stat-label">Rent Due</div><div class="vendor-stat-value">' + fmt(num(v.rent_due)) + '</div><div class="vendor-stat-note">' + (v.rent_paid_this_month ? '✓ Paid this month' : 'Due this month') + '</div></div>' +
             '<div class="vendor-stat"><div class="vendor-stat-label">' + (balance < 0 ? 'Balance Due' : 'Net Payout') + '</div><div class="vendor-stat-value" style="color:' + balanceTone + '">' + fmt(balance) + '</div><div class="vendor-stat-note">' + (carryOver !== 0 ? 'Carry-over: ' + fmt(carryOver) : 'Payout method: ' + esc(v.payout_method || '—')) + '</div></div>' +
-            '<div class="vendor-stat"><div class="vendor-stat-label">Monthly rent</div><div class="vendor-stat-value">' + fmt(num(v.monthly_rent)) + '</div><div class="vendor-stat-note">Payout method: ' + esc(v.payout_method || '—') + '</div></div>' +
+            '<div class="vendor-stat"><div class="vendor-stat-label">Monthly rent</div><div class="vendor-stat-value">' + fmt(num(v.monthly_rent)) + '</div><div class="vendor-stat-note">' + (num(v.landing_page_fee) > 0 ? '+ $' + num(v.landing_page_fee).toFixed(2) + ' landing page fee' : 'Payout method: ' + esc(v.payout_method || '—')) + '</div></div>' +
             '</div>' +
 
             '<div class="vendor-inspector-sections">' +
@@ -816,6 +817,34 @@
             await window.loadVendorOverview();
         } catch (e) {
             showAlert('alert-container', e.message || 'Flag failed', 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    window.toggleLandingPageHub = async function (vendorId, btn) {
+        if (btn) btn.disabled = true;
+        try {
+            var result = await apiPost('/api/v1/booth-showcase/admin/landing-page/' + vendorId);
+            if (btn) {
+                var active = result.landing_page_enabled;
+                btn.textContent = '🌐 Landing Page ' + (active ? 'Active' : 'Inactive');
+                btn.style.background = active
+                    ? 'color-mix(in srgb,var(--gold) 20%,transparent)'
+                    : 'var(--surface-2)';
+                btn.style.color = active ? 'var(--gold)' : 'var(--text-light)';
+                btn.style.borderColor = active
+                    ? 'color-mix(in srgb,var(--gold) 35%,transparent)'
+                    : 'var(--border)';
+            }
+            // Re-select vendor to refresh inspector
+            window.selectVendorWorkspace(vendorId);
+            var feeMsg = result.landing_page_fee > 0
+                ? 'Landing page activated. $' + result.landing_page_fee.toFixed(2) + '/mo added to rent (effective: $' + result.effective_monthly_rent.toFixed(2) + ').'
+                : 'Landing page deactivated. Fee removed from rent.';
+            showAlert('alert-container', feeMsg, 'success');
+        } catch (e) {
+            showAlert('alert-container', e.message || 'Toggle failed', 'error');
         } finally {
             if (btn) btn.disabled = false;
         }
