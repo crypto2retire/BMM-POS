@@ -74,7 +74,22 @@ async function apiFetch(method, url, body) {
         options.body = JSON.stringify(body);
     }
 
-    const res = await fetch(url, options);
+    let res;
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        options.signal = controller.signal;
+        res = await fetch(url, options);
+        clearTimeout(timeoutId);
+    } catch (err) {
+        if (err.name === 'AbortError') {
+            throw new Error('Request timed out. Check your connection and try again.');
+        }
+        showOfflineBanner();
+        throw new Error('Connection lost. Check your internet and try again.');
+    }
+
+    hideOfflineBanner();
 
     if (res.status === 401) {
         clearToken();
@@ -196,3 +211,85 @@ function bmmFormatDateTime(value, dateOptions, timeOptions, locale) {
 window.bmmFormatDate = bmmFormatDate;
 window.bmmFormatTime = bmmFormatTime;
 window.bmmFormatDateTime = bmmFormatDateTime;
+
+// ── Network status banner ────────────────────────────────────────
+function showOfflineBanner() {
+    if (document.getElementById('bmm-offline-banner')) return;
+    var banner = document.createElement('div');
+    banner.id = 'bmm-offline-banner';
+    banner.setAttribute('role', 'alert');
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:10000;background:var(--danger,#e74c3c);color:#fff;text-align:center;padding:0.6rem 1rem;font-family:Roboto,sans-serif;font-size:0.85rem;font-weight:500;display:flex;align-items:center;justify-content:center;gap:0.75rem;';
+    banner.innerHTML = '<span>⚠️ Connection lost</span><button onclick="location.reload()" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;padding:0.3rem 0.8rem;cursor:pointer;font-family:Roboto,sans-serif;font-size:0.8rem;font-weight:600">Retry</button>';
+    document.body.appendChild(banner);
+}
+
+function hideOfflineBanner() {
+    var el = document.getElementById('bmm-offline-banner');
+    if (el) el.remove();
+}
+
+window.addEventListener('online', function() { hideOfflineBanner(); });
+window.addEventListener('offline', function() { showOfflineBanner(); });
+
+// ── Modal focus trapping ─────────────────────────────────────────
+function trapFocus(modalEl) {
+    if (!modalEl) return;
+    var focusable = modalEl.querySelectorAll(
+        'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+    );
+    if (!focusable.length) return;
+    var first = focusable[0];
+    var last = focusable[focusable.length - 1];
+
+    function handler(e) {
+        if (e.key !== 'Tab') return;
+        if (e.shiftKey) {
+            if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+        } else {
+            if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+    }
+    modalEl.addEventListener('keydown', handler);
+    first.focus();
+    return function() { modalEl.removeEventListener('keydown', handler); };
+}
+
+// Auto-trap focus on elements with aria-modal="true" or class pos-modal-overlay
+var _focusTrapObserver = new MutationObserver(function(mutations) {
+    mutations.forEach(function(m) {
+        m.addedNodes.forEach(function(node) {
+            if (node.nodeType !== 1) return;
+            var modal = null;
+            if (node.getAttribute && node.getAttribute('aria-modal') === 'true') {
+                modal = node;
+            } else if (node.classList && (node.classList.contains('pos-modal-overlay') || node.classList.contains('modal-overlay'))) {
+                var inner = node.querySelector('[aria-modal="true"], .pos-modal, .modal-box');
+                if (inner) modal = inner;
+            }
+            if (modal) {
+                setTimeout(function() { trapFocus(modal); }, 50);
+            }
+        });
+    });
+});
+if (document.body) {
+    _focusTrapObserver.observe(document.body, { childList: true, subtree: true });
+} else {
+    document.addEventListener('DOMContentLoaded', function() {
+        _focusTrapObserver.observe(document.body, { childList: true, subtree: true });
+    });
+}
+
+window.trapFocus = trapFocus;
+
+// ── Skip to content link (accessibility) ──────────────────────────
+(function() {
+    var skip = document.createElement('a');
+    skip.href = '#main-content';
+    skip.className = 'skip-link';
+    skip.textContent = 'Skip to content';
+    skip.style.cssText = 'position:fixed;top:-100%;left:50%;transform:translateX(-50%);z-index:99999;background:var(--gold,#C9A96E);color:#38383B;padding:0.6rem 1.5rem;font-family:Roboto,sans-serif;font-size:0.9rem;font-weight:600;text-decoration:none;transition:top 0.15s;';
+    skip.addEventListener('focus', function() { skip.style.top = '0'; });
+    skip.addEventListener('blur', function() { skip.style.top = '-100%'; });
+    document.body.prepend(skip);
+})();

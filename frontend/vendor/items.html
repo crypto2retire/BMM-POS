@@ -461,6 +461,7 @@
             }
         }
     </style>
+<link rel="manifest" href="/manifest.json">
 </head>
 <body class="has-bottom-nav">
 <script src="/static/js/theme-loader.js"></script>
@@ -1430,7 +1431,8 @@
                 + '<title>Print labels</title>'
                 + '<style>html,body{margin:0;padding:0;height:100%;background:#222}'
                 + 'iframe{border:0;width:100%;height:100%}</style>'
-                + '</head><body>'
+                + '<link rel="manifest" href="/manifest.json">
+</head><body>'
                 + '<iframe id="pdf" src="' + pdfUrl + '"></iframe>'
                 + '<script>'
                 + 'var f=document.getElementById("pdf");'

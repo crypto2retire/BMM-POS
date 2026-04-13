@@ -1,0 +1,17 @@
+{
+    "name": "Bowenstreet Market POS",
+    "short_name": "BMM-POS",
+    "description": "Point of sale system for Bowenstreet Market Mall",
+    "start_url": "/pos/index.html",
+    "display": "standalone",
+    "background_color": "#38383B",
+    "theme_color": "#38383B",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "/static/images/favicon.webp",
+            "sizes": "any",
+            "type": "image/webp"
+        }
+    ]
+}

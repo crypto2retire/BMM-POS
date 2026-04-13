@@ -490,6 +490,7 @@ a:hover { color: var(--gold-light); }
     position: fixed;
     bottom: 0; left: 0; right: 0;
     height: 62px;
+    padding-bottom: env(safe-area-inset-bottom);
     background: var(--charcoal-deep);
     border-top: 1px solid var(--warm-border);
     z-index: 100;
@@ -504,7 +505,7 @@ a:hover { color: var(--gold-light); }
     gap: 3px;
     color: var(--text-light);
     text-decoration: none;
-    font-size: 0.56rem;
+    font-size: 0.62rem;
     letter-spacing: 0.07em;
     text-transform: uppercase;
     padding: 0.4rem 0.5rem;
@@ -512,6 +513,7 @@ a:hover { color: var(--gold-light); }
     text-align: center;
     font-family: var(--font-body);
     transition: color 0.15s;
+    min-height: 44px;
 }
 .admin-bottom-nav a .nav-icon { font-size: 1.15rem; line-height: 1; }
 .admin-bottom-nav a.active { color: var(--gold); }
@@ -1223,7 +1225,25 @@ select.form-control option { background: var(--surface-2); color: var(--text); }
 /* ── MOBILE ───────────────────────────────────────────── */
 @media (max-width: 767px) {
     body { font-size: 15px; }
-    .has-bottom-nav { padding-bottom: 68px; }
+
+    /* Floor: prevent labels/metadata from going below 10px on mobile */
+    .form-label,
+    .setting-row label,
+    [class*="label"],
+    [class*="kicker"],
+    [class*="sub-label"],
+    [class*="meta"],
+    .vendor-stat-label,
+    .vendor-info-item label,
+    .sum-label,
+    .summary-card .lbl,
+    .report-table th,
+    .rp-vendor-card [class*="label"],
+    .role-grid-header {
+        font-size: max(0.68rem, 10px) !important;
+    }
+
+    .has-bottom-nav { padding-bottom: calc(68px + env(safe-area-inset-bottom)); }
 
     .navbar { padding: 0 var(--space-md); height: 56px; }
     .navbar-user > span { display: none; }
