@@ -869,7 +869,7 @@ async def get_landing_page(
                 "category": item.category,
             })
 
-        from app.models.store_settings import StoreSetting
+        from app.models.store_setting import StoreSetting
         settings_result = await db.execute(
             select(StoreSetting).where(
                 StoreSetting.key.in_([
