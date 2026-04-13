@@ -834,7 +834,7 @@
         const payCrypto = document.getElementById('pay-crypto');
         if (offlineBanner) offlineBanner.style.display = posRuntime.offline_mode ? '' : 'none';
         if (payCard) payCard.style.display = runtimeAllows('card') ? '' : 'none';
-        if (payCrypto) payCrypto.style.display = runtimeAllows('crypto_blackbox') ? '' : 'none';
+        if (payCrypto) payCrypto.style.display = 'none'; // Crypto/Blackbox disabled
         if (!runtimeAllows(paymentMethod)) {
             paymentMethod = runtimeAllows('cash') ? 'cash' : (runtimeAllows('crypto_blackbox') ? 'crypto_blackbox' : paymentMethod);
         }

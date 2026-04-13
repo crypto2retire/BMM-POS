@@ -1948,12 +1948,13 @@
         if (mobileCardBtn) {
             mobileCardBtn.style.display = runtimeAllows('card') ? '' : 'none';
         }
-        if (cryptoBtn) {
-            cryptoBtn.style.display = runtimeAllows('crypto_blackbox') ? '' : 'none';
-        }
-        if (mobileCryptoBtn) {
-            mobileCryptoBtn.style.display = runtimeAllows('crypto_blackbox') ? '' : 'none';
-        }
+        // Crypto/Blackbox disabled — confusing for cashiers
+        // if (cryptoBtn) {
+        //     cryptoBtn.style.display = runtimeAllows('crypto_blackbox') ? '' : 'none';
+        // }
+        // if (mobileCryptoBtn) {
+        //     mobileCryptoBtn.style.display = runtimeAllows('crypto_blackbox') ? '' : 'none';
+        // }
         if (splitPayBtn) {
             splitPayBtn.style.display = runtimeAllows('split') ? '' : 'none';
         }
