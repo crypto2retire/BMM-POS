@@ -833,91 +833,98 @@ async def get_landing_page(
     slug: str,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(BoothShowcase).where(
-            BoothShowcase.landing_slug == slug,
-            BoothShowcase.landing_page_enabled == True,
+    try:
+        result = await db.execute(
+            select(BoothShowcase).where(
+                BoothShowcase.landing_slug == slug,
+                BoothShowcase.landing_page_enabled == True,
+            )
         )
-    )
-    sc = result.scalar_one_or_none()
-    if not sc:
-        raise HTTPException(status_code=404, detail="Page not found")
+        sc = result.scalar_one_or_none()
+        if not sc:
+            raise HTTPException(status_code=404, detail="Page not found")
 
-    from app.models.item import Item
-    count_result = await db.execute(
-        select(func.count()).select_from(Item).where(
-            Item.vendor_id == sc.vendor_id, Item.status == "active"
+        from app.models.item import Item
+        count_result = await db.execute(
+            select(func.count()).select_from(Item).where(
+                Item.vendor_id == sc.vendor_id, Item.status == "active"
+            )
         )
-    )
-    item_count = count_result.scalar() or 0
+        item_count = count_result.scalar() or 0
 
-    items_result = await db.execute(
-        select(Item).where(
-            Item.vendor_id == sc.vendor_id, Item.status == "active"
-        ).order_by(Item.created_at.desc()).limit(12)
-    )
-    items = items_result.scalars().all()
-    item_list = []
-    for item in items:
-        item_list.append({
-            "id": item.id,
-            "name": item.name,
-            "price": float(item.price) if item.price else 0,
-            "image_url": item.image_path or (item.photo_urls[0] if item.photo_urls else None),
-            "category": item.category,
-        })
-
-    from app.models.store_settings import StoreSetting
-    settings_result = await db.execute(
-        select(StoreSetting).where(
-            StoreSetting.key.in_([
-                "webstore_facebook_url", "webstore_facebook_on",
-                "webstore_instagram_url", "webstore_instagram_on",
-                "webstore_tiktok_url", "webstore_tiktok_on",
-                "store_name",
-            ])
+        items_result = await db.execute(
+            select(Item).where(
+                Item.vendor_id == sc.vendor_id, Item.status == "active"
+            ).order_by(Item.created_at.desc()).limit(12)
         )
-    )
-    settings = {s.key: s.value for s in settings_result.scalars().all()}
+        items = items_result.scalars().all()
+        item_list = []
+        for item in items:
+            img = item.image_path or (item.photo_urls[0] if item.photo_urls else None)
+            item_list.append({
+                "id": item.id,
+                "name": item.name,
+                "price": float(item.price) if item.price else 0,
+                "image_url": img,
+                "category": item.category,
+            })
 
-    market_socials = {}
-    if settings.get("webstore_facebook_on") == "true" and settings.get("webstore_facebook_url"):
-        market_socials["facebook"] = settings["webstore_facebook_url"]
-    if settings.get("webstore_instagram_on") == "true" and settings.get("webstore_instagram_url"):
-        market_socials["instagram"] = settings["webstore_instagram_url"]
-    if settings.get("webstore_tiktok_on") == "true" and settings.get("webstore_tiktok_url"):
-        market_socials["tiktok"] = settings["webstore_tiktok_url"]
+        from app.models.store_settings import StoreSetting
+        settings_result = await db.execute(
+            select(StoreSetting).where(
+                StoreSetting.key.in_([
+                    "webstore_facebook_url", "webstore_facebook_on",
+                    "webstore_instagram_url", "webstore_instagram_on",
+                    "webstore_tiktok_url", "webstore_tiktok_on",
+                    "store_name",
+                ])
+            )
+        )
+        settings = {s.key: s.value for s in settings_result.scalars().all()}
 
-    valid_photo_urls = _valid_public_photo_urls(sc.photo_urls)
-    if not valid_photo_urls:
-        fallback_cover = await _fallback_item_image_url(db, sc.vendor_id)
-        valid_photo_urls = [fallback_cover] if fallback_cover else []
+        market_socials = {}
+        if settings.get("webstore_facebook_on") == "true" and settings.get("webstore_facebook_url"):
+            market_socials["facebook"] = settings["webstore_facebook_url"]
+        if settings.get("webstore_instagram_on") == "true" and settings.get("webstore_instagram_url"):
+            market_socials["instagram"] = settings["webstore_instagram_url"]
+        if settings.get("webstore_tiktok_on") == "true" and settings.get("webstore_tiktok_url"):
+            market_socials["tiktok"] = settings["webstore_tiktok_url"]
 
-    return {
-        "id": sc.id,
-        "vendor_id": sc.vendor_id,
-        "vendor_name": sc.vendor.name if sc.vendor else "",
-        "booth_number": sc.vendor.booth_number if sc.vendor else None,
-        "title": sc.title,
-        "description": sc.description,
-        "landing_about": sc.landing_about,
-        "photo_urls": valid_photo_urls or None,
-        "video_url": sc.video_url,
-        "item_count": item_count,
-        "items": item_list,
-        "landing_contact_email": sc.landing_contact_email,
-        "landing_contact_phone": sc.landing_contact_phone,
-        "landing_website": sc.landing_website,
-        "landing_facebook": sc.landing_facebook,
-        "landing_instagram": sc.landing_instagram,
-        "landing_tiktok": sc.landing_tiktok,
-        "landing_twitter": sc.landing_twitter,
-        "landing_etsy": sc.landing_etsy,
-        "landing_meta_title": sc.landing_meta_title,
-        "landing_meta_desc": sc.landing_meta_desc,
-        "market_socials": market_socials,
-        "market_name": settings.get("store_name", "Bowenstreet Market Mall"),
-    }
+        valid_photo_urls = _valid_public_photo_urls(sc.photo_urls)
+        if not valid_photo_urls:
+            fallback_cover = await _fallback_item_image_url(db, sc.vendor_id)
+            valid_photo_urls = [fallback_cover] if fallback_cover else []
+
+        return {
+            "id": sc.id,
+            "vendor_id": sc.vendor_id,
+            "vendor_name": sc.vendor.name if sc.vendor else "",
+            "booth_number": sc.vendor.booth_number if sc.vendor else None,
+            "title": sc.title,
+            "description": sc.description,
+            "landing_about": sc.landing_about,
+            "photo_urls": valid_photo_urls or None,
+            "video_url": sc.video_url,
+            "item_count": item_count,
+            "items": item_list,
+            "landing_contact_email": sc.landing_contact_email,
+            "landing_contact_phone": sc.landing_contact_phone,
+            "landing_website": sc.landing_website,
+            "landing_facebook": sc.landing_facebook,
+            "landing_instagram": sc.landing_instagram,
+            "landing_tiktok": sc.landing_tiktok,
+            "landing_twitter": sc.landing_twitter,
+            "landing_etsy": sc.landing_etsy,
+            "landing_meta_title": sc.landing_meta_title,
+            "landing_meta_desc": sc.landing_meta_desc,
+            "market_socials": market_socials,
+            "market_name": settings.get("store_name", "Bowenstreet Market Mall"),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Landing page error for slug '{slug}': {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Landing page error: {str(e)}")
 
 
 @router.post("/mine/ai-landing-about")
