@@ -80,6 +80,8 @@ class ShowcaseUpdate(BaseModel):
     landing_meta_title: Optional[str] = None
     landing_meta_desc: Optional[str] = None
     landing_faq: Optional[str] = None
+    show_facebook_feed: Optional[bool] = None
+    show_instagram_feed: Optional[bool] = None
 
 class LandingSlugUpdate(BaseModel):
     slug: str
@@ -294,6 +296,10 @@ async def update_my_showcase(
         sc.landing_meta_desc = data.landing_meta_desc.strip()[:500] if data.landing_meta_desc.strip() else None
     if data.landing_faq is not None:
         sc.landing_faq = data.landing_faq.strip()[:8000] if data.landing_faq.strip() else None
+    if data.show_facebook_feed is not None:
+        sc.show_facebook_feed = data.show_facebook_feed
+    if data.show_instagram_feed is not None:
+        sc.show_instagram_feed = data.show_instagram_feed
 
     sc.updated_at = datetime.now(timezone.utc)
     await db.commit()
@@ -921,6 +927,8 @@ async def get_landing_page(
             "landing_meta_title": sc.landing_meta_title,
             "landing_meta_desc": sc.landing_meta_desc,
             "landing_faq": sc.landing_faq,
+            "show_facebook_feed": sc.show_facebook_feed,
+            "show_instagram_feed": sc.show_instagram_feed,
             "market_socials": market_socials,
             "market_name": settings.get("store_name", "Bowenstreet Market Mall"),
         }

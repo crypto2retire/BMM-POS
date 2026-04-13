@@ -361,11 +361,11 @@
                     Add your contact details so customers can reach you directly. All fields are optional — only share what you are comfortable with.
                 </p>
                 <div class="form-group">
-                    <label for="landing-email">Email Address</label>
+                    <label for="landing-email">Email Address <span style="font-weight:300;color:var(--text-light)">(recommended)</span></label>
                     <input type="text" id="landing-email" placeholder="you@example.com" maxlength="200">
                 </div>
                 <div class="form-group">
-                    <label for="landing-phone">Phone Number</label>
+                    <label for="landing-phone">Phone Number <span style="font-weight:300;color:var(--text-light)">(recommended)</span></label>
                     <input type="text" id="landing-phone" placeholder="(920) 555-0123" maxlength="50">
                 </div>
                 <div class="form-group">
@@ -401,6 +401,26 @@
                     <input type="text" id="landing-etsy" placeholder="https://etsy.com/shop/yourbusiness" maxlength="300">
                 </div>
                 <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save Socials</button>
+            </div>
+
+            <div class="showcase-card">
+                <h3>Social Feed Embed</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Embed your Facebook timeline and/or Instagram profile on your landing page so visitors can see your latest posts and follow you directly.
+                </p>
+                <div style="display:flex;flex-direction:column;gap:0.75rem">
+                    <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem">
+                        <input type="checkbox" id="show-facebook-feed" style="accent-color:var(--gold)" onchange="saveLandingDetails()">
+                        Show Facebook timeline on my page
+                    </label>
+                    <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem">
+                        <input type="checkbox" id="show-instagram-feed" style="accent-color:var(--gold)" onchange="saveLandingDetails()">
+                        Show Instagram profile on my page
+                    </label>
+                </div>
+                <p style="font-size:0.72rem;color:var(--text-light);margin-top:0.5rem">
+                    Make sure your Facebook and Instagram URLs are filled in above. Facebook pages must be public for the embed to work.
+                </p>
             </div>
 
             <div class="showcase-card">
@@ -778,6 +798,8 @@ function renderLandingSection() {
     document.getElementById('landing-meta-title').value = showcase.landing_meta_title || '';
     document.getElementById('landing-meta-desc').value = showcase.landing_meta_desc || '';
     document.getElementById('landing-faq').value = showcase.landing_faq || '';
+    document.getElementById('show-facebook-feed').checked = !!showcase.show_facebook_feed;
+    document.getElementById('show-instagram-feed').checked = !!showcase.show_instagram_feed;
     updateAboutCount();
     updateMetaDescCount();
     updateLandingLink();
@@ -865,7 +887,9 @@ async function saveLandingDetails() {
                 landing_etsy: document.getElementById('landing-etsy').value.trim(),
                 landing_meta_title: document.getElementById('landing-meta-title').value.trim(),
                 landing_meta_desc: document.getElementById('landing-meta-desc').value.trim(),
-                landing_faq: document.getElementById('landing-faq').value.trim()
+                landing_faq: document.getElementById('landing-faq').value.trim(),
+                show_facebook_feed: document.getElementById('show-facebook-feed').checked,
+                show_instagram_feed: document.getElementById('show-instagram-feed').checked
             })
         });
         var data = await resp.json();

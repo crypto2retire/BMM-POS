@@ -33,5 +33,7 @@ class BoothShowcase(Base):
     landing_meta_title: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     landing_meta_desc: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     landing_faq: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    show_facebook_feed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    show_instagram_feed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
     vendor = relationship("Vendor", backref="booth_showcase", lazy="selectin")
