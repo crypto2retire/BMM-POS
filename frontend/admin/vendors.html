@@ -795,7 +795,7 @@
             <tr>
                 <td>
                     ${v.rent_flagged ? '<span class="vendor-flag" title="Rent flagged">&#9888;</span>' : ''}
-                    <strong>${esc(v.name)}</strong>
+                    <a href="#" onclick="editVendor(${v.id});return false" style="color:var(--text);text-decoration:none;font-weight:500">${esc(v.name)}</a>
                 </td>
                 <td>${esc(v.booth_number || '—')}</td>
                 <td>${v.monthly_rent ? '$' + parseFloat(v.monthly_rent).toFixed(2) : '—'}</td>
@@ -806,7 +806,6 @@
                 <td>${statusBadge(v.status)}</td>
                 <td>
                     <div class="table-actions">
-                        ${isAdmin ? `<button class="btn btn-outline btn-sm" onclick="editVendor(${v.id})">Edit</button>` : ''}
                         <button class="btn btn-outline btn-sm" onclick="window.open('/vendor/items.html?vendor_id=${v.id}','_blank')">Items</button>
                         ${isAdmin && v.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="quickSuspend(${v.id}, '${esc(v.name)}')">Suspend</button>` : ''}
                         ${isAdmin && v.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="archiveVendor(${v.id}, '${esc(v.name)}')">Archive</button>` : ''}
@@ -844,7 +843,6 @@
                         <span><label>Email</label>${esc(v.email)}</span>
                     </div>
                     <div class="vendor-card-actions">
-                        ${isAdmin ? `<button class="btn btn-outline btn-sm" onclick="editVendor(${v.id})">Edit</button>` : ''}
                         <button class="btn btn-outline btn-sm" onclick="window.open('/vendor/items.html?vendor_id=${v.id}','_blank')">Items</button>
                         ${isAdmin && v.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="quickSuspend(${v.id}, '${esc(v.name)}')">Suspend</button>` : ''}
                         ${isAdmin && v.status === 'active' ? `<button class="btn btn-danger btn-sm" onclick="archiveVendor(${v.id}, '${esc(v.name)}')">Archive</button>` : ''}
