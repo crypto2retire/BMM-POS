@@ -419,6 +419,34 @@
                 </div>
                 <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save SEO</button>
             </div>
+
+            <div class="showcase-card">
+                <h3>FAQ Section</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Frequently asked questions help search engines understand your page and show up in Google's "People Also Ask" and AI search results. Each Q&amp;A pair should answer something a real customer would search for.
+                </p>
+                <div class="form-group">
+                    <textarea id="landing-faq" placeholder="Q: What kind of items do you sell?&#10;A: We specialize in handcrafted quilts, vintage linens, and one-of-a-kind home decor pieces.&#10;&#10;Q: Where is your booth located?&#10;A: We're in Booth A12 at Bowenstreet Market, 2837 Bowen St, Oshkosh, WI." maxlength="8000" style="min-height:220px"></textarea>
+                    <div class="char-count"><span id="faq-count">0</span> / 8000</div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px">
+                    <label style="font-size:0.7rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap">Tone</label>
+                    <select id="ai-tone-faq" style="background:var(--bg); border:1px solid var(--border); color:var(--text); padding:4px 8px; font-size:0.78rem; font-family:'Roboto',sans-serif">
+                        <option value="warm">Warm</option>
+                        <option value="professional">Professional</option>
+                        <option value="casual">Casual</option>
+                        <option value="playful">Playful</option>
+                        <option value="rustic">Rustic</option>
+                        <option value="elegant">Elegant</option>
+                    </select>
+                </div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                    <button class="ai-btn" id="ai-faq-btn" onclick="aiWriteFaq('write')">&#10024; Generate FAQs</button>
+                    <button class="ai-btn" id="ai-improve-faq-btn" onclick="aiWriteFaq('improve')" style="display:none">&#10024; Improve FAQs</button>
+                    <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save FAQs</button>
+                </div>
+                <span id="ai-faq-status" style="font-size:0.75rem; color:var(--text-light); margin-top:6px; display:block"></span>
+            </div>
         </div>
     </div>
 </div>
@@ -749,6 +777,7 @@ function renderLandingSection() {
     document.getElementById('landing-etsy').value = showcase.landing_etsy || '';
     document.getElementById('landing-meta-title').value = showcase.landing_meta_title || '';
     document.getElementById('landing-meta-desc').value = showcase.landing_meta_desc || '';
+    document.getElementById('landing-faq').value = showcase.landing_faq || '';
     updateAboutCount();
     updateMetaDescCount();
     updateLandingLink();
@@ -835,7 +864,8 @@ async function saveLandingDetails() {
                 landing_twitter: document.getElementById('landing-twitter').value.trim(),
                 landing_etsy: document.getElementById('landing-etsy').value.trim(),
                 landing_meta_title: document.getElementById('landing-meta-title').value.trim(),
-                landing_meta_desc: document.getElementById('landing-meta-desc').value.trim()
+                landing_meta_desc: document.getElementById('landing-meta-desc').value.trim(),
+                landing_faq: document.getElementById('landing-faq').value.trim()
             })
         });
         var data = await resp.json();
@@ -883,6 +913,58 @@ async function aiWriteAbout(action) {
         if (improveBtn) improveBtn.disabled = false;
     }
 }
+
+function updateFaqCount() {
+    var el = document.getElementById('faq-count');
+    if (el) el.textContent = document.getElementById('landing-faq').value.length;
+}
+
+function updateFaqImproveBtn() {
+    var btn = document.getElementById('ai-improve-faq-btn');
+    if (!btn) return;
+    var faq = document.getElementById('landing-faq').value.trim();
+    btn.style.display = faq.length > 20 ? 'inline-flex' : 'none';
+}
+
+async function aiWriteFaq(action) {
+    var btn = document.getElementById('ai-faq-btn');
+    var improveBtn = document.getElementById('ai-improve-faq-btn');
+    var statusEl = document.getElementById('ai-faq-status');
+    var tone = document.getElementById('ai-tone-faq').value;
+    var existingContent = document.getElementById('landing-faq').value.trim();
+    btn.disabled = true;
+    if (improveBtn) improveBtn.disabled = true;
+    statusEl.textContent = action === 'improve' ? 'Improving FAQs...' : 'Generating FAQs...';
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/ai/write', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({
+                content_type: 'landing_faq',
+                tone: tone,
+                action: action,
+                existing_content: action === 'improve' ? existingContent : null
+            })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'AI failed');
+        document.getElementById('landing-faq').value = data.content;
+        updateFaqCount();
+        updateFaqImproveBtn();
+        statusEl.textContent = action === 'improve' ? 'FAQs improved! Review and edit, then Save.' : 'FAQs generated! Review and edit, then Save.';
+        setTimeout(function() { statusEl.textContent = ''; }, 6000);
+    } catch (err) {
+        statusEl.textContent = err.message;
+        setTimeout(function() { statusEl.textContent = ''; }, 4000);
+    } finally {
+        btn.disabled = false;
+        if (improveBtn) improveBtn.disabled = false;
+    }
+}
+
+document.getElementById('landing-faq').addEventListener('input', updateFaqCount);
+updateFaqImproveBtn();
 
 loadShowcase();
 </script>

@@ -32,5 +32,6 @@ class BoothShowcase(Base):
     landing_etsy: Mapped[Optional[str]] = mapped_column(String(300), nullable=True)
     landing_meta_title: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     landing_meta_desc: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    landing_faq: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     vendor = relationship("Vendor", backref="booth_showcase", lazy="selectin")

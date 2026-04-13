@@ -442,6 +442,29 @@
   }
   .not-found a:hover { background: color-mix(in srgb, var(--gold) 15%, transparent); }
 
+  /* ── FAQ ── */
+  .faq-section {
+    max-width: 900px; margin: 0 auto; padding: 2rem 2rem;
+  }
+  .faq-section h2 {
+    font-family: 'EB Garamond', serif;
+    font-size: 1.4rem; font-style: italic;
+    color: var(--text); margin-bottom: 1.25rem;
+  }
+  .faq-item {
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 0;
+  }
+  .faq-question {
+    font-size: 0.92rem; color: var(--text);
+    font-weight: 400; margin-bottom: 0.4rem;
+    line-height: 1.5;
+  }
+  .faq-answer {
+    font-size: 0.85rem; color: var(--text-light);
+    line-height: 1.7;
+  }
+
   /* ── FOOTER ── */
   .site-footer {
     background: var(--bg-dark);
@@ -584,6 +607,12 @@
   </div>
 </div>
 
+<!-- FAQ -->
+<section class="faq-section" id="faq-section" style="display:none">
+  <h2>Frequently Asked Questions</h2>
+  <div id="faq-container"></div>
+</section>
+
 <!-- FOOTER -->
 <footer class="site-footer">
   <div class="footer-brand"><a href="/">Bowenstreet Market</a></div>
@@ -657,10 +686,16 @@
     try {
       var res = await fetch(API_LANDING + encodeURIComponent(vendorSlug));
       if (res.status === 404) { show404(); return; }
-      if (!res.ok) { show404(); return; }
+      if (!res.ok) { 
+        var errData = await res.json().catch(function(){ return {}; });
+        console.error('Landing API error:', res.status, errData);
+        show404(); 
+        return; 
+      }
       vendorData = await res.json();
       if (!vendorData || !vendorData.vendor_name) { show404(); return; }
-    } catch (_) {
+    } catch (e) {
+      console.error('Landing page fetch failed:', e);
       show404();
       return;
     }
@@ -673,6 +708,7 @@
     renderPhotos();
     renderSEO();
     renderFooterSocials();
+    renderFaq();
 
     vendorItems = (vendorData.items || []).map(normalizeItem);
     renderItems(vendorItems);
@@ -790,6 +826,50 @@
     if (socials.instagram) html += '<a href="' + escAttr(socials.instagram) + '" target="_blank" rel="noopener">Instagram</a>';
     if (socials.tiktok) html += '<a href="' + escAttr(socials.tiktok) + '" target="_blank" rel="noopener">TikTok</a>';
     el.innerHTML = html;
+  }
+
+  function renderFaq() {
+    var faqText = vendorData.landing_faq;
+    if (!faqText) return;
+    var pairs = parseFaqText(faqText);
+    if (pairs.length === 0) return;
+
+    document.getElementById('faq-section').style.display = 'block';
+    var container = document.getElementById('faq-container');
+    container.innerHTML = pairs.map(function (pair) {
+      return '<div class="faq-item">' +
+        '<div class="faq-question">' + escHtml(pair.q) + '</div>' +
+        '<div class="faq-answer">' + escHtml(pair.a) + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function parseFaqText(text) {
+    var pairs = [];
+    var lines = text.split('\n');
+    var currentQ = null;
+    var currentA = '';
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) { continue; }
+      var qMatch = line.match(/^Q[:\.\s]\s*(.+)/i);
+      var aMatch = line.match(/^A[:\.\s]\s*(.+)/i);
+      if (qMatch) {
+        if (currentQ && currentA) {
+          pairs.push({ q: currentQ, a: currentA.trim() });
+        }
+        currentQ = qMatch[1].trim();
+        currentA = '';
+      } else if (aMatch && currentQ) {
+        currentA += (currentA ? ' ' : '') + aMatch[1].trim();
+      } else if (currentQ) {
+        currentA += (currentA ? ' ' : '') + line;
+      }
+    }
+    if (currentQ && currentA) {
+      pairs.push({ q: currentQ, a: currentA.trim() });
+    }
+    return pairs;
   }
 
   function renderCategoryFilters(items) {
@@ -1067,6 +1147,8 @@
   // JSON-LD
   function injectJsonLd() {
     if (!vendorData) return;
+
+    // LocalBusiness
     var ld = {
       '@context': 'https://schema.org',
       '@type': 'LocalBusiness',
@@ -1089,9 +1171,70 @@
       }
     };
     if (vendorData.landing_contact_phone) ld.telephone = vendorData.landing_contact_phone;
+    if (vendorData.landing_contact_email) ld.email = vendorData.landing_contact_email;
+    injectSchema(ld);
+
+    // FAQ schema
+    if (vendorData.landing_faq) {
+      var faqPairs = parseFaqText(vendorData.landing_faq);
+      if (faqPairs.length > 0) {
+        injectSchema({
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          'mainEntity': faqPairs.map(function (p) {
+            return {
+              '@type': 'Question',
+              'name': p.q,
+              'acceptedAnswer': {
+                '@type': 'Answer',
+                'text': p.a
+              }
+            };
+          })
+        });
+      }
+    }
+
+    // ItemList + Product schema
+    var items = vendorData.items || [];
+    if (items.length > 0) {
+      var offers = items.map(function (item) {
+        return {
+          '@type': 'Offer',
+          'price': item.sale_price || item.price || 0,
+          'priceCurrency': 'USD',
+          'availability': 'https://schema.org/InStock',
+          'url': 'https://www.bowenstreetmarket.com/v/' + vendorSlug + '#item-' + item.id
+        };
+      });
+      injectSchema({
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        'name': vendorData.vendor_name + ' at Bowenstreet Market',
+        'description': 'Items available at ' + vendorData.vendor_name + ', Booth ' + (vendorData.booth_number || '') + ' in Oshkosh, WI',
+        'url': 'https://www.bowenstreetmarket.com/v/' + vendorSlug,
+        'numberOfItems': items.length,
+        'itemListElement': items.map(function (item, i) {
+          return {
+            '@type': 'ListItem',
+            'position': i + 1,
+            'item': {
+              '@type': 'Product',
+              'name': item.name,
+              'description': item.category ? item.category + ' at ' + vendorData.vendor_name : 'Available at ' + vendorData.vendor_name,
+              'image': item.image_url || '',
+              'offers': offers[i]
+            }
+          };
+        })
+      });
+    }
+  }
+
+  function injectSchema(data) {
     var script = document.createElement('script');
     script.type = 'application/ld+json';
-    script.textContent = JSON.stringify(ld);
+    script.textContent = JSON.stringify(data);
     document.head.appendChild(script);
   }
 

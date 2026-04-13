@@ -132,6 +132,36 @@ def build_landing_about_prompt(req: AIWriteRequest, vendor_name: str, booth: str
     return base
 
 
+def build_landing_faq_prompt(req: AIWriteRequest, vendor_name: str, booth: str, items_summary: str) -> str:
+    base = (
+        f"You are an SEO copywriter for Bowenstreet Market, a vintage and handcrafted goods "
+        f"marketplace at 2837 Bowen St, Oshkosh, Wisconsin. "
+        f"Vendor: {vendor_name}. Booth: {booth}. They sell: {items_summary}. "
+    )
+    if req.action == "improve" and req.existing_content:
+        base += (
+            f"The vendor has these FAQs on their landing page:\n\n"
+            f"{req.existing_content}\n\n"
+            f"Improve them — make each question natural (how a real customer would ask it), "
+            f"ensure answers are helpful and include relevant keywords for local SEO. "
+            f"Return ONLY the improved FAQs in the same format."
+        )
+    else:
+        base += (
+            f"Write 5-7 FAQs for the vendor's landing page. These should answer questions "
+            f"real customers would search for, like:\n"
+            f"- What kind of items does this vendor sell?\n"
+            f"- Where are they located? (Bowenstreet Market, 2837 Bowen St, Oshkosh WI)\n"
+            f"- What are the market hours?\n"
+            f"- Do they take custom orders?\n"
+            f"- How can I contact them?\n"
+            f"Include at least 2 location-specific questions for local SEO. "
+            f"Format each FAQ as: Q: [question]\\nA: [answer]\\n\\n"
+            f"Return ONLY the FAQs, no intro or outro."
+        )
+    return base
+
+
 def build_seo_prompt(req: AIWriteRequest, vendor_name: str, booth: str, items_summary: str) -> str:
     base = (
         f"You are an SEO copywriter for Bowenstreet Market in Oshkosh, Wisconsin. "
@@ -236,7 +266,7 @@ async def ai_write(
     if req.content_type == "product_description":
         user_prompt = build_product_prompt(req, vendor_name)
 
-    elif req.content_type in ("booth_description", "landing_about", "seo_meta"):
+    elif req.content_type in ("booth_description", "landing_about", "landing_faq", "seo_meta"):
         items_summary, showcase = await get_vendor_context(db, current_user)
         existing_title = showcase.title if showcase else None
 
@@ -244,6 +274,8 @@ async def ai_write(
             user_prompt = build_booth_prompt(req, vendor_name, booth, items_summary, existing_title)
         elif req.content_type == "landing_about":
             user_prompt = build_landing_about_prompt(req, vendor_name, booth, items_summary)
+        elif req.content_type == "landing_faq":
+            user_prompt = build_landing_faq_prompt(req, vendor_name, booth, items_summary)
         else:
             user_prompt = build_seo_prompt(req, vendor_name, booth, items_summary)
     else:
