@@ -178,9 +178,34 @@ async def pos_runtime(
     }
 
 
+@router.get("/categories")
+async def pos_categories(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
+):
+    """Return distinct item categories with item counts, sorted by popularity."""
+    result = await db.execute(
+        select(
+            Item.category,
+            func.count().label("item_count"),
+        )
+        .where(
+            Item.status == "active",
+            Item.category.isnot(None),
+            Item.category != "",
+        )
+        .group_by(Item.category)
+        .order_by(func.count().desc())
+        .limit(30)
+    )
+    rows = result.all()
+    return [{"category": row.category, "count": row.item_count} for row in rows]
+
+
 @router.get("/search")
 async def pos_search(
     q: str = Query(..., min_length=1, description="Search term"),
+    category: Optional[str] = Query(None, description="Filter by category"),
     limit: int = Query(20, ge=1, le=40, description="Maximum number of matches to return"),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
@@ -225,6 +250,10 @@ async def pos_search(
         )
         .limit(limit)
     )
+
+    if category:
+        query = query.where(Item.category == category)
+
     result = await db.execute(query)
     items = result.scalars().all()
     return [_item_to_pos_dict(i) for i in items]

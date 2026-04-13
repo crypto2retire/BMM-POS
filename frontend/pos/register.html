@@ -57,6 +57,49 @@
             margin-top: 0.4rem;
         }
 
+        /* Category filter bar */
+        .category-bar {
+            display: flex;
+            gap: 0.35rem;
+            padding: 0.4rem 0.75rem;
+            border-bottom: 1px solid var(--border);
+            background: color-mix(in srgb, var(--gold) 2%, var(--surface-2));
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            align-items: center;
+        }
+        .category-bar::-webkit-scrollbar { display: none; }
+        .category-chip {
+            flex-shrink: 0;
+            padding: 0.3rem 0.65rem;
+            font-size: 0.72rem;
+            font-family: 'Roboto', sans-serif;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-light);
+            background: var(--surface);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            white-space: nowrap;
+            transition: color 0.12s, border-color 0.12s, background 0.12s;
+            min-height: 32px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .category-chip:hover { border-color: var(--warm-border); color: var(--text); }
+        .category-chip.active {
+            background: var(--gold);
+            color: var(--charcoal-deep, #38383B);
+            border-color: var(--gold);
+        }
+        .category-chip .cat-count {
+            font-size: 0.6rem;
+            opacity: 0.7;
+            margin-left: 0.25rem;
+        }
+
         .results-area {
             flex: 1;
             overflow-y: auto;
@@ -622,6 +665,9 @@
             <input type="text" id="search-input" placeholder="Type item name, scan barcode, or enter SKU…" autocomplete="off" />
             <div class="search-hint">Press Enter or scan a barcode to add directly to cart</div>
         </div>
+        <div class="category-bar" id="category-bar">
+            <span style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;flex-shrink:0">Categories</span>
+        </div>
         <div class="results-area" id="results-area">
             <div class="results-empty">Search for items above to begin a sale.</div>
         </div>
@@ -706,6 +752,36 @@
     let paymentMethod = 'cash';
     let searchTimer = null;
     let isMobile = window.innerWidth < 768;
+    let activeCategory = null;
+
+    async function loadCategories() {
+        try {
+            var cats = await apiGet('/api/v1/pos/categories');
+            if (!cats || !cats.length) return;
+            var bar = document.getElementById('category-bar');
+            if (!bar) return;
+            var html = '<span style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;flex-shrink:0">Categories</span>';
+            html += '<button class="category-chip active" data-cat="" onclick="selectCategory(this)">All</button>';
+            cats.forEach(function(c) {
+                html += '<button class="category-chip" data-cat="' + escAttr(c.category) + '" onclick="selectCategory(this)">' + escHtml(c.category) + '<span class="cat-count">(' + c.count + ')</span></button>';
+            });
+            bar.innerHTML = html;
+        } catch (e) { /* silently fail */ }
+    }
+
+    function selectCategory(btn) {
+        activeCategory = btn.getAttribute('data-cat') || null;
+        var chips = document.querySelectorAll('.category-chip');
+        chips.forEach(function(c) { c.classList.remove('active'); });
+        btn.classList.add('active');
+        var q = searchInput.value.trim();
+        if (q) doSearch(q);
+    }
+
+    function escAttr(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
 
     // ── Mobile tab switching ──────────────────────────────────────────
     function switchRegTab(tab) {
@@ -822,7 +898,9 @@
 
     async function searchItems(q) {
         try {
-            return await apiGet(`/api/v1/pos/search?limit=40&q=${encodeURIComponent(q)}`);
+            var url = '/api/v1/pos/search?limit=40&q=' + encodeURIComponent(q);
+            if (activeCategory) url += '&category=' + encodeURIComponent(activeCategory);
+            return await apiGet(url);
         } catch (e) {
             return [];
         }
@@ -1100,6 +1178,7 @@
             await loadPosRuntime();
             selectPayment('cash');
             renderCart();
+            loadCategories();
         });
     }
 
