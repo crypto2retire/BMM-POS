@@ -26,11 +26,12 @@ async def generate_sku(vendor_id: int, db: AsyncSession) -> str:
 
 
 async def generate_short_barcode(db: AsyncSession) -> str:
-    while True:
+    for _ in range(100):  # safety limit
         code = "".join(random.choices(BARCODE_CHARS, k=BARCODE_LENGTH))
         existing = await db.execute(select(Item).where(Item.barcode == code))
         if not existing.scalar_one_or_none():
             return code
+    raise RuntimeError("Failed to generate unique barcode after 100 attempts")
 
 
 def generate_barcode_image(barcode_value: str, output_path: str) -> str:
@@ -61,13 +62,24 @@ async def maybe_upgrade_barcode(item: Item, db: AsyncSession) -> bool:
 
     Returns True if upgraded, False if left untouched.
     """
+    import sys
     current = (item.barcode or "").strip()
     if not current:
+        print(f"[BARCODE UPGRADE] item {item.id} '{item.name}': no barcode, skipping", file=sys.stderr)
         return False
     if current.startswith("MAN-"):
+        print(f"[BARCODE UPGRADE] item {item.id} '{item.name}': MAN-* barcode '{current}', skipping", file=sys.stderr)
         return False
     if _SCANNABLE_BARCODE_RE.fullmatch(current):
+        print(f"[BARCODE UPGRADE] item {item.id} '{item.name}': already 6-digit '{current}', skipping", file=sys.stderr)
         return False
-    item.barcode = await generate_short_barcode(db)
-    await db.flush()
-    return True
+    try:
+        new_code = await generate_short_barcode(db)
+        old_code = current
+        item.barcode = new_code
+        await db.flush()
+        print(f"[BARCODE UPGRADE] item {item.id} '{item.name}': '{old_code}' -> '{new_code}'", file=sys.stderr)
+        return True
+    except Exception as e:
+        print(f"[BARCODE UPGRADE] item {item.id} '{item.name}': FAILED to upgrade '{current}': {e}", file=sys.stderr)
+        return False

@@ -99,12 +99,25 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
             )
             module_count = probe.width
 
-            # Calculate barWidth to fill available width between quiet zones.
-            # Snap UP to dot boundary so bars are as wide as possible.
-            barcode_avail_w = _LABEL_W - 2 * quiet
-            raw_bar_w = barcode_avail_w / module_count
-            # Snap DOWN so barcode fits within avail_w; floor at 3 dots (0.010") for thermal scan
-            bar_w = max(math.floor(raw_bar_w / _DOT), 3) * _DOT
+            # Subset B (letters/dashes) has more modules than Subset C (digits only),
+            # producing thinner bars that the Dymo thermal head can't print.
+            # For non-pure-numeric barcodes, shrink quiet zone to fit thicker bars.
+            is_pure_numeric = all(ch.isdigit() for ch in raw_barcode if ch not in ' -.')
+
+            if not is_pure_numeric and module_count > 0:
+                # Minimum bar width that the Dymo 450 can reliably print: 3 dots (0.010")
+                min_bar_w = 3 * _DOT
+                # Calculate quiet zone that allows min_bar_w to fit
+                max_bar_area = _LABEL_W - 2 * (2 * _DOT)  # leave just 2-dot margin each side
+                max_bar_w = max_bar_area / module_count
+                if max_bar_w < min_bar_w:
+                    max_bar_w = min_bar_w
+                bar_w = max(math.floor(max_bar_w / _DOT), 3) * _DOT
+                quiet = max((_LABEL_W - module_count * bar_w) / 2, 2 * _DOT)
+            else:
+                barcode_avail_w = _LABEL_W - 2 * quiet
+                raw_bar_w = barcode_avail_w / module_count
+                bar_w = max(math.floor(raw_bar_w / _DOT), 3) * _DOT
 
             bc = code128.Code128(
                 raw_barcode,
