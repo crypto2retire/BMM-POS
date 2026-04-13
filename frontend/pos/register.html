@@ -512,7 +512,45 @@
             }
             .reg-left {
                 flex: none;
-                max-height: 50vh;
+                max-height: none;
+                overflow-y: auto;
+            }
+            /* Tab navigation between search and cart on mobile */
+            .reg-mobile-tabs {
+                display: flex;
+                border-bottom: 1px solid var(--border);
+                background: var(--surface-2);
+            }
+            .reg-mobile-tab {
+                flex: 1;
+                padding: 0.65rem 0;
+                text-align: center;
+                font-size: 0.78rem;
+                font-family: 'Roboto', sans-serif;
+                font-weight: 500;
+                text-transform: uppercase;
+                letter-spacing: 0.08em;
+                color: var(--text-light);
+                background: none;
+                border: none;
+                border-bottom: 2px solid transparent;
+                cursor: pointer;
+                transition: color 0.15s, border-color 0.15s;
+                min-height: 44px;
+            }
+            .reg-mobile-tab.active {
+                color: var(--gold);
+                border-bottom-color: var(--gold);
+            }
+            /* Hide cart on mobile when search tab is active */
+            .reg-layout:not(.show-cart) .reg-right { display: none; }
+            /* Hide search on mobile when cart tab is active */
+            .reg-layout.show-cart .reg-left { display: none; }
+            /* Show totals/payment below cart on mobile */
+            .reg-layout.show-cart .reg-right {
+                display: flex;
+                flex-direction: column;
+                flex: 1;
                 overflow-y: auto;
             }
             .reg-right {
@@ -521,13 +559,28 @@
                 padding-bottom: env(safe-area-inset-bottom);
             }
             .results-area {
-                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 0.4rem;
             }
+            .item-card { padding: 0.5rem; }
+            .item-card .ic-name { font-size: 0.82rem; }
+            .item-card .ic-price { font-size: 0.85rem; }
             .pay-btn { min-height: 48px; font-size: 0.9rem; padding: 0.65rem; }
             .cash-input-row input { min-height: 48px; font-size: 16px; padding: 0.6rem; }
             .btn-charge { min-height: 56px; font-size: 0.95rem; }
             .receipt-card { width: calc(100% - 2rem); max-width: 420px; }
             .search-bar-wrap input { font-size: 16px; }
+            /* Auto-switch to cart tab when item added */
+            .cart-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+        }
+
+        /* Hide mobile tabs on desktop */
+        @media (min-width: 768px) {
+            .reg-mobile-tabs { display: none !important; }
         }
 
         @media (max-width: 1023px) and (min-width: 768px) {
@@ -557,7 +610,12 @@
     </div>
 </nav>
 
-<div class="reg-layout">
+<div class="reg-layout" id="reg-layout">
+    <!-- Mobile tabs: Search / Cart -->
+    <div class="reg-mobile-tabs">
+        <button class="reg-mobile-tab active" id="tab-search" onclick="switchRegTab('search')">🔍 Search</button>
+        <button class="reg-mobile-tab" id="tab-cart" onclick="switchRegTab('cart')">🛒 Cart (<span id="tab-cart-count">0</span>)</button>
+    </div>
     <!-- LEFT: Search -->
     <div class="reg-left">
         <div class="search-bar-wrap">
@@ -586,7 +644,7 @@
                 <span id="t-subtotal">$0.00</span>
             </div>
             <div class="totals-row">
-                <span>Tax (5.5%)</span>
+                <span>Tax (5%)</span>
                 <span id="t-tax">$0.00</span>
             </div>
             <div class="totals-row total-bold">
@@ -642,11 +700,48 @@
 <script src="/static/js/api.js"></script>
 <script src="/static/js/auth-bootstrap.js"></script>
 <script>
-    const TAX_RATE = 0.055;
+    const TAX_RATE = 0.05;
 
     let cart = [];
     let paymentMethod = 'cash';
     let searchTimer = null;
+    let isMobile = window.innerWidth < 768;
+
+    // ── Mobile tab switching ──────────────────────────────────────────
+    function switchRegTab(tab) {
+        var layout = document.getElementById('reg-layout');
+        var tabSearch = document.getElementById('tab-search');
+        var tabCart = document.getElementById('tab-cart');
+        if (tab === 'cart') {
+            layout.classList.add('show-cart');
+            tabSearch.classList.remove('active');
+            tabCart.classList.add('active');
+        } else {
+            layout.classList.remove('show-cart');
+            tabSearch.classList.add('active');
+            tabCart.classList.remove('active');
+        }
+    }
+
+    function updateCartTabCount() {
+        var el = document.getElementById('tab-cart-count');
+        if (el) el.textContent = cart.length;
+    }
+
+    // Auto-switch to cart tab on mobile when item added
+    function autoSwitchToCart() {
+        if (isMobile && cart.length > 0) {
+            switchRegTab('cart');
+        }
+        updateCartTabCount();
+    }
+
+    window.addEventListener('resize', function() {
+        isMobile = window.innerWidth < 768;
+        if (!isMobile) {
+            document.getElementById('reg-layout').classList.remove('show-cart');
+        }
+    });
     let posRuntime = {
         offline_mode: false,
         allowed_payment_methods: ['cash', 'card'],
@@ -805,11 +900,13 @@
             });
         }
         renderCart();
+        autoSwitchToCart();
     }
 
     function removeFromCart(barcode) {
         cart = cart.filter(c => c.barcode !== barcode);
         renderCart();
+        updateCartTabCount();
     }
 
     function changeQty(barcode, delta) {
@@ -980,6 +1077,8 @@
         showResultsPlaceholder();
         renderCart();
         searchInput.focus();
+        updateCartTabCount();
+        if (isMobile) switchRegTab('search');
     }
 
     function showRegAlert(msg, type) {
