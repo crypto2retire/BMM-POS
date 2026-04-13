@@ -84,45 +84,52 @@ def _draw_single_label(c: canvas.Canvas, item) -> None:
 
     # ── Barcode: fill all remaining vertical space ──
     if raw_barcode:
-        barcode_top = _LABEL_H - text_band_h
-        barcode_bottom = bottom_text_h
-        barcode_height = barcode_top - barcode_bottom
+        try:
+            barcode_top = _LABEL_H - text_band_h
+            barcode_bottom = bottom_text_h
+            barcode_height = barcode_top - barcode_bottom
 
-        # Measure module count using a 1-point-per-module probe
-        probe = code128.Code128(
-            raw_barcode,
-            barWidth=1.0,
-            barHeight=barcode_height,
-            humanReadable=False,
-            quiet=False,
-        )
-        module_count = probe.width
+            # Measure module count using a 1-point-per-module probe
+            probe = code128.Code128(
+                raw_barcode,
+                barWidth=1.0,
+                barHeight=barcode_height,
+                humanReadable=False,
+                quiet=False,
+            )
+            module_count = probe.width
 
-        # Calculate barWidth to fill available width between quiet zones.
-        # Snap UP to dot boundary so bars are as wide as possible.
-        barcode_avail_w = _LABEL_W - 2 * quiet
-        raw_bar_w = barcode_avail_w / module_count
-        # Snap DOWN so barcode fits within avail_w; floor at 3 dots (0.010") for thermal scan
-        bar_w = max(math.floor(raw_bar_w / _DOT), 3) * _DOT
+            # Calculate barWidth to fill available width between quiet zones.
+            # Snap UP to dot boundary so bars are as wide as possible.
+            barcode_avail_w = _LABEL_W - 2 * quiet
+            raw_bar_w = barcode_avail_w / module_count
+            # Snap DOWN so barcode fits within avail_w; floor at 3 dots (0.010") for thermal scan
+            bar_w = max(math.floor(raw_bar_w / _DOT), 3) * _DOT
 
-        bc = code128.Code128(
-            raw_barcode,
-            barWidth=bar_w,
-            barHeight=barcode_height,
-            humanReadable=False,
-            quiet=False,
-        )
+            bc = code128.Code128(
+                raw_barcode,
+                barWidth=bar_w,
+                barHeight=barcode_height,
+                humanReadable=False,
+                quiet=False,
+            )
 
-        # Position barcode: center horizontally, bottom edge at barcode_bottom
-        actual_bc_w = module_count * bar_w
-        bc_x = (_LABEL_W - actual_bc_w) / 2
-        bc_x = _snap_down(bc_x)
-        bc_y = barcode_bottom
-        bc.drawOn(c, bc_x, bc_y)
+            # Position barcode: center horizontally, bottom edge at barcode_bottom
+            actual_bc_w = module_count * bar_w
+            bc_x = (_LABEL_W - actual_bc_w) / 2
+            bc_x = _snap_down(bc_x)
+            bc_y = barcode_bottom
+            bc.drawOn(c, bc_x, bc_y)
 
-        # Human-readable barcode text at very bottom
-        c.setFont("Helvetica-Bold", 5)
-        c.drawCentredString(_LABEL_W / 2, 0.015 * inch, raw_barcode)
+            # Human-readable barcode text at very bottom
+            c.setFont("Helvetica-Bold", 5)
+            c.drawCentredString(_LABEL_W / 2, 0.015 * inch, raw_barcode)
+        except Exception as e:
+            import sys
+            print(f"[LABEL ERROR] barcode failed for item barcode={raw_barcode!r}: {e}", file=sys.stderr)
+            # Fallback: show barcode as text if Code128 rendering fails
+            c.setFont("Helvetica-Bold", 8)
+            c.drawCentredString(_LABEL_W / 2, 0.05 * inch, f"[{raw_barcode}]")
 
 
 def generate_label_pdf(item) -> bytes:
