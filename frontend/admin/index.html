@@ -1007,7 +1007,7 @@
                     <p class="vendor-browser-sub">Select a vendor once. Balances, rent, payouts, notes, recent sales, and history stay in one place.</p>
                 </div>
                 <div id="vendor-hub-browser-list" class="vendor-browser-list">
-                    <div class="vendor-browser-empty">Loading vendors…</div>
+                    <div class="vendor-browser-empty" id="vendor-browser-placeholder"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div>
                 </div>
                 <div id="vendor-hub-pagination" class="vendor-browser-footer">
                     <span id="vendor-hub-page-info"></span>
@@ -1073,7 +1073,7 @@
                 <button onclick="loadAdminOrders('')" class="btn btn-sm" id="admin-filter-all">All</button>
             </div>
             <div id="admin-orders-list" style="padding:0 0.75rem 0.75rem">
-                <div class="loading">Loading orders...</div>
+                <div id="orders-loading"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div>
             </div>
         </div>
     </div>
@@ -1619,7 +1619,7 @@
 
     async function loadAdminOrders(statusFilter) {
         var list = document.getElementById('admin-orders-list');
-        list.innerHTML = '<div class="loading">Loading…</div>';
+        list.innerHTML = '<div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div>';
 
         document.querySelectorAll('[id^="admin-filter-"]').forEach(function(b) {
             b.style.background = ''; b.style.color = '';
@@ -2011,7 +2011,7 @@
 
     async function openHistoryModal(vendorId, vendorName) {
         document.getElementById('hist-vendor-name').textContent = vendorName;
-        document.getElementById('hist-body').innerHTML = '<tr><td colspan="5" class="loading">Loading…</td></tr>';
+        document.getElementById('hist-body').innerHTML = '<tr><td colspan="5"><div class="skeleton skeleton-row"></div></td></tr><tr><td colspan="5"><div class="skeleton skeleton-row"></div></td></tr>';
         document.getElementById('history-modal').style.display = 'flex';
         try {
             var token = sessionStorage.getItem('bmm_token');

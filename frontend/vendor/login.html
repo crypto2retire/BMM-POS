@@ -218,6 +218,11 @@
                     placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" required
                     autocomplete="current-password">
             </div>
+            <label class="login-toggle-row" for="remember-me">
+                <input type="checkbox" id="remember-me" checked>
+                <span>Remember me</span>
+            </label>
+            <div class="login-toggle-note">Stay logged in when you close the browser.</div>
             <button class="btn btn-primary btn-lg btn-full" type="submit" id="login-btn">Sign In</button>
             <label class="login-toggle-row" for="assistant-device-enabled">
                 <input type="checkbox" id="assistant-device-enabled" checked>
@@ -305,13 +310,19 @@
             }
             const data = await res.json();
             const token = data.access_token;
-            sessionStorage.setItem("bmm_token", token);
+            const remember = document.getElementById("remember-me").checked;
+            const storage = remember ? localStorage : sessionStorage;
+            storage.setItem("bmm_token", token);
+            // Sync to both so api.js can find it regardless
+            if (remember) {
+                sessionStorage.setItem("bmm_token", token);
+            }
             if (data.first_login) {
-                sessionStorage.setItem("bmm_first_login", "1");
+                storage.setItem("bmm_first_login", "1");
             }
             const payload = JSON.parse(atob(token.split(".")[1]));
             if (payload.role === "admin") {
-                sessionStorage.removeItem("bmm_booth_mode");
+                storage.removeItem("bmm_booth_mode");
             }
 
             if (data.redirect === "choose") {

@@ -2,18 +2,25 @@ let _token = null;
 
 (function () {
     try {
+        _token = localStorage.getItem('bmm_token') || sessionStorage.getItem('bmm_token') || null;
+    } catch (e) {
         _token = sessionStorage.getItem('bmm_token') || null;
-    } catch (e) {}
+    }
 })();
 
 function _persistToken() {
     try {
         if (_token) {
+            localStorage.setItem('bmm_token', _token);
             sessionStorage.setItem('bmm_token', _token);
         } else {
+            localStorage.removeItem('bmm_token');
             sessionStorage.removeItem('bmm_token');
         }
-    } catch (e) {}
+    } catch (e) {
+        if (_token) sessionStorage.setItem('bmm_token', _token);
+        else sessionStorage.removeItem('bmm_token');
+    }
 }
 
 function getToken() {
@@ -23,6 +30,7 @@ function getToken() {
 function clearToken() {
     _token = null;
     try {
+        localStorage.removeItem('bmm_token');
         sessionStorage.removeItem('bmm_token');
         sessionStorage.removeItem('bmm_booth_mode');
         sessionStorage.removeItem('bmm_user');
@@ -65,7 +73,7 @@ async function apiLogin(email, password) {
 }
 
 async function apiFetch(method, url, body) {
-    const token = sessionStorage.getItem('bmm_token');
+    const token = _getToken();
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = 'Bearer ' + token;
 
@@ -135,7 +143,7 @@ function apiDelete(url) {
 }
 
 async function apiFetchText(url) {
-    const token = sessionStorage.getItem('bmm_token');
+    const token = _getToken();
     const headers = {};
     if (token) headers['Authorization'] = 'Bearer ' + token;
     const res = await fetch(url, { method: 'GET', headers });
@@ -156,7 +164,7 @@ async function apiChat(message, imageBase64 = null, imageMimeType = null) {
 }
 
 function requireAuth() {
-    const token = sessionStorage.getItem('bmm_token');
+    const token = _getToken();
     if (!token) {
         window.location.href = '/vendor/login.html';
         return false;
@@ -281,6 +289,27 @@ if (document.body) {
 }
 
 window.trapFocus = trapFocus;
+
+// ── Loading skeleton helpers ───────────────────────────────────────
+function skeletonRows(count, cls) {
+    var html = '';
+    for (var i = 0; i < count; i++) html += '<div class="skeleton skeleton-row"></div>';
+    return html;
+}
+function skeletonCards(count, cls) {
+    var html = '<div class="skeleton-grid">';
+    for (var i = 0; i < count; i++) html += '<div class="skeleton skeleton-card"></div>';
+    html += '</div>';
+    return html;
+}
+function skeletonStats() {
+    return '<div class="skeleton-stats">' +
+        '<div class="skeleton skeleton-card"></div>'.repeat(4) +
+        '</div>';
+}
+window.skeletonRows = skeletonRows;
+window.skeletonCards = skeletonCards;
+window.skeletonStats = skeletonStats;
 
 // ── Skip to content link (accessibility) ──────────────────────────
 (function() {
