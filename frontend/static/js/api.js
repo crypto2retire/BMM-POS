@@ -73,7 +73,7 @@ async function apiLogin(email, password) {
 }
 
 async function apiFetch(method, url, body) {
-    const token = _getToken();
+    const token = getToken();
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = 'Bearer ' + token;
 
@@ -143,7 +143,7 @@ function apiDelete(url) {
 }
 
 async function apiFetchText(url) {
-    const token = _getToken();
+    const token = getToken();
     const headers = {};
     if (token) headers['Authorization'] = 'Bearer ' + token;
     const res = await fetch(url, { method: 'GET', headers });
@@ -164,7 +164,7 @@ async function apiChat(message, imageBase64 = null, imageMimeType = null) {
 }
 
 function requireAuth() {
-    const token = _getToken();
+    const token = getToken();
     if (!token) {
         window.location.href = '/vendor/login.html';
         return false;
