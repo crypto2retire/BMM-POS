@@ -863,7 +863,7 @@ async def get_landing_page(
             "id": item.id,
             "name": item.name,
             "price": float(item.price) if item.price else 0,
-            "image_url": item.image_url,
+            "image_url": item.image_path or (item.photo_urls[0] if item.photo_urls else None),
             "category": item.category,
         })
 
