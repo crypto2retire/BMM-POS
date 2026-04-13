@@ -79,6 +79,64 @@
             margin-left: 0.25rem;
         }
 
+        /* ── Utility classes (replaces inline styles) ─────────────────────── */
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .text-danger { color: var(--danger); }
+        .text-danger-center { color: var(--danger); text-align: center; }
+        .text-danger-sm { color: var(--danger); font-size: 0.75rem; margin-top: 2px; }
+        .text-danger-sm-min { color: var(--danger); font-size: 0.8rem; min-height: 18px; }
+        .text-muted-sm { font-size: 0.72rem; color: var(--text-light); }
+        .text-xs-muted { font-size: 10px; color: var(--text-muted); }
+        .text-11 { font-size: 11px; }
+        .text-sm { font-size: 0.75rem; }
+        .text-light { color: var(--text-light); }
+        .text-light-sm { color: var(--text-light); font-size: 0.8rem; }
+        .text-semibold { font-weight: 600; color: var(--text); }
+        .text-center-muted { text-align: center; color: var(--text-muted); }
+        .text-center-muted-padded { text-align: center; color: var(--text-muted); padding: 2rem; }
+        .text-right-py { text-align: right; padding: 3px 0; }
+        .text-center-my { text-align: center; margin: 6px 0; }
+
+        .label-xs { font-size: 0.6rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.1em; }
+        .form-label-sm { display: block; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-light); margin-bottom: 0.2rem; }
+        .field-label { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-light); margin-bottom: 4px; font-family: 'Roboto', sans-serif; }
+        .field-label-lg { font-size: 0.75rem; color: var(--text-light); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+        .label-sub { font-size: 0.8rem; color: var(--text-light); margin-top: 2px; }
+
+        .surface-block-center { background: var(--surface-2); padding: 0.75rem; text-align: center; }
+        .surface-block { background: var(--surface-2); padding: 0.75rem; }
+
+        .btn-gold-outline { background: var(--surface-2); color: var(--gold); border: 1px solid var(--border); padding: 3px 10px; font-size: 0.72rem; cursor: pointer; }
+        .btn-toggle { padding: 0.5rem 1.2rem; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); cursor: pointer; font-weight: 700; font-size: 1rem; }
+        .btn-inline { padding: 0.4rem 1rem; font-size: 0.8rem; }
+        .btn-wide { padding: 0.6rem 1rem; }
+
+        .form-input { width: 100%; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 0.55rem 0.7rem; font-size: 0.9rem; box-sizing: border-box; }
+        .form-input-lg { width: 100%; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 0.6rem 0.75rem; font-size: 0.9rem; font-family: 'Roboto', sans-serif; }
+        .form-input-sm { width: 100%; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); padding: 0.55rem 0.7rem; font-size: 0.85rem; box-sizing: border-box; }
+        .input-mobile { font-size: 16px; }
+
+        .mb-4 { margin-bottom: 0.4rem; }
+        .mb-6 { margin-bottom: 0.6rem; }
+        .mb-7 { margin-bottom: 0.75rem; }
+        .mb-8 { margin-bottom: 1rem; }
+        .mt-6 { margin-top: 1rem; }
+        .mt-8 { margin-top: 1.5rem; }
+        .py-1 { padding: 0.5rem 1rem; }
+
+        .flex-1 { flex: 1; }
+        .flex-row-gap { display: flex; gap: 8px; }
+        .flex-between-center { background: var(--surface-2); padding: 0.5rem 0.75rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+
+        .mw-360 { max-width: 360px; }
+        .mw-480 { max-width: 480px; }
+        .mw-520 { max-width: 520px; }
+        .mw-560 { max-width: 560px; }
+
+        .relative { position: relative; }
+        .error-text { color: var(--danger); font-size: 0.8rem; min-height: 18px; }
+
         /* ── Mobile overrides ─────────────────────────────────────────── */
         @media (max-width: 767px) {
             .pos-layout {
@@ -1008,7 +1066,7 @@
             <img src="/static/images/logo.webp" alt="Bowenstreet Market" width="38" height="38" style="height:38px;width:38px;object-fit:contain;">
             <span class="label">POS Terminal</span>
         </div>
-        <div class="pos-navbar-right" style="position:relative">
+        <div class="pos-navbar-right" class="relative">
             <span id="cashier-name">Loading…</span>
             <button onclick="toggleDisplayPrefs()" style="background:none; border:none; color:var(--text-light); font-size:1.1rem; cursor:pointer; padding:0.5rem; min-height:44px; min-width:44px" title="Display Settings" aria-label="Open display settings" aria-expanded="false">&#9881;</button>
             <div id="display-prefs-dropdown" style="display:none; position:absolute; right:1rem; top:60px; background:var(--surface); border:1px solid var(--border); padding:1rem; z-index:100; min-width:220px; box-shadow:var(--shadow-md)">
@@ -1024,7 +1082,7 @@
                     <option value="large">Large</option>
                 </select>
             </div>
-            <button class="nav-link" onclick="openOnlineOrdersPanel()" style="position:relative">Orders <span id="orders-badge" style="display:none;position:absolute;top:-4px;right:-8px;background:var(--danger);color:var(--white);font-size:10px;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 4px">0</span></button>
+            <button class="nav-link" onclick="openOnlineOrdersPanel()" class="relative">Orders <span id="orders-badge" style="display:none;position:absolute;top:-4px;right:-8px;background:var(--danger);color:var(--white);font-size:10px;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 4px">0</span></button>
             <button class="nav-link" onclick="openGiftCardModal()">Gift Cards</button>
             <button class="nav-link" onclick="openReceiptLookup()">Receipts</button>
             <button class="nav-link" onclick="openEndOfDay()">End of Day</button>
@@ -1088,8 +1146,8 @@
                     <tr>
                         <th>Item</th>
                         <th>Qty</th>
-                        <th style="text-align:right">Price</th>
-                        <th style="text-align:right">Total</th>
+                        <th class="text-right">Price</th>
+                        <th class="text-right">Total</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -1169,7 +1227,7 @@
                 step="0.01"
                 placeholder="0.00"
                 inputmode="decimal"
-                style="font-size:16px"
+                class="input-mobile"
                 oninput="updateChange()"
             >
         </div>
@@ -1211,14 +1269,14 @@
 
 <!-- Item Discount Modal -->
 <div class="pos-modal-overlay hidden" id="item-discount-modal">
-    <div class="pos-modal" style="max-width:360px">
+    <div class="pos-modal" class="mw-360">
         <h2>🏷 Item Discount</h2>
         <div id="item-disc-name" style="font-weight:700;color:var(--gold);margin-bottom:0.75rem;text-align:center"></div>
-        <div style="display:flex;gap:0.5rem;justify-content:center;margin-bottom:0.75rem">
-            <button id="item-disc-dollar-btn" onclick="setItemDiscType('dollar')" style="padding:0.5rem 1.2rem;background:var(--surface-2);border:1px solid var(--border);color:var(--text);cursor:pointer;font-weight:700;font-size:1rem">$</button>
-            <button id="item-disc-percent-btn" onclick="setItemDiscType('percent')" style="padding:0.5rem 1.2rem;background:var(--surface-2);border:1px solid var(--border);color:var(--text);cursor:pointer;font-weight:700;font-size:1rem">%</button>
+        <div class="flex-row-gap mb-7" style="justify-content:center">
+            <button id="item-disc-dollar-btn" onclick="setItemDiscType('dollar')" class="btn-toggle">$</button>
+            <button id="item-disc-percent-btn" onclick="setItemDiscType('percent')" class="btn-toggle">%</button>
         </div>
-        <input type="number" id="item-disc-value" class="form-control" min="0" step="0.01" placeholder="Enter value" style="text-align:center;font-size:1.2rem;margin-bottom:0.75rem">
+        <input type="number" id="item-disc-value" class="form-control" min="0" step="0.01" placeholder="Enter value" class="text-center mb-7">
         <div class="modal-actions">
             <button class="cancel-btn" onclick="removeItemDiscount()">Remove</button>
             <button class="cancel-btn" onclick="document.getElementById('item-discount-modal').classList.add('hidden')">Cancel</button>
@@ -1229,13 +1287,13 @@
 
 <!-- Cart Discount Modal -->
 <div class="pos-modal-overlay hidden" id="cart-discount-modal">
-    <div class="pos-modal" style="max-width:360px">
+    <div class="pos-modal" class="mw-360">
         <h2>🏷 Cart Discount</h2>
-        <div style="display:flex;gap:0.5rem;justify-content:center;margin-bottom:0.75rem">
-            <button id="cart-disc-dollar-btn" onclick="setCartDiscType('dollar')" style="padding:0.5rem 1.2rem;background:var(--surface-2);border:1px solid var(--border);color:var(--text);cursor:pointer;font-weight:700;font-size:1rem">$</button>
-            <button id="cart-disc-percent-btn" onclick="setCartDiscType('percent')" style="padding:0.5rem 1.2rem;background:var(--surface-2);border:1px solid var(--border);color:var(--text);cursor:pointer;font-weight:700;font-size:1rem">%</button>
+        <div class="flex-row-gap mb-7" style="justify-content:center">
+            <button id="cart-disc-dollar-btn" onclick="setCartDiscType('dollar')" class="btn-toggle">$</button>
+            <button id="cart-disc-percent-btn" onclick="setCartDiscType('percent')" class="btn-toggle">%</button>
         </div>
-        <input type="number" id="cart-disc-value" class="form-control" min="0" step="0.01" placeholder="Enter value" style="text-align:center;font-size:1.2rem;margin-bottom:0.75rem">
+        <input type="number" id="cart-disc-value" class="form-control" min="0" step="0.01" placeholder="Enter value" class="text-center mb-7">
         <div class="modal-actions">
             <button class="cancel-btn" onclick="clearCartDiscount()">Remove</button>
             <button class="cancel-btn" onclick="document.getElementById('cart-discount-modal').classList.add('hidden')">Cancel</button>
@@ -1246,7 +1304,7 @@
 
 <!-- Receipt Modal -->
 <div class="pos-modal-overlay hidden" id="receipt-modal">
-    <div class="pos-modal receipt-modal" style="position:relative">
+    <div class="pos-modal receipt-modal" class="relative">
         <button onclick="startNewSale()" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--text-light);font-size:1.4rem;cursor:pointer;line-height:1;padding:4px 8px;z-index:1" title="Close">✕</button>
         <h2 id="receipt-modal-title">✅ Sale Complete</h2>
         <div class="receipt-print-area" id="receipt-content"></div>
@@ -1282,13 +1340,13 @@
                 <input type="number" id="manual-qty" min="1" value="1">
             </div>
         </div>
-        <div class="manual-form-group" style="display:flex;gap:1.5rem;flex-wrap:wrap">
+        <div class="manual-form-group" class="flex-row-gap" style="gap:1.5rem;flex-wrap:wrap">
             <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;font-size:0.8rem;letter-spacing:0">
                 <input type="checkbox" id="manual-tax-exempt"> Tax Exempt
             </label>
         </div>
         <div style="display:none !important" aria-hidden="true">
-            <div class="manual-form-group" style="display:flex;gap:1.5rem;flex-wrap:wrap">
+            <div class="manual-form-group" class="flex-row-gap" style="gap:1.5rem;flex-wrap:wrap">
                 <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;font-size:0.8rem;letter-spacing:0">
                     <input type="checkbox" id="manual-consignment" onchange="toggleManualConsignment()"> Consignment
                 </label>
@@ -1309,10 +1367,10 @@
 
 <!-- Held Orders Modal -->
 <div class="pos-modal-overlay hidden" id="resume-modal">
-    <div class="pos-modal" style="max-width:480px">
+    <div class="pos-modal" class="mw-480">
         <h2>⏸ Held Orders</h2>
         <div id="held-orders-list" style="max-height:60vh;overflow-y:auto"></div>
-        <div class="modal-actions" style="margin-top:1rem">
+        <div class="modal-actions" class="mt-6">
             <button class="cancel-btn" onclick="document.getElementById('resume-modal').classList.add('hidden')">Close</button>
         </div>
     </div>
@@ -1320,33 +1378,33 @@
 
 <!-- Receipt Lookup Modal -->
 <div class="pos-modal-overlay hidden" id="receipt-modal-lookup">
-    <div class="pos-modal" style="max-width:560px">
+    <div class="pos-modal" class="mw-560">
         <h2>🔍 Receipt Lookup</h2>
-        <div style="margin-bottom:0.75rem">
+        <div class="mb-7">
             <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px">Search by Sale #</label>
-            <div style="display:flex;gap:8px">
+            <div class="flex-row-gap">
                 <input type="text" id="receipt-search-input" placeholder="e.g. 12345" inputmode="numeric" onkeydown="if(event.key==='Enter')searchReceiptById()" style="flex:1;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.75rem;font-size:0.9rem">
-                <button class="confirm-btn" onclick="searchReceiptById()" style="padding:0.5rem 1rem">Find</button>
+                <button class="confirm-btn" onclick="searchReceiptById()" class="py-1">Find</button>
             </div>
         </div>
         <div style="border-top:1px solid var(--border);padding-top:0.75rem;margin-bottom:0.75rem">
             <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px">Search by Date Range</label>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                 <input type="date" id="receipt-date-from" style="flex:1;min-width:130px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.5rem;font-size:0.85rem">
-                <span style="color:var(--text-light);font-size:0.8rem">to</span>
+                <span class="text-light-sm">to</span>
                 <input type="date" id="receipt-date-to" style="flex:1;min-width:130px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.5rem;font-size:0.85rem">
-                <button class="confirm-btn" onclick="searchReceiptsByDate()" style="padding:0.5rem 1rem">Search</button>
+                <button class="confirm-btn" onclick="searchReceiptsByDate()" class="py-1">Search</button>
             </div>
             <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-                <button onclick="setReceiptDatePreset('today')" style="background:var(--surface-2);color:var(--gold);border:1px solid var(--border);padding:3px 10px;font-size:0.72rem;cursor:pointer">Today</button>
-                <button onclick="setReceiptDatePreset('yesterday')" style="background:var(--surface-2);color:var(--gold);border:1px solid var(--border);padding:3px 10px;font-size:0.72rem;cursor:pointer">Yesterday</button>
-                <button onclick="setReceiptDatePreset('week')" style="background:var(--surface-2);color:var(--gold);border:1px solid var(--border);padding:3px 10px;font-size:0.72rem;cursor:pointer">This Week</button>
-                <button onclick="setReceiptDatePreset('month')" style="background:var(--surface-2);color:var(--gold);border:1px solid var(--border);padding:3px 10px;font-size:0.72rem;cursor:pointer">This Month</button>
-                <button onclick="setReceiptDatePreset('last30')" style="background:var(--surface-2);color:var(--gold);border:1px solid var(--border);padding:3px 10px;font-size:0.72rem;cursor:pointer">Last 30 Days</button>
+                <button onclick="setReceiptDatePreset('today')" class="btn-gold-outline">Today</button>
+                <button onclick="setReceiptDatePreset('yesterday')" class="btn-gold-outline">Yesterday</button>
+                <button onclick="setReceiptDatePreset('week')" class="btn-gold-outline">This Week</button>
+                <button onclick="setReceiptDatePreset('month')" class="btn-gold-outline">This Month</button>
+                <button onclick="setReceiptDatePreset('last30')" class="btn-gold-outline">Last 30 Days</button>
             </div>
         </div>
         <div id="receipt-search-results" style="max-height:45vh;overflow-y:auto"></div>
-        <div class="modal-actions" style="margin-top:1rem">
+        <div class="modal-actions" class="mt-6">
             <button class="cancel-btn" onclick="document.getElementById('receipt-modal-lookup').classList.add('hidden')">Close</button>
         </div>
     </div>
@@ -1366,10 +1424,10 @@
 </div>
 
 <div class="pos-modal-overlay hidden" id="void-confirm-modal" style="z-index:1100">
-    <div class="pos-modal" style="max-width:360px">
-        <h2 style="color:var(--danger)">⚠ Void Sale</h2>
+    <div class="pos-modal" class="mw-360">
+        <h2 class="text-danger">⚠ Void Sale</h2>
         <p style="color:var(--text-light);font-size:0.85rem;margin-bottom:0.75rem" id="void-sale-info"></p>
-        <div style="margin-bottom:0.75rem">
+        <div class="mb-7">
             <label style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px">Reason (optional)</label>
             <input type="text" id="void-reason" placeholder="e.g. Wrong item, customer changed mind" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.6rem;font-size:0.9rem;box-sizing:border-box">
         </div>
@@ -1384,16 +1442,16 @@
 
 <!-- Online Orders Panel -->
 <div class="pos-modal-overlay hidden" id="online-orders-modal">
-    <div class="pos-modal" style="max-width:560px">
+    <div class="pos-modal" class="mw-560">
         <h2>📦 Online Orders</h2>
         <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
             <button class="confirm-btn" onclick="loadOnlineOrders('pending')" id="filter-pending" style="padding:0.4rem 1rem;font-size:0.8rem;background:color-mix(in srgb, var(--warning) 58%, var(--bg));color:color-mix(in srgb, var(--warning) 38%, var(--white))">Pending</button>
-            <button class="cancel-btn" onclick="loadOnlineOrders('ready')" id="filter-ready" style="padding:0.4rem 1rem;font-size:0.8rem">Ready</button>
-            <button class="cancel-btn" onclick="loadOnlineOrders('completed')" id="filter-completed" style="padding:0.4rem 1rem;font-size:0.8rem">Completed</button>
-            <button class="cancel-btn" onclick="loadOnlineOrders('')" id="filter-all" style="padding:0.4rem 1rem;font-size:0.8rem">All</button>
+            <button class="cancel-btn" onclick="loadOnlineOrders('ready')" id="filter-ready" class="btn-inline">Ready</button>
+            <button class="cancel-btn" onclick="loadOnlineOrders('completed')" id="filter-completed" class="btn-inline">Completed</button>
+            <button class="cancel-btn" onclick="loadOnlineOrders('')" id="filter-all" class="btn-inline">All</button>
         </div>
         <div id="online-orders-list" style="max-height:55vh;overflow-y:auto"></div>
-        <div class="modal-actions" style="margin-top:1rem">
+        <div class="modal-actions" class="mt-6">
             <button class="cancel-btn" onclick="document.getElementById('online-orders-modal').classList.add('hidden')">Close</button>
         </div>
     </div>
@@ -1427,10 +1485,10 @@
         <button class="pay-btn card" id="mobile-gc-btn" onclick="openGcPayModal()" disabled style="padding:0.6rem 0.65rem;min-height:48px;font-size:0.85rem;background:var(--pos-payment-gift);border-color:var(--pos-payment-gift);flex:none">
             🎁
         </button>
-        <button class="pay-btn cash" id="mobile-cash-btn" onclick="openCashModal()" disabled style="padding:0.6rem 1rem;min-height:48px;font-size:0.9rem;flex:none">
+        <button class="pay-btn cash" id="mobile-cash-btn" onclick="openCashModal()" disabled class="btn-wide" style="min-height:48px;font-size:0.9rem;flex:none">
             💵 Cash
         </button>
-        <button class="pay-btn card" id="mobile-card-btn" onclick="startCardPayment()" disabled style="padding:0.6rem 1rem;min-height:48px;font-size:0.9rem;flex:none">
+        <button class="pay-btn card" id="mobile-card-btn" onclick="startCardPayment()" disabled class="btn-wide" style="min-height:48px;font-size:0.9rem;flex:none">
             💳 Card
         </button>
     </div>
@@ -1449,9 +1507,9 @@
             <input type="text" id="gc-pay-barcode" placeholder="Scan or type barcode" inputmode="numeric" pattern="[0-9]*" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.6rem 0.75rem;font-size:1rem;box-sizing:border-box">
         </div>
         <div id="gc-pay-balance" style="min-height:30px;margin-bottom:0.5rem"></div>
-        <div id="gc-pay-error" style="color:var(--danger);font-size:0.8rem;min-height:18px"></div>
-        <div style="display:flex;gap:8px">
-            <button class="cancel-btn" onclick="closeGcPayModal()" style="flex:1">Cancel</button>
+        <div id="gc-pay-error" class="text-danger-sm-min"></div>
+        <div class="flex-row-gap">
+            <button class="cancel-btn" onclick="closeGcPayModal()" class="flex-1">Cancel</button>
             <button class="confirm-btn" onclick="processGcPayment()" id="gc-pay-submit" style="flex:1;background:var(--pos-payment-gift)">Pay with Gift Card</button>
         </div>
     </div>
@@ -1459,20 +1517,20 @@
 
 <!-- Split Payment Modal -->
 <div class="pos-modal-overlay hidden" id="split-modal">
-    <div class="pos-modal" style="max-width:480px">
+    <div class="pos-modal" class="mw-480">
         <h2>Split Payment</h2>
         <div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface-2);padding:0.6rem 0.8rem;margin-bottom:0.75rem">
             <div>
-                <small style="color:var(--text-light);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em">Order Total</small>
+                <small class="text-muted-sm">Order Total</small>
                 <div id="split-total-display" style="font-size:1.2rem;font-weight:700;color:var(--text)">$0.00</div>
             </div>
-            <div style="text-align:right">
-                <small style="color:var(--text-light);font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em">Remaining</small>
+            <div class="text-right">
+                <small class="text-muted-sm">Remaining</small>
                 <div id="split-remaining-display" style="font-size:1.2rem;font-weight:700;color:var(--warning)">$0.00</div>
             </div>
         </div>
 
-        <div id="split-applied-list" style="margin-bottom:0.6rem"></div>
+        <div id="split-applied-list" class="mb-6"></div>
 
         <div id="split-add-buttons" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0.75rem">
             <button class="pay-btn card" id="split-add-gc-btn" onclick="splitShowGcInput()" style="flex:1;min-width:100px;padding:0.5rem;font-size:0.8rem;background:var(--pos-payment-gift);border-color:var(--pos-payment-gift)">+ Gift Card</button>
@@ -1483,14 +1541,14 @@
         <div id="split-gc-input-section" style="display:none;margin:0.5rem 0;background:color-mix(in srgb, var(--info) 14%, var(--bg));border:1px solid var(--pos-payment-gift);padding:0.6rem 0.8rem">
             <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:color-mix(in srgb, var(--pos-payment-gift) 48%, var(--white));margin-bottom:0.4rem;font-family:'Roboto',sans-serif">Scan Gift Card</div>
             <div style="display:flex;gap:6px;align-items:flex-end">
-                <div style="flex:1">
+                <div class="flex-1">
                     <input type="text" id="split-gc-barcode" placeholder="Scan or type barcode" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.6rem;font-size:0.95rem;box-sizing:border-box">
                 </div>
                 <button class="confirm-btn" onclick="splitApplyGiftCard()" style="padding:0.5rem 1rem;background:var(--pos-payment-gift);white-space:nowrap;font-size:0.85rem">Apply</button>
             </div>
             <div style="display:flex;gap:6px;align-items:center;margin-top:0.4rem">
-                <div style="flex:1">
-                    <label class="form-label" style="font-size:0.75rem">Amount to apply (leave blank for max)</label>
+                <div class="flex-1">
+                    <label class="form-label" class="text-sm">Amount to apply (leave blank for max)</label>
                     <input type="number" id="split-gc-custom-amount" placeholder="Full balance" min="0.01" step="0.01" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.6rem;font-size:0.85rem;box-sizing:border-box">
                 </div>
             </div>
@@ -1500,8 +1558,8 @@
 
         <div id="split-cash-input-section" style="display:none;margin:0.5rem 0;background:color-mix(in srgb, var(--success) 12%, var(--bg));border:1px solid var(--success-light);padding:0.6rem 0.8rem">
             <div style="font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--success-light);margin-bottom:0.4rem;font-family:'Roboto',sans-serif">Cash Payment</div>
-            <div class="form-group" style="margin-bottom:0.4rem">
-                <label class="form-label" style="font-size:0.75rem">Cash Amount</label>
+            <div class="form-group" class="mb-4">
+                <label class="form-label" class="text-sm">Cash Amount</label>
                 <input class="form-control" type="number" id="split-cash-amount" min="0.01" step="0.01" placeholder="0.00" oninput="splitCashAmountChanged()">
             </div>
             <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:0.5rem" class="quick-cash">
@@ -1511,8 +1569,8 @@
                 <button onclick="splitQuickCash(50)">$50</button>
                 <button onclick="splitQuickCashAll()">Exact</button>
             </div>
-            <div class="form-group" style="margin-bottom:0.4rem">
-                <label class="form-label" style="font-size:0.75rem">Cash Tendered</label>
+            <div class="form-group" class="mb-4">
+                <label class="form-label" class="text-sm">Cash Tendered</label>
                 <input class="form-control" type="number" id="split-tendered-input" min="0" step="0.01" placeholder="0.00" oninput="splitTenderedChanged()">
             </div>
             <div class="change-display zero" id="split-change-display">Change: $0.00</div>
@@ -1549,36 +1607,36 @@
         </div>
 
         <div id="gc-load-panel" style="display:none">
-            <div style="margin-bottom:0.6rem">
-                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:0.2rem">Gift Card Barcode</label>
-                <input type="text" id="gc-load-barcode" placeholder="Scan or type barcode" inputmode="numeric" pattern="[0-9]*" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+            <div class="mb-6">
+                <label class="form-label-sm">Gift Card Barcode</label>
+                <input type="text" id="gc-load-barcode" placeholder="Scan or type barcode" inputmode="numeric" pattern="[0-9]*" class="form-input">
             </div>
-            <div style="margin-bottom:0.6rem">
-                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:0.2rem">Amount to Load ($)</label>
-                <input type="number" id="gc-load-amount" placeholder="25.00" min="1" step="0.01" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+            <div class="mb-6">
+                <label class="form-label-sm">Amount to Load ($)</label>
+                <input type="number" id="gc-load-amount" placeholder="25.00" min="1" step="0.01" class="form-input">
             </div>
-            <div style="margin-bottom:0.6rem">
-                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:0.2rem">Notes (optional)</label>
-                <input type="text" id="gc-load-notes" placeholder="e.g. Birthday gift" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.85rem;box-sizing:border-box">
+            <div class="mb-6">
+                <label class="form-label-sm">Notes (optional)</label>
+                <input type="text" id="gc-load-notes" placeholder="e.g. Birthday gift" class="form-input-sm">
             </div>
-            <div id="gc-load-error" style="color:var(--danger);font-size:0.8rem;min-height:18px"></div>
+            <div id="gc-load-error" class="text-danger-sm-min"></div>
             <button class="confirm-btn" onclick="loadGiftCard()" id="gc-load-btn" style="width:100%;padding:0.7rem;margin-top:4px">Load Card</button>
         </div>
 
         <div id="gc-activate-panel" style="display:none">
-            <div style="margin-bottom:0.6rem">
-                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:0.2rem">Gift Card Barcode</label>
-                <input type="text" id="gc-activate-barcode" placeholder="Scan the new gift card barcode" inputmode="numeric" pattern="[0-9]*" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+            <div class="mb-6">
+                <label class="form-label-sm">Gift Card Barcode</label>
+                <input type="text" id="gc-activate-barcode" placeholder="Scan the new gift card barcode" inputmode="numeric" pattern="[0-9]*" class="form-input">
             </div>
-            <div style="margin-bottom:0.6rem">
-                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:0.2rem">Initial Balance ($)</label>
-                <input type="number" id="gc-activate-amount" placeholder="25.00" min="0" step="0.01" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.9rem;box-sizing:border-box">
+            <div class="mb-6">
+                <label class="form-label-sm">Initial Balance ($)</label>
+                <input type="number" id="gc-activate-amount" placeholder="25.00" min="0" step="0.01" class="form-input">
             </div>
-            <div style="margin-bottom:0.6rem">
-                <label style="display:block;font-size:0.65rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:0.2rem">Notes (optional)</label>
-                <input type="text" id="gc-activate-notes" placeholder="e.g. Holiday promo" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.85rem;box-sizing:border-box">
+            <div class="mb-6">
+                <label class="form-label-sm">Notes (optional)</label>
+                <input type="text" id="gc-activate-notes" placeholder="e.g. Holiday promo" class="form-input-sm">
             </div>
-            <div id="gc-activate-error" style="color:var(--danger);font-size:0.8rem;min-height:18px"></div>
+            <div id="gc-activate-error" class="text-danger-sm-min"></div>
             <button class="confirm-btn" onclick="activateGiftCard()" id="gc-activate-btn" style="width:100%;padding:0.7rem;margin-top:4px;background:var(--success)">Activate Card</button>
         </div>
 
@@ -1594,43 +1652,43 @@
         <div id="eod-content" style="display:none">
             <div style="text-align:center;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:1rem" id="eod-date-label"></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:1rem">
-                <div style="background:var(--surface-2);padding:0.75rem;text-align:center">
-                    <div style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Total Sales</div>
+                <div class="surface-block-center">
+                    <div class="label-xs">Total Sales</div>
                     <div style="font-family:'EB Garamond',serif;font-size:1.8rem;color:var(--gold);margin-top:4px" id="eod-total-revenue">$0.00</div>
                 </div>
-                <div style="background:var(--surface-2);padding:0.75rem;text-align:center">
-                    <div style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Transactions</div>
+                <div class="surface-block-center">
+                    <div class="label-xs">Transactions</div>
                     <div style="font-family:'EB Garamond',serif;font-size:1.8rem;color:var(--text);margin-top:4px" id="eod-total-txns">0</div>
                 </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:1rem">
-                <div style="background:var(--surface-2);padding:0.75rem;text-align:center">
-                    <div style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Cash</div>
+                <div class="surface-block-center">
+                    <div class="label-xs">Cash</div>
                     <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:var(--success-light);margin-top:4px" id="eod-cash-total">$0.00</div>
-                    <div style="font-size:0.72rem;color:var(--text-light)" id="eod-cash-count">0 sales</div>
+                    <div class="text-muted-sm" id="eod-cash-count">0 sales</div>
                 </div>
-                <div style="background:var(--surface-2);padding:0.75rem;text-align:center">
-                    <div style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Card</div>
+                <div class="surface-block-center">
+                    <div class="label-xs">Card</div>
                     <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:var(--info);margin-top:4px" id="eod-card-total">$0.00</div>
-                    <div style="font-size:0.72rem;color:var(--text-light)" id="eod-card-count">0 sales</div>
+                    <div class="text-muted-sm" id="eod-card-count">0 sales</div>
                 </div>
-                <div style="background:var(--surface-2);padding:0.75rem;text-align:center">
-                    <div style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Gift Card</div>
+                <div class="surface-block-center">
+                    <div class="label-xs">Gift Card</div>
                     <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:var(--gold);margin-top:4px" id="eod-gc-total">$0.00</div>
-                    <div style="font-size:0.72rem;color:var(--text-light)" id="eod-gc-count">0 sales</div>
+                    <div class="text-muted-sm" id="eod-gc-count">0 sales</div>
                 </div>
-                <div style="background:var(--surface-2);padding:0.75rem;text-align:center">
-                    <div style="font-size:0.6rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Tax</div>
+                <div class="surface-block-center">
+                    <div class="label-xs">Tax</div>
                     <div style="font-family:'EB Garamond',serif;font-size:1.25rem;color:var(--text);margin-top:4px" id="eod-tax-total">$0.00</div>
-                    <div style="font-size:0.72rem;color:var(--text-light)" id="eod-items-sold">0 items</div>
+                    <div class="text-muted-sm" id="eod-items-sold">0 items</div>
                 </div>
             </div>
-            <div id="eod-voided-row" class="hidden" style="background:var(--surface-2);padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+            <div id="eod-voided-row" class="hidden" class="flex-between-center">
                 <div style="font-size:0.75rem;color:var(--danger);font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Voided Sales</div>
-                <div><span style="color:var(--danger);font-size:0.85rem;font-weight:700" id="eod-voided-count">0</span><span style="color:var(--text-light);font-size:0.8rem"> sale(s) — </span><span style="color:var(--danger);font-size:0.85rem;font-weight:700" id="eod-voided-total">$0.00</span></div>
+                <div><span class="text-danger" style="font-size:0.85rem;font-weight:700" id="eod-voided-count">0</span><span class="text-light-sm"> sale(s) — </span><span class="text-danger" style="font-size:0.85rem;font-weight:700" id="eod-voided-total">$0.00</span></div>
             </div>
-            <div style="background:var(--surface-2);padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
-                <div style="font-size:0.75rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Starting Drawer Balance</div>
+            <div class="flex-between-center">
+                <div class="field-label-lg">Starting Drawer Balance</div>
                 <div style="display:flex;align-items:center;gap:6px">
                     <span style="color:var(--text);font-size:1rem">$</span>
                     <input type="number" id="eod-starting-input" min="0" step="0.01" value="150.00"
@@ -1639,12 +1697,12 @@
                     <button onclick="saveStartingCash()" style="font-size:0.6rem;padding:2px 6px;background:var(--gold-dim);color:var(--bg);border:none;border-radius:3px;cursor:pointer;font-weight:700">SET</button>
                 </div>
             </div>
-            <div style="background:var(--surface-2);padding:0.5rem 0.75rem;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
-                <div style="font-size:0.75rem;color:var(--text-light);font-weight:600;text-transform:uppercase;letter-spacing:0.06em">Expected Cash in Drawer</div>
+            <div class="flex-between-center">
+                <div class="field-label-lg">Expected Cash in Drawer</div>
                 <div style="font-family:'EB Garamond',serif;font-size:1.1rem;color:var(--success-light);font-weight:600" id="eod-expected-cash">$150.00</div>
             </div>
-            <div style="margin-bottom:1rem">
-                <div style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-family:'Roboto',sans-serif">Cash Drawer Count</div>
+            <div class="mb-8">
+                <div class="label-xs mb-6">Cash Drawer Count</div>
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px" id="denom-grid">
                     <div class="denom-row"><label>$100 x</label><input type="number" min="0" value="0" data-denom="100" onchange="updateCashCount()" oninput="updateCashCount()"></div>
                     <div class="denom-row"><label>$50 x</label><input type="number" min="0" value="0" data-denom="50" onchange="updateCashCount()" oninput="updateCashCount()"></div>
@@ -1659,7 +1717,7 @@
                     <div class="denom-row"><label>Other $</label><input type="number" min="0" step="0.01" value="0" data-raw="true" onchange="updateCashCount()" oninput="updateCashCount()"></div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-top:10px;background:var(--surface-2)">
-                    <div style="padding:8px 12px;text-align:center">
+                    <div class="text-center" style="padding:8px 12px">
                         <div style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Counted Cash</div>
                         <div style="font-family:'EB Garamond',serif;font-size:1.4rem;color:var(--text)" id="eod-counted-cash">$0.00</div>
                     </div>
@@ -1667,16 +1725,16 @@
                         <div style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">Variance</div>
                         <div style="font-family:'EB Garamond',serif;font-size:1.4rem" id="eod-variance">$0.00</div>
                     </div>
-                    <div style="padding:8px 12px;text-align:center">
+                    <div class="text-center" style="padding:8px 12px">
                         <div style="font-size:0.65rem;color:var(--gold);text-transform:uppercase;letter-spacing:0.1em;font-weight:700">Deposit</div>
                         <div style="font-family:'EB Garamond',serif;font-size:1.4rem;color:var(--gold);font-weight:700" id="eod-deposit">$0.00</div>
                     </div>
                 </div>
                 <div style="font-size:0.7rem;color:var(--text-light);margin-top:6px;text-align:center" id="eod-variance-note"></div>
             </div>
-            <div id="eod-cashier-breakdown" style="margin-bottom:1rem"></div>
-            <div style="margin-bottom:1rem">
-                <div style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;font-family:'Roboto',sans-serif">Notes (optional)</div>
+            <div id="eod-cashier-breakdown" class="mb-8"></div>
+            <div class="mb-8">
+                <div class="label-xs mb-6">Notes (optional)</div>
                 <textarea id="eod-notes" rows="2" placeholder="Any notes about today's shift..."
                     style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:'Roboto',sans-serif;font-size:0.8rem;padding:8px;border-radius:3px;resize:vertical;box-sizing:border-box"></textarea>
             </div>
@@ -1687,7 +1745,7 @@
         </div>
         <div class="modal-actions">
             <button class="cancel-btn" onclick="document.getElementById('eod-modal').classList.add('hidden')">Close</button>
-            <button class="confirm-btn" onclick="printEndOfDay()" style="flex:1">Print Report</button>
+            <button class="confirm-btn" onclick="printEndOfDay()" class="flex-1">Print Report</button>
             <button class="confirm-btn" id="eod-submit-btn" onclick="submitEndOfDay()" style="flex:1;background:var(--success);border-color:var(--success)">Submit &amp; Close Day</button>
         </div>
     </div>
@@ -1704,7 +1762,7 @@
             <div style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Expected Starting Cash</div>
             <div id="opening-cash-expected" style="font-family:'EB Garamond',serif;font-size:1.6rem;color:var(--gold)">$150.00</div>
         </div>
-        <label style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px;font-family:'Roboto',sans-serif">Cash in Drawer</label>
+        <label class="field-label">Cash in Drawer</label>
         <input type="number" id="opening-cash-input" min="0" step="0.01" value="150.00"
             style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.7rem 0.8rem;font-size:1rem;font-family:'Roboto',sans-serif;box-sizing:border-box;margin-bottom:0.75rem">
         <div id="opening-cash-helper" style="font-size:0.8rem;color:var(--text-light);margin-bottom:0.75rem">
@@ -1719,7 +1777,7 @@
 
 <!-- Image Search Modal -->
 <div class="pos-modal-overlay hidden" id="image-search-modal">
-    <div class="pos-modal" style="max-width:480px">
+    <div class="pos-modal" class="mw-480">
         <h2>Search by Photo</h2>
         <div style="font-size:0.8rem;color:var(--text-light);margin-bottom:1rem">Take or upload a photo of the item to find matching inventory</div>
         <div style="display:flex;gap:8px;margin-bottom:1rem">
@@ -1740,7 +1798,7 @@
             <div>Analyzing image...</div>
         </div>
         <div id="img-search-results" style="max-height:40vh;overflow-y:auto"></div>
-        <div class="modal-actions" style="margin-top:1rem">
+        <div class="modal-actions" class="mt-6">
             <button class="cancel-btn" onclick="closeImageSearch()">Close</button>
         </div>
     </div>
@@ -1748,11 +1806,11 @@
 
 <!-- Rent Payment Modal -->
 <div class="pos-modal-overlay hidden" id="rent-modal">
-    <div class="pos-modal" style="max-width:520px">
+    <div class="pos-modal" class="mw-520">
         <h2>🏠 Rent Payment</h2>
-        <div style="margin-bottom:1rem">
-            <label class="form-label" style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px;font-family:'Roboto',sans-serif">Search Vendor</label>
-            <input type="text" id="rent-vendor-search" placeholder="Type vendor name or booth number…" autocomplete="off" oninput="filterRentVendors(this.value)" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.6rem 0.75rem;font-size:0.9rem;font-family:'Roboto',sans-serif">
+        <div class="mb-8">
+            <label class="form-label" class="field-label">Search Vendor</label>
+            <input type="text" id="rent-vendor-search" placeholder="Type vendor name or booth number…" autocomplete="off" oninput="filterRentVendors(this.value)" class="form-input-lg">
         </div>
         <div id="rent-vendor-list" style="max-height:220px;overflow-y:auto;margin-bottom:1rem;border:1px solid var(--border);background:var(--surface-2)"></div>
         <div id="rent-selected-section" style="display:none">
@@ -1760,34 +1818,34 @@
                 <div style="display:flex;justify-content:space-between;align-items:center">
                     <div>
                         <div id="rent-vendor-name" style="font-weight:600;color:var(--text);font-size:1rem"></div>
-                        <div id="rent-vendor-booth" style="font-size:0.8rem;color:var(--text-light)"></div>
+                        <div id="rent-vendor-booth" class="text-light-sm"></div>
                     </div>
                     <div id="rent-amount-display" style="font-size:1.4rem;font-weight:700;color:var(--gold)"></div>
                 </div>
             </div>
-            <div class="manual-form-group" style="margin-bottom:0.75rem">
-                <label class="form-label" style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px;font-family:'Roboto',sans-serif">Amount (override if different)</label>
-                <input type="number" id="rent-amount-input" step="0.01" min="0" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.6rem 0.75rem;font-size:0.9rem;font-family:'Roboto',sans-serif">
+            <div class="manual-form-group" class="mb-7">
+                <label class="form-label" class="field-label">Amount (override if different)</label>
+                <input type="number" id="rent-amount-input" step="0.01" min="0" class="form-input-lg">
             </div>
-            <div class="manual-form-group" style="margin-bottom:0.75rem">
-                <label class="form-label" style="display:block;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-light);margin-bottom:4px;font-family:'Roboto',sans-serif">Notes (optional)</label>
-                <input type="text" id="rent-notes" placeholder="e.g. partial payment, extra month" style="width:100%;background:var(--surface-2);border:1px solid var(--border);color:var(--text);padding:0.6rem 0.75rem;font-size:0.9rem;font-family:'Roboto',sans-serif">
+            <div class="manual-form-group" class="mb-7">
+                <label class="form-label" class="field-label">Notes (optional)</label>
+                <input type="text" id="rent-notes" placeholder="e.g. partial payment, extra month" class="form-input-lg">
             </div>
-            <div style="display:flex;gap:8px">
+            <div class="flex-row-gap">
                 <button onclick="submitRentPayment('cash')" style="flex:1;padding:0.75rem;background:var(--success);border:1px solid var(--success);color:var(--white);font-weight:600;font-size:0.9rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em">💵 Cash</button>
                 <button onclick="submitRentPayment('check')" style="flex:1;padding:0.75rem;background:color-mix(in srgb, var(--gold) 74%, var(--bg));border:1px solid color-mix(in srgb, var(--gold) 74%, var(--bg));color:var(--charcoal-deep);font-weight:600;font-size:0.9rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em">🧾 Check</button>
                 <button onclick="submitRentPayment('card')" style="flex:1;padding:0.75rem;background:color-mix(in srgb, var(--info) 54%, var(--bg));border:1px solid color-mix(in srgb, var(--info) 54%, var(--bg));color:var(--white);font-weight:600;font-size:0.9rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em">💳 Card</button>
             </div>
         </div>
         <div id="rent-result-msg" style="display:none;padding:0.75rem;margin-top:0.75rem;text-align:center;font-size:0.9rem"></div>
-        <div class="modal-actions" style="margin-top:1rem">
+        <div class="modal-actions" class="mt-6">
             <button class="cancel-btn" onclick="closeRentModal()">Close</button>
         </div>
     </div>
 </div>
 
 <div class="pos-modal-overlay hidden" id="class-signup-modal">
-    <div class="pos-modal" style="max-width:520px">
+    <div class="pos-modal" class="mw-520">
         <h2>🎨 Class Signup</h2>
         <div style="font-size:0.76rem;color:var(--text-light);margin-bottom:0.8rem">Record a register signup so the attendee appears on the class roster.</div>
         <div class="manual-form-group">
@@ -2980,8 +3038,8 @@
         if (sale.is_voided) {
             document.getElementById('receipt-modal-title').textContent = '🚫 Sale Voided';
             document.getElementById('void-from-receipt-btn').style.display = 'none';
-            var voidHtml = '<div style="text-align:center;margin:6px 0"><div class="void-badge">VOIDED</div>';
-            if (sale.void_reason) voidHtml += '<div style="color:var(--danger);font-size:0.75rem;margin-top:2px">' + escHtml(sale.void_reason) + '</div>';
+            var voidHtml = '<div class="text-center-my"><div class="void-badge">VOIDED</div>';
+            if (sale.void_reason) voidHtml += '<div class="text-danger-sm">' + escHtml(sale.void_reason) + '</div>';
             voidHtml += '</div>';
             var hdr = document.getElementById('receipt-content').querySelector('.receipt-header');
             if (hdr) hdr.insertAdjacentHTML('afterend', voidHtml);
@@ -3220,17 +3278,17 @@ table { width: 100%; border-collapse: collapse; }
     function updateReceiptVoidState(sale) {
         var voidBadgeHtml = '<div class="void-badge">VOIDED</div>';
         if (sale.void_reason) {
-            voidBadgeHtml += '<div style="color:var(--danger);font-size:0.75rem;margin-top:2px">' + escHtml(sale.void_reason) + '</div>';
+            voidBadgeHtml += '<div class="text-danger-sm">' + escHtml(sale.void_reason) + '</div>';
         }
         var receiptContent = document.getElementById('receipt-content');
         if (receiptContent && !receiptContent.querySelector('.void-badge')) {
             var header = receiptContent.querySelector('.receipt-header');
-            if (header) header.insertAdjacentHTML('afterend', '<div style="text-align:center;margin:6px 0">' + voidBadgeHtml + '</div>');
+            if (header) header.insertAdjacentHTML('afterend', '<div class="text-center-my">' + voidBadgeHtml + '</div>');
         }
         var detailContent = document.getElementById('receipt-detail-content');
         if (detailContent && !detailContent.querySelector('.void-badge')) {
             var dHeader = detailContent.querySelector('.receipt-header');
-            if (dHeader) dHeader.insertAdjacentHTML('afterend', '<div style="text-align:center;margin:6px 0">' + voidBadgeHtml + '</div>');
+            if (dHeader) dHeader.insertAdjacentHTML('afterend', '<div class="text-center-my">' + voidBadgeHtml + '</div>');
         }
         document.getElementById('receipt-modal-title').textContent = '🚫 Sale Voided';
         document.getElementById('void-from-receipt-btn').style.display = 'none';
@@ -3377,15 +3435,15 @@ table { width: 100%; border-collapse: collapse; }
     function openResumeModal() {
         const list = document.getElementById('held-orders-list');
         if (heldOrders.length === 0) {
-            list.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem">No held orders</p>';
+            list.innerHTML = '<p class="text-center-muted-padded">No held orders</p>';
         } else {
             list.innerHTML = heldOrders.map((h, i) => {
                 const names = h.items.map(c => c.item.name).slice(0, 3).join(', ');
                 const more = h.items.length > 3 ? ` +${h.items.length - 3} more` : '';
                 return `<div style="background:var(--surface-2);padding:0.75rem;margin-bottom:0.5rem;display:flex;justify-content:space-between;align-items:center">
                     <div>
-                        <div style="font-weight:600;color:var(--text)">${h.itemCount} item(s) · ${h.time}</div>
-                        <div style="font-size:0.8rem;color:var(--text-light);margin-top:2px">${names}${more}</div>
+                        <div class="text-semibold">${h.itemCount} item(s) · ${h.time}</div>
+                        <div class="label-sub">${names}${more}</div>
                     </div>
                     <div style="display:flex;gap:6px">
                         <button onclick="resumeOrder(${i})" style="background:var(--success);color:var(--success-light);border:none;padding:0.4rem 0.8rem;cursor:pointer;font-size:0.8rem">Resume</button>
@@ -3442,8 +3500,8 @@ table { width: 100%; border-collapse: collapse; }
     async function checkGcBalance() {
         var bc = document.getElementById('gc-check-barcode').value.replace(/\D/g, '').trim();
         var result = document.getElementById('gc-check-result');
-        if (!bc) { result.innerHTML = '<p style="color:var(--danger);text-align:center">Please scan or enter a barcode</p>'; return; }
-        result.innerHTML = '<p style="text-align:center;color:var(--text-muted)">Checking...</p>';
+        if (!bc) { result.innerHTML = '<p class="text-danger-center">Please scan or enter a barcode</p>'; return; }
+        result.innerHTML = '<p class="text-center-muted">Checking...</p>';
         try {
             var data = await apiGet('/api/v1/pos/gift-cards/' + encodeURIComponent(bc) + '/history');
             var card = data.card;
@@ -3462,14 +3520,14 @@ table { width: 100%; border-collapse: collapse; }
                     var color = t.type === 'load' ? 'var(--success-light)' : 'var(--danger)';
                     var sign = t.type === 'load' ? '+' : '-';
                     return '<div style="display:flex;justify-content:space-between;padding:4px 6px;background:var(--surface-2);margin-bottom:2px;font-size:0.82rem">'
-                        + '<span style="color:var(--text-light)">' + escHtml(dateStr + ' ' + timeStr + (t.notes ? ' · ' + t.notes : '')) + '</span>'
+                        + '<span class="text-light">' + escHtml(dateStr + ' ' + timeStr + (t.notes ? ' · ' + t.notes : '')) + '</span>'
                         + '<span style="color:' + color + ';font-weight:600">' + sign + '$' + parseFloat(t.amount).toFixed(2) + '</span>'
                         + '</div>';
                 }).join('');
             }
             result.innerHTML = html;
         } catch (err) {
-            result.innerHTML = '<p style="color:var(--danger);text-align:center">' + (err.message || 'Gift card not found') + '</p>';
+            result.innerHTML = '<p class="text-danger-center">' + (err.message || 'Gift card not found') + '</p>';
         }
     }
 
@@ -3572,9 +3630,9 @@ table { width: 100%; border-collapse: collapse; }
                     var sufficient = parseFloat(card.balance) >= totals.total;
                     document.getElementById('gc-pay-balance').innerHTML =
                         '<div style="text-align:center;padding:6px;background:var(--surface-2)">'
-                        + '<span style="color:var(--text-light);font-size:0.8rem">Card Balance: </span>'
+                        + '<span class="text-light-sm">Card Balance: </span>'
                         + '<span style="font-size:1.1rem;font-weight:700;color:' + (sufficient ? 'var(--success-light)' : 'var(--danger)') + '">$' + parseFloat(card.balance).toFixed(2) + '</span>'
-                        + (sufficient ? '' : '<div style="color:var(--danger);font-size:0.75rem;margin-top:2px">Insufficient balance</div>')
+                        + (sufficient ? '' : '<div class="text-danger-sm">Insufficient balance</div>')
                         + '</div>';
                     document.getElementById('gc-pay-error').textContent = '';
                 } catch (err) {
@@ -3743,13 +3801,13 @@ table { width: 100%; border-collapse: collapse; }
     async function splitApplyGiftCard() {
         var bc = document.getElementById('split-gc-barcode').value.trim();
         var infoEl = document.getElementById('split-gc-info');
-        if (!bc) { infoEl.innerHTML = '<span style="color:var(--danger)">Scan or enter a gift card barcode</span>'; return; }
-        infoEl.innerHTML = '<span style="color:var(--text-light)">Checking...</span>';
+        if (!bc) { infoEl.innerHTML = '<span class="text-danger">Scan or enter a gift card barcode</span>'; return; }
+        infoEl.innerHTML = '<span class="text-light">Checking...</span>';
         try {
             var gc = await apiGet('/api/v1/pos/gift-cards/' + encodeURIComponent(bc) + '/balance');
             var balance = parseFloat(gc.balance);
             if (balance <= 0) {
-                infoEl.innerHTML = '<span style="color:var(--danger)">Gift card has $0.00 balance</span>';
+                infoEl.innerHTML = '<span class="text-danger">Gift card has $0.00 balance</span>';
                 return;
             }
             var remaining = splitGetRemaining();
@@ -3762,13 +3820,13 @@ table { width: 100%; border-collapse: collapse; }
             }
             applyAmount = Math.round(applyAmount * 100) / 100;
             if (applyAmount <= 0) {
-                infoEl.innerHTML = '<span style="color:var(--danger)">Nothing to apply</span>';
+                infoEl.innerHTML = '<span class="text-danger">Nothing to apply</span>';
                 return;
             }
             splitPayments.push({ type: 'gc', amount: applyAmount, barcode: bc, gcBalance: balance });
             splitRefreshUI();
         } catch (err) {
-            infoEl.innerHTML = '<span style="color:var(--danger)">' + escHtml(err.message || 'Card not found') + '</span>';
+            infoEl.innerHTML = '<span class="text-danger">' + escHtml(err.message || 'Card not found') + '</span>';
         }
     }
 
@@ -3898,7 +3956,7 @@ table { width: 100%; border-collapse: collapse; }
         document.getElementById('receipt-search-input').value = '';
         document.getElementById('receipt-date-from').value = '';
         document.getElementById('receipt-date-to').value = '';
-        document.getElementById('receipt-search-results').innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem">Enter a sale number or select a date range</p>';
+        document.getElementById('receipt-search-results').innerHTML = '<p class="text-center-muted-padded">Enter a sale number or select a date range</p>';
         document.getElementById('receipt-modal-lookup').classList.remove('hidden');
         setTimeout(() => document.getElementById('receipt-search-input').focus(), 100);
     }
@@ -3935,15 +3993,15 @@ table { width: 100%; border-collapse: collapse; }
     async function searchReceiptById() {
         var q = document.getElementById('receipt-search-input').value.trim();
         var results = document.getElementById('receipt-search-results');
-        if (!q) { results.innerHTML = '<p style="color:var(--danger);text-align:center">Please enter a sale number</p>'; return; }
-        results.innerHTML = '<p style="text-align:center;color:var(--text-muted)">Searching...</p>';
+        if (!q) { results.innerHTML = '<p class="text-danger-center">Please enter a sale number</p>'; return; }
+        results.innerHTML = '<p class="text-center-muted">Searching...</p>';
         try {
             var saleNum = parseInt(q);
-            if (isNaN(saleNum)) { results.innerHTML = '<p style="color:var(--danger);text-align:center">Please enter a valid sale number</p>'; return; }
+            if (isNaN(saleNum)) { results.innerHTML = '<p class="text-danger-center">Please enter a valid sale number</p>'; return; }
             var sale = await apiGet('/api/v1/sales/' + saleNum);
             renderReceiptResults([sale]);
         } catch (err) {
-            results.innerHTML = '<p style="color:var(--danger);text-align:center">' + (err.message || 'Not found') + '</p>';
+            results.innerHTML = '<p class="text-danger-center">' + (err.message || 'Not found') + '</p>';
         }
     }
 
@@ -3951,10 +4009,10 @@ table { width: 100%; border-collapse: collapse; }
         var dateFrom = document.getElementById('receipt-date-from').value;
         var dateTo = document.getElementById('receipt-date-to').value;
         var results = document.getElementById('receipt-search-results');
-        if (!dateFrom && !dateTo) { results.innerHTML = '<p style="color:var(--danger);text-align:center">Please select at least one date</p>'; return; }
+        if (!dateFrom && !dateTo) { results.innerHTML = '<p class="text-danger-center">Please select at least one date</p>'; return; }
         if (!dateTo) dateTo = dateFrom;
         if (!dateFrom) dateFrom = dateTo;
-        results.innerHTML = '<p style="text-align:center;color:var(--text-muted)">Searching...</p>';
+        results.innerHTML = '<p class="text-center-muted">Searching...</p>';
         try {
             var url = '/api/v1/sales/?date_from=' + encodeURIComponent(dateFrom) + '&date_to=' + encodeURIComponent(dateTo) + '&limit=500';
             var sales = await apiGet(url);
@@ -3966,7 +4024,7 @@ table { width: 100%; border-collapse: collapse; }
             }
             renderReceiptResults(sales, rangeLabel);
         } catch (err) {
-            results.innerHTML = '<p style="color:var(--danger);text-align:center">' + (err.message || 'Search failed') + '</p>';
+            results.innerHTML = '<p class="text-danger-center">' + (err.message || 'Search failed') + '</p>';
         }
     }
 
@@ -3980,7 +4038,7 @@ table { width: 100%; border-collapse: collapse; }
         if (rangeLabel) {
             var totalAmt = sales.filter(function(s){ return !s.is_voided; }).reduce(function(sum,s){ return sum + parseFloat(s.total); }, 0);
             header = '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 0.75rem;background:var(--text);margin-bottom:6px;font-size:0.8rem">'
-                + '<span style="color:var(--text-light)">' + rangeLabel + ' · ' + sales.length + ' receipt(s)</span>'
+                + '<span class="text-light">' + rangeLabel + ' · ' + sales.length + ' receipt(s)</span>'
                 + '<span style="color:var(--gold);font-weight:700">Total: $' + totalAmt.toFixed(2) + '</span>'
                 + '</div>';
         }
@@ -3996,8 +4054,8 @@ table { width: 100%; border-collapse: collapse; }
             var voidTag = s.is_voided ? ' · <span style="color:var(--danger);font-weight:700">VOIDED</span>' : '';
             return '<div onclick="viewReceiptDetail(' + s.id + ')" style="background:var(--surface-2);padding:0.65rem 0.75rem;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center' + (s.is_voided ? ';opacity:0.6' : '') + '">'
                 + '<div>'
-                + '<div style="font-weight:600;color:var(--text)">Sale #' + s.id + voidTag + '</div>'
-                + '<div style="font-size:0.8rem;color:var(--text-light)">' + when + ' · ' + itemCount + ' item(s) · ' + paymentLabelUpper(s.payment_method) + '</div>'
+                + '<div class="text-semibold">Sale #' + s.id + voidTag + '</div>'
+                + '<div class="text-light-sm">' + when + ' · ' + itemCount + ' item(s) · ' + paymentLabelUpper(s.payment_method) + '</div>'
                 + '</div>'
                 + '<div style="font-weight:700;color:' + (s.is_voided ? 'var(--danger)' : 'var(--gold)') + ';font-size:1.05rem">' + (s.is_voided ? '-' : '') + '$' + parseFloat(s.total).toFixed(2) + '</div>'
                 + '</div>';
@@ -4088,8 +4146,8 @@ table { width: 100%; border-collapse: collapse; }
 
             if (sale.is_voided) {
                 document.getElementById('void-from-detail-btn').style.display = 'none';
-                var voidHtml = '<div style="text-align:center;margin:6px 0"><div class="void-badge">VOIDED</div>';
-                if (sale.void_reason) voidHtml += '<div style="color:var(--danger);font-size:0.75rem;margin-top:2px">' + escHtml(sale.void_reason) + '</div>';
+                var voidHtml = '<div class="text-center-my"><div class="void-badge">VOIDED</div>';
+                if (sale.void_reason) voidHtml += '<div class="text-danger-sm">' + escHtml(sale.void_reason) + '</div>';
                 voidHtml += '</div>';
                 var dHdr = document.getElementById('receipt-detail-content').querySelector('.receipt-header');
                 if (dHdr) dHdr.insertAdjacentHTML('afterend', voidHtml);
@@ -4116,7 +4174,7 @@ table { width: 100%; border-collapse: collapse; }
 
     async function loadOnlineOrders(statusFilter) {
         const list = document.getElementById('online-orders-list');
-        list.innerHTML = '<p style="text-align:center;color:var(--text-muted)">Loading…</p>';
+        list.innerHTML = '<p class="text-center-muted">Loading…</p>';
 
         document.querySelectorAll('#online-orders-modal button[id^="filter-"]').forEach(b => {
             b.style.background = 'var(--text-light)'; b.style.color = 'var(--border)';
@@ -4135,7 +4193,7 @@ table { width: 100%; border-collapse: collapse; }
                 orders = orders.filter(o => o.status === statusFilter);
             }
             if (orders.length === 0) {
-                list.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem">No orders found</p>';
+                list.innerHTML = '<p class="text-center-muted-padded">No orders found</p>';
                 return;
             }
             list.innerHTML = orders.map(o => {
@@ -4155,13 +4213,13 @@ table { width: 100%; border-collapse: collapse; }
                 return `<div style="background:var(--surface-2);padding:0.75rem;margin-bottom:6px">
                     <div style="display:flex;justify-content:space-between;align-items:start">
                         <div>
-                            <div style="font-weight:600;color:var(--text)">${escHtml(o.item_name || 'Item #' + o.item_id)}</div>
-                            <div style="font-size:0.8rem;color:var(--text-light);margin-top:2px">${escHtml(o.customer_name || 'Unknown')} · ${escHtml(o.customer_phone || '')}</div>
+                            <div class="text-semibold">${escHtml(o.item_name || 'Item #' + o.item_id)}</div>
+                            <div class="label-sub">${escHtml(o.customer_name || 'Unknown')} · ${escHtml(o.customer_phone || '')}</div>
                             ${emailLine}
                             <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${dateStr} ${timeStr}</div>
                             ${actionBtns}
                         </div>
-                        <div style="text-align:right">
+                        <div class="text-right">
                             <div style="font-weight:700;color:var(--gold)">$${parseFloat(o.amount_paid || 0).toFixed(2)}</div>
                             <span style="background:${statusBg};color:${statusColor};padding:2px 8px;font-size:0.7rem;font-weight:600;text-transform:uppercase;display:inline-block;margin-top:4px">${o.status}</span>
                         </div>
@@ -4169,7 +4227,7 @@ table { width: 100%; border-collapse: collapse; }
                 </div>`;
             }).join('');
         } catch (err) {
-            list.innerHTML = `<p style="color:var(--danger);text-align:center">${err.message || 'Failed to load orders'}</p>`;
+            list.innerHTML = `<p class="text-danger-center">${err.message || 'Failed to load orders'}</p>`;
         }
     }
 
@@ -4280,7 +4338,7 @@ table { width: 100%; border-collapse: collapse; }
                     html += `<div style="background:var(--surface-2);padding:8px 12px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center">
                         <div>
                             <div style="font-weight:600;color:var(--text);font-size:0.9rem">${escHtml(cb.name)}</div>
-                            <div style="font-size:0.75rem;color:var(--text-light)">${cb.transactions} txn · Cash: $${cb.cash_total.toFixed(2)} · Card: $${cb.card_total.toFixed(2)}</div>
+                            <div class="text-sm text-light">${cb.transactions} txn · Cash: $${cb.cash_total.toFixed(2)} · Card: $${cb.card_total.toFixed(2)}</div>
                         </div>
                         <div style="font-family:'EB Garamond',serif;font-size:1.1rem;font-weight:500;color:var(--gold)">$${cb.total.toFixed(2)}</div>
                     </div>`;
@@ -4471,12 +4529,12 @@ table { width: 100%; border-collapse: collapse; }
 
         let cashierRows = '';
         (eodData.cashier_breakdown || []).forEach(cb => {
-            cashierRows += `<tr><td style="padding:3px 0">${escHtml(cb.name)}</td><td style="text-align:right;padding:3px 0">${cb.transactions}</td><td style="text-align:right;padding:3px 0">$${cb.cash_total.toFixed(2)}</td><td style="text-align:right;padding:3px 0">$${cb.card_total.toFixed(2)}</td><td style="text-align:right;padding:3px 0">$${cb.total.toFixed(2)}</td></tr>`;
+            cashierRows += `<tr><td style="padding:3px 0">${escHtml(cb.name)}</td><td class="text-right-py">${cb.transactions}</td><td class="text-right-py">$${cb.cash_total.toFixed(2)}</td><td class="text-right-py">$${cb.card_total.toFixed(2)}</td><td class="text-right-py">$${cb.total.toFixed(2)}</td></tr>`;
         });
 
         let voidedSection = '';
         if (eodData.voided && eodData.voided.count > 0) {
-            voidedSection = `<div class="summary-line" style="color:var(--danger)"><strong>Voided:</strong> ${eodData.voided.count} sale(s) — $${eodData.voided.total.toFixed(2)}</div>`;
+            voidedSection = `<div class="summary-line" class="text-danger"><strong>Voided:</strong> ${eodData.voided.count} sale(s) — $${eodData.voided.total.toFixed(2)}</div>`;
         }
 
         const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>End of Day Report</title>
@@ -4509,10 +4567,10 @@ td { padding: 4px 0; font-size: 12px; }
 </div>
 <div class="section-title">Sales by Payment Method</div>
 <div class="grid4">
-    <div class="box"><div class="label">Cash</div><div class="val" style="font-size:16px">$${eodData.cash.total.toFixed(2)}</div><div style="font-size:10px;color:var(--text-muted)">${eodData.cash.count} sales</div></div>
-    <div class="box"><div class="label">Credit/Debit Card</div><div class="val" style="font-size:16px">$${eodData.card.total.toFixed(2)}</div><div style="font-size:10px;color:var(--text-muted)">${eodData.card.count} sales</div></div>
-    <div class="box"><div class="label">Gift Card</div><div class="val" style="font-size:16px">$${eodData.gift_card.total.toFixed(2)}</div><div style="font-size:10px;color:var(--text-muted)">${eodData.gift_card.count} sales</div></div>
-    <div class="box"><div class="label">Tax Collected</div><div class="val" style="font-size:16px">$${eodData.total_tax.toFixed(2)}</div><div style="font-size:10px;color:var(--text-muted)">${eodData.items_sold} items</div></div>
+    <div class="box"><div class="label">Cash</div><div class="val" class="input-mobile">$${eodData.cash.total.toFixed(2)}</div><div class="text-xs-muted">${eodData.cash.count} sales</div></div>
+    <div class="box"><div class="label">Credit/Debit Card</div><div class="val" class="input-mobile">$${eodData.card.total.toFixed(2)}</div><div class="text-xs-muted">${eodData.card.count} sales</div></div>
+    <div class="box"><div class="label">Gift Card</div><div class="val" class="input-mobile">$${eodData.gift_card.total.toFixed(2)}</div><div class="text-xs-muted">${eodData.gift_card.count} sales</div></div>
+    <div class="box"><div class="label">Tax Collected</div><div class="val" class="input-mobile">$${eodData.total_tax.toFixed(2)}</div><div class="text-xs-muted">${eodData.items_sold} items</div></div>
 </div>
 ${voidedSection}
 <hr>
@@ -4524,14 +4582,14 @@ ${voidedSection}
 <div class="summary-line"><strong>Variance:</strong> ${variance}</div>
 <div class="deposit-box"><div class="label">Cash Deposit (Leave $${eodData.starting_balance.toFixed(2)} in drawer)</div><div class="val">${deposit}</div></div>
 <hr>
-${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead><tr><th>Cashier</th><th style="text-align:right">Txns</th><th style="text-align:right">Cash</th><th style="text-align:right">Card</th><th style="text-align:right">Total</th></tr></thead><tbody>${cashierRows}</tbody></table>` : ''}
+${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead><tr><th>Cashier</th><th class="text-right">Txns</th><th class="text-right">Cash</th><th class="text-right">Card</th><th class="text-right">Total</th></tr></thead><tbody>${cashierRows}</tbody></table>` : ''}
 <div style="text-align:center;margin-top:20px;font-size:10px;color:var(--text-muted)">Generated ${new Date().toLocaleString()}</div>
 <div style="margin-top:30px;border-top:1px solid var(--border);padding-top:10px">
     <div style="display:flex;justify-content:space-between;margin-bottom:20px">
-        <div style="font-size:11px"><strong>Prepared by:</strong> ___________________________</div>
-        <div style="font-size:11px"><strong>Date:</strong> _______________</div>
+        <div class="text-11"><strong>Prepared by:</strong> ___________________________</div>
+        <div class="text-11"><strong>Date:</strong> _______________</div>
     </div>
-    <div style="font-size:11px"><strong>Verified by:</strong> ___________________________</div>
+    <div class="text-11"><strong>Verified by:</strong> ___________________________</div>
 </div>
 </body></html>`;
 
@@ -4605,7 +4663,7 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
                     <img src="${imgSrc}" style="width:56px;height:56px;object-fit:cover;border:1px solid var(--border);flex-shrink:0" onerror="this.style.display='none'">
                     <div style="flex:1;min-width:0">
                         <div style="font-family:'EB Garamond',serif;font-size:0.95rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(item.name)}</div>
-                        <div style="font-size:0.72rem;color:var(--text-light)">${meta}</div>
+                        <div class="text-muted-sm">${meta}</div>
                     </div>
                     <div style="font-family:'EB Garamond',serif;font-size:1.05rem;color:var(--gold);font-weight:500;white-space:nowrap">$${item.active_price.toFixed(2)}</div>
                 </div>`;
@@ -4665,7 +4723,7 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
                 : '';
             html += '<div onclick="selectRentVendor(' + v.id + ')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--surface-2);transition:background 0.12s" onmouseover="this.style.background=\'var(--surface-2)\'" onmouseout="this.style.background=\'transparent\'">'
                 + '<div><span style="color:var(--text);font-size:0.9rem">' + escHtml(v.name) + '</span>' + paidBadge
-                + '<div style="font-size:0.75rem;color:var(--text-light)">Booth ' + escHtml(v.booth_number || '—') + '</div></div>'
+                + '<div class="text-sm text-light">Booth ' + escHtml(v.booth_number || '—') + '</div></div>'
                 + '<div style="color:var(--gold);font-weight:600;font-size:0.95rem">$' + v.monthly_rent.toFixed(2) + '</div>'
                 + '</div>';
         });
