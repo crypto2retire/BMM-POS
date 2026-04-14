@@ -45,6 +45,7 @@ try:
     from app.database import AsyncSessionLocal, engine, Base
     print("BMM-POS: importing routers...", file=sys.stderr, flush=True)
     from app.routers import auth, vendors, items, sales, pos, assistant, storefront, storefront_assistant, rent, admin, reports, settings, studio, bulk_import, notifications, booth_showcase, data_sync, ai_writer, security_deposits
+    from app.routers.diagnose import router as diagnose_router
     from app.routers.inventory_verify import router as inventory_verify_router
     print("BMM-POS: all imports OK", file=sys.stderr, flush=True)
 except Exception as _import_err:
@@ -339,6 +340,7 @@ app.include_router(booth_showcase.router, prefix="/api/v1")
 app.include_router(security_deposits.router, prefix="/api/v1")
 app.include_router(data_sync.router, prefix="/api/v1")
 app.include_router(ai_writer.router, prefix="/api/v1")
+app.include_router(diagnose_router, prefix="/api/v1")
 
 @app.get("/llms.txt", response_class=PlainTextResponse)
 async def llms_txt():
