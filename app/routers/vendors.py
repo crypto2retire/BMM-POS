@@ -4,12 +4,13 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.models.vendor import Vendor, VendorBalance, BalanceAdjustment
 from app.models.rent import RentPayment
+from app.models.sale import SaleItem, Sale
 from app.schemas.vendor import (
     VendorCreate, VendorUpdate, VendorResponse, VendorBalanceResponse,
     BalanceAdjustRequest, BalanceAdjustmentResponse,
@@ -68,15 +69,17 @@ def _hydrate_vendor_balance_fields(
     sales_balance: Decimal,
     rent_ledger: Decimal,
     current_month_rent_paid: bool,
+    current_month_sales: Decimal = None,
 ):
-    """Populate the 3 display fields: total_sales, rent_due, net_payout.
+    """Populate the display fields: total_sales, rent_due, net_payout.
 
     Business rules:
-    - total_sales = VendorBalance.balance (net of consignment, already deducted at POS)
+    - total_sales = current month sales from sale_items (what vendor earned this month)
     - rent_due = Vendor.monthly_rent
-    - net_payout = total_sales - rent_due + carry_over
+    - net_payout = sales_balance - rent_due + carry_over
       (if rent already paid this month, don't subtract rent again)
     - carry_over = VendorBalance.rent_balance (positive = prepaid credit, negative = owes)
+    - sales_balance is the running VendorBalance.balance (used for net_payout calc)
     """
     monthly = vendor.monthly_rent or Decimal("0.00")
     landing_fee = vendor.landing_page_fee or Decimal("0.00")
@@ -84,7 +87,11 @@ def _hydrate_vendor_balance_fields(
     sb = sales_balance if sales_balance is not None else Decimal("0.00")
     rl = rent_ledger if rent_ledger is not None else Decimal("0.00")
 
-    vendor.total_sales = sb.quantize(Decimal("0.01"), ROUND_HALF_UP)
+    # Show current month sales to the vendor, not lifetime balance
+    if current_month_sales is not None:
+        vendor.total_sales = current_month_sales.quantize(Decimal("0.01"), ROUND_HALF_UP)
+    else:
+        vendor.total_sales = sb.quantize(Decimal("0.01"), ROUND_HALF_UP)
     vendor.rent_due = effective_rent.quantize(Decimal("0.01"), ROUND_HALF_UP)
     vendor.carry_over = rl.quantize(Decimal("0.01"), ROUND_HALF_UP)
     vendor.rent_paid_this_month = current_month_rent_paid
@@ -130,11 +137,33 @@ async def list_vendors(
         row.vendor_id for row in rp_result.all() if row.status == "paid"
     }
 
+    # Fetch current month sales per vendor (for display)
+    month_sales_result = await db.execute(
+        select(
+            SaleItem.vendor_id,
+            func.COALESCE(func.SUM(
+                SaleItem.line_total - func.COALESCE(SaleItem.consignment_amount, 0)
+            ), 0)
+        )
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .where(
+            Sale.is_voided == False,
+            Sale.created_at >= current_period,
+            Sale.created_at < date(today.year, today.month + 1, 1) if today.month < 12
+                else date(today.year + 1, 1, 1),
+        )
+        .group_by(SaleItem.vendor_id)
+    )
+    month_sales_map = {}
+    for row in month_sales_result.all():
+        month_sales_map[row[0]] = Decimal(str(row[1]))
+
     for v in vendors:
         sb = balance_map.get(v.id, Decimal("0.00"))
         rb_ledger = rent_balance_map.get(v.id, Decimal("0.00"))
         rent_paid = v.id in paid_rent_vendor_ids
-        _hydrate_vendor_balance_fields(v, sb, rb_ledger, rent_paid)
+        ms = month_sales_map.get(v.id, Decimal("0.00"))
+        _hydrate_vendor_balance_fields(v, sb, rb_ledger, rent_paid, current_month_sales=ms)
 
     # Fetch all landing page data in one query
     from app.models.booth_showcase import BoothShowcase
@@ -171,7 +200,7 @@ async def create_vendor(
         role=normalized["role"],
         is_vendor=normalized.get("is_vendor", False),
         monthly_rent=normalized.get("monthly_rent", Decimal("0.00")),
-        commission_rate=normalized.get("commission_rate", Decimal("0.10")),
+        commission_rate=normalized.get("commission_rate", Decimal("0")),
         consignment_rate=normalized.get("consignment_rate", Decimal("0.0000")),
         payout_method=normalized.get("payout_method"),
         zelle_handle=normalized.get("zelle_handle"),
@@ -223,7 +252,27 @@ async def get_vendor(
     )
     rp_row = rp_one.scalar_one_or_none()
     rent_paid = rp_row is not None and rp_row.status == "paid"
-    _hydrate_vendor_balance_fields(vendor, sb, rb_ledger, rent_paid)
+
+    # Current month sales for display
+    next_month = date(today.year, today.month + 1, 1) if today.month < 12 else date(today.year + 1, 1, 1)
+    ms_result = await db.execute(
+        select(
+            func.COALESCE(func.SUM(
+                SaleItem.line_total - func.COALESCE(SaleItem.consignment_amount, 0)
+            ), 0)
+        )
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .where(
+            Sale.is_voided == False,
+            SaleItem.vendor_id == vendor_id,
+            Sale.created_at >= current_period,
+            Sale.created_at < next_month,
+        )
+    )
+    ms_row = ms_result.one()
+    current_month_sales = Decimal(str(ms_row[0]))
+
+    _hydrate_vendor_balance_fields(vendor, sb, rb_ledger, rent_paid, current_month_sales=current_month_sales)
 
     # Attach landing page data
     from app.models.booth_showcase import BoothShowcase

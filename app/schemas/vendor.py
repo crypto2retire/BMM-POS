@@ -12,7 +12,7 @@ class VendorCreate(BaseModel):
     role: str = "vendor"
     is_vendor: bool = False
     monthly_rent: Decimal = Decimal("0.00")
-    commission_rate: Decimal = Decimal("0.10")
+    commission_rate: Decimal = Decimal("0")
     consignment_rate: Decimal = Decimal("0.00")
     payout_method: Optional[str] = "check"
     auto_payout_enabled: bool = True

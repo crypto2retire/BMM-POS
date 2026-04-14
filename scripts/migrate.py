@@ -524,6 +524,15 @@ async def run():
                 flush=True,
             )
 
+        # ── Zero commission_rate for all vendors ──────────────────────
+        marker = "startup_task_zero_commission_rate_v1"
+        if not await _has_marker(session, marker):
+            r = await session.execute(text(
+                "UPDATE vendors SET commission_rate = 0 WHERE commission_rate != 0"
+            ))
+            await _set_marker(session, marker, "Zero commission_rate for all vendors")
+            print(f"BMM-POS migrate: zero commission_rate — {r.rowcount} vendors", flush=True)
+
         await session.commit()
 
     print("BMM-POS migrate: all migrations complete", flush=True)

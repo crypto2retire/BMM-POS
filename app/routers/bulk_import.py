@@ -81,7 +81,7 @@ async def bulk_import_vendors(
             phone = clean_row.get("phone")
             booth = clean_row.get("custom name/number")
             rent_val = Decimal("200.00")
-            comm_val = Decimal("0.10")
+            comm_val = Decimal("0")
         else:
             name = clean_row.get("name")
             if not name:
@@ -95,11 +95,11 @@ async def bulk_import_vendors(
             except (InvalidOperation, ValueError):
                 rent_val = Decimal("200.00")
             try:
-                comm_val = Decimal(clean_row["commission_rate"]) if clean_row.get("commission_rate") else Decimal("0.10")
+                comm_val = Decimal(clean_row["commission_rate"]) if clean_row.get("commission_rate") else Decimal("0")
                 if comm_val > 1:
                     comm_val = comm_val / 100
             except (InvalidOperation, ValueError):
-                comm_val = Decimal("0.10")
+                comm_val = Decimal("0")
 
         if not email:
             slug = name.lower().replace(" ", ".").replace("'", "")[:40]

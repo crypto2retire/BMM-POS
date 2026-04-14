@@ -29,7 +29,7 @@ DEFAULT_SETTINGS = {
     "hours_sunday": "10:00 AM - 4:00 PM",
     "tax_rate": str(settings.tax_rate),
     "multi_tax_enabled": "false",
-    "commission_rate": "10.0",
+    "commission_rate": "0",
     "default_rent": "200.00",
     "rent_due_day": "27",
     "payout_day": "1",
