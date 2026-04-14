@@ -206,7 +206,7 @@ async def pos_categories(
 async def pos_search(
     q: str = Query(..., min_length=1, description="Search term"),
     category: Optional[str] = Query(None, description="Filter by category"),
-    limit: int = Query(20, ge=1, le=40, description="Maximum number of matches to return"),
+    limit: int = Query(40, ge=1, le=80, description="Maximum number of matches to return"),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
@@ -215,11 +215,13 @@ async def pos_search(
         return []
 
     tokens = [token for token in raw_query.split() if token]
+    num_tokens = len(tokens)
     exact_barcode = func.upper(Item.barcode) == raw_query.upper()
     exact_sku = func.upper(func.coalesce(Item.sku, "")) == raw_query.upper()
     prefix_name = Item.name.ilike(f"{raw_query}%")
     prefix_sku = Item.sku.ilike(f"{raw_query}%")
 
+    # Broad OR matching — any single word hit returns the item
     token_filters = []
     for token in tokens:
         token_term = f"%{token}%"
@@ -231,11 +233,14 @@ async def pos_search(
             )
         )
 
-    search_filter = and_(*token_filters) if token_filters else or_(
-        Item.name.ilike(f"%{raw_query}%"),
-        Item.sku.ilike(f"%{raw_query}%"),
-        Item.barcode.ilike(f"%{raw_query}%"),
+    search_filter = or_(*token_filters)
+
+    # Relevance: items matching more tokens rank higher
+    match_score = sum(
+        case((Item.name.ilike(f"%{token}%"), 1), else_=0)
+        for token in tokens
     )
+    first_token_prefix = Item.name.ilike(f"{tokens[0]}%")
 
     query = (
         select(Item)
@@ -246,6 +251,8 @@ async def pos_search(
         )
         .order_by(
             case((exact_barcode, 0), (exact_sku, 1), (prefix_name, 2), (prefix_sku, 3), else_=4),
+            match_score.desc(),
+            first_token_prefix.desc(),
             Item.name.asc(),
         )
         .limit(limit)
