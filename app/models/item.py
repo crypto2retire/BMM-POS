@@ -36,6 +36,8 @@ class Item(Base):
 
     vendor = relationship("Vendor", back_populates="items")
     sale_items = relationship("SaleItem", back_populates="item")
+    variables = relationship("ItemVariable", back_populates="item", cascade="all, delete-orphan", order_by="ItemVariable.position")
+    variants = relationship("ItemVariant", back_populates="item", cascade="all, delete-orphan", order_by="ItemVariant.id")
 
     @property
     def effective_price(self) -> Decimal:

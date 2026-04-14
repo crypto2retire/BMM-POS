@@ -18,6 +18,8 @@ from app.models.store_setting import StoreSetting
 from app.routers.settings import require_staff_feature, role_feature_allowed
 from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
+from app.models.item_variable import ItemVariable
+from app.models.item_variant import ItemVariant
 from app.models.eod_report import EodReport
 from app.models.item_image import ItemImage
 from app.models.sale import Sale, SaleItem
@@ -132,6 +134,31 @@ def _get_active_price(item: Item) -> Decimal:
 
 def _item_to_pos_dict(item: Item) -> dict:
     active_price = _get_active_price(item)
+
+    # Build variables and variants data
+    variables_list = []
+    if hasattr(item, 'variables') and item.variables:
+        variables_list = [
+            {"name": v.name, "options": [o.strip() for o in v.options.split(",") if o.strip()]}
+            for v in sorted(item.variables, key=lambda v: v.position)
+        ]
+
+    variants_list = []
+    if hasattr(item, 'variants') and item.variants:
+        for v in item.variants:
+            if v.status == "active":
+                variants_list.append({
+                    "id": v.id,
+                    "sku": v.sku,
+                    "barcode": v.barcode,
+                    "variable_1_value": v.variable_1_value,
+                    "variable_2_value": v.variable_2_value,
+                    "price": float(v.price),
+                    "quantity": v.quantity,
+                    "photo_url": v.photo_url,
+                    "label": " / ".join(filter(None, [v.variable_1_value, v.variable_2_value])),
+                })
+
     return {
         "id": item.id,
         "name": item.name,
@@ -152,6 +179,9 @@ def _item_to_pos_dict(item: Item) -> dict:
         "quantity": item.quantity,
         "photo_urls": item.photo_urls,
         "image_path": item.image_path,
+        "has_variants": len(variants_list) > 0,
+        "variables": variables_list,
+        "variants": variants_list,
     }
 
 
@@ -244,7 +274,7 @@ async def pos_search(
 
     query = (
         select(Item)
-        .options(selectinload(Item.vendor))
+        .options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants))
         .where(
             Item.status == "active",
             search_filter,
@@ -285,7 +315,7 @@ async def pos_barcode_lookup(
     # 1) Exact match on Item.barcode (normal case)
     result = await db.execute(
         select(Item)
-        .options(selectinload(Item.vendor))
+        .options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants))
         .where(func.upper(Item.barcode) == needle_up, Item.status == "active")
     )
     item = result.scalar_one_or_none()
@@ -294,7 +324,7 @@ async def pos_barcode_lookup(
     if not item:
         result = await db.execute(
             select(Item)
-            .options(selectinload(Item.vendor))
+            .options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants))
             .where(
                 func.upper(func.coalesce(Item.sku, "")) == needle_up,
                 Item.status == "active",
@@ -308,13 +338,30 @@ async def pos_barcode_lookup(
     if not item and len(needle) >= 4:
         result = await db.execute(
             select(Item)
-            .options(selectinload(Item.vendor))
+            .options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants))
             .where(Item.barcode.ilike(f"%{needle}%"), Item.status == "active")
             .limit(2)
         )
         candidates = result.scalars().all()
         if len(candidates) == 1:
             item = candidates[0]
+
+    # 4) Fallback: check variant barcodes
+    if not item:
+        variant_result = await db.execute(
+            select(ItemVariant).where(
+                func.upper(ItemVariant.barcode) == needle_up,
+                ItemVariant.status == "active",
+            )
+        )
+        matched_variant = variant_result.scalar_one_or_none()
+        if matched_variant:
+            result = await db.execute(
+                select(Item)
+                .options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants))
+                .where(Item.id == matched_variant.item_id, Item.status == "active")
+            )
+            item = result.scalar_one_or_none()
 
     if not item:
         raise HTTPException(status_code=404, detail="Item not found or not available")
@@ -369,7 +416,7 @@ async def pos_manual_item(
     await db.refresh(item, attribute_names=["id", "vendor"])
 
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item.id)
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item.id)
     )
     item = result.scalar_one()
 
@@ -433,7 +480,7 @@ async def pos_class_fee_item(
     await db.refresh(item, attribute_names=["id", "vendor"])
 
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item.id)
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item.id)
     )
     item = result.scalar_one()
     return _item_to_pos_dict(item)
@@ -491,7 +538,7 @@ async def pos_create_sale(
     resolved_lines = []
     for cart_item in data.items:
         result = await db.execute(
-            select(Item).options(selectinload(Item.vendor)).where(Item.barcode == cart_item.barcode)
+            select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.barcode == cart_item.barcode)
         )
         item = result.scalar_one_or_none()
         if not item:
@@ -1566,7 +1613,7 @@ async def image_search(
 
     result = await db.execute(
         select(Item)
-        .options(selectinload(Item.vendor))
+        .options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants))
         .where(Item.id.in_(items_with_images))
     )
     inventory_items = result.scalars().all()
@@ -1625,7 +1672,7 @@ Respond with ONLY valid JSON, no markdown.
     if matched_ids:
         result = await db.execute(
             select(Item)
-            .options(selectinload(Item.vendor))
+            .options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants))
             .where(Item.id.in_(matched_ids), Item.status == "active")
         )
         matched_items = result.scalars().all()

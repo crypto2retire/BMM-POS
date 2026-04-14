@@ -3,6 +3,39 @@ from decimal import Decimal
 from typing import Optional, List
 from pydantic import BaseModel, model_validator
 
+
+class VariableDefinition(BaseModel):
+    name: str  # e.g. "Size"
+    options: List[str]  # e.g. ["S", "M", "L", "XL"]
+
+
+class VariantInput(BaseModel):
+    variable_1_value: Optional[str] = None
+    variable_2_value: Optional[str] = None
+    price: Decimal
+    quantity: int = 1
+    barcode: Optional[str] = None
+    sku: Optional[str] = None
+    photo_url: Optional[str] = None
+
+
+class VariantResponse(BaseModel):
+    id: int
+    item_id: int
+    sku: Optional[str] = None
+    barcode: Optional[str] = None
+    variable_1_value: Optional[str] = None
+    variable_2_value: Optional[str] = None
+    price: Decimal
+    quantity: int
+    photo_url: Optional[str] = None
+    status: str = "active"
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class ItemCreate(BaseModel):
     vendor_id: Optional[int] = None
     name: str
@@ -20,6 +53,8 @@ class ItemCreate(BaseModel):
     is_consignment: Optional[bool] = False
     consignment_rate: Optional[Decimal] = None
     label_style: Optional[str] = "standard"
+    variables: Optional[List[VariableDefinition]] = None  # max 2
+    variants: Optional[List[VariantInput]] = None
 
     @model_validator(mode='after')
     def check_sale_price(self):
@@ -32,7 +67,10 @@ class ItemCreate(BaseModel):
                 raise ValueError('consignment_rate must be between 0 and 1')
         if not self.is_consignment:
             self.consignment_rate = None
+        if self.variables and len(self.variables) > 2:
+            raise ValueError('Maximum 2 variables per item')
         return self
+
 
 class ItemUpdate(BaseModel):
     name: Optional[str] = None
@@ -49,6 +87,9 @@ class ItemUpdate(BaseModel):
     is_consignment: Optional[bool] = None
     consignment_rate: Optional[Decimal] = None
     label_style: Optional[str] = None
+    variables: Optional[List[VariableDefinition]] = None
+    variants: Optional[List[VariantInput]] = None
+
 
 class ItemResponse(BaseModel):
     id: int
@@ -77,9 +118,12 @@ class ItemResponse(BaseModel):
     verified_at: Optional[datetime] = None
     archive_expires_at: Optional[datetime] = None
     import_source: Optional[str] = None
+    variables: Optional[List[dict]] = None  # [{"name": "Size", "options": ["S","M","L"]}]
+    variants: Optional[List[VariantResponse]] = None
 
     class Config:
         from_attributes = True
+
 
 class ItemSearchResult(BaseModel):
     id: int
@@ -94,6 +138,9 @@ class ItemSearchResult(BaseModel):
     vendor_name: Optional[str] = None
     photo_url: Optional[str] = None
     image_path: Optional[str] = None
+    has_variants: Optional[bool] = False
+    variables: Optional[List[dict]] = None
+    variants: Optional[List[VariantResponse]] = None
 
 
 class ItemListingResponse(BaseModel):

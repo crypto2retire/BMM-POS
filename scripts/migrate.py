@@ -227,6 +227,44 @@ async def run():
             )
         """))
 
+        # ── Item variables and variants tables ────────────────────────────────
+        await session.execute(text("""
+            CREATE TABLE IF NOT EXISTS item_variables (
+                id SERIAL PRIMARY KEY,
+                item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+                name VARCHAR(100) NOT NULL,
+                position INTEGER NOT NULL DEFAULT 0,
+                options TEXT NOT NULL DEFAULT '',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+            )
+        """))
+        await session.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_item_variables_item_id ON item_variables(item_id)
+        """))
+        await session.execute(text("""
+            CREATE TABLE IF NOT EXISTS item_variants (
+                id SERIAL PRIMARY KEY,
+                item_id INTEGER NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+                sku VARCHAR(100) UNIQUE,
+                barcode VARCHAR(100) UNIQUE,
+                variable_1_value VARCHAR(200),
+                variable_2_value VARCHAR(200),
+                price NUMERIC(10,2) NOT NULL,
+                quantity INTEGER NOT NULL DEFAULT 1,
+                photo_url VARCHAR(500),
+                status VARCHAR(20) NOT NULL DEFAULT 'active',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                CONSTRAINT uq_item_variant_values UNIQUE (item_id, variable_1_value, variable_2_value)
+            )
+        """))
+        await session.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_item_variants_item_id ON item_variants(item_id)
+        """))
+        await session.execute(text("""
+            CREATE INDEX IF NOT EXISTS idx_item_variants_barcode ON item_variants(barcode) WHERE barcode IS NOT NULL
+        """))
+        print("BMM-POS migrate: item_variables + item_variants tables OK", flush=True)
+
         # ── Step 4: indexes ─────────────────────────────────────────────────
         index_statements = [
             "CREATE INDEX IF NOT EXISTS idx_poynt_payments_reference_id ON poynt_payments(reference_id)",

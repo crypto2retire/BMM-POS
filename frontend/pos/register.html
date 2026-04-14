@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cash Register — BMM-POS</title>
     <link rel="stylesheet" href="/static/css/main.css">
     <style>
@@ -55,49 +55,6 @@
             font-size: 0.75rem;
             color: var(--text-light);
             margin-top: 0.4rem;
-        }
-
-        /* Category filter bar */
-        .category-bar {
-            display: flex;
-            gap: 0.35rem;
-            padding: 0.4rem 0.75rem;
-            border-bottom: 1px solid var(--border);
-            background: color-mix(in srgb, var(--gold) 2%, var(--surface-2));
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-            align-items: center;
-        }
-        .category-bar::-webkit-scrollbar { display: none; }
-        .category-chip {
-            flex-shrink: 0;
-            padding: 0.3rem 0.65rem;
-            font-size: 0.72rem;
-            font-family: 'Roboto', sans-serif;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--text-light);
-            background: var(--surface);
-            border: 1px solid var(--border);
-            cursor: pointer;
-            white-space: nowrap;
-            transition: color 0.12s, border-color 0.12s, background 0.12s;
-            min-height: 32px;
-            display: inline-flex;
-            align-items: center;
-        }
-        .category-chip:hover { border-color: var(--warm-border); color: var(--text); }
-        .category-chip.active {
-            background: var(--gold);
-            color: var(--charcoal-deep, #38383B);
-            border-color: var(--gold);
-        }
-        .category-chip .cat-count {
-            font-size: 0.6rem;
-            opacity: 0.7;
-            margin-left: 0.25rem;
         }
 
         .results-area {
@@ -549,81 +506,25 @@
             .reg-layout {
                 flex-direction: column;
                 height: auto;
-                min-height: calc(100dvh - 56px);
+                min-height: calc(100vh - 56px);
                 overflow: auto;
-                padding-bottom: env(safe-area-inset-bottom);
             }
             .reg-left {
                 flex: none;
-                max-height: none;
-                overflow-y: auto;
-            }
-            /* Tab navigation between search and cart on mobile */
-            .reg-mobile-tabs {
-                display: flex;
-                border-bottom: 1px solid var(--border);
-                background: var(--surface-2);
-            }
-            .reg-mobile-tab {
-                flex: 1;
-                padding: 0.65rem 0;
-                text-align: center;
-                font-size: 0.78rem;
-                font-family: 'Roboto', sans-serif;
-                font-weight: 500;
-                text-transform: uppercase;
-                letter-spacing: 0.08em;
-                color: var(--text-light);
-                background: none;
-                border: none;
-                border-bottom: 2px solid transparent;
-                cursor: pointer;
-                transition: color 0.15s, border-color 0.15s;
-                min-height: 44px;
-            }
-            .reg-mobile-tab.active {
-                color: var(--gold);
-                border-bottom-color: var(--gold);
-            }
-            /* Hide cart on mobile when search tab is active */
-            .reg-layout:not(.show-cart) .reg-right { display: none; }
-            /* Hide search on mobile when cart tab is active */
-            .reg-layout.show-cart .reg-left { display: none; }
-            /* Show totals/payment below cart on mobile */
-            .reg-layout.show-cart .reg-right {
-                display: flex;
-                flex-direction: column;
-                flex: 1;
+                max-height: 50vh;
                 overflow-y: auto;
             }
             .reg-right {
                 flex: none;
                 overflow: visible;
-                padding-bottom: env(safe-area-inset-bottom);
             }
             .results-area {
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-                gap: 0.4rem;
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             }
-            .item-card { padding: 0.5rem; }
-            .item-card .ic-name { font-size: 0.82rem; }
-            .item-card .ic-price { font-size: 0.85rem; }
-            .pay-btn { min-height: 48px; font-size: 0.9rem; padding: 0.65rem; }
-            .cash-input-row input { min-height: 48px; font-size: 16px; padding: 0.6rem; }
-            .btn-charge { min-height: 56px; font-size: 0.95rem; }
+            .pay-btn { min-height: 44px; font-size: 0.9rem; padding: 0.65rem; }
+            .cash-input-row input { min-height: 44px; font-size: 1rem; padding: 0.6rem; }
+            .btn-charge { min-height: 52px; font-size: 0.95rem; }
             .receipt-card { width: calc(100% - 2rem); max-width: 420px; }
-            .search-bar-wrap input { font-size: 16px; }
-            /* Auto-switch to cart tab when item added */
-            .cart-header {
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            }
-        }
-
-        /* Hide mobile tabs on desktop */
-        @media (min-width: 768px) {
-            .reg-mobile-tabs { display: none !important; }
         }
 
         @media (max-width: 1023px) and (min-width: 768px) {
@@ -631,9 +532,58 @@
             .reg-left { flex: 0 0 55%; }
             .reg-right { flex: 0 0 45%; }
         }
+        /* ── Variant Picker Modal ─────────────────────────────────── */
+        .variant-picker-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6); z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .variant-picker-modal {
+            background: var(--surface); border-radius: 8px;
+            width: 420px; max-width: 90vw; max-height: 80vh;
+            overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+        .variant-picker-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+            font-size: 1.05rem;
+        }
+        .variant-picker-body { padding: 1rem 1.25rem; }
+        .variant-group { margin-bottom: 1rem; }
+        .variant-label {
+            display: block; font-size: 0.8rem; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--text-light); margin-bottom: 0.5rem;
+        }
+        .variant-options { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+        .variant-opt {
+            padding: 0.4rem 0.9rem; border: 1px solid var(--border);
+            background: var(--bg); color: var(--text); border-radius: 4px;
+            cursor: pointer; font-size: 0.85rem; transition: all 0.15s;
+        }
+        .variant-opt:hover { border-color: var(--gold); }
+        .variant-opt.active {
+            background: var(--gold); color: #fff; border-color: var(--gold);
+        }
+        .variant-match {
+            margin-top: 0.75rem; padding: 0.75rem; border-radius: 4px;
+            background: var(--surface-2); display: flex; align-items: center; gap: 0.75rem;
+        }
+        .variant-match-price { font-size: 1.1rem; font-weight: 600; color: var(--gold); }
+        .variant-match-stock { font-size: 0.8rem; color: var(--text-light); }
+        .variant-match-img {
+            width: 48px; height: 48px; object-fit: cover; border-radius: 4px;
+            border: 1px solid var(--border); margin-left: auto;
+        }
+        .variant-picker-footer { padding: 0.75rem 1.25rem; border-top: 1px solid var(--border); }
+        .variant-add-btn {
+            width: 100%; padding: 0.7rem; background: var(--gold); color: #fff;
+            border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;
+            font-weight: 600; transition: opacity 0.15s;
+        }
+        .variant-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .variant-add-btn:not(:disabled):hover { opacity: 0.9; }
     </style>
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
-<link rel="manifest" href="/manifest.json">
 </head>
 <body>
 <script src="/static/js/theme-loader.js"></script>
@@ -654,20 +604,12 @@
     </div>
 </nav>
 
-<div class="reg-layout" id="reg-layout">
-    <!-- Mobile tabs: Search / Cart -->
-    <div class="reg-mobile-tabs">
-        <button class="reg-mobile-tab active" id="tab-search" onclick="switchRegTab('search')">🔍 Search</button>
-        <button class="reg-mobile-tab" id="tab-cart" onclick="switchRegTab('cart')">🛒 Cart (<span id="tab-cart-count">0</span>)</button>
-    </div>
+<div class="reg-layout">
     <!-- LEFT: Search -->
     <div class="reg-left">
         <div class="search-bar-wrap">
             <input type="text" id="search-input" placeholder="Type item name, scan barcode, or enter SKU…" autocomplete="off" />
             <div class="search-hint">Press Enter or scan a barcode to add directly to cart</div>
-        </div>
-        <div class="category-bar" id="category-bar">
-            <span style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;flex-shrink:0">Categories</span>
         </div>
         <div class="results-area" id="results-area">
             <div class="results-empty">Search for items above to begin a sale.</div>
@@ -691,7 +633,7 @@
                 <span id="t-subtotal">$0.00</span>
             </div>
             <div class="totals-row">
-                <span>Tax (5%)</span>
+                <span>Tax (5.5%)</span>
                 <span id="t-tax">$0.00</span>
             </div>
             <div class="totals-row total-bold">
@@ -744,81 +686,14 @@
     </div>
 </div>
 
-<script src="/static/js/api.js?v=20260413a"></script>
+<script src="/static/js/api.js"></script>
 <script src="/static/js/auth-bootstrap.js"></script>
 <script>
-    const TAX_RATE = 0.05;
+    const TAX_RATE = 0.055;
 
     let cart = [];
     let paymentMethod = 'cash';
     let searchTimer = null;
-    let isMobile = window.innerWidth < 768;
-    let activeCategory = null;
-
-    async function loadCategories() {
-        try {
-            var cats = await apiGet('/api/v1/pos/categories');
-            if (!cats || !cats.length) return;
-            var bar = document.getElementById('category-bar');
-            if (!bar) return;
-            var html = '<span style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;flex-shrink:0">Categories</span>';
-            html += '<button class="category-chip active" data-cat="" onclick="selectCategory(this)">All</button>';
-            cats.forEach(function(c) {
-                html += '<button class="category-chip" data-cat="' + escAttr(c.category) + '" onclick="selectCategory(this)">' + escHtml(c.category) + '<span class="cat-count">(' + c.count + ')</span></button>';
-            });
-            bar.innerHTML = html;
-        } catch (e) { /* silently fail */ }
-    }
-
-    function selectCategory(btn) {
-        activeCategory = btn.getAttribute('data-cat') || null;
-        var chips = document.querySelectorAll('.category-chip');
-        chips.forEach(function(c) { c.classList.remove('active'); });
-        btn.classList.add('active');
-        var q = searchInput.value.trim();
-        if (q) doSearch(q);
-    }
-
-    function escAttr(s) {
-        if (!s) return '';
-        return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    // ── Mobile tab switching ──────────────────────────────────────────
-    function switchRegTab(tab) {
-        var layout = document.getElementById('reg-layout');
-        var tabSearch = document.getElementById('tab-search');
-        var tabCart = document.getElementById('tab-cart');
-        if (tab === 'cart') {
-            layout.classList.add('show-cart');
-            tabSearch.classList.remove('active');
-            tabCart.classList.add('active');
-        } else {
-            layout.classList.remove('show-cart');
-            tabSearch.classList.add('active');
-            tabCart.classList.remove('active');
-        }
-    }
-
-    function updateCartTabCount() {
-        var el = document.getElementById('tab-cart-count');
-        if (el) el.textContent = cart.length;
-    }
-
-    // Auto-switch to cart tab on mobile when item added
-    function autoSwitchToCart() {
-        if (isMobile && cart.length > 0) {
-            switchRegTab('cart');
-        }
-        updateCartTabCount();
-    }
-
-    window.addEventListener('resize', function() {
-        isMobile = window.innerWidth < 768;
-        if (!isMobile) {
-            document.getElementById('reg-layout').classList.remove('show-cart');
-        }
-    });
     let posRuntime = {
         offline_mode: false,
         allowed_payment_methods: ['cash', 'card'],
@@ -834,7 +709,7 @@
         const payCrypto = document.getElementById('pay-crypto');
         if (offlineBanner) offlineBanner.style.display = posRuntime.offline_mode ? '' : 'none';
         if (payCard) payCard.style.display = runtimeAllows('card') ? '' : 'none';
-        if (payCrypto) payCrypto.style.display = 'none'; // Crypto/Blackbox disabled
+        if (payCrypto) payCrypto.style.display = runtimeAllows('crypto_blackbox') ? '' : 'none';
         if (!runtimeAllows(paymentMethod)) {
             paymentMethod = runtimeAllows('cash') ? 'cash' : (runtimeAllows('crypto_blackbox') ? 'crypto_blackbox' : paymentMethod);
         }
@@ -888,9 +763,14 @@
             if (!q) return;
             const items = await searchItems(q);
             if (items.length === 1) {
-                addToCart(items[0]);
-                searchInput.value = '';
-                showResultsPlaceholder();
+                const it = items[0];
+                if (it.has_variants && it.variants && it.variants.length > 0) {
+                    showVariantPicker(it);
+                } else {
+                    addToCart(it);
+                    searchInput.value = '';
+                    showResultsPlaceholder();
+                }
             } else {
                 renderResults(items);
             }
@@ -899,9 +779,7 @@
 
     async function searchItems(q) {
         try {
-            var url = '/api/v1/pos/search?limit=40&q=' + encodeURIComponent(q);
-            if (activeCategory) url += '&category=' + encodeURIComponent(activeCategory);
-            return await apiGet(url);
+            return await apiGet(`/api/v1/pos/search?limit=40&q=${encodeURIComponent(q)}`);
         } catch (e) {
             return [];
         }
@@ -933,7 +811,7 @@
                 : `<span class="ic-price">${fmt(active)}</span>`;
             return `
                 <div class="item-card" onclick='addToCartById(${item.id})' data-item='${JSON.stringify(item).replace(/'/g, "&#39;")}'>
-                    <div class="ic-name">${item.name}</div>
+                    <div class="ic-name">${item.name}${item.has_variants ? ' <span style="font-size:0.7rem;color:var(--text-light)">· variants</span>' : ''}</div>
                     <div class="ic-booth">${item.booth_number ? 'Booth ' + item.booth_number : 'No booth'}</div>
                     <div class="ic-price-row">${priceHtml}</div>
                     <div class="ic-barcode">${item.barcode}</div>
@@ -947,8 +825,152 @@
         try {
             const raw = card.getAttribute('data-item');
             const item = JSON.parse(raw.replace(/&#39;/g, "'"));
-            addToCart(item);
+            if (item.has_variants && item.variants && item.variants.length > 0) {
+                showVariantPicker(item);
+            } else {
+                addToCart(item);
+            }
         } catch(e) {}
+    }
+
+    // ── Variant Picker Modal ──────────────────────────────────────────
+    function showVariantPicker(item) {
+        const vars = item.variables || [];
+        const variants = item.variants || [];
+        if (variants.length === 0) { addToCart(item); return; }
+
+        let selected = {};
+
+        function buildModal() {
+            let html = `<div class="variant-picker-overlay" id="variant-overlay" onclick="if(event.target===this)closeVariantPicker()">
+                <div class="variant-picker-modal">
+                    <div class="variant-picker-header">
+                        <strong>${item.name}</strong>
+                        <button onclick="closeVariantPicker()" style="background:none;border:none;color:var(--text-light);font-size:1.2rem;cursor:pointer">✕</button>
+                    </div>
+                    <div class="variant-picker-body">`;
+
+            vars.forEach((v, vi) => {
+                html += `<div class="variant-group">
+                    <label class="variant-label">${v.name}</label>
+                    <div class="variant-options">`;
+                v.options.forEach(opt => {
+                    const cls = selected[vi] === opt ? 'variant-opt active' : 'variant-opt';
+                    html += `<button class="${cls}" data-vi="${vi}" data-val="${opt}">${opt}</button>`;
+                });
+                html += `</div></div>`;
+            });
+
+            // Find matching variant
+            const matched = findMatchedVariant(vars, selected, variants);
+            if (matched) {
+                html += `<div class="variant-match">
+                    <div class="variant-match-price">${fmt(matched.price)}</div>
+                    <div class="variant-match-stock">${matched.quantity > 0 ? matched.quantity + ' in stock' : 'Out of stock'}</div>
+                    ${matched.photo_url ? `<img src="${matched.photo_url}" class="variant-match-img" />` : ''}
+                </div>`;
+            } else if (Object.keys(selected).length === vars.length) {
+                html += `<div class="variant-match" style="color:var(--danger)">Combination not available</div>`;
+            }
+
+            html += `</div>
+                <div class="variant-picker-footer">
+                    <button class="variant-add-btn" ${(matched && matched.quantity > 0) ? '' : 'disabled'}
+                        onclick="addVariantToCart(${item.id})">Add to Cart</button>
+                </div>
+            </div></div>`;
+            return html;
+        }
+
+        function findMatchedVariant(vars, sel, variants) {
+            if (Object.keys(sel).length < vars.length) return null;
+            const v1 = sel[0] || null;
+            const v2 = sel[1] || null;
+            return variants.find(v =>
+                (v1 === null || v.variable_1_value === v1) &&
+                (v2 === null || v.variable_2_value === v2)
+            ) || null;
+        }
+
+        // Store for access from onclick
+        window._variantItem = item;
+        window._variantSelected = selected;
+        window._variantVars = vars;
+        window._variantVariants = variants;
+
+        const container = document.createElement('div');
+        container.id = 'variant-picker-container';
+        container.innerHTML = buildModal();
+        document.body.appendChild(container);
+
+        container.addEventListener('click', (e) => {
+            const btn = e.target.closest('.variant-opt');
+            if (!btn) return;
+            const vi = parseInt(btn.dataset.vi);
+            const val = btn.dataset.val;
+            if (window._variantSelected[vi] === val) {
+                delete window._variantSelected[vi];
+            } else {
+                window._variantSelected[vi] = val;
+            }
+            container.innerHTML = buildModal();
+        });
+    }
+
+    function closeVariantPicker() {
+        const c = document.getElementById('variant-picker-container');
+        if (c) c.remove();
+        window._variantItem = null;
+        window._variantSelected = null;
+    }
+
+    function addVariantToCart(itemId) {
+        const item = window._variantItem;
+        const sel = window._variantSelected;
+        const vars = window._variantVars;
+        const variants = window._variantVariants;
+        if (!item) return;
+
+        const matched = variants.find(v =>
+            (Object.keys(sel).length < 1 || v.variable_1_value === (sel[0] || null)) &&
+            (Object.keys(sel).length < 2 || v.variable_2_value === (sel[1] || null))
+        );
+        if (!matched || matched.quantity < 1) {
+            showRegAlert('Variant out of stock', 'error');
+            return;
+        }
+
+        const label = [item.name, matched.variable_1_value, matched.variable_2_value].filter(Boolean).join(' · ');
+        const cartKey = matched.barcode || `variant-${matched.id}`;
+
+        const existing = cart.find(c => c.barcode === cartKey);
+        if (existing) {
+            if (existing.qty < matched.quantity) {
+                existing.qty++;
+            } else {
+                showRegAlert(`Only ${matched.quantity} in stock`, 'warning');
+                return;
+            }
+        } else {
+            cart.push({
+                barcode: cartKey,
+                name: label,
+                booth: item.booth_number,
+                price: parseFloat(matched.price),
+                origPrice: parseFloat(matched.price),
+                onSale: false,
+                isTaxExempt: item.is_tax_exempt,
+                maxQty: matched.quantity,
+                qty: 1,
+                variantId: matched.id,
+                photoUrl: matched.photo_url || null,
+            });
+        }
+
+        closeVariantPicker();
+        searchInput.value = '';
+        showResultsPlaceholder();
+        renderCart();
     }
 
     // ── Cart ───────────────────────────────────────────────────────────
@@ -979,13 +1001,11 @@
             });
         }
         renderCart();
-        autoSwitchToCart();
     }
 
     function removeFromCart(barcode) {
         cart = cart.filter(c => c.barcode !== barcode);
         renderCart();
-        updateCartTabCount();
     }
 
     function changeQty(barcode, delta) {
@@ -1012,7 +1032,7 @@
             container.innerHTML = cart.map(row => `
                 <div class="cart-row">
                     <div class="cart-row-info">
-                        <div class="cart-row-name">${row.name}</div>
+                        <div class="cart-row-name">${row.name}${row.variantId ? ' <span style="font-size:0.65rem;color:var(--text-light);text-transform:none">variant</span>' : ''}</div>
                         <div class="cart-row-sub">${row.onSale ? '<span style="color:var(--danger)">SALE</span> · ' : ''}${row.booth ? 'Booth ' + row.booth : ''}</div>
                     </div>
                     <div class="cart-qty-controls">
@@ -1156,8 +1176,6 @@
         showResultsPlaceholder();
         renderCart();
         searchInput.focus();
-        updateCartTabCount();
-        if (isMobile) switchRegTab('search');
     }
 
     function showRegAlert(msg, type) {
@@ -1179,7 +1197,6 @@
             await loadPosRuntime();
             selectPayment('cash');
             renderCart();
-            loadCategories();
         });
     }
 

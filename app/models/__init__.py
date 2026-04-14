@@ -1,5 +1,7 @@
 from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
+from app.models.item_variable import ItemVariable
+from app.models.item_variant import ItemVariant
 from app.models.sale import Sale, SaleItem
 from app.models.rent import RentPayment
 from app.models.payout import Payout
@@ -15,4 +17,4 @@ from app.models.eod_report import EodReport
 from app.models.legacy_history import LegacyFinancialHistory
 from app.models.security_deposit import SecurityDepositLog
 
-__all__ = ["Vendor", "VendorBalance", "Item", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting", "StudioClass", "ItemImage", "StudioImage", "ClassRegistration", "BoothShowcase", "PoyntPayment", "EodReport", "LegacyFinancialHistory", "SecurityDepositLog"]
+__all__ = ["Vendor", "VendorBalance", "Item", "ItemVariable", "ItemVariant", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting", "StudioClass", "ItemImage", "StudioImage", "ClassRegistration", "BoothShowcase", "PoyntPayment", "EodReport", "LegacyFinancialHistory", "SecurityDepositLog"]

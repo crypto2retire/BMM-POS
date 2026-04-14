@@ -14,8 +14,10 @@ import io
 from app.database import get_db
 from app.models.item import Item
 from app.models.item_image import ItemImage
+from app.models.item_variable import ItemVariable
+from app.models.item_variant import ItemVariant
 from app.models.vendor import Vendor
-from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse, ItemListingResponse
+from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse, ItemListingResponse, VariantResponse
 from app.routers.auth import get_current_user
 from app.routers.settings import role_feature_allowed, get_setting
 from app.services.barcode import generate_sku, generate_short_barcode, maybe_upgrade_barcode
@@ -31,6 +33,63 @@ MAX_IMAGE_DIMENSION = 800
 MAX_ITEM_PHOTOS = 10
 
 router = APIRouter(prefix="/items", tags=["items"])
+
+
+async def _save_variables_and_variants(
+    db: AsyncSession, item: Item, variables_data, variants_data
+) -> None:
+    """Save variable definitions and variant rows for an item."""
+    # Clear existing
+    await db.execute(
+        select(ItemVariable).where(ItemVariable.item_id == item.id)
+    )
+    for v in list(item.variables or []):
+        await db.delete(v)
+    for v in list(item.variants or []):
+        await db.delete(v)
+    await db.flush()
+
+    if variables_data:
+        for idx, var_def in enumerate(variables_data[:2]):
+            var = ItemVariable(
+                item_id=item.id,
+                name=var_def.name.strip(),
+                position=idx,
+                options=",".join([o.strip() for o in var_def.options if o.strip()]),
+            )
+            db.add(var)
+
+    if variants_data:
+        for v_in in variants_data:
+            # Check barcode uniqueness
+            if v_in.barcode:
+                existing = await db.execute(
+                    select(ItemVariant).where(ItemVariant.barcode == v_in.barcode)
+                )
+                if existing.scalar_one_or_none():
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Variant barcode '{v_in.barcode}' already exists",
+                    )
+            # Generate SKU if not provided
+            variant_sku = v_in.sku
+            if not variant_sku:
+                variant_sku = f"{item.sku}-V{item.id}{len(item.variants or []) + 1}"
+
+            variant = ItemVariant(
+                item_id=item.id,
+                sku=variant_sku,
+                barcode=v_in.barcode,
+                variable_1_value=v_in.variable_1_value,
+                variable_2_value=v_in.variable_2_value,
+                price=v_in.price,
+                quantity=v_in.quantity,
+                photo_url=v_in.photo_url,
+                status="active",
+            )
+            db.add(variant)
+
+    await db.flush()
 
 
 def _parse_iso_date(value, field_name: str) -> date:
@@ -90,6 +149,36 @@ def item_to_response(item: Item) -> ItemResponse:
     booth_number = None
     if item.vendor:
         booth_number = item.vendor.booth_number
+
+    # Build variables list from loaded relationships
+    variables_list = None
+    if hasattr(item, 'variables') and item.variables:
+        variables_list = [
+            {"name": v.name, "options": [o.strip() for o in v.options.split(",") if o.strip()]}
+            for v in sorted(item.variables, key=lambda v: v.position)
+        ]
+
+    # Build variants list from loaded relationships
+    variants_list = None
+    if hasattr(item, 'variants') and item.variants:
+        variants_list = [
+            VariantResponse(
+                id=v.id,
+                item_id=v.item_id,
+                sku=v.sku,
+                barcode=v.barcode,
+                variable_1_value=v.variable_1_value,
+                variable_2_value=v.variable_2_value,
+                price=v.price,
+                quantity=v.quantity,
+                photo_url=v.photo_url,
+                status=v.status,
+                created_at=v.created_at,
+            )
+            for v in item.variants
+            if v.status == "active"
+        ]
+
     return ItemResponse(
         id=item.id,
         vendor_id=item.vendor_id,
@@ -114,6 +203,8 @@ def item_to_response(item: Item) -> ItemResponse:
         created_at=item.created_at,
         booth_number=booth_number,
         label_printed=item.label_printed,
+        variables=variables_list,
+        variants=variants_list,
     )
 
 
@@ -129,7 +220,7 @@ async def list_items(
 ):
     await _require_view_items(db, current_user)
 
-    query = select(Item).options(selectinload(Item.vendor))
+    query = select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants))
     if current_user.role not in ("admin", "cashier"):
         query = query.where(Item.vendor_id == current_user.id)
     elif vendor_id:
@@ -209,7 +300,7 @@ async def list_items_listing(
     counts_result = await db.execute(counts_query)
     counts = counts_result.one()
 
-    item_query = select(Item).options(selectinload(Item.vendor))
+    item_query = select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants))
     if base_filters:
         item_query = item_query.where(*base_filters)
     if status_filter == "active":
@@ -308,10 +399,16 @@ async def create_item(
         label_style=data.label_style or "standard",
     )
     db.add(item)
+    await db.flush()  # flush to get item.id
+
+    # Save variables and variants if provided
+    if data.variables or data.variants:
+        await _save_variables_and_variants(db, item, data.variables, data.variants)
+
     await db.commit()
 
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item.id)
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item.id)
     )
     item = result.scalar_one()
     return item_to_response(item)
@@ -324,7 +421,7 @@ async def get_item_by_barcode(
     current_user: Vendor = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(func.upper(Item.barcode) == barcode.upper())
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(func.upper(Item.barcode) == barcode.upper())
     )
     item = result.scalar_one_or_none()
     if not item:
@@ -345,7 +442,7 @@ async def get_label_pdf(
     current_user: Vendor = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id)
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item_id)
     )
     item = result.scalar_one_or_none()
     if not item:
@@ -408,7 +505,7 @@ async def get_batch_labels_pdf(
         raise HTTPException(status_code=400, detail="Maximum 500 labels per batch")
 
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id.in_(item_ids))
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id.in_(item_ids))
     )
     items = result.scalars().all()
     if not items:
@@ -463,7 +560,7 @@ async def get_item(
     current_user: Vendor = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id)
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item_id)
     )
     item = result.scalar_one_or_none()
     if not item:
@@ -485,7 +582,7 @@ async def update_item(
     current_user: Vendor = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id)
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item_id)
     )
     item = result.scalar_one_or_none()
     if not item:
@@ -518,16 +615,29 @@ async def update_item(
                 raise HTTPException(status_code=400, detail="Items must have a photo to be listed online")
     update_data.pop("is_consignment", None)
     update_data.pop("consignment_rate", None)
+
+    # Extract variables/variants before setting fields
+    variables_data = update_data.pop("variables", None)
+    variants_data = update_data.pop("variants", None)
+
     for field, value in update_data.items():
         setattr(item, field, value)
 
     if item.status == "sold" and (item.quantity or 0) > 0:
         item.status = "active"
 
+    # Save variables and variants if provided
+    if variables_data is not None or variants_data is not None:
+        await _save_variables_and_variants(
+            db, item,
+            variables_data=variables_data,
+            variants_data=variants_data,
+        )
+
     await db.commit()
 
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item.id)
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item.id)
     )
     item = result.scalar_one()
     return item_to_response(item)
@@ -541,7 +651,7 @@ async def upload_item_photo(
     current_user: Vendor = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id)
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item_id)
     )
     item = result.scalar_one_or_none()
     if not item:
@@ -608,7 +718,7 @@ async def upload_item_photo(
     await db.commit()
 
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item.id)
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item.id)
     )
     item = result.scalar_one()
     return item_to_response(item)
@@ -622,7 +732,7 @@ async def delete_item_photo(
     current_user: Vendor = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id)
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item_id)
     )
     item = result.scalar_one_or_none()
     if not item:
@@ -648,7 +758,7 @@ async def delete_item_photo(
 
     await db.commit()
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item.id)
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item.id)
     )
     item = result.scalar_one()
     return item_to_response(item)
@@ -662,7 +772,7 @@ async def upload_item_image(
     current_user: Vendor = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id)
+        select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item_id)
     )
     item = result.scalar_one_or_none()
     if not item:
@@ -870,7 +980,7 @@ async def toggle_item_status(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    result = await db.execute(select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id))
+    result = await db.execute(select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item_id))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
@@ -893,7 +1003,7 @@ async def reactivate_item(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
-    result = await db.execute(select(Item).options(selectinload(Item.vendor)).where(Item.id == item_id))
+    result = await db.execute(select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item_id))
     item = result.scalar_one_or_none()
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
