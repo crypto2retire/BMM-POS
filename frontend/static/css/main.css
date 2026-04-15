@@ -183,8 +183,57 @@
 [data-theme="light"] select,
 [data-theme="light"] textarea {
     background: #FFFFFF;
-    border-color: var(--border);
+    border: 2px solid #B5AFA5;
     color: var(--text);
+}
+[data-theme="light"] input::placeholder,
+[data-theme="light"] select::placeholder,
+[data-theme="light"] textarea::placeholder {
+    color: #8A847A;
+    opacity: 1;
+}
+[data-theme="light"] input:focus,
+[data-theme="light"] select:focus,
+[data-theme="light"] textarea:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(153,111,26,0.18);
+    background: #FFFFFF;
+}
+[data-theme="light"] .form-control {
+    background: #FFFFFF;
+    border: 2px solid #B5AFA5;
+    color: var(--text);
+}
+[data-theme="light"] .form-control::placeholder {
+    color: #8A847A;
+    opacity: 1;
+}
+[data-theme="light"] .form-control:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 3px rgba(153,111,26,0.18);
+    background: #FFFFFF;
+}
+
+/* Light theme outline & secondary buttons */
+[data-theme="light"] .btn-outline {
+    color: var(--gold);
+    border: 2px solid var(--gold);
+    background: transparent;
+}
+[data-theme="light"] .btn-outline:hover {
+    background: rgba(153,111,26,0.08);
+    border-color: var(--gold-dim);
+    color: var(--gold-dim);
+}
+[data-theme="light"] .btn-secondary {
+    background: #EDE8DC;
+    color: var(--text);
+    border-color: var(--border);
+}
+[data-theme="light"] .btn-secondary:hover {
+    background: #E0DAD0;
 }
 
 /* Light theme table rows */
@@ -1227,6 +1276,28 @@ select.form-control option { background: var(--surface-2); color: var(--text); }
     border-left: none;
 }
 .item-card-actions .btn:last-child { border-right: none; }
+
+/* Light theme item cards */
+[data-theme="light"] .item-card {
+    background: #FFFFFF;
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--gold);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+[data-theme="light"] .item-card:hover {
+    border-color: var(--gold);
+    border-top-color: var(--gold-light);
+}
+[data-theme="light"] .item-card-photo {
+    background: #F0ECE4;
+    border-color: var(--border);
+}
+[data-theme="light"] .item-card-actions {
+    border-top: 1px solid var(--border);
+}
+[data-theme="light"] .item-card-actions .btn {
+    border-right-color: var(--border);
+}
 
 /* ── MOBILE BOTTOM NAV ────────────────────────────────── */
 .mobile-bottom-nav {
