@@ -86,6 +86,13 @@ class ShowcaseUpdate(BaseModel):
     landing_template: Optional[str] = None
     landing_theme: Optional[dict] = None
 
+
+class AIDesignRequest(BaseModel):
+    message: str
+    current_theme: Optional[dict] = None
+    current_template: Optional[str] = None
+
+
 @router.post("/mine/ai-design")
 async def ai_design_endpoint(
     data: AIDesignRequest,
