@@ -692,6 +692,7 @@
 var showcase = null;
 
 function escHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function escAttr(s) { return escHtml(s).replace(/"/g, '&quot;'); }
 
 function showStatus(msg, type) {
     var el = document.getElementById('status-msg');
@@ -808,6 +809,7 @@ async function saveDetails() {
         if (!resp.ok) throw new Error(data.detail || 'Failed to save');
         showcase = data;
         showStatus('Details saved!', 'success');
+        updatePreviewTheme();
     } catch (err) {
         showStatus(err.message, 'error');
     }
@@ -854,6 +856,7 @@ async function uploadPhotos(files) {
         }
     }
     renderPhotos();
+    updatePreviewTheme();
     document.getElementById('photo-input').value = '';
     if (showcase && showcase.photo_urls && showcase.photo_urls.length > 0) {
         showStatus('Photos uploaded!', 'success');
@@ -874,6 +877,7 @@ async function deletePhoto(url) {
         if (!resp.ok) throw new Error(data.detail || 'Failed to remove');
         showcase = data;
         renderPhotos();
+        updatePreviewTheme();
         document.getElementById('publish-toggle').checked = showcase.is_published;
         document.getElementById('publish-label').textContent = showcase.is_published ? 'Published' : 'Not Published';
         showStatus('Photo removed.', 'success');
@@ -969,6 +973,7 @@ async function aiWriteBooth(action) {
         document.getElementById('booth-desc').value = data.content;
         updateCharCount();
         updateBoothImproveBtn();
+        updatePreviewTheme();
         statusEl.textContent = action === 'improve' ? 'Description improved! Review and edit, then Save.' : 'Description written! Review and edit, then Save.';
         setTimeout(function() { statusEl.textContent = ''; }, 6000);
     } catch (err) {
@@ -1114,6 +1119,7 @@ async function saveLandingDetails() {
         if (!resp.ok) throw new Error(data.detail || 'Failed to save');
         showcase = data;
         showStatus('Landing page details saved!', 'success');
+        updatePreviewTheme();
     } catch (err) {
         showStatus(err.message, 'error');
     }
@@ -1145,6 +1151,7 @@ async function aiWriteAbout(action) {
         document.getElementById('landing-about').value = data.content;
         updateAboutCount();
         updateAboutImproveBtn();
+        updatePreviewTheme();
         statusEl.textContent = action === 'improve' ? 'About section improved! Review and edit, then Save.' : 'About section written! Review and edit, then Save.';
         setTimeout(function() { statusEl.textContent = ''; }, 6000);
     } catch (err) {
@@ -1279,6 +1286,49 @@ function updatePreviewTheme() {
     var iframe = document.getElementById('design-preview');
     var border = mixHexColors(c.text, c.background, 0.15);
 
+    var vendorName = (showcase && showcase.vendor_name) || (document.getElementById('vendor-name').textContent || '').trim() || 'Your Vendor Name';
+    var boothNumber = (showcase && showcase.booth_number) || '';
+    var aboutInput = (document.getElementById('landing-about').value || '').trim();
+    var boothDescInput = (document.getElementById('booth-desc').value || '').trim();
+    var aboutText = aboutInput || boothDescInput || (showcase && showcase.description) ||
+        'Welcome to our booth! We specialize in handcrafted, vintage, and one-of-a-kind treasures.';
+
+    var photoUrls = (showcase && showcase.photo_urls) || [];
+    var heroPhoto = photoUrls.length ? photoUrls[0] : '';
+    var heroBgStyle = heroPhoto
+        ? 'background-image:url(' + escAttr(heroPhoto) + ');background-size:cover;background-position:center;'
+        : 'background:linear-gradient(135deg,' + c.secondary + ' 0%,' + c.background + ' 100%)';
+
+    var socialLinks = [];
+    var website = (document.getElementById('landing-website').value || '').trim();
+    var facebook = (document.getElementById('landing-facebook').value || '').trim();
+    var instagram = (document.getElementById('landing-instagram').value || '').trim();
+    var tiktok = (document.getElementById('landing-tiktok').value || '').trim();
+    var twitter = (document.getElementById('landing-twitter').value || '').trim();
+    var etsy = (document.getElementById('landing-etsy').value || '').trim();
+    if (website) socialLinks.push('<a href="#">🔗 Website</a>');
+    if (facebook) socialLinks.push('<a href="#">📘 Facebook</a>');
+    if (instagram) socialLinks.push('<a href="#">📷 Instagram</a>');
+    if (tiktok) socialLinks.push('<a href="#">🎵 TikTok</a>');
+    if (twitter) socialLinks.push('<a href="#">🐦 Twitter</a>');
+    if (etsy) socialLinks.push('<a href="#">🧶 Etsy</a>');
+    var socialHtml = socialLinks.length
+        ? '<div class="landing-social-links">' + socialLinks.join('') + '</div>'
+        : '';
+
+    var itemCount = (showcase && showcase.item_count) || 0;
+    var itemsHtml = '';
+    if (itemCount > 0) {
+        itemsHtml =
+            '<div class="landing-item-card" style="animation:landing-fadeUp 0.4s ease both"><div class="landing-item-card-img" style="background:' + c.card_background + ';display:flex;align-items:center;justify-content:center;color:' + c.text + ';opacity:0.35;font-size:1.8rem">🖼</div><div class="landing-item-card-body"><div class="landing-item-card-name">Featured Item</div><div class="landing-item-card-price">$24.00</div><button class="landing-add-cart-btn">+ Add to Cart</button></div></div>' +
+            '<div class="landing-item-card" style="animation:landing-fadeUp 0.4s ease both 0.1s"><div class="landing-item-card-img" style="background:' + c.card_background + ';display:flex;align-items:center;justify-content:center;color:' + c.text + ';opacity:0.35;font-size:1.8rem">🖼</div><div class="landing-item-card-body"><div class="landing-item-card-name">Booth Favorite</div><div class="landing-item-card-price">$38.00</div><button class="landing-add-cart-btn">+ Add to Cart</button></div></div>' +
+            '<div class="landing-item-card" style="animation:landing-fadeUp 0.4s ease both 0.2s"><div class="landing-item-card-img" style="background:' + c.card_background + ';display:flex;align-items:center;justify-content:center;color:' + c.text + ';opacity:0.35;font-size:1.8rem">🖼</div><div class="landing-item-card-body"><div class="landing-item-card-name">New Arrival</div><div class="landing-item-card-price">$52.00</div><button class="landing-add-cart-btn">+ Add to Cart</button></div></div>';
+    } else {
+        itemsHtml = '<div style="grid-column:1/-1;text-align:center;padding:2rem;opacity:0.55">No items found</div>';
+    }
+
+    var boothTagHtml = boothNumber ? '<div class="booth-tag">Booth ' + escHtml(boothNumber) + '</div>' : '';
+
     var previewHtml = '<!DOCTYPE html><html><head>' +
         '<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Great+Vibes&family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500;600;700&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">' +
         '<link rel="stylesheet" href="/static/css/landing-' + selectedTemplate + '.css">' +
@@ -1288,22 +1338,36 @@ function updatePreviewTheme() {
         '@keyframes landing-fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}' +
         '</style></head><body>' +
         '<nav class="landing-nav"><a class="landing-nav-brand" href="#">Bowenstreet Market</a></nav>' +
-        '<section class="landing-hero"><div class="landing-hero-bg" style="background:linear-gradient(135deg,' + c.secondary + ' 0%,' + c.background + ' 100%)"></div><div class="landing-hero-gradient"></div>' +
-        '<div class="landing-hero-content"><div class="booth-tag">Booth A-12</div><h1>Your Vendor Name</h1>' +
+        '<section class="landing-hero"><div class="landing-hero-bg" style="' + heroBgStyle + '"></div><div class="landing-hero-gradient"></div>' +
+        '<div class="landing-hero-content">' + boothTagHtml + '<h1>' + escHtml(vendorName) + '</h1>' +
         '<a href="#" class="hero-cta" onclick="event.preventDefault()">Shop This Vendor</a></div></section>' +
-        '<section class="landing-about"><h2>About Your Vendor Name</h2>' +
-        '<div class="landing-about-text">Welcome to our booth! We specialize in handcrafted, vintage, and one-of-a-kind treasures. Each piece is carefully selected to bring charm and character to your home.</div>' +
-        '<div class="landing-social-links"><a href="#">📘 Facebook</a><a href="#">📷 Instagram</a></div></section>' +
-        '<section class="landing-items"><div class="landing-items-header"><h2>Inventory</h2><span class="item-count" style="opacity:0.5;font-size:0.8rem">3 items</span></div>' +
+        '<section class="landing-about"><h2>About ' + escHtml(vendorName) + '</h2>' +
+        '<div class="landing-about-text">' + escHtml(aboutText) + '</div>' +
+        socialHtml + '</section>' +
+        '<section class="landing-items"><div class="landing-items-header"><h2>Inventory</h2><span class="item-count" style="opacity:0.5;font-size:0.8rem">' + itemCount + ' item' + (itemCount === 1 ? '' : 's') + '</span></div>' +
         '<div class="landing-items-grid" style="max-width:800px">' +
-        '<div class="landing-item-card" style="animation:landing-fadeUp 0.4s ease both"><div class="landing-item-card-img" style="background:' + c.card_background + ';display:flex;align-items:center;justify-content:center;color:' + c.text + ';opacity:0.3;font-size:2rem">🖼</div><div class="landing-item-card-body"><div class="landing-item-card-name">Vintage Item One</div><div class="landing-item-card-price">$45.00</div><button class="landing-add-cart-btn">+ Add to Cart</button></div></div>' +
-        '<div class="landing-item-card" style="animation:landing-fadeUp 0.4s ease both 0.1s"><div class="landing-item-card-img" style="background:' + c.card_background + ';display:flex;align-items:center;justify-content:center;color:' + c.text + ';opacity:0.3;font-size:2rem">🖼</div><div class="landing-item-card-body"><div class="landing-item-card-name">Handcrafted Item Two</div><div class="landing-item-card-price">$28.00</div><button class="landing-add-cart-btn">+ Add to Cart</button></div></div>' +
-        '<div class="landing-item-card" style="animation:landing-fadeUp 0.4s ease both 0.2s"><div class="landing-item-card-img" style="background:' + c.card_background + ';display:flex;align-items:center;justify-content:center;color:' + c.text + ';opacity:0.3;font-size:2rem">🖼</div><div class="landing-item-card-body"><div class="landing-item-card-name">Unique Item Three</div><div class="landing-item-card-price">$62.00</div><button class="landing-add-cart-btn">+ Add to Cart</button></div></div>' +
+        itemsHtml +
         '</div></section>' +
         '<footer class="landing-footer"><div class="landing-footer-brand"><a href="#">Bowenstreet Market</a></div><div class="landing-footer-address">2837 Bowen St, Oshkosh, WI 54901</div></footer>' +
         '</body></html>';
 
     iframe.srcdoc = previewHtml;
+}
+
+function bindPreviewInputSync() {
+    [
+        'booth-desc',
+        'landing-about',
+        'landing-website',
+        'landing-facebook',
+        'landing-instagram',
+        'landing-tiktok',
+        'landing-twitter',
+        'landing-etsy'
+    ].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', updatePreviewTheme);
+    });
 }
 
 async function saveDesign() {
@@ -1462,6 +1526,7 @@ function loadDesignFromShowcase() {
 }
 
 loadShowcase();
+bindPreviewInputSync();
 </script>
 </body>
 </html>
