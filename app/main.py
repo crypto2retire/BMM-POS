@@ -151,35 +151,35 @@ async def lifespan(app: FastAPI):
 
         seed_accounts = [
             dict(name="Admin", email="admin@bowenstreetmarket.com", phone="920-555-0001",
-                 booth_number="A-01", monthly_rent=0, password=admin_pw,
-                 role="admin", is_vendor=True, is_active=True, commission_rate=0),
+                 booth_number=None, monthly_rent=0, password=admin_pw,
+                 role="admin", is_vendor=False, is_active=True, commission_rate=0),
+            dict(name="Cashier", email="cashier@bowenstreetmarket.com", phone="920-555-0005",
+                 booth_number=None, monthly_rent=0, password=cashier_pw,
+                 role="cashier", is_vendor=False, is_active=True, commission_rate=0),
             dict(name="Sarah Johnson", email="sarah@email.com", phone="920-555-0002",
                  booth_number="A-12", monthly_rent=250, password=vendor_pw,
-                 role="vendor", is_vendor=False, is_active=True, commission_rate=0),
+                 role="vendor", is_vendor=True, is_active=True, commission_rate=0),
             dict(name="Mike Chen", email="mike@email.com", phone="920-555-0003",
                  booth_number="B-07", monthly_rent=300, password=vendor_pw,
-                 role="vendor", is_vendor=False, is_active=True, commission_rate=0),
+                 role="vendor", is_vendor=True, is_active=True, commission_rate=0),
             dict(name="Linda Martinez", email="linda@email.com", phone="920-555-0004",
                  booth_number="C-22", monthly_rent=200, password=vendor_pw,
-                 role="vendor", is_vendor=False, is_active=True, commission_rate=0),
-            dict(name="Cashier", email="cashier@bowenstreetmarket.com", phone="920-555-0005",
-                 booth_number="B-01", monthly_rent=0, password=cashier_pw,
-                 role="cashier", is_vendor=True, is_active=True, commission_rate=0),
+                 role="vendor", is_vendor=True, is_active=True, commission_rate=0),
             dict(name="Nora Williams", email="nora@email.com", phone="920-555-0006",
                  booth_number="D-01", monthly_rent=275, password=vendor_pw,
-                 role="admin", is_vendor=True, is_active=True, commission_rate=0),
+                 role="vendor", is_vendor=True, is_active=True, commission_rate=0),
             dict(name="Sammy Davis", email="sammy@email.com", phone="920-555-0007",
                  booth_number="D-05", monthly_rent=250, password=vendor_pw,
-                 role="admin", is_vendor=True, is_active=True, commission_rate=0),
+                 role="vendor", is_vendor=True, is_active=True, commission_rate=0),
             dict(name="Ashley Brown", email="ashley@email.com", phone="920-555-0008",
                  booth_number="E-02", monthly_rent=300, password=vendor_pw,
-                 role="admin", is_vendor=True, is_active=True, commission_rate=0),
+                 role="vendor", is_vendor=True, is_active=True, commission_rate=0),
             dict(name="Anne Taylor", email="anne@email.com", phone="920-555-0009",
                  booth_number="E-10", monthly_rent=225, password=vendor_pw,
-                 role="admin", is_vendor=True, is_active=True, commission_rate=0),
+                 role="vendor", is_vendor=True, is_active=True, commission_rate=0),
             dict(name="Paula Garcia", email="paula@email.com", phone="920-555-0010",
                  booth_number="F-03", monthly_rent=200, password=vendor_pw,
-                 role="vendor", is_vendor=False, is_active=True, commission_rate=0),
+                 role="vendor", is_vendor=True, is_active=True, commission_rate=0),
         ]
 
         async with AsyncSessionLocal() as session:
@@ -206,6 +206,31 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"BMM-POS: auto-seed FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("auto_seed_accounts", e)
+
+    # ── Fix leftover admin+vendor hybrid accounts ──
+    try:
+        async with AsyncSessionLocal() as session:
+            # Anyone with role=admin/cashier AND is_vendor=True should be role=vendor
+            result = await session.execute(
+                text("SELECT id, name, role FROM vendors WHERE role IN ('admin','cashier') AND is_vendor = true")
+            )
+            hybrids = result.fetchall()
+            if hybrids:
+                ids = [row[0] for row in hybrids]
+                names = [f"{row[1]} (was {row[2]})" for row in hybrids]
+                await session.execute(
+                    text("UPDATE vendors SET role = 'vendor' WHERE id = ANY(:ids)"),
+                    {"ids": ids},
+                )
+                await session.commit()
+                print(
+                    f"BMM-POS: fixed {len(ids)} hybrid accounts to vendor-only: {', '.join(names)}",
+                    file=sys.stderr, flush=True,
+                )
+        _record_startup_ok("fix_hybrid_accounts")
+    except Exception as e:
+        print(f"BMM-POS: fix hybrid accounts FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("fix_hybrid_accounts", e)
 
     startup_summary = _startup_health_payload()
     if startup_summary["startup_failure_count"]:
