@@ -82,6 +82,8 @@ class ShowcaseUpdate(BaseModel):
     landing_faq: Optional[str] = None
     show_facebook_feed: Optional[bool] = None
     show_instagram_feed: Optional[bool] = None
+    landing_template: Optional[str] = None
+    landing_theme: Optional[dict] = None
 
 class LandingSlugUpdate(BaseModel):
     slug: str
@@ -193,6 +195,8 @@ def _to_response(sc: BoothShowcase, item_count: int = 0) -> dict:
         "landing_faq": sc.landing_faq,
         "show_facebook_feed": sc.show_facebook_feed,
         "show_instagram_feed": sc.show_instagram_feed,
+        "landing_template": sc.landing_template or "classic",
+        "landing_theme": sc.landing_theme,
     }
 
 
@@ -241,6 +245,8 @@ async def get_my_showcase(
             "landing_etsy": None,
             "landing_meta_title": None,
             "landing_meta_desc": None,
+            "landing_template": "classic",
+            "landing_theme": None,
         }
 
     return _to_response(sc, item_count)
@@ -303,6 +309,12 @@ async def update_my_showcase(
         sc.show_facebook_feed = data.show_facebook_feed
     if data.show_instagram_feed is not None:
         sc.show_instagram_feed = data.show_instagram_feed
+
+    if data.landing_template is not None:
+        valid_templates = ("classic", "modern", "boutique", "minimal")
+        sc.landing_template = data.landing_template if data.landing_template in valid_templates else "classic"
+    if data.landing_theme is not None:
+        sc.landing_theme = data.landing_theme
 
     sc.updated_at = datetime.now(timezone.utc)
     await db.commit()
@@ -934,6 +946,8 @@ async def get_landing_page(
             "show_instagram_feed": sc.show_instagram_feed,
             "market_socials": market_socials,
             "market_name": settings.get("store_name", "Bowenstreet Market Mall"),
+            "landing_template": sc.landing_template or "classic",
+            "landing_theme": sc.landing_theme,
         }
     except HTTPException:
         raise
