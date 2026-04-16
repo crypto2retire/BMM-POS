@@ -118,6 +118,11 @@ async def run():
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS theme_preference VARCHAR(10) NOT NULL DEFAULT 'dark'",
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS font_size_preference VARCHAR(10) NOT NULL DEFAULT 'medium'",
             "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS sale_notify_preference VARCHAR(10) NOT NULL DEFAULT 'instant'",
+            # vendors — additional columns (previously only in lifespan)
+            "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS consignment_rate NUMERIC(5,4) NOT NULL DEFAULT 0.0000",
+            "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS security_deposit_amount NUMERIC(10,2) NOT NULL DEFAULT 0.00",
+            "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS security_deposit_balance NUMERIC(10,2) NOT NULL DEFAULT 0.00",
+            "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS landing_page_fee NUMERIC(10,2) NOT NULL DEFAULT 0.00",
             # items
             "ALTER TABLE items ADD COLUMN IF NOT EXISTS image_path VARCHAR(500)",
             "ALTER TABLE items ADD COLUMN IF NOT EXISTS is_consignment BOOLEAN NOT NULL DEFAULT false",
@@ -167,6 +172,9 @@ async def run():
             "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_etsy VARCHAR(300)",
             "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_meta_title VARCHAR(200)",
             "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_meta_desc VARCHAR(500)",
+            # booth_showcases landing page personalization
+            "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_template VARCHAR(50) NOT NULL DEFAULT 'classic'",
+            "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_theme JSONB",
         ]
         for sql in column_alters:
             await session.execute(text(sql))
@@ -266,12 +274,20 @@ async def run():
         print("BMM-POS migrate: item_variables + item_variants tables OK", flush=True)
 
         # ── Step 4: indexes ─────────────────────────────────────────────────
+        # Ensure pg_trgm extension exists (needed for trigram indexes)
+        await session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+
         index_statements = [
             "CREATE INDEX IF NOT EXISTS idx_poynt_payments_reference_id ON poynt_payments(reference_id)",
             "CREATE INDEX IF NOT EXISTS idx_poynt_payments_status ON poynt_payments(status)",
             "CREATE INDEX IF NOT EXISTS idx_eod_reports_date ON eod_reports(report_date)",
             # Storefront composite index (speeds up public shop queries)
             "CREATE INDEX IF NOT EXISTS idx_items_online_active ON items(status, is_online, quantity) WHERE status = 'active' AND is_online = true",
+            # Search performance indexes
+            "CREATE INDEX IF NOT EXISTS ix_items_name_trgm ON items USING gin (name gin_trgm_ops)",
+            "CREATE INDEX IF NOT EXISTS ix_items_sku_trgm ON items USING gin (sku gin_trgm_ops)",
+            "CREATE INDEX IF NOT EXISTS ix_items_status ON items (status)",
+            "CREATE INDEX IF NOT EXISTS ix_items_vendor_status ON items (vendor_id, status)",
         ]
         # These two use DO blocks to swallow "already exists" errors safely
         index_statements_do = [

@@ -61,6 +61,7 @@ async def lifespan(app: FastAPI):
 
     import app.models  # noqa: F401
 
+    # ── Light schema check (create_all is idempotent, only creates missing tables) ──
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -70,72 +71,17 @@ async def lifespan(app: FastAPI):
         print(f"BMM-POS: schema create_all FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("database_schema", e, critical=True)
 
+    # ── DB connectivity check ──
     try:
         async with AsyncSessionLocal() as session:
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "consignment_rate NUMERIC(5,4) NOT NULL DEFAULT 0.0000"
-            ))
-            await session.commit()
-        _record_startup_ok("add_consignment_rate_column")
+            await session.execute(text("SELECT 1"))
+        print("BMM-POS: database connection OK", file=sys.stderr, flush=True)
+        _record_startup_ok("database_connection")
     except Exception as e:
-        _record_startup_failure("add_consignment_rate_column", e)
+        print(f"BMM-POS: DATABASE CONNECTION FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("database_connection", e, critical=True)
 
-    try:
-        async with AsyncSessionLocal() as session:
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "security_deposit_amount NUMERIC(10,2) NOT NULL DEFAULT 0.00"
-            ))
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "security_deposit_balance NUMERIC(10,2) NOT NULL DEFAULT 0.00"
-            ))
-            await session.commit()
-        _record_startup_ok("add_security_deposit_columns")
-    except Exception as e:
-        _record_startup_failure("add_security_deposit_columns", e)
-
-    try:
-        async with AsyncSessionLocal() as session:
-            await session.execute(text(
-                "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS "
-                "landing_page_fee NUMERIC(10,2) NOT NULL DEFAULT 0.00"
-            ))
-            await session.commit()
-        _record_startup_ok("add_landing_page_fee_column")
-    except Exception as e:
-        _record_startup_failure("add_landing_page_fee_column", e)
-
-    # ── Landing page personalization columns ──
-    try:
-        async with AsyncSessionLocal() as session:
-            await session.execute(text(
-                "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS "
-                "landing_template VARCHAR(50) NOT NULL DEFAULT 'classic'"
-            ))
-            await session.execute(text(
-                "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS "
-                "landing_theme JSONB"
-            ))
-            await session.commit()
-        _record_startup_ok("add_landing_personalization_columns")
-    except Exception as e:
-        _record_startup_failure("add_landing_personalization_columns", e)
-
-    # ── Add search performance indexes ──
-    try:
-        async with AsyncSessionLocal() as session:
-            await session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_items_name_trgm ON items USING gin (name gin_trgm_ops)"))
-            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_items_sku_trgm ON items USING gin (sku gin_trgm_ops)"))
-            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_items_status ON items (status)"))
-            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_items_vendor_status ON items (vendor_id, status)"))
-            await session.commit()
-        _record_startup_ok("search_indexes")
-    except Exception as e:
-        _record_startup_failure("search_indexes", e)
-
+    # ── Vendor balances backfill ──
     try:
         async with AsyncSessionLocal() as session:
             result = await session.execute(text("""
@@ -157,15 +103,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"BMM-POS: vendor_balances backfill FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("vendor_balances_backfill", e)
-
-    try:
-        async with AsyncSessionLocal() as session:
-            await session.execute(text("SELECT 1"))
-        print("BMM-POS: database connection OK", file=sys.stderr, flush=True)
-        _record_startup_ok("database_connection")
-    except Exception as e:
-        print(f"BMM-POS: DATABASE CONNECTION FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
-        _record_startup_failure("database_connection", e, critical=True)
 
     try:
         from app.models.vendor import Vendor
