@@ -19,13 +19,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500;600;700&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
 <!-- Template CSS loaded dynamically -->
 <link id="template-css" rel="stylesheet" href="/static/css/landing-classic.css">
-<style id="theme-vars">
+<style id="landing-reset">
   /* Landing page reset — override main.css global styles */
   body.themed, body.themed * {
     background-image: none !important;
     background-attachment: scroll !important;
   }
 </style>
+<style id="theme-vars"></style>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
@@ -189,6 +190,39 @@
     background: var(--landing-background, #1A1A1C);
     color: var(--landing-text, #F5F5F0);
   }
+
+  .admin-debug-banner {
+    display: none;
+    margin: 0.75rem auto;
+    max-width: 1180px;
+    border: 1px dashed color-mix(in srgb, var(--landing-accent, #C9A96E) 50%, #111827 50%);
+    background: color-mix(in srgb, var(--landing-background, #FFFFFF) 90%, var(--landing-accent, #C9A96E) 10%);
+    color: var(--landing-text, #111827);
+    border-radius: 6px;
+    padding: 0.65rem 0.85rem;
+    font-size: 0.76rem;
+    line-height: 1.45;
+    position: relative;
+    z-index: 50;
+  }
+
+  .admin-debug-banner code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 0.72rem;
+    background: color-mix(in srgb, var(--landing-text, #111827) 8%, transparent);
+    padding: 0.05rem 0.2rem;
+    border-radius: 3px;
+  }
+
+  .admin-debug-banner .debug-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  .admin-debug-banner .debug-values {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
 </style>
 </head>
 <body class="no-theme">
@@ -204,6 +238,8 @@
     </button>
   </div>
 </nav>
+
+<div id="admin-debug-banner" class="admin-debug-banner" aria-live="polite"></div>
 
 <!-- 404 STATE -->
 <div id="not-found" class="not-found landing-not-found" style="display:none">
@@ -342,6 +378,7 @@
   var isLoading = false;
   var currentTemplate = 'classic';
   var currentTheme = null;
+  var isAdminViewer = false;
 
   // ── TEMPLATE & THEME ──
   function applyTemplateAndTheme(template, theme) {
@@ -422,8 +459,31 @@
     }
 
     loadTaxRate();
+    detectAdminViewer();
     loadLandingPage();
     bindEvents();
+  }
+
+  async function detectAdminViewer() {
+    var token = '';
+    try {
+      token = sessionStorage.getItem('bmm_token') || '';
+    } catch (_) {}
+
+    if (!token) return;
+
+    try {
+      var res = await fetch('/api/v1/auth/me', {
+        headers: { 'Authorization': 'Bearer ' + token },
+        cache: 'no-store'
+      });
+      if (!res.ok) return;
+      var me = await res.json();
+      isAdminViewer = !!(me && me.role === 'admin');
+      renderAdminDebugBanner();
+    } catch (_) {
+      isAdminViewer = false;
+    }
   }
 
   function loadCart() {
@@ -450,7 +510,10 @@
   // ── LANDING PAGE ──
   async function loadLandingPage() {
     try {
-      var res = await fetch(API_LANDING + encodeURIComponent(vendorSlug));
+      var res = await fetch(API_LANDING + encodeURIComponent(vendorSlug) + '?_=' + Date.now(), {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       if (res.status === 404) { show404(); return; }
       if (!res.ok) {
         var errData = await res.json().catch(function(){ return {}; });
@@ -484,6 +547,39 @@
     renderItems(vendorItems);
     renderCategoryFilters(vendorItems);
     updateCartUI();
+    renderAdminDebugBanner();
+  }
+
+  function renderAdminDebugBanner() {
+    var banner = document.getElementById('admin-debug-banner');
+    if (!banner) return;
+
+    if (!isAdminViewer || !vendorData) {
+      banner.style.display = 'none';
+      banner.innerHTML = '';
+      return;
+    }
+
+    var theme = vendorData.landing_theme || {};
+    var colors = theme.colors || {};
+    var values = {
+      slug: vendorSlug,
+      landing_template: vendorData.landing_template || 'classic',
+      colors: {
+        primary: colors.primary || null,
+        secondary: colors.secondary || null,
+        background: colors.background || null,
+        text: colors.text || null,
+        accent: colors.accent || null,
+        card_background: colors.card_background || null,
+      }
+    };
+
+    banner.style.display = 'block';
+    banner.innerHTML =
+      '<div class="debug-title">Admin Debug: live API payload snapshot</div>' +
+      '<div>Source: <code>/api/v1/booth-showcase/landing/' + escHtml(vendorSlug) + '</code></div>' +
+      '<div class="debug-values"><code>' + escHtml(JSON.stringify(values, null, 2)) + '</code></div>';
   }
 
   function normalizeItem(item) {

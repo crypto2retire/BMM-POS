@@ -476,7 +476,9 @@ async def vendor_landing_page(slug: str):
                 # 3. Inject CSS variables
                 html = html.replace(
                     '<style id="theme-vars"></style>',
-                    f'<style id="theme-vars">:root {{ {css_vars} }}</style>',
+                    f'<style id="theme-vars">:root {{ {css_vars} }}'
+                    'body.themed, body.themed * { background-image: none !important; background-attachment: scroll !important; }'
+                    '</style>',
                 )
 
                 # 4. Add inline styles on body to guarantee no FOUC
@@ -531,7 +533,15 @@ async def vendor_landing_page(slug: str):
     except Exception:
         logger.exception("vendor_landing_page: pre-render failed, serving unmodified")
 
-    return HTMLResponse(html, media_type="text/html")
+    return HTMLResponse(
+        html,
+        media_type="text/html",
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 @app.get("/shop/vendor/{vendor_id:int}")

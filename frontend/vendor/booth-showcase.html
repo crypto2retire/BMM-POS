@@ -1040,7 +1040,7 @@ function updateLandingLink() {
     var slug = showcase.landing_slug;
     var box = document.getElementById('landing-link-box');
     if (slug) {
-        var url = window.location.origin + '/vendor/' + slug;
+        var url = window.location.origin + '/' + slug;
         var link = document.getElementById('landing-link');
         link.href = url;
         link.textContent = 'bowenstreetmarket.com/' + slug;

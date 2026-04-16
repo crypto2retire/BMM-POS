@@ -2335,7 +2335,7 @@
         var token = sessionStorage.getItem('bmm_token');
         var template = document.getElementById('admin-edit-template').value;
         try {
-            var resp = await fetch('/api/v1/admin/booth-showcase/' + adminSelectedVendorId, {
+            var resp = await fetch('/api/v1/booth-showcase/admin/booth-showcase/' + adminSelectedVendorId, {
                 method: 'PUT',
                 headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ landing_template: template })
@@ -2360,7 +2360,7 @@
         if (!confirm('Toggle this vendor\'s landing page enabled/disabled?')) return;
         var token = sessionStorage.getItem('bmm_token');
         try {
-            var resp = await fetch('/api/v1/admin/booth-showcase/' + adminSelectedVendorId, {
+            var resp = await fetch('/api/v1/booth-showcase/admin/booth-showcase/' + adminSelectedVendorId, {
                 method: 'PUT',
                 headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
                 body: JSON.stringify({ toggle_landing_page: true })

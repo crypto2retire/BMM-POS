@@ -11,6 +11,7 @@ from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from PIL import Image
 from sqlalchemy import select, func
@@ -1237,7 +1238,7 @@ async def get_landing_page(
             fallback_cover = await _fallback_item_image_url(db, sc.vendor_id)
             valid_photo_urls = [fallback_cover] if fallback_cover else []
 
-        return {
+        payload = {
             "id": sc.id,
             "vendor_id": sc.vendor_id,
             "vendor_name": sc.vendor.name if sc.vendor else "",
@@ -1267,6 +1268,14 @@ async def get_landing_page(
             "landing_template": sc.landing_template or "classic",
             "landing_theme": sc.landing_theme,
         }
+        return JSONResponse(
+            content=payload,
+            headers={
+                "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
     except HTTPException:
         raise
     except Exception as e:
