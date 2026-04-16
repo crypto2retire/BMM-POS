@@ -1,5 +1,6 @@
 import io
 import os
+import json
 import uuid
 import logging
 from datetime import datetime
@@ -84,6 +85,205 @@ class ShowcaseUpdate(BaseModel):
     show_instagram_feed: Optional[bool] = None
     landing_template: Optional[str] = None
     landing_theme: Optional[dict] = None
+
+@router.post("/mine/ai-design")
+async def ai_design_endpoint(
+    data: AIDesignRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_vendor_booth_user),
+):
+    """LLM generates/updates landing theme + template from vendor conversation."""
+    result = await db.execute(
+        select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
+    )
+    sc = result.scalar_one_or_none()
+
+    from app.models.item import Item
+    items_result = await db.execute(
+        select(Item.name, Item.category).where(
+            Item.vendor_id == current_user.id, Item.status == "active"
+        ).limit(20)
+    )
+    items = items_result.fetchall()
+    item_summary = ", ".join([f"{r.name} ({r.category})" if r.category else r.name for r in items]) if items else "various items"
+
+    vendor_name = current_user.name
+    booth = current_user.booth_number or "their booth"
+    existing_title = sc.title if sc else None
+
+    current_theme_json = json.dumps(data.current_theme) if data.current_theme else "none"
+    current_template_str = data.current_template or "classic"
+
+    system_prompt = (
+        "You are a landing page design consultant for Bowenstreet Market, "
+        "a vintage and handcrafted marketplace in Oshkosh, Wisconsin. "
+        "You help vendors design their vendor page with colors, fonts, and layout templates.\n\n"
+        "AVAILABLE TEMPLATES:\n"
+        "- classic: Serif headings, full-width hero, grid items. Traditional market feel.\n"
+        "- modern: Sans-serif throughout, split hero (text left/image right), card items with shadows.\n"
+        "- boutique: Script/cursive headings, soft pastels, centered layout, elegant feel.\n"
+        "- minimal: Ultra-clean, no hero image (text + colors only), masonry items, lots of whitespace.\n\n"
+        "AVAILABLE HEADING FONTS: EB Garamond, Playfair Display, Lora, Roboto, Inter, Poppins, Montserrat, Great Vibes, Dancing Script, Pacifico\n"
+        "AVAILABLE BODY FONTS: Roboto, Inter, Poppins, Montserrat, EB Garamond, Playfair Display, Lora\n"
+        "HEADING WEIGHTS: 300, 400, 500, 600, 700\n"
+        "BODY WEIGHTS: 300, 400, 500\n\n"
+        "RESPONSE FORMAT: Always respond with a JSON object containing:\n"
+        '{\n'
+        '  "reply": "A friendly message to the vendor about the design choices (2-3 sentences)",\n'
+        '  "landing_theme": {\n'
+        '    "colors": {\n'
+        '      "primary": "#hexcolor",\n'
+        '      "secondary": "#hexcolor",\n'
+        '      "background": "#hexcolor",\n'
+        '      "text": "#hexcolor",\n'
+        '      "accent": "#hexcolor",\n'
+        '      "card_background": "#hexcolor"\n'
+        '    },\n'
+        '    "fonts": {\n'
+        '      "heading": "Font Name",\n'
+        '      "heading_weight": "500",\n'
+        '      "heading_style": "normal or italic",\n'
+        '      "body": "Font Name",\n'
+        '      "body_weight": "300"\n'
+        '    }\n'
+        '  },\n'
+        '  "landing_template": "classic|modern|boutique|minimal"\n'
+        '}\n\n'
+        "DESIGN GUIDELINES:\n"
+        "- If no theme exists yet, generate a complete design based on the vendor's message\n"
+        "- If a theme exists, refine it based on the vendor's request\n"
+        "- Keep contrast high: text on background must be readable\n"
+        "- Dark backgrounds need light text (#F5F5F0 or similar)\n"
+        "- Light backgrounds need dark text (#1A1A1C or similar)\n"
+        "- Primary color is the accent/brand color (buttons, links, highlights)\n"
+        "- Secondary color is used for headings, borders, and secondary elements\n"
+        "- Card background should differ slightly from page background\n"
+        "- Match font choices to template: classic/boutique use serif/script, modern/minimal use sans-serif\n"
+        "- For boutique template, always use Great Vibes or Dancing Script for headings\n"
+        "- For minimal template, keep fonts lightweight (300-400 weight)\n\n"
+        "VENDOR CONTEXT:\n"
+        f"Name: {vendor_name}. Booth: {booth}. Items: {item_summary}. "
+        f"Current title: {existing_title or 'none'}. "
+        f"Current template: {current_template_str}. Current theme: {current_theme_json}."
+    )
+
+    api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    if not api_key:
+        raise HTTPException(status_code=503, detail="AI assistant is not configured")
+
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": data.message},
+    ]
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "HTTP-Referer": "https://bowenstreetmarket.com",
+                    "X-Title": "Bowenstreet Market POS",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "google/gemini-2.0-flash-001",
+                    "max_tokens": 800,
+                    "messages": messages,
+                },
+            )
+    except (httpx.TimeoutException, httpx.RequestError):
+        raise HTTPException(status_code=504, detail="AI assistant timed out")
+
+    if not resp.is_success:
+        raise HTTPException(status_code=502, detail="AI assistant unavailable")
+
+    body = resp.json()
+    text = body.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+    if not text:
+        raise HTTPException(status_code=502, detail="AI returned empty response")
+
+    # Parse the JSON response
+    try:
+        # Strip markdown code fences if present
+        cleaned = text.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[1] if "\n" in cleaned else cleaned[3:]
+            if cleaned.endswith("```"):
+                cleaned = cleaned[:-3]
+            cleaned = cleaned.strip()
+        # Handle json prefix
+        if cleaned.startswith("json"):
+            cleaned = cleaned[4:].strip()
+
+        design_result = json.loads(cleaned)
+        landing_theme = design_result.get("landing_theme")
+        landing_template = design_result.get("landing_template")
+        reply = design_result.get("reply", "Here's your design!")
+
+        if landing_template and isinstance(landing_template, str):
+            valid_templates = ("classic", "modern", "boutique", "minimal")
+            landing_template = landing_template if landing_template in valid_templates else "classic"
+        else:
+            landing_template = "classic"
+
+        # Validate theme structure
+        if not isinstance(landing_theme, dict):
+            landing_theme = None
+
+        if landing_theme:
+            colors = landing_theme.get("colors", {})
+            fonts = landing_theme.get("fonts", {})
+            landing_theme = {
+                "colors": {
+                    "primary": str(colors.get("primary", "#C9A96E")),
+                    "secondary": str(colors.get("secondary", "#38383B")),
+                    "background": str(colors.get("background", "#1A1A1C")),
+                    "text": str(colors.get("text", "#F5F5F0")),
+                    "accent": str(colors.get("accent", colors.get("primary", "#C9A96E"))),
+                    "card_background": str(colors.get("card_background", "#2A2A2C")),
+                },
+                "fonts": {
+                    "heading": str(fonts.get("heading", "EB Garamond")),
+                    "heading_weight": str(fonts.get("heading_weight", "500")),
+                    "heading_style": str(fonts.get("heading_style", "normal")),
+                    "body": str(fonts.get("body", "Roboto")),
+                    "body_weight": str(fonts.get("body_weight", "300")),
+                },
+            }
+
+        # Save to database
+        if not sc:
+            sc = BoothShowcase(vendor_id=current_user.id)
+            db.add(sc)
+            await db.flush()
+
+        if landing_theme:
+            sc.landing_theme = landing_theme
+        sc.landing_template = landing_template
+        sc.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(sc)
+
+        from app.models.item import Item
+        count_result = await db.execute(
+            select(func.count()).select_from(Item).where(
+                Item.vendor_id == current_user.id, Item.status == "active"
+            )
+        )
+        item_count = count_result.scalar() or 0
+
+        return {
+            "reply": reply,
+            "landing_template": sc.landing_template,
+            "landing_theme": sc.landing_theme,
+            "showcase": _to_response(sc, item_count),
+        }
+
+    except json.JSONDecodeError:
+        # If LLM didn't return valid JSON, return raw text
+        return {"reply": text, "landing_template": None, "landing_theme": None, "showcase": None}
+
 
 class LandingSlugUpdate(BaseModel):
     slug: str
