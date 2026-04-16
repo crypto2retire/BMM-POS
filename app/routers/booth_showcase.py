@@ -942,6 +942,117 @@ async def update_landing_slug(
     return _to_response(sc, item_count)
 
 
+@router.get("/landing/vendor/{vendor_id}")
+async def get_landing_page_by_vendor_id(
+    vendor_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    """Admin endpoint: get a vendor's landing page data by vendor ID."""
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier only")
+
+    result = await db.execute(
+        select(BoothShowcase).where(BoothShowcase.vendor_id == vendor_id)
+    )
+    sc = result.scalar_one_or_none()
+
+    vendor_result = await db.execute(
+        select(Vendor).where(Vendor.id == vendor_id)
+    )
+    vendor = vendor_result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    if not sc:
+        return {
+            "vendor_id": vendor_id,
+            "vendor_name": vendor.name,
+            "booth_number": vendor.booth_number,
+            "landing_page_enabled": False,
+            "landing_slug": None,
+            "landing_template": "classic",
+            "landing_theme": None,
+            "is_published": False,
+        }
+
+    from app.models.item import Item
+    count_result = await db.execute(
+        select(func.count()).select_from(Item).where(
+            Item.vendor_id == sc.vendor_id, Item.status == "active"
+        )
+    )
+    item_count = count_result.scalar() or 0
+
+    return {
+        "vendor_id": vendor_id,
+        "vendor_name": vendor.name,
+        "booth_number": vendor.booth_number,
+        "landing_page_enabled": sc.landing_page_enabled,
+        "landing_slug": sc.landing_slug,
+        "landing_template": sc.landing_template or "classic",
+        "landing_theme": sc.landing_theme,
+        "is_published": sc.is_published,
+        **_to_response(sc, item_count),
+    }
+
+
+@router.put("/admin/booth-showcase/{vendor_id}")
+async def admin_update_showcase(
+    vendor_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+    landing_template: Optional[str] = Body(None),
+    landing_theme: Optional[dict] = Body(None),
+    toggle_landing_page: Optional[bool] = Body(None),
+):
+    """Admin endpoint: update a vendor's showcase settings."""
+    if current_user.role not in ("admin", "cashier"):
+        raise HTTPException(status_code=403, detail="Admin or cashier only")
+
+    vendor_result = await db.execute(
+        select(Vendor).where(Vendor.id == vendor_id)
+    )
+    vendor = vendor_result.scalar_one_or_none()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    result = await db.execute(
+        select(BoothShowcase).where(BoothShowcase.vendor_id == vendor_id)
+    )
+    sc = result.scalar_one_or_none()
+    if not sc:
+        sc = BoothShowcase(vendor_id=vendor_id)
+        db.add(sc)
+        await db.flush()
+
+    result_data = {}
+
+    if landing_template is not None:
+        valid_templates = ("classic", "modern", "boutique", "minimal")
+        sc.landing_template = landing_template if landing_template in valid_templates else "classic"
+        result_data["landing_template"] = sc.landing_template
+
+    if landing_theme is not None:
+        sc.landing_theme = landing_theme
+        result_data["landing_theme"] = sc.landing_theme
+
+    if toggle_landing_page:
+        enabling = not sc.landing_page_enabled
+        sc.landing_page_enabled = enabling
+        LANDING_PAGE_FEE = Decimal("10.00")
+        vendor.landing_page_fee = LANDING_PAGE_FEE if enabling else Decimal("0.00")
+        result_data["landing_page_enabled"] = sc.landing_page_enabled
+        result_data["landing_page_fee"] = float(vendor.landing_page_fee)
+
+    sc.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(sc)
+    await db.refresh(vendor)
+
+    return result_data
+
+
 @router.post("/admin/landing-page/{vendor_id}")
 async def admin_toggle_landing_page(
     vendor_id: int,

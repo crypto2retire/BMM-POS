@@ -1110,6 +1110,60 @@
 
     </div><!-- #tab-dashboard -->
 
+    <!-- ── VENDOR LANDING PAGE PREVIEW ── -->
+    <div class="section admin-only-dash" id="vendor-landing-preview-section">
+        <div class="section-header">
+            <h2 class="section-title">Vendor Landing Pages</h2>
+        </div>
+        <div class="card">
+            <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem">
+                Preview and edit vendor landing pages. Search for a vendor and select one to see their live page design.
+            </p>
+            <div style="display:flex;gap:0.5rem;margin-bottom:1rem;flex-wrap:wrap">
+                <input type="text" id="admin-vendor-search" placeholder="Search vendors..." style="flex:1;min-width:200px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.7rem;font-size:0.85rem;font-family:'Roboto',sans-serif" oninput="adminSearchVendorsLanding()">
+                <select id="admin-vendor-select" style="min-width:200px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.5rem;font-size:0.85rem;font-family:'Roboto',sans-serif" onchange="adminLoadVendorLanding()">
+                    <option value="">Select a vendor...</option>
+                </select>
+            </div>
+
+            <!-- Vendor landing info -->
+            <div id="admin-landing-info" style="display:none;margin-bottom:1rem;padding:0.75rem;background:var(--bg);border:1px solid var(--border);border-radius:6px">
+                <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+                    <div>
+                        <div style="font-size:0.9rem;color:var(--text);font-weight:500" id="admin-landing-vendor-name"></div>
+                        <div style="font-size:0.78rem;color:var(--text-light)" id="admin-landing-vendor-booth"></div>
+                    </div>
+                    <div style="display:flex;gap:0.5rem;align-items:center">
+                        <span style="font-size:0.72rem;color:var(--text-light)" id="admin-landing-template-badge"></span>
+                        <span style="font-size:0.72rem;color:var(--text-light)" id="admin-landing-slug-link"></span>
+                        <a id="admin-landing-preview-link" href="#" target="_blank" class="btn btn-sm" style="font-size:0.72rem;text-decoration:none">Open Live Page ↗</a>
+                    </div>
+                </div>
+                <div style="display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap">
+                    <label style="font-size:0.7rem;color:var(--text-light);display:flex;align-items:center;gap:0.3rem;cursor:pointer">
+                        Template:
+                        <select id="admin-edit-template" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.2rem 0.3rem;font-size:0.75rem;font-family:'Roboto',sans-serif">
+                            <option value="classic">Classic</option>
+                            <option value="modern">Modern</option>
+                            <option value="boutique">Boutique</option>
+                            <option value="minimal">Minimal</option>
+                        </select>
+                    </label>
+                    <button class="btn btn-primary btn-sm" style="font-size:0.72rem;padding:0.3rem 0.6rem" onclick="adminSaveVendorDesign()">Save Template</button>
+                    <button class="btn btn-sm" style="font-size:0.72rem;padding:0.3rem 0.6rem" onclick="adminToggleVendorLanding()">Toggle Landing Page</button>
+                </div>
+            </div>
+
+            <!-- Preview iframe -->
+            <div id="admin-landing-preview-wrap" style="display:none;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg)">
+                <iframe id="admin-landing-preview" style="width:100%;height:600px;border:none" src="about:blank"></iframe>
+            </div>
+            <div id="admin-landing-no-data" style="text-align:center;padding:2rem;color:var(--text-light);font-size:0.82rem">
+                Select a vendor above to preview their landing page
+            </div>
+        </div>
+    </div>
+
     <div id="tab-rent-payouts" style="display:none">
 
         <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:0.95rem;color:var(--text-light);margin-bottom:1rem" id="rp-month-label"></div>
@@ -2180,6 +2234,151 @@
         if (ov) ov.style.display = 'flex';
     }
     window.openRentFromLedger = openRentFromLedger;
+
+    // ── ADMIN VENDOR LANDING PREVIEW ──
+    var adminVendorList = [];
+    var adminSelectedVendorId = null;
+    var adminSelectedVendorData = null;
+    var adminVendorSearchTimer = null;
+
+    async function adminSearchVendorsLanding() {
+        clearTimeout(adminVendorSearchTimer);
+        adminVendorSearchTimer = setTimeout(async function() {
+            var query = document.getElementById('admin-vendor-search').value.trim();
+            if (query.length < 2) return;
+            try {
+                var token = sessionStorage.getItem('bmm_token');
+                var resp = await fetch('/api/v1/vendors?search=' + encodeURIComponent(query) + '&limit=20', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!resp.ok) return;
+                var data = await resp.json();
+                adminVendorList = data.vendors || [];
+                var select = document.getElementById('admin-vendor-select');
+                select.innerHTML = '<option value="">Select a vendor...</option>';
+                adminVendorList.forEach(function(v) {
+                    var opt = document.createElement('option');
+                    opt.value = v.id;
+                    opt.textContent = (v.booth_number ? 'Booth ' + v.booth_number + ' — ' : '') + v.name + (v.email ? ' (' + v.email + ')' : '');
+                    select.appendChild(opt);
+                });
+            } catch (e) { console.error(e); }
+        }, 300);
+    }
+
+    async function adminLoadVendorLanding() {
+        var select = document.getElementById('admin-vendor-select');
+        var vid = select.value;
+        adminSelectedVendorId = vid ? parseInt(vid, 10) : null;
+
+        if (!adminSelectedVendorId) {
+            document.getElementById('admin-landing-info').style.display = 'none';
+            document.getElementById('admin-landing-preview-wrap').style.display = 'none';
+            document.getElementById('admin-landing-no-data').style.display = 'block';
+            return;
+        }
+
+        var vendor = adminVendorList.find(function(v) { return v.id === adminSelectedVendorId; });
+        if (!vendor) return;
+        document.getElementById('admin-landing-vendor-name').textContent = vendor.name;
+        document.getElementById('admin-landing-vendor-booth').textContent = vendor.booth_number ? 'Booth ' + vendor.booth_number : '';
+
+        try {
+            var token = sessionStorage.getItem('bmm_token');
+            // Get showcase data
+            var resp = await fetch('/api/v1/booth-showcase/landing/vendor/' + adminSelectedVendorId, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (!resp.ok) {
+                document.getElementById('admin-landing-info').style.display = 'block';
+                document.getElementById('admin-landing-preview-wrap').style.display = 'none';
+                document.getElementById('admin-landing-no-data').style.display = 'block';
+                document.getElementById('admin-landing-no-data').textContent = 'No landing page data found for this vendor.';
+                document.getElementById('admin-landing-template-badge').textContent = '';
+                document.getElementById('admin-landing-slug-link').textContent = '';
+                document.getElementById('admin-landing-preview-link').style.display = 'none';
+                return;
+            }
+            adminSelectedVendorData = await resp.json();
+
+            var template = adminSelectedVendorData.landing_template || 'classic';
+            var theme = adminSelectedVendorData.landing_theme;
+            var slug = adminSelectedVendorData.landing_slug;
+
+            document.getElementById('admin-edit-template').value = template;
+            document.getElementById('admin-landing-template-badge').textContent = 'Template: ' + template;
+            document.getElementById('admin-landing-info').style.display = 'block';
+            document.getElementById('admin-landing-no-data').style.display = 'none';
+
+            if (slug) {
+                var url = window.location.origin + '/v/' + slug;
+                document.getElementById('admin-landing-slug-link').innerHTML = '<a href="' + url + '" target="_blank" style="color:var(--accent);text-decoration:none;font-size:0.72rem">' + slug + '</a>';
+                document.getElementById('admin-landing-preview-link').href = url;
+                document.getElementById('admin-landing-preview-link').style.display = 'inline-block';
+            } else {
+                document.getElementById('admin-landing-slug-link').textContent = 'No URL slug set';
+                document.getElementById('admin-landing-preview-link').style.display = 'none';
+            }
+
+            // Load preview iframe
+            var previewUrl = slug ? '/v/' + slug : 'about:blank';
+            document.getElementById('admin-landing-preview-wrap').style.display = 'block';
+            document.getElementById('admin-landing-preview').src = previewUrl;
+        } catch (e) {
+            console.error(e);
+            document.getElementById('admin-landing-no-data').textContent = 'Error loading landing page data.';
+        }
+    }
+
+    async function adminSaveVendorDesign() {
+        if (!adminSelectedVendorId) return;
+        var token = sessionStorage.getItem('bmm_token');
+        var template = document.getElementById('admin-edit-template').value;
+        try {
+            var resp = await fetch('/api/v1/admin/booth-showcase/' + adminSelectedVendorId, {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ landing_template: template })
+            });
+            if (!resp.ok) {
+                var data = await resp.json().catch(function(){ return {}; });
+                throw new Error(data.detail || 'Failed to save');
+            }
+            document.getElementById('admin-landing-template-badge').textContent = 'Template: ' + template;
+            if (typeof showAlert === 'function') showAlert('alert-container', 'Template updated!', 'success');
+            // Refresh preview
+            if (adminSelectedVendorData && adminSelectedVendorData.landing_slug) {
+                document.getElementById('admin-landing-preview').src = '/v/' + adminSelectedVendorData.landing_slug + '?t=' + Date.now();
+            }
+        } catch (e) {
+            if (typeof showAlert === 'function') showAlert('alert-container', e.message, 'error');
+        }
+    }
+
+    async function adminToggleVendorLanding() {
+        if (!adminSelectedVendorId) return;
+        if (!confirm('Toggle this vendor\'s landing page enabled/disabled?')) return;
+        var token = sessionStorage.getItem('bmm_token');
+        try {
+            var resp = await fetch('/api/v1/admin/booth-showcase/' + adminSelectedVendorId, {
+                method: 'PUT',
+                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ toggle_landing_page: true })
+            });
+            if (!resp.ok) {
+                var data = await resp.json().catch(function(){ return {}; });
+                throw new Error(data.detail || 'Failed to toggle');
+            }
+            if (typeof showAlert === 'function') showAlert('alert-container', 'Landing page toggled!', 'success');
+        } catch (e) {
+            if (typeof showAlert === 'function') showAlert('alert-container', e.message, 'error');
+        }
+    }
+
+    window.adminSearchVendorsLanding = adminSearchVendorsLanding;
+    window.adminLoadVendorLanding = adminLoadVendorLanding;
+    window.adminSaveVendorDesign = adminSaveVendorDesign;
+    window.adminToggleVendorLanding = adminToggleVendorLanding;
 
     async function confirmVendorPick() {
         var sel = document.getElementById('rp-pick-vendor');
