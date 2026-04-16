@@ -380,6 +380,7 @@
   var currentTheme = null;
   var isAdminViewer = false;
   var debugOverride = false;
+  var isPreviewMode = false;
 
   // ── TEMPLATE & THEME ──
   function applyTemplateAndTheme(template, theme, themeVersion) {
@@ -451,6 +452,16 @@
 
   // ── INIT ──
   function init() {
+    var params = new URLSearchParams(window.location.search || '');
+    isPreviewMode = params.get('preview') === '1';
+
+    if (isPreviewMode) {
+      vendorSlug = params.get('slug') || 'preview';
+      setupPreviewBridge();
+      bindEvents();
+      return;
+    }
+
     var path = window.location.pathname;
     var parts = path.split('/');
     vendorSlug = parts[parts.length - 1] || parts[parts.length - 2];
@@ -460,17 +471,72 @@
       return;
     }
 
-    try {
-      var params = new URLSearchParams(window.location.search || '');
-      debugOverride = params.get('debug') === '1';
-    } catch (_) {
-      debugOverride = false;
-    }
+    debugOverride = params.get('debug') === '1';
 
     loadTaxRate();
     detectAdminViewer();
     loadLandingPage();
     bindEvents();
+  }
+
+  function setupPreviewBridge() {
+    document.body.classList.remove('no-theme');
+    document.body.classList.add('themed');
+    window.addEventListener('message', function (event) {
+      if (event.origin !== window.location.origin) return;
+      var data = event.data || {};
+      if (data.type !== 'landing-preview-update' || !data.payload) return;
+      applyPreviewPayload(data.payload);
+    });
+  }
+
+  function applyPreviewPayload(payload) {
+    vendorData = {
+      vendor_name: payload.vendor_name || 'Vendor',
+      booth_number: payload.booth_number || '',
+      title: payload.title || null,
+      description: payload.description || null,
+      landing_about: payload.landing_about || null,
+      photo_urls: Array.isArray(payload.photo_urls) ? payload.photo_urls : [],
+      item_count: Number(payload.item_count || 0),
+      items: Array.isArray(payload.items) ? payload.items : [],
+      landing_contact_email: payload.landing_contact_email || null,
+      landing_contact_phone: payload.landing_contact_phone || null,
+      landing_website: payload.landing_website || null,
+      landing_facebook: payload.landing_facebook || null,
+      landing_instagram: payload.landing_instagram || null,
+      landing_tiktok: payload.landing_tiktok || null,
+      landing_twitter: payload.landing_twitter || null,
+      landing_etsy: payload.landing_etsy || null,
+      landing_meta_title: payload.landing_meta_title || null,
+      landing_meta_desc: payload.landing_meta_desc || null,
+      landing_faq: payload.landing_faq || null,
+      show_facebook_feed: !!payload.show_facebook_feed,
+      show_instagram_feed: !!payload.show_instagram_feed,
+      market_socials: payload.market_socials || {},
+      market_name: payload.market_name || 'Bowenstreet Market',
+      landing_template: payload.landing_template || 'classic',
+      landing_theme: payload.landing_theme || null,
+      updated_at: payload.updated_at || null,
+    };
+
+    document.getElementById('not-found').style.display = 'none';
+    document.getElementById('vendor-content').style.display = 'block';
+    clearRenderState();
+
+    applyTemplateAndTheme(vendorData.landing_template, vendorData.landing_theme, vendorData.updated_at || Date.now());
+    renderHero();
+    renderAbout();
+    renderPhotos();
+    renderSEO();
+    renderFooterSocials();
+    renderFaq();
+    renderSocialFeeds();
+
+    vendorItems = (vendorData.items || []).map(normalizeItem);
+    renderItems(vendorItems);
+    renderCategoryFilters(vendorItems);
+    updateCartUI();
   }
 
   async function detectAdminViewer() {
@@ -540,6 +606,7 @@
 
     document.getElementById('not-found').style.display = 'none';
     document.getElementById('vendor-content').style.display = 'block';
+    clearRenderState();
 
     // Apply template and theme BEFORE rendering
     applyTemplateAndTheme(vendorData.landing_template, vendorData.landing_theme, vendorData.updated_at);
@@ -653,6 +720,8 @@
     document.getElementById('hero-booth').textContent = vendorData.booth_number ? 'Booth ' + vendorData.booth_number : '';
     if (!vendorData.booth_number) {
       document.getElementById('hero-booth').style.display = 'none';
+    } else {
+      document.getElementById('hero-booth').style.display = '';
     }
   }
 
@@ -1082,6 +1151,18 @@
   }
 
   // ── UTILS ──
+  function clearRenderState() {
+    document.getElementById('about-section').style.display = 'none';
+    document.getElementById('photo-gallery').style.display = 'none';
+    document.getElementById('faq-section').style.display = 'none';
+    document.getElementById('social-feeds-section').style.display = 'none';
+    document.getElementById('social-links').innerHTML = '';
+    document.getElementById('contact-info').innerHTML = '';
+    document.getElementById('photo-scroll').innerHTML = '';
+    document.getElementById('faq-container').innerHTML = '';
+    document.getElementById('social-feeds-grid').innerHTML = '';
+  }
+
   function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
   function escAttr(s) { return (s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;'); }
 
