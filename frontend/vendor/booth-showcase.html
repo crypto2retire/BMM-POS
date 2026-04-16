@@ -101,7 +101,6 @@
             background: var(--surface);
             border: 1px solid var(--border);
             margin-bottom: 1rem;
-            contain: layout;
         }
         /* ── Tab bar ── */
         .booth-tabs {
@@ -153,7 +152,6 @@
             width: 44px;
             height: 24px;
             flex-shrink: 0;
-            isolation: isolate;
         }
         .publish-toggle .toggle-switch input {
             opacity: 0;
@@ -255,12 +253,6 @@
         <div id="booth-badge" class="booth-number-badge" style="display:none"></div>
     </div>
 
-    <!-- Tab bar -->
-    <div class="booth-tabs">
-        <button class="booth-tab active" onclick="switchTab('booth-highlight')" id="tab-booth-highlight">🎪 Booth Highlight</button>
-        <button class="booth-tab" onclick="switchTab('landing-page')" id="tab-landing-page">🌐 Landing Page</button>
-    </div>
-
     <div id="alert-container"></div>
     <div id="stale-banner" class="stale-banner" style="display:none">
         <span>&#9888;</span>
@@ -268,9 +260,9 @@
     </div>
 
     <!-- ═══════════════════════════════════════════ -->
-    <!-- TAB 1: BOOTH HIGHLIGHT -->
+    <!-- BOOTH HIGHLIGHT (shown when no landing page) -->
     <!-- ═══════════════════════════════════════════ -->
-    <div class="booth-tab-panel active" id="panel-booth-highlight">
+    <div id="section-booth-highlight">
 
     <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1.25rem;line-height:1.6">
         Showcase your booth to customers browsing our website. Add photos or a short video of your booth,
@@ -349,12 +341,12 @@
         <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/webm" style="display:none" onchange="uploadVideo(this.files[0])">
     </div>
 
-    </div><!-- /panel-booth-highlight -->
+    </div><!-- /section-booth-highlight -->
 
     <!-- ═══════════════════════════════════════════ -->
-    <!-- TAB 2: LANDING PAGE -->
+    <!-- LANDING PAGE (shown when enabled) -->
     <!-- ═══════════════════════════════════════════ -->
-    <div class="booth-tab-panel" id="panel-landing-page">
+    <div id="section-landing-page" style="display:none">
 
     <div id="landing-section">
         <div style="margin:1.5rem 0 0.5rem;display:flex;align-items:center;gap:0.5rem">
@@ -670,7 +662,7 @@
                     <button class="btn btn-sm" onclick="closeAIDesign()" style="background:transparent;border:1px solid var(--border);color:var(--text-light)">Close</button>
                 </div>
             </div>
-    </div><!-- /panel-landing-page -->
+    </div><!-- /section-landing-page -->
 
 </div>
 
@@ -988,14 +980,22 @@ async function aiWriteBooth(action) {
 }
 
 function renderLandingSection() {
-    var section = document.getElementById('landing-section');
-    section.style.display = '';
+    var boothSection = document.getElementById('section-booth-highlight');
+    var landingSection = document.getElementById('section-landing-page');
 
     if (!showcase.landing_page_enabled) {
-        document.getElementById('landing-disabled-msg').style.display = 'block';
-        document.getElementById('landing-editor').style.display = 'none';
+        // No landing page — show booth highlight, hide landing page
+        boothSection.style.display = '';
+        landingSection.style.display = 'none';
         return;
     }
+
+    // Landing page is enabled — show landing page setup, hide booth highlight
+    boothSection.style.display = 'none';
+    landingSection.style.display = '';
+
+    var inner = document.getElementById('landing-section');
+    inner.style.display = '';
 
     document.getElementById('landing-disabled-msg').style.display = 'none';
     document.getElementById('landing-editor').style.display = 'block';
@@ -1019,9 +1019,8 @@ function renderLandingSection() {
     updateMetaDescCount();
     updateLandingLink();
     updateAboutImproveBtn();
-    // Defer preview — iframe won't render at 0 height when panel is hidden.
-    // switchTab('landing-page') will call updatePreviewTheme() when visible.
-    _pendingDesignLoad = true;
+    updateLandingLink();
+    loadDesignFromShowcase();
 }
 
 function updateAboutCount() {
@@ -1460,37 +1459,6 @@ function loadDesignFromShowcase() {
     }
     updatePreviewTheme();
 }
-
-// ── TAB SWITCHING ──
-function switchTab(tabId) {
-    document.querySelectorAll('.booth-tab').forEach(function(t) { t.classList.remove('active'); });
-    document.querySelectorAll('.booth-tab-panel').forEach(function(p) { p.classList.remove('active'); });
-    var tab = document.getElementById('tab-' + tabId);
-    var panel = document.getElementById('panel-' + tabId);
-    if (tab) tab.classList.add('active');
-    if (panel) panel.classList.add('active');
-    // Update URL hash without scroll jump
-    history.replaceState(null, '', '#' + tabId);
-    // Render preview iframe only when landing tab becomes visible
-    if (tabId === 'landing-page') {
-        setTimeout(function() {
-            if (window._pendingDesignLoad) {
-                window._pendingDesignLoad = false;
-                loadDesignFromShowcase();
-            } else {
-                updatePreviewTheme();
-            }
-        }, 50);
-    }
-}
-
-// Support direct link via hash (#landing-page)
-(function() {
-    var hash = window.location.hash.replace('#', '');
-    if (hash === 'landing-page' || hash === 'landing') {
-        switchTab('landing-page');
-    }
-})();
 
 loadShowcase();
 </script>
