@@ -10,7 +10,8 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, PlainTextResponse, Response, FileResponse, HTMLResponse
 from pathlib import Path
-from sqlalchemy import text
+from sqlalchemy import text, select
+from fastapi import Depends
 
 logger = logging.getLogger("bmm-startup")
 _startup_checks: list[dict] = []
@@ -382,6 +383,24 @@ async def sitemap_xml():
     return Response(content=xml, media_type="application/xml")
 
 
+def _mix_hex(fg: str, bg: str, opacity: float) -> str:
+    """Mix two hex colors, returning a hex string."""
+    try:
+        fg = fg.lstrip("#")
+        bg = bg.lstrip("#")
+        if len(fg) == 3:
+            fg = fg[0] * 2 + fg[1] * 2 + fg[2] * 2
+        if len(bg) == 3:
+            bg = bg[0] * 2 + bg[1] * 2 + bg[2] * 2
+        fn, bn = int(fg, 16), int(bg, 16)
+        r = round(((fn >> 16) & 255) * opacity + ((bn >> 16) & 255) * (1 - opacity))
+        g = round(((fn >> 8) & 255) * opacity + ((bn >> 8) & 255) * (1 - opacity))
+        b = round((fn & 255) * opacity + (bn & 255) * (1 - opacity))
+        return f"#{r:02x}{g:02x}{b:02x}"
+    except Exception:
+        return fg
+
+
 @app.get("/{slug}")
 async def vendor_landing_page(slug: str):
     # Root-level vendor landing pages: bowenstreetmarket.com/{vendor-name}
@@ -393,9 +412,126 @@ async def vendor_landing_page(slug: str):
     if slug in _reserved:
         raise HTTPException(status_code=404)
     page = Path("frontend/shop/vendor-page.html")
-    if page.exists():
-        return FileResponse(page, media_type="text/html")
-    return HTMLResponse("<h1>Page not found</h1>", status_code=404)
+    if not page.exists():
+        return HTMLResponse("<h1>Page not found</h1>", status_code=404)
+
+    html = page.read_text(encoding="utf-8")
+
+    # ── Server-side theme pre-render ──
+    # Fetch showcase + vendor in one shot to avoid extra queries
+    try:
+        from app.database import get_db as _get_db
+        from app.models.booth_showcase import BoothShowcase
+        from html import escape as _html_esc
+
+        async for db in _get_db():
+            result = await db.execute(
+                select(BoothShowcase)
+                .where(
+                    BoothShowcase.landing_slug == slug,
+                    BoothShowcase.landing_page_enabled == True,
+                )
+            )
+            sc = result.scalar_one_or_none()
+
+            if sc and sc.landing_theme:
+                theme = sc.landing_theme
+                template = sc.landing_template or "classic"
+                c = theme.get("colors", {})
+                f = theme.get("fonts", {})
+                text_c = c.get("text", "#111827")
+                bg_c = c.get("background", "#F9FAFB")
+                primary = c.get("primary", "#2563EB")
+                secondary = c.get("secondary", "#64748B")
+                card_bg = c.get("card_background", "#FFFFFF")
+                accent = c.get("accent", primary)
+
+                border_c = _mix_hex(text_c, bg_c, 0.15)
+
+                css_vars = (
+                    f"--landing-primary: {primary};"
+                    f"--landing-secondary: {secondary};"
+                    f"--landing-background: {bg_c};"
+                    f"--landing-text: {text_c};"
+                    f"--landing-accent: {accent};"
+                    f"--landing-card-bg: {card_bg};"
+                    f"--landing-bg-dark: {bg_c};"
+                    f"--landing-border: {border_c};"
+                    f"--landing-heading-font: '{f.get('heading', 'Inter')}', serif;"
+                    f"--landing-heading-weight: {f.get('heading_weight', '600')};"
+                    f"--landing-heading-style: {f.get('heading_style', 'normal')};"
+                    f"--landing-body-font: '{f.get('body', 'Inter')}', sans-serif;"
+                    f"--landing-body-weight: {f.get('body_weight', '400')};"
+                )
+
+                # 1. Swap body class
+                html = html.replace('class="no-theme"', 'class="themed"')
+
+                # 2. Swap template CSS link
+                html = html.replace(
+                    'href="/static/css/landing-classic.css"',
+                    f'href="/static/css/landing-{template}.css"',
+                )
+
+                # 3. Inject CSS variables
+                html = html.replace(
+                    '<style id="theme-vars"></style>',
+                    f'<style id="theme-vars">:root {{ {css_vars} }}</style>',
+                )
+
+                # 4. Add inline styles on body to guarantee no FOUC
+                html = html.replace(
+                    '<body class="themed">',
+                    f'<body class="themed" style="background:{bg_c};color:{text_c}">',
+                )
+
+                # 5. Pre-render SEO meta tags
+                vendor_name = sc.vendor.name if sc.vendor else "Vendor"
+                title = sc.landing_meta_title or f"{vendor_name} — Bowenstreet Market"
+                desc = (
+                    sc.landing_meta_desc
+                    or f"Shop {vendor_name} at Bowenstreet Market in Oshkosh, WI."
+                )
+                photos = sc.photo_urls or []
+
+                title_esc = _html_esc(title, quote=True)
+                desc_esc = _html_esc(desc, quote=True)
+
+                html = html.replace(
+                    '<title id="page-title">Vendor — Bowenstreet Market</title>',
+                    f'<title id="page-title">{title_esc}</title>',
+                )
+                html = html.replace(
+                    'name="description" content="Visit this vendor\'s booth at Bowenstreet Market — handcrafted, vintage, and antique goods in Oshkosh, Wisconsin."',
+                    f'name="description" content="{desc_esc}"',
+                )
+                html = html.replace(
+                    'property="og:title" content="Vendor — Bowenstreet Market"',
+                    f'property="og:title" content="{title_esc}"',
+                )
+                html = html.replace(
+                    'property="og:description" content="Visit this vendor\'s booth at Bowenstreet Market."',
+                    f'property="og:description" content="{desc_esc}"',
+                )
+                html = html.replace(
+                    'property="og:url" content=""',
+                    f'property="og:url" content="https://www.bowenstreetmarket.com/{slug}"',
+                )
+                if photos:
+                    html = html.replace(
+                        'property="og:image" content=""',
+                        f'property="og:image" content="{photos[0]}"',
+                    )
+                html = html.replace(
+                    '<link rel="canonical" href="">',
+                    f'<link rel="canonical" href="https://www.bowenstreetmarket.com/{slug}">',
+                )
+
+            break  # only need one db session
+    except Exception:
+        logger.exception("vendor_landing_page: pre-render failed, serving unmodified")
+
+    return HTMLResponse(html, media_type="text/html")
 
 
 @app.get("/shop/vendor/{vendor_id:int}")
