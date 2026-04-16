@@ -220,7 +220,7 @@ async def list_items(
 ):
     await _require_view_items(db, current_user)
 
-    query = select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants))
+    query = select(Item).options(selectinload(Item.vendor))
     if current_user.role not in ("admin", "cashier"):
         query = query.where(Item.vendor_id == current_user.id)
     elif vendor_id:
@@ -300,7 +300,7 @@ async def list_items_listing(
     counts_result = await db.execute(counts_query)
     counts = counts_result.one()
 
-    item_query = select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants))
+    item_query = select(Item).options(selectinload(Item.vendor))
     if base_filters:
         item_query = item_query.where(*base_filters)
     if status_filter == "active":
