@@ -101,6 +101,7 @@
             background: var(--surface);
             border: 1px solid var(--border);
             margin-bottom: 1rem;
+            contain: layout;
         }
         /* ── Tab bar ── */
         .booth-tabs {
@@ -130,8 +131,12 @@
             color: var(--gold);
             border-bottom-color: var(--gold);
         }
-        .booth-tab-panel { display: none; }
-        .booth-tab-panel.active { display: block; }
+        .booth-tab-panel {
+            display: none;
+        }
+        .booth-tab-panel.active {
+            display: block;
+        }
         @media (max-width: 600px) {
             .booth-tab {
                 padding: 0.6rem 1rem;
@@ -148,6 +153,7 @@
             width: 44px;
             height: 24px;
             flex-shrink: 0;
+            isolation: isolate;
         }
         .publish-toggle .toggle-switch input {
             opacity: 0;
@@ -753,7 +759,7 @@ async function loadShowcase() {
 
         renderPhotos();
         renderVideo();
-        renderLandingSection();
+        try { renderLandingSection(); } catch (landingErr) { console.warn('Landing section render skipped:', landingErr); }
         updateBoothImproveBtn();
     } catch (err) {
         showStatus(err.message, 'error');
