@@ -98,6 +98,47 @@
             align-items: center;
             gap: 0.75rem;
             padding: 1rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            margin-bottom: 1rem;
+        }
+        /* ── Tab bar ── */
+        .booth-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border);
+        }
+        .booth-tab {
+            padding: 0.75rem 1.5rem;
+            font-family: 'Roboto', sans-serif;
+            font-size: 0.82rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-light);
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            cursor: pointer;
+            transition: color 0.15s ease, border-color 0.15s ease;
+            white-space: nowrap;
+        }
+        .booth-tab:hover { color: var(--text); }
+        .booth-tab.active {
+            color: var(--gold);
+            border-bottom-color: var(--gold);
+        }
+        .booth-tab-panel { display: none; }
+        .booth-tab-panel.active { display: block; }
+        @media (max-width: 600px) {
+            .booth-tab {
+                padding: 0.6rem 1rem;
+                font-size: 0.75rem;
+                letter-spacing: 0.04em;
+            }
+        }
             background: var(--bg);
             border: 1px solid var(--border);
             margin-bottom: 1rem;
@@ -203,16 +244,27 @@
 </nav>
 
 <div class="main-content">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
+        <h1 style="font-family:'EB Garamond',serif;font-style:italic;font-size:1.5rem;color:var(--text)">My Booth</h1>
+        <div id="booth-badge" class="booth-number-badge" style="display:none"></div>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="booth-tabs">
+        <button class="booth-tab active" onclick="switchTab('booth-highlight')" id="tab-booth-highlight">🎪 Booth Highlight</button>
+        <button class="booth-tab" onclick="switchTab('landing-page')" id="tab-landing-page">🌐 Landing Page</button>
+    </div>
+
     <div id="alert-container"></div>
     <div id="stale-banner" class="stale-banner" style="display:none">
         <span>&#9888;</span>
         <span>Your booth photos are over 60 days old. Fresh photos help attract customers — consider updating them!</span>
     </div>
 
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
-        <h1 style="font-family:'EB Garamond',serif;font-style:italic;font-size:1.5rem;color:var(--text)">My Booth Showcase</h1>
-        <div id="booth-badge" class="booth-number-badge" style="display:none"></div>
-    </div>
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- TAB 1: BOOTH HIGHLIGHT -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="booth-tab-panel active" id="panel-booth-highlight">
 
     <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1.25rem;line-height:1.6">
         Showcase your booth to customers browsing our website. Add photos or a short video of your booth,
@@ -291,7 +343,14 @@
         <input type="file" id="video-input" accept="video/mp4,video/quicktime,video/webm" style="display:none" onchange="uploadVideo(this.files[0])">
     </div>
 
-    <div id="landing-section" style="display:none">
+    </div><!-- /panel-booth-highlight -->
+
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- TAB 2: LANDING PAGE -->
+    <!-- ═══════════════════════════════════════════ -->
+    <div class="booth-tab-panel" id="panel-landing-page">
+
+    <div id="landing-section">
         <div style="margin:1.5rem 0 0.5rem;display:flex;align-items:center;gap:0.5rem">
             <h2 style="font-family:'EB Garamond',serif;font-style:italic;font-size:1.3rem;color:var(--text)">Vendor Landing Page</h2>
             <span style="background:var(--accent);color:var(--bg);font-size:0.6rem;font-weight:500;padding:0.15rem 0.45rem;letter-spacing:0.1em;text-transform:uppercase">$10/mo Add-On</span>
@@ -468,12 +527,11 @@
                 <span id="ai-faq-status" style="font-size:0.75rem; color:var(--text-light); margin-top:6px; display:block"></span>
             </div>
 
-            v>
-        </div>
-    </div>
+        </div><!-- /landing-editor -->
+    </div><!-- /landing-section -->
 
 
-            <!-- ── DESIGN SECTION (always visible) ── -->
+            <!-- ── DESIGN SECTION ── -->
             <div class="showcase-card" id="design-section">
                 <h3>🎨 Page Design</h3>
                 <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:1rem">
@@ -605,7 +663,8 @@
                     <button class="btn btn-primary btn-sm" id="ai-design-send-btn" onclick="sendAIDesign()">Send</button>
                     <button class="btn btn-sm" onclick="closeAIDesign()" style="background:transparent;border:1px solid var(--border);color:var(--text-light)">Close</button>
                 </div>
-            </di
+            </div>
+    </div><!-- /panel-landing-page -->
 
 </div>
 
@@ -912,7 +971,7 @@ async function aiWriteBooth(action) {
 
 function renderLandingSection() {
     var section = document.getElementById('landing-section');
-    section.style.display = 'block';
+    section.style.display = '';
 
     if (!showcase.landing_page_enabled) {
         document.getElementById('landing-disabled-msg').style.display = 'block';
@@ -1381,6 +1440,34 @@ function loadDesignFromShowcase() {
     }
     updatePreviewTheme();
 }
+
+// ── TAB SWITCHING ──
+function switchTab(tabId) {
+    document.querySelectorAll('.booth-tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.booth-tab-panel').forEach(function(p) { p.classList.remove('active'); });
+    var tab = document.getElementById('tab-' + tabId);
+    var panel = document.getElementById('panel-' + tabId);
+    if (tab) tab.classList.add('active');
+    if (panel) panel.classList.add('active');
+    // Update URL hash without scroll jump
+    history.replaceState(null, '', '#' + tabId);
+    // Trigger preview render when switching to landing page (iframe needs size)
+    if (tabId === 'landing-page') {
+        var iframe = document.getElementById('design-preview');
+        if (iframe && iframe.srcdoc) {
+            // Re-render to recalc layout
+            updatePreviewTheme();
+        }
+    }
+}
+
+// Support direct link via hash (#landing-page)
+(function() {
+    var hash = window.location.hash.replace('#', '');
+    if (hash === 'landing-page' || hash === 'landing') {
+        switchTab('landing-page');
+    }
+})();
 
 loadShowcase();
 </script>
