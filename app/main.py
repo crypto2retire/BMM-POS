@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, PlainTextResponse, Response, FileResponse, HTMLResponse
 from pathlib import Path
@@ -105,6 +106,19 @@ async def lifespan(app: FastAPI):
         _record_startup_ok("add_landing_page_fee_column")
     except Exception as e:
         _record_startup_failure("add_landing_page_fee_column", e)
+
+    # ── Add search performance indexes ──
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_items_name_trgm ON items USING gin (name gin_trgm_ops)"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_items_sku_trgm ON items USING gin (sku gin_trgm_ops)"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_items_status ON items (status)"))
+            await session.execute(text("CREATE INDEX IF NOT EXISTS ix_items_vendor_status ON items (vendor_id, status)"))
+            await session.commit()
+        _record_startup_ok("search_indexes")
+    except Exception as e:
+        _record_startup_failure("search_indexes", e)
 
     try:
         async with AsyncSessionLocal() as session:
@@ -291,6 +305,8 @@ def _build_allowed_origins() -> list[str]:
 
 _allowed_origins = _build_allowed_origins()
 
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
@@ -298,6 +314,19 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
     allow_credentials=True,
 )
+
+
+@app.middleware("http")
+async def static_cache_headers(request: Request, call_next):
+    """Add Cache-Control to static assets (CSS, JS, images, fonts)."""
+    response = await call_next(request)
+    path = request.url.path.lower()
+    if (path.endswith(".css") or path.endswith(".js") or path.endswith(".webp") or
+            path.endswith(".png") or path.endswith(".jpg") or path.endswith(".jpeg") or
+            path.endswith(".gif") or path.endswith(".svg") or path.endswith(".woff") or
+            path.endswith(".woff2") or path.endswith(".ttf") or path.endswith(".ico")):
+        response.headers["Cache-Control"] = "public, max-age=604800, immutable"
+    return response
 
 
 @app.middleware("http")

@@ -280,12 +280,12 @@ async def list_items_listing(
         base_filters.append(Item.vendor_id == vendor_id)
 
     if q:
-        term = f"%{q.lower()}%"
+        term = f"%{q}%"
         base_filters.append(
             or_(
-                func.lower(Item.name).like(term),
-                func.lower(Item.barcode).like(term),
-                func.lower(Item.sku).like(term),
+                Item.name.ilike(term),
+                Item.barcode.ilike(term),
+                Item.sku.ilike(term),
             )
         )
 
