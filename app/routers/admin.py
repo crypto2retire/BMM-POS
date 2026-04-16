@@ -6,24 +6,17 @@ from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select, func, text, delete
+from sqlalchemy import select, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.models.vendor import Vendor, VendorBalance, BalanceAdjustment
+from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
 from app.models.sale import Sale, SaleItem
 from app.models.rent import RentPayment
 from app.models.payout import Payout
 from app.models.legacy_history import LegacyFinancialHistory
-from app.models.gift_card import GiftCard, GiftCardTransaction
-from app.models.reservation import Reservation
-from app.models.studio_class import StudioClass
-from app.models.studio_image import StudioImage
-from app.models.class_registration import ClassRegistration
-from app.models.item_image import ItemImage
-from app.models.booth_showcase import BoothShowcase
 from app.routers.auth import get_current_user, require_admin, require_cashier_or_admin
 from app.services.email import send_email_safe
 from app.services.rent_payments import apply_rent_payment, display_rent_notes, extract_rent_reference
@@ -1040,66 +1033,6 @@ async def send_weekly_reports(
         "message": f"Weekly reports sent to {sent} vendors.",
         "sent": sent,
         "skipped_no_email": skipped,
-    }
-
-
-@router.post("/reset-data")
-async def reset_data(
-    confirm: str = Body(..., embed=True),
-    db: AsyncSession = Depends(get_db),
-    admin: Vendor = Depends(require_admin),
-):
-    if confirm != "CLEAR ALL DATA":
-        raise HTTPException(status_code=400, detail="Type 'CLEAR ALL DATA' to confirm")
-
-    admin_ids = []
-    result = await db.execute(
-        select(Vendor.id).where(Vendor.role.in_(["admin", "cashier"]))
-    )
-    admin_ids = [row[0] for row in result.fetchall()]
-
-    if not admin_ids:
-        raise HTTPException(status_code=500, detail="No admin/cashier accounts found")
-
-    await db.execute(delete(BoothShowcase))
-    await db.execute(delete(ClassRegistration))
-    await db.execute(delete(StudioImage))
-    await db.execute(delete(StudioClass))
-    await db.execute(delete(Reservation))
-    await db.execute(delete(GiftCardTransaction))
-    await db.execute(delete(GiftCard))
-    await db.execute(delete(SaleItem))
-    await db.execute(delete(Sale))
-    await db.execute(delete(ItemImage))
-    await db.execute(delete(Item))
-    await db.execute(delete(Payout))
-    await db.execute(delete(RentPayment))
-    await db.execute(delete(BalanceAdjustment))
-    await db.execute(delete(VendorBalance).where(VendorBalance.vendor_id.notin_(admin_ids)))
-    await db.execute(delete(Vendor).where(Vendor.id.notin_(admin_ids)))
-
-    for aid in admin_ids:
-        existing = await db.execute(
-            select(VendorBalance).where(VendorBalance.vendor_id == aid)
-        )
-        bal = existing.scalar_one_or_none()
-        if bal:
-            bal.balance = Decimal("0.00")
-        else:
-            db.add(VendorBalance(vendor_id=aid, balance=Decimal("0.00")))
-
-    await db.execute(text("SELECT setval('vendors_id_seq', (SELECT COALESCE(MAX(id),0) FROM vendors))"))
-    await db.execute(text("SELECT setval('items_id_seq', 1, false)"))
-
-    await db.commit()
-
-    remaining = await db.execute(select(func.count()).select_from(Vendor))
-    vendor_count = remaining.scalar()
-
-    return {
-        "success": True,
-        "message": f"All data cleared. {vendor_count} system accounts preserved (admin/cashier).",
-        "preserved_accounts": admin_ids,
     }
 
 

@@ -2996,7 +2996,8 @@
 
         const boothMode = sessionStorage.getItem('bmm_booth_mode') === '1';
         var urlVendorId = new URLSearchParams(window.location.search).get('vendor_id');
-        var hasUrlVendor = !!urlVendorId && (currentRole === 'admin' || currentRole === 'cashier');
+        // Admin/cashier accessing from the ADMIN dashboard — full item management with vendor dropdown
+        var hasUrlVendor = !!urlVendorId && (currentRole === 'admin' || currentRole === 'cashier') && !boothMode && !session.is_vendor;
 
         if (hasUrlVendor) {
             isVendorMode = false;
@@ -3023,7 +3024,8 @@
             document.getElementById('page-title').textContent = 'My Items';
             document.getElementById('bottom-nav').style.display = '';
             currentRole = 'vendor';
-        } else if (currentRole === 'admin' || currentRole === 'cashier') {
+        } else if ((currentRole === 'admin' || currentRole === 'cashier') && !session.is_vendor) {
+            // Non-vendor admin/cashier only — full item management with vendor dropdown
             isVendorMode = false;
             document.getElementById('vendor-name').textContent = session.name || 'User';
             const homeHref = currentRole === 'admin' ? '/admin/index.html' : '/pos/index.html';
@@ -3036,6 +3038,19 @@
             document.getElementById('bottom-nav').style.display = 'none';
             document.body.classList.remove('has-bottom-nav');
             await loadVendors();
+        } else if (isVendorMode || session.is_vendor) {
+            // Admin/cashier who IS also a vendor — vendor view, locked to their own items
+            selectedVendorId = session.vendor_id;
+            document.getElementById('vendor-name').textContent = session.name || 'User';
+            document.getElementById('nav-brand').href = '/vendor/dashboard.html';
+            document.getElementById('nav-role-label').textContent = 'My Booth';
+            document.getElementById('nav-home').href = '/vendor/dashboard.html';
+            document.getElementById('nav-home').textContent = 'Dashboard';
+            document.getElementById('vendor-filter-wrap').style.display = 'none';
+            document.getElementById('page-title').textContent = 'My Items';
+            document.getElementById('bottom-nav').style.display = '';
+            currentRole = 'vendor';
+            isVendorMode = true;
         } else {
             selectedVendorId = session.vendor_id;
             document.getElementById('vendor-name').textContent = session.name || 'User';

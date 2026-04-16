@@ -1922,47 +1922,6 @@
         }
     }
 
-    async function resetAllData() {
-        var first = prompt('This will permanently DELETE all vendors, inventory, sales, gift cards, studio classes, reservations, rent payments, and payouts.\n\nOnly admin/cashier accounts and store settings will be kept.\n\nType CLEAR ALL DATA to confirm:');
-        if (first !== 'CLEAR ALL DATA') { showAlert('alert-container', 'Reset cancelled.', 'info'); return; }
-        if (!confirm('FINAL WARNING: This cannot be undone. All data will be permanently erased. Are you absolutely sure?')) return;
-        var results = document.getElementById('import-results');
-        results.innerHTML = '<p style="color:var(--text-light)">Resetting all data...</p>';
-        try {
-            var token = sessionStorage.getItem('bmm_token');
-            var resp = await fetch('/api/v1/admin/reset-data', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ confirm: 'CLEAR ALL DATA' })
-            });
-            var data = await resp.json();
-            if (!resp.ok) throw new Error(data.detail || 'Failed to reset data');
-            results.innerHTML = '<div style="padding:0.75rem;background:var(--surface);color:var(--gold)">' + escapeHtml(data.message) + '</div>';
-            if (typeof window.loadVendorOverview === 'function') window.loadVendorOverview();
-        } catch (err) {
-            results.innerHTML = '<p style="color:var(--danger)">' + escapeHtml(err.message) + '</p>';
-        }
-    }
-
-    async function clearTestData() {
-        if (!confirm('This will DELETE all vendor accounts (not admin/cashier) and their inventory items. This ONLY works if there are no sales recorded yet. Continue?')) return;
-        var results = document.getElementById('import-results');
-        results.innerHTML = '<p style="color:var(--text-light)">Clearing...</p>';
-        try {
-            var token = sessionStorage.getItem('bmm_token');
-            var resp = await fetch('/api/v1/bulk-import/clear-test-data', {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
-            });
-            var data = await resp.json();
-            if (!resp.ok) throw new Error(data.detail || 'Failed to clear data');
-            results.innerHTML = '<div style="padding:0.75rem;background:var(--surface);color:var(--gold)">' + escapeHtml(data.message) + '</div>';
-            if (typeof window.loadVendorOverview === 'function') window.loadVendorOverview();
-        } catch (err) {
-            results.innerHTML = '<p style="color:var(--danger)">' + escapeHtml(err.message) + '</p>';
-        }
-    }
-
     function escapeHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
     var _adjVendorId = null;
