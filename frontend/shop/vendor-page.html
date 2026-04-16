@@ -379,6 +379,7 @@
   var currentTemplate = 'classic';
   var currentTheme = null;
   var isAdminViewer = false;
+  var debugOverride = false;
 
   // ── TEMPLATE & THEME ──
   function applyTemplateAndTheme(template, theme) {
@@ -456,6 +457,13 @@
     if (!vendorSlug) {
       show404();
       return;
+    }
+
+    try {
+      var params = new URLSearchParams(window.location.search || '');
+      debugOverride = params.get('debug') === '1';
+    } catch (_) {
+      debugOverride = false;
     }
 
     loadTaxRate();
@@ -554,7 +562,7 @@
     var banner = document.getElementById('admin-debug-banner');
     if (!banner) return;
 
-    if (!isAdminViewer || !vendorData) {
+    if ((!isAdminViewer && !debugOverride) || !vendorData) {
       banner.style.display = 'none';
       banner.innerHTML = '';
       return;
@@ -562,8 +570,23 @@
 
     var theme = vendorData.landing_theme || {};
     var colors = theme.colors || {};
+    var applied = {
+      template_css: (document.getElementById('template-css') || {}).href || null,
+      body_class: document.body.className,
+      css_vars: {
+        primary: getComputedStyle(document.documentElement).getPropertyValue('--landing-primary').trim() || null,
+        secondary: getComputedStyle(document.documentElement).getPropertyValue('--landing-secondary').trim() || null,
+        background: getComputedStyle(document.documentElement).getPropertyValue('--landing-background').trim() || null,
+        text: getComputedStyle(document.documentElement).getPropertyValue('--landing-text').trim() || null,
+        accent: getComputedStyle(document.documentElement).getPropertyValue('--landing-accent').trim() || null,
+        card_background: getComputedStyle(document.documentElement).getPropertyValue('--landing-card-bg').trim() || null,
+      }
+    };
+
     var values = {
       slug: vendorSlug,
+      viewer_mode: isAdminViewer ? 'admin-authenticated' : 'debug-query',
+      updated_at: vendorData.updated_at || null,
       landing_template: vendorData.landing_template || 'classic',
       colors: {
         primary: colors.primary || null,
@@ -572,7 +595,8 @@
         text: colors.text || null,
         accent: colors.accent || null,
         card_background: colors.card_background || null,
-      }
+      },
+      applied: applied,
     };
 
     banner.style.display = 'block';

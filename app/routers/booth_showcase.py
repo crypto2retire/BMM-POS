@@ -1267,6 +1267,7 @@ async def get_landing_page(
             "market_name": settings.get("store_name", "Bowenstreet Market Mall"),
             "landing_template": sc.landing_template or "classic",
             "landing_theme": sc.landing_theme,
+            "updated_at": sc.updated_at.isoformat() if sc.updated_at else None,
         }
         return JSONResponse(
             content=payload,
