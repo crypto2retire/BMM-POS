@@ -48,6 +48,15 @@
   text-align: center;
   animation: landing-fadeIn 0.6s ease;
 }
+.landing-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 12% 22%, color-mix(in srgb, var(--landing-secondary, #EAD8C3) 38%, transparent) 0%, transparent 48%),
+    radial-gradient(circle at 88% 74%, color-mix(in srgb, var(--landing-primary, #B8860B) 24%, transparent) 0%, transparent 52%);
+  pointer-events: none;
+}
 .landing-hero-bg {
   position: absolute; inset: 0;
   background-size: cover; background-position: center;
@@ -56,13 +65,17 @@
 }
 .landing-hero-gradient {
   position: absolute; inset: 0;
-  background: linear-gradient(to top, color-mix(in srgb, var(--landing-background, #FFF8F0) 90%, transparent) 0%, color-mix(in srgb, var(--landing-background, #FFF8F0) 40%, transparent) 60%, transparent 100%);
+  background: linear-gradient(to top, color-mix(in srgb, var(--landing-background, #FFF8F0) 86%, transparent) 0%, color-mix(in srgb, var(--landing-secondary, #EAD8C3) 30%, transparent) 55%, transparent 100%);
 }
 .landing-hero-content {
   position: relative; z-index: 2;
   padding: 3rem 2rem;
   max-width: 700px; margin: 0 auto;
   animation: landing-fadeUp 0.7s ease;
+  background: color-mix(in srgb, var(--landing-background, #FFF8F0) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--landing-primary, #B8860B) 18%, var(--landing-border, #F3E4D1));
+  border-radius: 28px;
+  box-shadow: 0 16px 40px color-mix(in srgb, var(--landing-primary, #B8860B) 12%, transparent);
 }
 .landing-hero h1 {
   font-family: var(--landing-heading-font, 'Great Vibes'), cursive;
@@ -101,6 +114,10 @@
   padding: 3rem 2rem;
   text-align: center;
   animation: landing-fadeUp 0.5s ease;
+  background: color-mix(in srgb, var(--landing-background, #FFF8F0) 92%, var(--landing-secondary, #EAD8C3) 8%);
+  border: 1px solid color-mix(in srgb, var(--landing-secondary, #EAD8C3) 26%, var(--landing-border, #F3E4D1));
+  border-radius: 20px;
+  margin-top: 1.25rem;
 }
 .landing-about h2 {
   font-family: var(--landing-heading-font, 'Great Vibes'), cursive;
@@ -145,12 +162,19 @@
   object-fit: cover; flex-shrink: 0;
   border: 2px solid var(--landing-border, #F3E4D1);
   transition: transform 0.2s;
+  scroll-snap-align: center;
 }
 .landing-photo-scroll img:hover { transform: scale(1.03); }
 
 /* ── ITEMS SECTION ── */
 .landing-items {
   max-width: 1100px; margin: 0 auto; padding: 2.5rem 2rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--landing-background, #FFF8F0) 96%, transparent) 0%,
+    color-mix(in srgb, var(--landing-secondary, #EAD8C3) 14%, var(--landing-background, #FFF8F0)) 100%
+  );
+  border-radius: 22px;
 }
 .landing-items-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -263,6 +287,9 @@
 /* ── FAQ ── */
 .landing-faq {
   max-width: 750px; margin: 0 auto; padding: 2.5rem 2rem;
+  background: color-mix(in srgb, var(--landing-background, #FFF8F0) 94%, var(--landing-secondary, #EAD8C3) 6%);
+  border: 1px solid color-mix(in srgb, var(--landing-secondary, #EAD8C3) 24%, var(--landing-border, #F3E4D1));
+  border-radius: 20px;
 }
 .landing-faq h2 {
   font-family: var(--landing-heading-font, 'Great Vibes'), cursive;

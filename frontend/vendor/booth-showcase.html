@@ -414,6 +414,19 @@
             </div>
 
             <div class="showcase-card">
+                <h3>Landing Page Photos</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Upload photos used by your landing page hero and gallery. The first photo becomes your hero image.
+                </p>
+                <div id="landing-photo-grid" class="photo-grid"></div>
+                <div class="upload-area" onclick="document.getElementById('landing-photo-input').click()">
+                    <p>Click to upload landing photos</p>
+                    <span style="font-size:0.72rem;color:var(--text-light)">JPG, PNG, GIF, or WebP — up to 5MB each (Max 8 total)</span>
+                </div>
+                <input type="file" id="landing-photo-input" accept="image/*" multiple style="display:none" onchange="uploadLandingPhotos(this.files)">
+            </div>
+
+            <div class="showcase-card">
                 <h3>Contact Information</h3>
                 <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
                     Add your contact details so customers can reach you directly. All fields are optional — only share what you are comfortable with.
@@ -762,17 +775,31 @@ async function loadShowcase() {
 
 function renderPhotos() {
     var grid = document.getElementById('photo-grid');
+    var landingGrid = document.getElementById('landing-photo-grid');
     var photos = (showcase && showcase.photo_urls) || [];
+
+    var emptyHtml = '<p style="font-size:0.78rem;color:var(--text-light);grid-column:1/-1">No photos yet</p>';
     if (photos.length === 0) {
-        grid.innerHTML = '<p style="font-size:0.78rem;color:var(--text-light);grid-column:1/-1">No photos yet</p>';
+        if (grid) grid.innerHTML = emptyHtml;
+        if (landingGrid) landingGrid.innerHTML = emptyHtml;
         return;
     }
-    grid.innerHTML = photos.map(function(url) {
+
+    var cardsHtml = photos.map(function(url) {
         return '<div class="photo-item">' +
             '<img src="' + escHtml(url) + '" alt="Booth photo" loading="lazy">' +
             '<button class="delete-photo" onclick="deletePhoto(\'' + escHtml(url) + '\')" title="Remove">&times;</button>' +
             '</div>';
     }).join('');
+
+    if (grid) grid.innerHTML = cardsHtml;
+    if (landingGrid) landingGrid.innerHTML = cardsHtml;
+}
+
+async function uploadLandingPhotos(files) {
+    await uploadPhotos(files);
+    var input = document.getElementById('landing-photo-input');
+    if (input) input.value = '';
 }
 
 function renderVideo() {
