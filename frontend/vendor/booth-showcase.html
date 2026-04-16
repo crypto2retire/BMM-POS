@@ -467,6 +467,140 @@
                 </div>
                 <span id="ai-faq-status" style="font-size:0.75rem; color:var(--text-light); margin-top:6px; display:block"></span>
             </div>
+
+            <!-- ── DESIGN SECTION ── -->
+            <div class="showcase-card" id="design-section">
+                <h3>🎨 Page Design</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:1rem">
+                    Customize how your landing page looks. Pick a template layout, choose your colors, and select fonts — or let the AI design assistant help you create a look that matches your style.
+                </p>
+
+                <!-- Template Picker -->
+                <div style="margin-bottom:1.5rem">
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Template Layout</label>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem" id="template-grid">
+                        <div class="template-thumb" data-template="classic" onclick="selectTemplate('classic')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
+                            <div style="width:100%;aspect-ratio:4/5;background:linear-gradient(135deg,#1a1a1c 0%,#2a2a2e 100%);border-radius:4px;margin-bottom:0.35rem;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#C9A96E;font-size:0.6rem;gap:2px">
+                                <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:0.7rem">Classic</div>
+                                <div style="width:70%;height:1px;background:#C9A96E40"></div>
+                                <div style="width:60%;height:3px;background:#C9A96E30;border-radius:1px"></div>
+                                <div style="display:flex;gap:2px;margin-top:3px"><div style="width:12px;height:12px;background:#C9A96E15;border:1px solid #C9A96E25;border-radius:2px"></div><div style="width:12px;height:12px;background:#C9A96E15;border:1px solid #C9A96E25;border-radius:2px"></div></div>
+                            </div>
+                            <div style="font-size:0.72rem;color:var(--text-light)">Classic</div>
+                        </div>
+                        <div class="template-thumb" data-template="modern" onclick="selectTemplate('modern')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
+                            <div style="width:100%;aspect-ratio:4/5;background:#F9FAFB;border-radius:4px;margin-bottom:0.35rem;display:flex;gap:2px;padding:3px;overflow:hidden">
+                                <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:2px"><div style="width:70%;height:3px;background:#2563EB;border-radius:1px;margin-bottom:2px"></div><div style="width:50%;height:2px;background:#00000020;border-radius:1px"></div></div>
+                                <div style="flex:1;background:#E5E7EB;border-radius:2px"></div>
+                            </div>
+                            <div style="font-size:0.72rem;color:var(--text-light)">Modern</div>
+                        </div>
+                        <div class="template-thumb" data-template="boutique" onclick="selectTemplate('boutique')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
+                            <div style="width:100%;aspect-ratio:4/5;background:linear-gradient(135deg,#FFF8F0 0%,#F3E4D1 100%);border-radius:4px;margin-bottom:0.35rem;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#B8860B;font-size:0.6rem;gap:2px">
+                                <div style="font-family:'Great Vibes',cursive;font-size:0.85rem;color:#5D4037">Boutique</div>
+                                <div style="width:40%;height:1px;background:#B8860B40"></div>
+                                <div style="width:45%;height:2px;background:#B8860B20;border-radius:8px"></div>
+                            </div>
+                            <div style="font-size:0.72rem;color:var(--text-light)">Boutique</div>
+                        </div>
+                        <div class="template-thumb" data-template="minimal" onclick="selectTemplate('minimal')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
+                            <div style="width:100%;aspect-ratio:4/5;background:#FAFAFA;border-radius:4px;margin-bottom:0.35rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+                                <div style="width:60%;height:2px;background:#171717;border-radius:1px"></div>
+                                <div style="width:40%;height:1px;background:#17171730;border-radius:1px"></div>
+                                <div style="display:flex;gap:3px;margin-top:4px"><div style="width:14px;height:18px;background:#E5E5E5;border-radius:1px"></div><div style="width:14px;height:22px;background:#E5E5E5;border-radius:1px"></div></div>
+                            </div>
+                            <div style="font-size:0.72rem;color:var(--text-light)">Minimal</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Color Pickers -->
+                <div style="margin-bottom:1.5rem">
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Colors</label>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.75rem">
+                        <div>
+                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Primary (accent)</label>
+                            <input type="color" id="color-primary" value="#C9A96E" style="width:100%;height:36px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--bg)" onchange="updatePreviewTheme()">
+                        </div>
+                        <div>
+                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Secondary</label>
+                            <input type="color" id="color-secondary" value="#38383B" style="width:100%;height:36px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--bg)" onchange="updatePreviewTheme()">
+                        </div>
+                        <div>
+                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Background</label>
+                            <input type="color" id="color-background" value="#1A1A1C" style="width:100%;height:36px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--bg)" onchange="updatePreviewTheme()">
+                        </div>
+                        <div>
+                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Text</label>
+                            <input type="color" id="color-text" value="#F5F5F0" style="width:100%;height:36px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--bg)" onchange="updatePreviewTheme()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Font Selectors -->
+                <div style="margin-bottom:1.5rem">
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Fonts</label>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+                        <div>
+                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Heading Font</label>
+                            <select id="font-heading" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.5rem;font-size:0.82rem;font-family:'Roboto',sans-serif" onchange="updatePreviewTheme()">
+                                <option value="EB Garamond">EB Garamond</option>
+                                <option value="Playfair Display">Playfair Display</option>
+                                <option value="Lora">Lora</option>
+                                <option value="Roboto">Roboto</option>
+                                <option value="Inter">Inter</option>
+                                <option value="Poppins">Poppins</option>
+                                <option value="Montserrat">Montserrat</option>
+                                <option value="Great Vibes">Great Vibes</option>
+                                <option value="Dancing Script">Dancing Script</option>
+                                <option value="Pacifico">Pacifico</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Body Font</label>
+                            <select id="font-body" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.5rem;font-size:0.82rem;font-family:'Roboto',sans-serif" onchange="updatePreviewTheme()">
+                                <option value="Roboto">Roboto</option>
+                                <option value="Inter">Inter</option>
+                                <option value="Poppins">Poppins</option>
+                                <option value="Montserrat">Montserrat</option>
+                                <option value="EB Garamond">EB Garamond</option>
+                                <option value="Playfair Display">Playfair Display</option>
+                                <option value="Lora">Lora</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
+                    <button class="btn btn-primary btn-sm" onclick="saveDesign()">&#128308; Save Design</button>
+                    <button class="btn btn-sm" onclick="resetDesign()" style="background:transparent;border:1px solid var(--border);color:var(--text-light)">Reset to Default</button>
+                    <button class="ai-btn" id="ai-design-btn" onclick="openAIDesign()">&#10024; AI Design Assistant</button>
+                </div>
+                <span id="design-status" style="font-size:0.75rem; color:var(--text-light); display:block"></span>
+
+                <!-- Live Preview -->
+                <div style="margin-top:1.25rem">
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Live Preview</label>
+                    <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg)">
+                        <iframe id="design-preview" style="width:100%;height:500px;border:none" src="about:blank"></iframe>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Design Chat (hidden by default) -->
+            <div class="showcase-card" id="ai-design-chat" style="display:none">
+                <h3>&#10024; AI Design Assistant</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    Tell the AI what vibe you're going for and it will design your page. You can say things like "warm and rustic" or "clean and modern with blue accents."
+                </p>
+                <div id="ai-design-messages" style="max-height:300px;overflow-y:auto;margin-bottom:0.75rem;display:flex;flex-direction:column;gap:0.5rem"></div>
+                <div style="display:flex;gap:0.5rem">
+                    <input type="text" id="ai-design-input" placeholder="Describe the vibe you want..." style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.5rem 0.7rem;font-size:0.85rem;font-family:'Roboto',sans-serif" onkeydown="if(event.key==='Enter')sendAIDesign()">
+                    <button class="btn btn-primary btn-sm" id="ai-design-send-btn" onclick="sendAIDesign()">Send</button>
+                    <button class="btn btn-sm" onclick="closeAIDesign()" style="background:transparent;border:1px solid var(--border);color:var(--text-light)">Close</button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -804,6 +938,7 @@ function renderLandingSection() {
     updateMetaDescCount();
     updateLandingLink();
     updateAboutImproveBtn();
+    loadDesignFromShowcase();
 }
 
 function updateAboutCount() {
@@ -989,6 +1124,259 @@ async function aiWriteFaq(action) {
 
 document.getElementById('landing-faq').addEventListener('input', updateFaqCount);
 updateFaqImproveBtn();
+
+// ── DESIGN SECTION ──
+var selectedTemplate = 'classic';
+var designChatHistory = [];
+
+function selectTemplate(template) {
+    selectedTemplate = template;
+    var thumbs = document.querySelectorAll('.template-thumb');
+    thumbs.forEach(function(t) {
+        t.style.borderColor = t.getAttribute('data-template') === template ? 'var(--accent)' : 'var(--border)';
+    });
+    updatePreviewTheme();
+}
+
+function getThemeFromUI() {
+    return {
+        colors: {
+            primary: document.getElementById('color-primary').value,
+            secondary: document.getElementById('color-secondary').value,
+            background: document.getElementById('color-background').value,
+            text: document.getElementById('color-text').value,
+            accent: document.getElementById('color-primary').value,
+            card_background: mixHexColors(
+                document.getElementById('color-text').value,
+                document.getElementById('color-background').value,
+                0.08
+            )
+        },
+        fonts: {
+            heading: document.getElementById('font-heading').value,
+            heading_weight: '500',
+            heading_style: ['Great Vibes', 'Dancing Script', 'Pacifico', 'EB Garamond'].indexOf(document.getElementById('font-heading').value) >= 0 ? 'normal' : 'normal',
+            body: document.getElementById('font-body').value,
+            body_weight: '300'
+        }
+    };
+}
+
+function mixHexColors(fg, bg, opacity) {
+    try {
+        var f = hexToRgb(fg);
+        var b = hexToRgb(bg);
+        if (!f || !b) return fg;
+        var r = Math.round(f.r * opacity + b.r * (1 - opacity));
+        var g = Math.round(f.g * opacity + b.g * (1 - opacity));
+        var bl = Math.round(f.b * opacity + b.b * (1 - opacity));
+        return '#' + [r, g, bl].map(function(x) { return x.toString(16).padStart(2, '0'); }).join('');
+    } catch (e) { return fg; }
+}
+
+function hexToRgb(hex) {
+    if (!hex) return null;
+    hex = hex.replace('#', '');
+    if (hex.length === 3) hex = hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+    var n = parseInt(hex, 16);
+    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+
+function updatePreviewTheme() {
+    var theme = getThemeFromUI();
+    var c = theme.colors;
+    var f = theme.fonts;
+
+    // Auto-set heading style for script fonts
+    var scriptFonts = ['Great Vibes', 'Dancing Script', 'Pacifico'];
+    if (scriptFonts.indexOf(f.heading) >= 0) {
+        f.heading_style = 'normal';
+    }
+
+    var iframe = document.getElementById('design-preview');
+    var border = mixHexColors(c.text, c.background, 0.15);
+
+    var previewHtml = '<!DOCTYPE html><html><head>' +
+        '<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Great+Vibes&family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500;600;700&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">' +
+        '<link rel="stylesheet" href="/static/css/landing-' + selectedTemplate + '.css">' +
+        '<style>:root{--landing-primary:' + c.primary + ';--landing-secondary:' + c.secondary + ';--landing-background:' + c.background + ';--landing-text:' + c.text + ';--landing-accent:' + (c.accent || c.primary) + ';--landing-card-bg:' + c.card_background + ';--landing-bg-dark:' + c.background + ';--landing-border:' + border + ';--landing-heading-font:\'' + f.heading + '\',serif;--landing-heading-weight:' + f.heading_weight + ';--landing-heading-style:' + f.heading_style + ';--landing-body-font:\'' + f.body + '\',sans-serif;--landing-body-weight:' + f.body_weight + ';}' +
+        '*{box-sizing:border-box;margin:0;padding:0}' +
+        'body{font-family:var(--landing-body-font);font-weight:var(--landing-body-weight);background:var(--landing-background);color:var(--landing-text);line-height:1.7}' +
+        '@keyframes landing-fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}' +
+        '</style></head><body>' +
+        '<nav class="landing-nav"><a class="landing-nav-brand" href="#">Bowenstreet Market</a></nav>' +
+        '<section class="landing-hero"><div class="landing-hero-bg" style="background:linear-gradient(135deg,' + c.secondary + ' 0%,' + c.background + ' 100%)"></div><div class="landing-hero-gradient"></div>' +
+        '<div class="landing-hero-content"><div class="booth-tag">Booth A-12</div><h1>Your Vendor Name</h1>' +
+        '<a href="#" class="hero-cta" onclick="event.preventDefault()">Shop This Vendor</a></div></section>' +
+        '<section class="landing-about"><h2>About Your Vendor Name</h2>' +
+        '<div class="landing-about-text">Welcome to our booth! We specialize in handcrafted, vintage, and one-of-a-kind treasures. Each piece is carefully selected to bring charm and character to your home.</div>' +
+        '<div class="landing-social-links"><a href="#">📘 Facebook</a><a href="#">📷 Instagram</a></div></section>' +
+        '<section class="landing-items"><div class="landing-items-header"><h2>Inventory</h2><span class="item-count" style="opacity:0.5;font-size:0.8rem">3 items</span></div>' +
+        '<div class="landing-items-grid" style="max-width:800px">' +
+        '<div class="landing-item-card" style="animation:landing-fadeUp 0.4s ease both"><div class="landing-item-card-img" style="background:' + c.card_background + ';display:flex;align-items:center;justify-content:center;color:' + c.text + ';opacity:0.3;font-size:2rem">🖼</div><div class="landing-item-card-body"><div class="landing-item-card-name">Vintage Item One</div><div class="landing-item-card-price">$45.00</div><button class="landing-add-cart-btn">+ Add to Cart</button></div></div>' +
+        '<div class="landing-item-card" style="animation:landing-fadeUp 0.4s ease both 0.1s"><div class="landing-item-card-img" style="background:' + c.card_background + ';display:flex;align-items:center;justify-content:center;color:' + c.text + ';opacity:0.3;font-size:2rem">🖼</div><div class="landing-item-card-body"><div class="landing-item-card-name">Handcrafted Item Two</div><div class="landing-item-card-price">$28.00</div><button class="landing-add-cart-btn">+ Add to Cart</button></div></div>' +
+        '<div class="landing-item-card" style="animation:landing-fadeUp 0.4s ease both 0.2s"><div class="landing-item-card-img" style="background:' + c.card_background + ';display:flex;align-items:center;justify-content:center;color:' + c.text + ';opacity:0.3;font-size:2rem">🖼</div><div class="landing-item-card-body"><div class="landing-item-card-name">Unique Item Three</div><div class="landing-item-card-price">$62.00</div><button class="landing-add-cart-btn">+ Add to Cart</button></div></div>' +
+        '</div></section>' +
+        '<footer class="landing-footer"><div class="landing-footer-brand"><a href="#">Bowenstreet Market</a></div><div class="landing-footer-address">2837 Bowen St, Oshkosh, WI 54901</div></footer>' +
+        '</body></html>';
+
+    iframe.srcdoc = previewHtml;
+}
+
+async function saveDesign() {
+    var token = sessionStorage.getItem('bmm_token');
+    var theme = getThemeFromUI();
+    var statusEl = document.getElementById('design-status');
+    statusEl.textContent = 'Saving design...';
+    statusEl.style.color = 'var(--text-light)';
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                landing_template: selectedTemplate,
+                landing_theme: theme
+            })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Failed to save design');
+        showcase = data;
+        statusEl.textContent = 'Design saved!';
+        statusEl.style.color = '#6EE7B7';
+        showStatus('Page design updated!', 'success');
+    } catch (err) {
+        statusEl.textContent = err.message;
+        statusEl.style.color = '#FCA5A5';
+    }
+}
+
+function resetDesign() {
+    if (!confirm('Reset your design to the default classic theme?')) return;
+    selectedTemplate = 'classic';
+    document.querySelectorAll('.template-thumb').forEach(function(t) {
+        t.style.borderColor = t.getAttribute('data-template') === 'classic' ? 'var(--accent)' : 'var(--border)';
+    });
+    document.getElementById('color-primary').value = '#C9A96E';
+    document.getElementById('color-secondary').value = '#38383B';
+    document.getElementById('color-background').value = '#1A1A1C';
+    document.getElementById('color-text').value = '#F5F5F0';
+    document.getElementById('font-heading').value = 'EB Garamond';
+    document.getElementById('font-body').value = 'Roboto';
+    updatePreviewTheme();
+    saveDesign();
+}
+
+function openAIDesign() {
+    document.getElementById('ai-design-chat').style.display = 'block';
+    document.getElementById('ai-design-chat').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('ai-design-input').focus();
+}
+
+function closeAIDesign() {
+    document.getElementById('ai-design-chat').style.display = 'none';
+}
+
+async function sendAIDesign() {
+    var input = document.getElementById('ai-design-input');
+    var msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+
+    var container = document.getElementById('ai-design-messages');
+    container.innerHTML += '<div style="text-align:right"><span style="display:inline-block;background:var(--accent);color:var(--bg);padding:0.4rem 0.7rem;border-radius:8px;font-size:0.82rem;max-width:80%">' + escHtml(msg) + '</span></div>';
+
+    var sendBtn = document.getElementById('ai-design-send-btn');
+    sendBtn.disabled = true;
+    input.disabled = true;
+
+    // Show typing indicator
+    var typingEl = document.createElement('div');
+    typingEl.id = 'ai-typing';
+    typingEl.innerHTML = '<span style="display:inline-block;background:var(--surface);border:1px solid var(--border);padding:0.4rem 0.7rem;border-radius:8px;font-size:0.82rem;color:var(--text-light)">Designing...</span>';
+    container.appendChild(typingEl);
+    container.scrollTop = container.scrollHeight;
+
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var currentTheme = getThemeFromUI();
+        var resp = await fetch('/api/v1/booth-showcase/mine/ai-design', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({
+                message: msg,
+                current_theme: currentTheme,
+                current_template: selectedTemplate
+            })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'AI design failed');
+
+        var typing = document.getElementById('ai-typing');
+        if (typing) typing.remove();
+
+        container.innerHTML += '<div><span style="display:inline-block;background:var(--surface);border:1px solid var(--border);padding:0.4rem 0.7rem;border-radius:8px;font-size:0.82rem;max-width:85%;color:var(--text)">' + escHtml(data.reply || 'Done!') + '</span></div>';
+
+        // Apply the design
+        if (data.showcase) {
+            showcase = data.showcase;
+        }
+        if (data.landing_template) {
+            selectedTemplate = data.landing_template;
+            document.querySelectorAll('.template-thumb').forEach(function(t) {
+                t.style.borderColor = t.getAttribute('data-template') === selectedTemplate ? 'var(--accent)' : 'var(--border)';
+            });
+        }
+        if (data.landing_theme) {
+            var t = data.landing_theme;
+            if (t.colors) {
+                document.getElementById('color-primary').value = t.colors.primary || '#C9A96E';
+                document.getElementById('color-secondary').value = t.colors.secondary || '#38383B';
+                document.getElementById('color-background').value = t.colors.background || '#1A1A1C';
+                document.getElementById('color-text').value = t.colors.text || '#F5F5F0';
+            }
+            if (t.fonts) {
+                var headingEl = document.getElementById('font-heading');
+                var bodyEl = document.getElementById('font-body');
+                if (t.fonts.heading) headingEl.value = t.fonts.heading;
+                if (t.fonts.body) bodyEl.value = t.fonts.body;
+            }
+        }
+        updatePreviewTheme();
+
+    } catch (err) {
+        var typing = document.getElementById('ai-typing');
+        if (typing) typing.remove();
+        container.innerHTML += '<div><span style="display:inline-block;background:rgba(153,27,27,0.15);border:1px solid rgba(153,27,27,0.3);padding:0.4rem 0.7rem;border-radius:8px;font-size:0.82rem;color:#FCA5A5">' + escHtml(err.message) + '</span></div>';
+    } finally {
+        sendBtn.disabled = false;
+        input.disabled = false;
+        container.scrollTop = container.scrollHeight;
+    }
+}
+
+function loadDesignFromShowcase() {
+    if (!showcase) return;
+    if (showcase.landing_template) {
+        selectedTemplate = showcase.landing_template;
+        document.querySelectorAll('.template-thumb').forEach(function(t) {
+            t.style.borderColor = t.getAttribute('data-template') === selectedTemplate ? 'var(--accent)' : 'var(--border)';
+        });
+    }
+    if (showcase.landing_theme) {
+        var t = showcase.landing_theme;
+        if (t.colors) {
+            document.getElementById('color-primary').value = t.colors.primary || '#C9A96E';
+            document.getElementById('color-secondary').value = t.colors.secondary || '#38383B';
+            document.getElementById('color-background').value = t.colors.background || '#1A1A1C';
+            document.getElementById('color-text').value = t.colors.text || '#F5F5F0';
+        }
+        if (t.fonts) {
+            if (t.fonts.heading) document.getElementById('font-heading').value = t.fonts.heading;
+            if (t.fonts.body) document.getElementById('font-body').value = t.fonts.body;
+        }
+    }
+    updatePreviewTheme();
+}
 
 loadShowcase();
 </script>
