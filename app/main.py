@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import traceback
 import logging
 from contextlib import asynccontextmanager
@@ -402,7 +403,7 @@ def _mix_hex(fg: str, bg: str, opacity: float) -> str:
 
 
 @app.get("/{slug}")
-async def vendor_landing_page(slug: str):
+async def vendor_landing_page(slug: str, request: Request):
     # Root-level vendor landing pages: bowenstreetmarket.com/{vendor-name}
     # Only match simple slugs — no dots, no slashes, not a known directory
     if "." in slug or "/" in slug:
@@ -416,6 +417,8 @@ async def vendor_landing_page(slug: str):
         return HTMLResponse("<h1>Page not found</h1>", status_code=404)
 
     html = page.read_text(encoding="utf-8")
+
+    debug_mode = request.query_params.get("debug") == "1"
 
     # ── Server-side theme pre-render ──
     # Fetch showcase + vendor in one shot to avoid extra queries
@@ -433,6 +436,25 @@ async def vendor_landing_page(slug: str):
                 )
             )
             sc = result.scalar_one_or_none()
+
+            if debug_mode:
+                debug_payload = {
+                    "slug": slug,
+                    "record_found": bool(sc),
+                    "landing_page_enabled": bool(sc.landing_page_enabled) if sc else False,
+                    "landing_template": (sc.landing_template or "classic") if sc else None,
+                    "landing_theme": sc.landing_theme if sc else None,
+                    "updated_at": sc.updated_at.isoformat() if (sc and sc.updated_at) else None,
+                }
+                debug_json = _html_esc(json.dumps(debug_payload, indent=2), quote=False)
+                html = html.replace(
+                    '<div id="admin-debug-banner" class="admin-debug-banner" aria-live="polite"></div>',
+                    '<div id="admin-debug-banner" class="admin-debug-banner" aria-live="polite" style="display:block">'
+                    '<div class="debug-title">Debug Query: server-side landing payload snapshot</div>'
+                    f'<div>Source: <code>/api/v1/booth-showcase/landing/{_html_esc(slug)}</code></div>'
+                    f'<div class="debug-values"><code>{debug_json}</code></div>'
+                    '</div>',
+                )
 
             if sc and sc.landing_theme:
                 theme = sc.landing_theme
