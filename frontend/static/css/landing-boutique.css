@@ -124,6 +124,14 @@
   font-size: 1.8rem; font-weight: 400;
   color: var(--landing-text, #5D4037); margin-bottom: 1rem;
 }
+.landing-about h2::after {
+  content: "";
+  display: block;
+  width: 78px;
+  height: 1px;
+  margin: 0.55rem auto 0;
+  background: color-mix(in srgb, var(--landing-primary, #B8860B) 48%, transparent);
+}
 .landing-about-text {
   font-size: 0.95rem; line-height: 1.9;
   color: var(--landing-text, #5D4037); opacity: 0.75;
@@ -313,6 +321,9 @@
 /* ── SOCIAL FEEDS ── */
 .landing-social-feeds {
   max-width: 750px; margin: 0 auto; padding: 2.5rem 2rem;
+  background: color-mix(in srgb, var(--landing-background, #FFF8F0) 95%, var(--landing-secondary, #EAD8C3) 5%);
+  border: 1px solid color-mix(in srgb, var(--landing-secondary, #EAD8C3) 24%, var(--landing-border, #F3E4D1));
+  border-radius: 20px;
 }
 .landing-social-feeds h2 {
   font-family: var(--landing-heading-font, 'Great Vibes'), cursive;

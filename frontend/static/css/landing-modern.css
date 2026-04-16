@@ -4,12 +4,13 @@
 /* ── NAV ── */
 .landing-nav {
   position: sticky; top: 0; z-index: 100;
-  background: var(--landing-bg-dark, #FFFFFF);
+  background: color-mix(in srgb, var(--landing-background, #FFFFFF) 94%, var(--landing-secondary, #64748B) 6%);
   border-bottom: 1px solid var(--landing-border, #E5E7EB);
   padding: 0 1.5rem;
   display: flex; align-items: center; justify-content: space-between;
   height: 56px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  backdrop-filter: blur(6px);
 }
 .landing-nav a { color: var(--landing-text, #111827); text-decoration: none; }
 .landing-nav-brand {
@@ -72,6 +73,7 @@
     color-mix(in srgb, var(--landing-background, #F9FAFB) 92%, transparent) 0%,
     color-mix(in srgb, var(--landing-secondary, #64748B) 16%, var(--landing-background, #F9FAFB)) 100%
   );
+  border-left: 4px solid color-mix(in srgb, var(--landing-primary, #2563EB) 55%, transparent);
 }
 .landing-hero h1 {
   font-family: var(--landing-heading-font, 'Inter'), sans-serif;
@@ -149,6 +151,7 @@
   object-fit: cover; flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   transition: transform 0.2s, box-shadow 0.2s;
+  scroll-snap-align: start;
 }
 .landing-photo-scroll img:hover { transform: scale(1.03); box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
 
@@ -286,6 +289,9 @@
 /* ── SOCIAL FEEDS ── */
 .landing-social-feeds {
   max-width: 800px; margin: 0 auto; padding: 2.5rem 2rem;
+  background: color-mix(in srgb, var(--landing-background, #F9FAFB) 95%, var(--landing-secondary, #64748B) 5%);
+  border: 1px solid color-mix(in srgb, var(--landing-secondary, #64748B) 16%, var(--landing-border, #E5E7EB));
+  border-radius: 14px;
 }
 .landing-social-feeds h2 {
   font-family: var(--landing-heading-font, 'Inter'), sans-serif;

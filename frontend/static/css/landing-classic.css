@@ -106,6 +106,14 @@
   font-size: 1.5rem; font-style: var(--landing-heading-style, italic);
   color: var(--landing-text, #F5F5F0); margin-bottom: 1rem;
 }
+.landing-about h2::after {
+  content: "";
+  display: block;
+  width: 84px;
+  height: 1px;
+  margin-top: 0.55rem;
+  background: color-mix(in srgb, var(--landing-primary, #C9A96E) 65%, transparent);
+}
 .landing-about-text {
   font-size: 0.95rem; line-height: 1.8;
   color: var(--landing-text, #F5F5F0); opacity: 0.85;
@@ -140,6 +148,7 @@
   object-fit: cover; flex-shrink: 0;
   border: 1px solid var(--landing-border, #3A3A3C);
   transition: transform 0.2s;
+  scroll-snap-align: start;
 }
 .landing-photo-scroll img:hover { transform: scale(1.03); }
 
@@ -161,6 +170,14 @@
   font-family: var(--landing-heading-font, 'EB Garamond'), serif;
   font-size: 1.4rem; font-style: var(--landing-heading-style, italic);
   color: var(--landing-text, #F5F5F0);
+}
+.landing-items-header h2::after {
+  content: "";
+  display: block;
+  width: 64px;
+  height: 1px;
+  margin-top: 0.4rem;
+  background: color-mix(in srgb, var(--landing-primary, #C9A96E) 58%, transparent);
 }
 .landing-items-header .item-count {
   font-size: 0.8rem; color: var(--landing-text, #F5F5F0); opacity: 0.5;
