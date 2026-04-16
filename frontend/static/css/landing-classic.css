@@ -9,6 +9,7 @@
   padding: 0 1.5rem;
   display: flex; align-items: center; justify-content: space-between;
   height: 56px;
+  backdrop-filter: blur(4px);
 }
 .landing-nav a { color: var(--landing-text, #F5F5F0); text-decoration: none; }
 .landing-nav-brand {
@@ -73,6 +74,8 @@
   font-style: var(--landing-heading-style, italic);
   color: var(--landing-text, #F5F5F0); line-height: 1.1;
   margin-bottom: 0.4rem;
+  text-shadow: 0 6px 20px rgba(0,0,0,0.35);
+  text-wrap: balance;
 }
 .landing-hero .booth-tag {
   display: inline-block;
@@ -83,13 +86,14 @@
 }
 .landing-hero .hero-cta {
   display: inline-block; margin-top: 0.5rem;
-  background: var(--landing-primary, #C9A96E); color: var(--landing-bg-dark, #1A1A1C);
+  background: linear-gradient(120deg, var(--landing-primary, #C9A96E), color-mix(in srgb, var(--landing-secondary, #38383B) 18%, var(--landing-primary, #C9A96E)));
+  color: var(--landing-bg-dark, #1A1A1C);
   padding: 0.6rem 1.6rem; border-radius: 4px;
   font-size: 0.85rem; font-weight: 500;
   text-decoration: none; letter-spacing: 0.03em;
-  transition: filter 0.2s;
+  transition: filter 0.2s, transform 0.2s;
 }
-.landing-hero .hero-cta:hover { filter: brightness(1.1); }
+.landing-hero .hero-cta:hover { filter: brightness(1.1); transform: translateY(-2px); }
 
 /* ── ABOUT ── */
 .landing-about {
@@ -271,6 +275,9 @@
 /* ── FAQ ── */
 .landing-faq {
   max-width: 900px; margin: 0 auto; padding: 2rem 2rem;
+  background: color-mix(in srgb, var(--landing-background, #1A1A1C) 95%, var(--landing-secondary, #38383B) 5%);
+  border: 1px solid color-mix(in srgb, var(--landing-secondary, #38383B) 20%, var(--landing-border, #3A3A3C));
+  border-radius: 12px;
 }
 .landing-faq h2 {
   font-family: var(--landing-heading-font, 'EB Garamond'), serif;
@@ -292,6 +299,9 @@
 /* ── SOCIAL FEEDS ── */
 .landing-social-feeds {
   max-width: 900px; margin: 0 auto; padding: 2rem 2rem;
+  background: color-mix(in srgb, var(--landing-background, #1A1A1C) 95%, var(--landing-secondary, #38383B) 5%);
+  border: 1px solid color-mix(in srgb, var(--landing-secondary, #38383B) 20%, var(--landing-border, #3A3A3C));
+  border-radius: 12px;
 }
 .landing-social-feeds h2 {
   font-family: var(--landing-heading-font, 'EB Garamond'), serif;
@@ -305,6 +315,29 @@
   background: var(--landing-card-bg, #2A2A2C);
   border: 1px solid var(--landing-border, #3A3A3C);
   border-radius: 8px; overflow: hidden; min-height: 300px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+}
+
+.landing-about,
+.landing-items,
+.landing-faq,
+.landing-social-feeds {
+  animation: landing-fadeUp 0.6s ease both;
+}
+
+.landing-items { animation-delay: 0.08s; }
+.landing-faq { animation-delay: 0.14s; }
+.landing-social-feeds { animation-delay: 0.2s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-about,
+  .landing-items,
+  .landing-faq,
+  .landing-social-feeds,
+  .landing-item-card {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 .landing-social-feed-card-header {
   padding: 0.75rem 1rem;

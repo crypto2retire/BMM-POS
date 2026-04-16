@@ -67,7 +67,8 @@
   font-style: var(--landing-heading-style, normal);
   color: var(--landing-text, #171717); line-height: 1.2;
   margin-bottom: 0.5rem;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
 }
 .landing-hero .booth-tag {
   display: inline-block;
@@ -83,9 +84,9 @@
   padding: 0.55rem 1.8rem; border-radius: 2px;
   font-size: 0.78rem; font-weight: 400;
   text-decoration: none; letter-spacing: 0.06em; text-transform: uppercase;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, transform 0.2s;
 }
-.landing-hero .hero-cta:hover { opacity: 0.8; }
+.landing-hero .hero-cta:hover { opacity: 0.85; transform: translateY(-2px); }
 
 /* ── ABOUT ── */
 .landing-about {
@@ -160,6 +161,14 @@
   font-size: 0.75rem; font-weight: var(--landing-heading-weight, 400);
   color: var(--landing-text, #171717); opacity: 0.4;
   letter-spacing: 0.1em; text-transform: uppercase;
+}
+.landing-items-header h2::after {
+  content: "";
+  display: block;
+  width: 44px;
+  height: 1px;
+  margin-top: 0.45rem;
+  background: color-mix(in srgb, var(--landing-primary, #171717) 38%, transparent);
 }
 .landing-items-header .item-count {
   font-size: 0.75rem; color: var(--landing-text, #171717); opacity: 0.3;
@@ -266,6 +275,28 @@
   font-size: 0.75rem; font-weight: var(--landing-heading-weight, 400);
   color: var(--landing-text, #171717); opacity: 0.4;
   margin-bottom: 1.5rem; letter-spacing: 0.1em; text-transform: uppercase;
+}
+
+.landing-about,
+.landing-items,
+.landing-faq,
+.landing-social-feeds {
+  animation: landing-fadeUp 0.55s ease both;
+}
+
+.landing-items { animation-delay: 0.08s; }
+.landing-faq { animation-delay: 0.14s; }
+.landing-social-feeds { animation-delay: 0.2s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-about,
+  .landing-items,
+  .landing-faq,
+  .landing-social-feeds,
+  .landing-item-card {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 .landing-faq-item {
   border-bottom: 1px solid var(--landing-border, #E5E5E5);

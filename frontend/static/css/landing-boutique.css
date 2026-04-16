@@ -9,6 +9,7 @@
   padding: 0 1.5rem;
   display: flex; align-items: center; justify-content: space-between;
   height: 56px;
+  backdrop-filter: blur(6px);
 }
 .landing-nav a { color: var(--landing-text, #5D4037); text-decoration: none; }
 .landing-nav-brand {
@@ -84,6 +85,7 @@
   font-style: normal;
   color: var(--landing-text, #5D4037); line-height: 1.2;
   margin-bottom: 0.5rem;
+  text-wrap: balance;
 }
 .landing-hero .booth-tag {
   display: inline-block;
@@ -106,6 +108,7 @@
 }
 .landing-hero .hero-cta:hover {
   background: var(--landing-primary, #B8860B); color: #FFFFFF;
+  transform: translateY(-2px);
 }
 
 /* ── ABOUT ── */
@@ -239,7 +242,7 @@
 }
 .landing-item-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--landing-primary, #B8860B) 12%, transparent);
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--landing-primary, #B8860B) 16%, transparent);
 }
 .landing-item-card-img {
   width: 100%; height: 200px;
@@ -298,6 +301,28 @@
   background: color-mix(in srgb, var(--landing-background, #FFF8F0) 94%, var(--landing-secondary, #EAD8C3) 6%);
   border: 1px solid color-mix(in srgb, var(--landing-secondary, #EAD8C3) 24%, var(--landing-border, #F3E4D1));
   border-radius: 20px;
+}
+
+.landing-about,
+.landing-items,
+.landing-faq,
+.landing-social-feeds {
+  animation: landing-fadeUp 0.6s ease both;
+}
+
+.landing-items { animation-delay: 0.08s; }
+.landing-faq { animation-delay: 0.14s; }
+.landing-social-feeds { animation-delay: 0.2s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-about,
+  .landing-items,
+  .landing-faq,
+  .landing-social-feeds,
+  .landing-item-card {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 .landing-faq h2 {
   font-family: var(--landing-heading-font, 'Great Vibes'), cursive;
