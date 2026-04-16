@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import Integer, String, Text, Boolean, TIMESTAMP, ForeignKey, ARRAY
+from sqlalchemy import Integer, String, Text, Boolean, TIMESTAMP, ForeignKey, ARRAY, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -35,5 +35,8 @@ class BoothShowcase(Base):
     landing_faq: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     show_facebook_feed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     show_instagram_feed: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
+    landing_template: Mapped[Optional[str]] = mapped_column(String(50), default="classic", server_default="classic")
+    landing_theme: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
     vendor = relationship("Vendor", backref="booth_showcase", lazy="selectin")

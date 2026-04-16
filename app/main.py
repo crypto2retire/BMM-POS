@@ -107,6 +107,22 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         _record_startup_failure("add_landing_page_fee_column", e)
 
+    # ── Landing page personalization columns ──
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(text(
+                "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS "
+                "landing_template VARCHAR(50) NOT NULL DEFAULT 'classic'"
+            ))
+            await session.execute(text(
+                "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS "
+                "landing_theme JSONB"
+            ))
+            await session.commit()
+        _record_startup_ok("add_landing_personalization_columns")
+    except Exception as e:
+        _record_startup_failure("add_landing_personalization_columns", e)
+
     # ── Add search performance indexes ──
     try:
         async with AsyncSessionLocal() as session:
