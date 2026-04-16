@@ -19,7 +19,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500;600;700&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
 <!-- Template CSS loaded dynamically -->
 <link id="template-css" rel="stylesheet" href="/static/css/landing-classic.css">
-<style id="theme-vars"></style>
+<style id="theme-vars">
+  /* Landing page reset — override main.css global styles */
+  body.themed, body.themed * {
+    background-image: none !important;
+    background-attachment: scroll !important;
+  }
+</style>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   html { scroll-behavior: smooth; }
@@ -368,7 +374,8 @@
         '--landing-heading-style: ' + (f.heading_style || 'normal') + ';' +
         '--landing-body-font: \'' + (f.body || 'Roboto') + '\', sans-serif;' +
         '--landing-body-weight: ' + (f.body_weight || '300') + ';' +
-      '}';
+      '}' +
+      'body.themed, body.themed * { background-image: none !important; background-attachment: scroll !important; }';
 
       document.body.style.background = c.background;
       document.body.style.color = c.text;
