@@ -369,7 +369,7 @@
                     Choose a custom URL for your landing page. This is the link you can share on social media, business cards, etc.
                 </p>
                 <div style="display:flex;align-items:center;gap:0;margin-bottom:0.5rem">
-                    <span style="background:var(--bg);border:1px solid var(--border);border-right:none;padding:0.55rem 0.5rem;font-size:0.8rem;color:var(--text-light);white-space:nowrap">bowenstreetmm.com/v/</span>
+                    <span style="background:var(--bg);border:1px solid var(--border);border-right:none;padding:0.55rem 0.5rem;font-size:0.8rem;color:var(--text-light);white-space:nowrap">bowenstreetmarket.com/vendor/</span>
                     <input type="text" id="landing-slug" placeholder="your-booth-name" maxlength="100" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.85rem;font-family:'Roboto',sans-serif">
                 </div>
                 <div style="display:flex;gap:0.5rem;align-items:center">
@@ -1040,10 +1040,10 @@ function updateLandingLink() {
     var slug = showcase.landing_slug;
     var box = document.getElementById('landing-link-box');
     if (slug) {
-        var url = window.location.origin + '/v/' + slug;
+        var url = window.location.origin + '/vendor/' + slug;
         var link = document.getElementById('landing-link');
         link.href = url;
-        link.textContent = 'bowenstreetmm.com/v/' + slug;
+        link.textContent = 'bowenstreetmarket.com/vendor/' + slug;
         box.style.display = 'block';
     } else {
         box.style.display = 'none';
@@ -1053,7 +1053,7 @@ function updateLandingLink() {
 function copyLandingLink() {
     var slug = showcase.landing_slug;
     if (!slug) return;
-    var url = 'https://www.bowenstreetmm.com/v/' + slug;
+    var url = 'https://www.bowenstreetmarket.com/vendor/' + slug;
     navigator.clipboard.writeText(url).then(function() {
         showStatus('Link copied to clipboard!', 'success');
     });

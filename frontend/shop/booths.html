@@ -8,10 +8,10 @@
 <meta property="og:title" content="Vendor Booths — Bowenstreet Market">
 <meta property="og:description" content="Explore 120+ vendor booths of handcrafted, vintage, and antique goods at Bowenstreet Market.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://www.bowenstreetmm.com/shop/booths.html">
-<meta property="og:image" content="https://www.bowenstreetmm.com/static/images/og-image.jpg">
+<meta property="og:url" content="https://www.bowenstreetmarket.com/shop/booths.html">
+<meta property="og:image" content="https://www.bowenstreetmarket.com/static/images/og-image.jpg">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="canonical" href="https://www.bowenstreetmm.com/shop/booths.html">
+<link rel="canonical" href="https://www.bowenstreetmarket.com/shop/booths.html">
 <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -390,7 +390,7 @@ var currentGalleryIndex = 0;
 var currentPhotos = [];
 
 function getInventoryUrl(b) {
-    if (b.landing_slug) return '/v/' + encodeURIComponent(b.landing_slug);
+    if (b.landing_slug) return '/vendor/' + encodeURIComponent(b.landing_slug);
     return '/shop/vendor/' + b.vendor_id;
 }
 
@@ -482,7 +482,7 @@ function openModal(index) {
         metaHtml += '<a href="' + escHtml(getInventoryUrl(b)) + '" style="color:#C9A96E;text-decoration:none;font-size:0.78rem;border-bottom:1px solid rgba(201,169,110,0.3);padding-bottom:1px" onclick="event.stopPropagation()">View Inventory &rarr;</a>';
     }
     if (b.landing_slug) {
-        metaHtml += '<a href="/v/' + escHtml(b.landing_slug) + '" style="color:#C9A96E;text-decoration:none;font-size:0.78rem;border-bottom:1px solid rgba(201,169,110,0.3);padding-bottom:1px" onclick="event.stopPropagation()">Vendor Page &rarr;</a>';
+        metaHtml += '<a href="/vendor/' + escHtml(b.landing_slug) + '" style="color:#C9A96E;text-decoration:none;font-size:0.78rem;border-bottom:1px solid rgba(201,169,110,0.3);padding-bottom:1px" onclick="event.stopPropagation()">Vendor Page &rarr;</a>';
     }
     document.getElementById('modal-meta').innerHTML = metaHtml;
 

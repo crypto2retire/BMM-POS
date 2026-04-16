@@ -8,10 +8,10 @@
     <meta property="og:title" content="Vendors — Bowenstreet Market">
     <meta property="og:description" content="Vendor management for Bowenstreet Market POS system.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://www.bowenstreetmm.com/admin/vendors.html">
-    <meta property="og:image" content="https://www.bowenstreetmm.com/static/images/og-image.jpg">
+    <meta property="og:url" content="https://www.bowenstreetmarket.com/admin/vendors.html">
+    <meta property="og:image" content="https://www.bowenstreetmarket.com/static/images/og-image.jpg">
     <meta name="twitter:card" content="summary_large_image">
-    <link rel="canonical" href="https://www.bowenstreetmm.com/admin/vendors.html">
+    <link rel="canonical" href="https://www.bowenstreetmarket.com/admin/vendors.html">
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
     <style>
@@ -1025,7 +1025,7 @@
             var slug = v.landing_slug || '';
             if (slug) {
                 previewLink.style.display = 'inline';
-                previewLink.href = '/v/' + slug;
+                previewLink.href = '/vendor/' + slug;
             }
         } else {
             slugRow.style.display = 'none';
@@ -1131,7 +1131,7 @@
             document.getElementById('e-landing-slug').value = res.landing_slug || slug;
             var previewLink = document.getElementById('landing-preview-link');
             previewLink.style.display = 'inline';
-            previewLink.href = '/v/' + (res.landing_slug || slug);
+            previewLink.href = '/vendor/' + (res.landing_slug || slug);
             editingVendor.landing_slug = res.landing_slug || slug;
             showAlert('alert-container', 'Landing page URL saved: ' + (res.landing_slug || slug) + '.bowenstreetmarket.com', 'success');
         } catch (e) {

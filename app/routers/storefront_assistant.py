@@ -283,7 +283,7 @@ async def _execute_tool(tool_name: str, args: dict, db: AsyncSession) -> str:
             if r.has_showcase:
                 parts.append(" — [view booth showcase](/shop/booths.html)")
             if r.has_landing_page and r.landing_slug:
-                parts.append(f" — [visit vendor page](/v/{r.landing_slug})")
+                parts.append(f" — [visit vendor page](/vendor/{r.landing_slug})")
             lines.append("".join(parts))
         return f"Found {len(rows)} vendor(s):\n" + "\n".join(lines)
 

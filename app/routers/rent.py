@@ -349,7 +349,7 @@ async def pay_rent(
     price_cents = round(float(amount) * 100)
     month_label = period.strftime("%B %Y")
     redirect_url = (
-        f"https://www.bowenstreetmm.com/vendor/dashboard.html"
+        f"https://www.bowenstreetmarket.com/vendor/dashboard.html"
         f"?rent_paid=success&vendor_id={vendor.id}"
         f"&rent_amount={float(amount):.2f}&rent_period={period.isoformat()}"
     )

@@ -2311,7 +2311,7 @@
             document.getElementById('admin-landing-no-data').style.display = 'none';
 
             if (slug) {
-                var url = window.location.origin + '/v/' + slug;
+                var url = window.location.origin + '/vendor/' + slug;
                 document.getElementById('admin-landing-slug-link').innerHTML = '<a href="' + url + '" target="_blank" style="color:var(--accent);text-decoration:none;font-size:0.72rem">' + slug + '</a>';
                 document.getElementById('admin-landing-preview-link').href = url;
                 document.getElementById('admin-landing-preview-link').style.display = 'inline-block';
@@ -2321,7 +2321,7 @@
             }
 
             // Load preview iframe
-            var previewUrl = slug ? '/v/' + slug : 'about:blank';
+            var previewUrl = slug ? '/vendor/' + slug : 'about:blank';
             document.getElementById('admin-landing-preview-wrap').style.display = 'block';
             document.getElementById('admin-landing-preview').src = previewUrl;
         } catch (e) {
@@ -2348,7 +2348,7 @@
             if (typeof showAlert === 'function') showAlert('alert-container', 'Template updated!', 'success');
             // Refresh preview
             if (adminSelectedVendorData && adminSelectedVendorData.landing_slug) {
-                document.getElementById('admin-landing-preview').src = '/v/' + adminSelectedVendorData.landing_slug + '?t=' + Date.now();
+                document.getElementById('admin-landing-preview').src = '/vendor/' + adminSelectedVendorData.landing_slug + '?t=' + Date.now();
             }
         } catch (e) {
             if (typeof showAlert === 'function') showAlert('alert-container', e.message, 'error');

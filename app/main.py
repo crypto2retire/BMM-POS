@@ -284,21 +284,21 @@ async def static_cache_headers(request: Request, call_next):
 
 @app.middleware("http")
 async def subdomain_landing_redirect(request: Request, call_next):
-    """Route *.bowenstreetmarket.com subdomains to /v/{slug}."""
+    """Route *.bowenstreetmarket.com subdomains to /vendor/{slug}."""
     host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
-    # Match vendor.bowenstreetmarket.com or vendor.bowenstreetmm.com
-    for domain in ("bowenstreetmarket.com", "bowenstreetmm.com", "www.bowenstreetmarket.com", "www.bowenstreetmm.com"):
+    # Match vendor.bowenstreetmarket.com or vendor.bowenstreetmarket.com
+    for domain in ("bowenstreetmarket.com", "bowenstreetmarket.com", "www.bowenstreetmarket.com", "www.bowenstreetmarket.com"):
         if host == domain or host == f"www.{domain}":
             break
     else:
         # It's a subdomain — extract slug
         slug = host.split(".")[0]
         if slug and slug not in ("www", "api", "admin", "pos", "shop"):
-            # Rewrite path to /v/{slug} so it hits the landing page route
+            # Rewrite path to /vendor/{slug} so it hits the landing page route
             if request.url.path in ("/", ""):
                 from starlette.datastructures import URL
                 scope = request.scope.copy()
-                new_path = f"/v/{slug}"
+                new_path = f"/vendor/{slug}"
                 scope["path"] = new_path
                 scope["raw_path"] = new_path.encode()
                 request = Request(scope, request.receive)
@@ -366,17 +366,17 @@ async def sitemap_xml():
     xml = '''<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://www.bowenstreetmm.com/shop/index.html</loc>
+    <loc>https://www.bowenstreetmarket.com/shop/index.html</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://www.bowenstreetmm.com/shop/booths.html</loc>
+    <loc>https://www.bowenstreetmarket.com/shop/booths.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.bowenstreetmm.com/</loc>
+    <loc>https://www.bowenstreetmarket.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -384,7 +384,7 @@ async def sitemap_xml():
     return Response(content=xml, media_type="application/xml")
 
 
-@app.get("/v/{slug}")
+@app.get("/vendor/{slug}")
 async def vendor_landing_page(slug: str):
     page = Path("frontend/shop/vendor-page.html")
     if page.exists():

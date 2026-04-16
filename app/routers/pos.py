@@ -1965,7 +1965,7 @@ async def pos_rent_payment(
             result_link = await create_payment_link(
                 name=f"Rent - {vendor.name} - {today.strftime('%B %Y')}",
                 price_cents=price_cents,
-                redirect_url=f"https://www.bowenstreetmm.com/pos/index.html?rent_paid=success&vendor_id={vendor.id}",
+                redirect_url=f"https://www.bowenstreetmarket.com/pos/index.html?rent_paid=success&vendor_id={vendor.id}",
             )
             payment = RentPayment(
                 vendor_id=vendor.id,
