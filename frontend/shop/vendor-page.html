@@ -382,13 +382,14 @@
   var debugOverride = false;
 
   // ── TEMPLATE & THEME ──
-  function applyTemplateAndTheme(template, theme) {
+  function applyTemplateAndTheme(template, theme, themeVersion) {
     currentTemplate = template || 'classic';
     currentTheme = theme;
 
     // Load template CSS
     var link = document.getElementById('template-css');
-    link.href = '/static/css/landing-' + currentTemplate + '.css';
+    var cssVersion = themeVersion || Date.now();
+    link.href = '/static/css/landing-' + currentTemplate + '.css?v=' + encodeURIComponent(cssVersion);
 
     if (theme && theme.colors && theme.fonts) {
       // Apply theme
@@ -541,7 +542,7 @@
     document.getElementById('vendor-content').style.display = 'block';
 
     // Apply template and theme BEFORE rendering
-    applyTemplateAndTheme(vendorData.landing_template, vendorData.landing_theme);
+    applyTemplateAndTheme(vendorData.landing_template, vendorData.landing_theme, vendorData.updated_at);
 
     renderHero();
     renderAbout();

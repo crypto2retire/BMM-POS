@@ -50,12 +50,28 @@
   position: relative;
   background-size: cover; background-position: center;
   min-height: 420px;
+  box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--landing-secondary, #64748B) 18%, transparent);
 }
-.landing-hero-gradient { display: none; }
+.landing-hero-gradient {
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--landing-secondary, #64748B) 22%, transparent) 0%,
+    color-mix(in srgb, var(--landing-background, #F9FAFB) 55%, transparent) 100%
+  );
+  pointer-events: none;
+}
 .landing-hero-content {
   display: flex; flex-direction: column; justify-content: center;
   padding: 3rem 3rem 3rem 4rem;
   animation: landing-fadeUp 0.7s ease;
+  background: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--landing-background, #F9FAFB) 92%, transparent) 0%,
+    color-mix(in srgb, var(--landing-secondary, #64748B) 16%, var(--landing-background, #F9FAFB)) 100%
+  );
 }
 .landing-hero h1 {
   font-family: var(--landing-heading-font, 'Inter'), sans-serif;
@@ -89,6 +105,10 @@
   max-width: 800px; margin: 0 auto;
   padding: 3rem 2rem;
   animation: landing-fadeUp 0.5s ease;
+  background: color-mix(in srgb, var(--landing-background, #F9FAFB) 92%, var(--landing-secondary, #64748B) 8%);
+  border: 1px solid color-mix(in srgb, var(--landing-secondary, #64748B) 18%, var(--landing-border, #E5E7EB));
+  border-radius: 14px;
+  margin-top: 1.5rem;
 }
 .landing-about h2 {
   font-family: var(--landing-heading-font, 'Inter'), sans-serif;
@@ -135,6 +155,7 @@
 /* ── ITEMS SECTION ── */
 .landing-items {
   max-width: 1200px; margin: 0 auto; padding: 2.5rem 2rem;
+  background: color-mix(in srgb, var(--landing-background, #F9FAFB) 96%, var(--landing-secondary, #64748B) 4%);
 }
 .landing-items-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -241,6 +262,9 @@
 /* ── FAQ ── */
 .landing-faq {
   max-width: 800px; margin: 0 auto; padding: 2.5rem 2rem;
+  background: color-mix(in srgb, var(--landing-background, #F9FAFB) 95%, var(--landing-secondary, #64748B) 5%);
+  border: 1px solid color-mix(in srgb, var(--landing-secondary, #64748B) 16%, var(--landing-border, #E5E7EB));
+  border-radius: 14px;
 }
 .landing-faq h2 {
   font-family: var(--landing-heading-font, 'Inter'), sans-serif;

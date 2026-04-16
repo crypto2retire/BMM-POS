@@ -16,7 +16,7 @@
   font-style: var(--landing-heading-style, normal);
   font-size: 0.95rem;
   font-weight: var(--landing-heading-weight, 400);
-  color: var(--landing-text, #171717);
+  color: var(--landing-primary, #171717);
   letter-spacing: 0.04em; text-transform: uppercase;
 }
 .landing-nav-links { display: flex; gap: 1.5rem; align-items: center; }
@@ -76,7 +76,7 @@
 }
 .landing-hero .hero-cta {
   display: inline-block; margin-top: 1rem;
-  background: var(--landing-text, #171717); color: var(--landing-bg-dark, #FAFAFA);
+  background: var(--landing-primary, #171717); color: var(--landing-bg-dark, #FAFAFA);
   padding: 0.55rem 1.8rem; border-radius: 2px;
   font-size: 0.78rem; font-weight: 400;
   text-decoration: none; letter-spacing: 0.06em; text-transform: uppercase;
@@ -108,7 +108,7 @@
 }
 .landing-social-links a {
   display: inline-flex; align-items: center; gap: 0.35rem;
-  font-size: 0.75rem; color: var(--landing-text, #171717); opacity: 0.5;
+  font-size: 0.75rem; color: var(--landing-primary, #171717); opacity: 0.7;
   text-decoration: none; letter-spacing: 0.04em; text-transform: uppercase;
   transition: opacity 0.2s;
 }
@@ -140,6 +140,11 @@
 /* ── ITEMS SECTION (Masonry-ish) ── */
 .landing-items {
   max-width: 1100px; margin: 0 auto; padding: 3rem 2rem;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--landing-background, #FAFAFA) 98%, transparent) 0%,
+    color-mix(in srgb, var(--landing-secondary, #D4D4D4) 10%, var(--landing-background, #FAFAFA)) 100%
+  );
 }
 .landing-items-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -175,7 +180,8 @@
 }
 .landing-cat-btn:hover, .landing-cat-btn.active {
   opacity: 1;
-  border-bottom: 1px solid var(--landing-text, #171717);
+  color: var(--landing-primary, #171717);
+  border-bottom: 1px solid var(--landing-primary, #171717);
 }
 
 .landing-items-grid {
@@ -226,7 +232,7 @@
   letter-spacing: 0.05em; text-transform: uppercase;
 }
 .landing-add-cart-btn:hover {
-  opacity: 1; background: var(--landing-text, #171717); color: var(--landing-bg-dark, #FAFAFA);
+  opacity: 1; background: var(--landing-primary, #171717); color: var(--landing-bg-dark, #FAFAFA);
 }
 .landing-add-cart-btn.carted {
   opacity: 0.7;
