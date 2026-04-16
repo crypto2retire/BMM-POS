@@ -284,21 +284,19 @@ async def static_cache_headers(request: Request, call_next):
 
 @app.middleware("http")
 async def subdomain_landing_redirect(request: Request, call_next):
-    """Route *.bowenstreetmarket.com subdomains to /vendor/{slug}."""
+    """Route *.bowenstreetmarket.com subdomains to /{slug}."""
     host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
-    # Match vendor.bowenstreetmarket.com or vendor.bowenstreetmarket.com
-    for domain in ("bowenstreetmarket.com", "bowenstreetmarket.com", "www.bowenstreetmarket.com", "www.bowenstreetmarket.com"):
+    for domain in ("bowenstreetmarket.com", "www.bowenstreetmarket.com"):
         if host == domain or host == f"www.{domain}":
             break
     else:
-        # It's a subdomain — extract slug
         slug = host.split(".")[0]
-        if slug and slug not in ("www", "api", "admin", "pos", "shop"):
-            # Rewrite path to /vendor/{slug} so it hits the landing page route
+        if slug and slug not in ("www", "api", "admin", "pos", "shop", "vendor"):
             if request.url.path in ("/", ""):
                 from starlette.datastructures import URL
                 scope = request.scope.copy()
-                new_path = f"/vendor/{slug}"
+                new_path = f"/{slug}"
+                scope["path"] = new_path
                 scope["path"] = new_path
                 scope["raw_path"] = new_path.encode()
                 request = Request(scope, request.receive)
@@ -384,8 +382,16 @@ async def sitemap_xml():
     return Response(content=xml, media_type="application/xml")
 
 
-@app.get("/vendor/{slug}")
+@app.get("/{slug}")
 async def vendor_landing_page(slug: str):
+    # Root-level vendor landing pages: bowenstreetmarket.com/{vendor-name}
+    # Only match simple slugs — no dots, no slashes, not a known directory
+    if "." in slug or "/" in slug:
+        raise HTTPException(status_code=404)
+    _reserved = ("shop", "admin", "pos", "vendor", "static", "api", "health",
+                 "favicon", "manifest", "robots", "llms", "sitemaps", "docs")
+    if slug in _reserved:
+        raise HTTPException(status_code=404)
     page = Path("frontend/shop/vendor-page.html")
     if page.exists():
         return FileResponse(page, media_type="text/html")

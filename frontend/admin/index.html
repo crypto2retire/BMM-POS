@@ -905,7 +905,7 @@
             <a href="/admin/reports.html">Reports</a>
             <a href="/admin/eod-reports.html">EOD Reports</a>
             <a href="/admin/studio.html">Studio</a>
-            <a href="/vendor/items.html">Items</a>
+            <a href="/items.html">Items</a>
             <a href="/admin/settings.html" class="admin-only-nav">Settings</a>
             <a href="/pos/index.html">POS Terminal</a>
             <button type="button" onclick="handleLogout()">Logout</button>
@@ -918,7 +918,7 @@
     <a href="/admin/reports.html">Reports</a>
     <a href="/admin/eod-reports.html">EOD Reports</a>
     <a href="/admin/studio.html">Studio</a>
-    <a href="/vendor/items.html">Items</a>
+    <a href="/items.html">Items</a>
     <a href="/admin/settings.html" class="admin-only-nav">Settings</a>
     <a href="/pos/index.html">POS Terminal</a>
     <button type="button" onclick="handleLogout()">Logout</button>
@@ -1464,7 +1464,7 @@
 <nav class="admin-bottom-nav">
     <a href="/admin/index.html" class="active"><span class="nav-icon">&#127968;</span>Dashboard</a>
     <a href="/admin/reports.html"><span class="nav-icon">&#128196;</span>Reports</a>
-    <a href="/vendor/items.html"><span class="nav-icon">&#127991;&#65039;</span>Items</a>
+    <a href="/items.html"><span class="nav-icon">&#127991;&#65039;</span>Items</a>
     <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
 </nav>
 
@@ -2311,7 +2311,7 @@
             document.getElementById('admin-landing-no-data').style.display = 'none';
 
             if (slug) {
-                var url = window.location.origin + '/vendor/' + slug;
+                var url = window.location.origin + '/' + slug;
                 document.getElementById('admin-landing-slug-link').innerHTML = '<a href="' + url + '" target="_blank" style="color:var(--accent);text-decoration:none;font-size:0.72rem">' + slug + '</a>';
                 document.getElementById('admin-landing-preview-link').href = url;
                 document.getElementById('admin-landing-preview-link').style.display = 'inline-block';
@@ -2321,7 +2321,7 @@
             }
 
             // Load preview iframe
-            var previewUrl = slug ? '/vendor/' + slug : 'about:blank';
+            var previewUrl = slug ? '/' + slug : 'about:blank';
             document.getElementById('admin-landing-preview-wrap').style.display = 'block';
             document.getElementById('admin-landing-preview').src = previewUrl;
         } catch (e) {
@@ -2348,7 +2348,7 @@
             if (typeof showAlert === 'function') showAlert('alert-container', 'Template updated!', 'success');
             // Refresh preview
             if (adminSelectedVendorData && adminSelectedVendorData.landing_slug) {
-                document.getElementById('admin-landing-preview').src = '/vendor/' + adminSelectedVendorData.landing_slug + '?t=' + Date.now();
+                document.getElementById('admin-landing-preview').src = '/' + adminSelectedVendorData.landing_slug + '?t=' + Date.now();
             }
         } catch (e) {
             if (typeof showAlert === 'function') showAlert('alert-container', e.message, 'error');

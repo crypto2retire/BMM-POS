@@ -593,8 +593,8 @@
     document.getElementById('meta-desc').setAttribute('content', desc);
     document.getElementById('og-title').setAttribute('content', title);
     document.getElementById('og-desc').setAttribute('content', desc);
-    document.getElementById('og-url').setAttribute('content', 'https://www.bowenstreetmarket.com/vendor/' + slug);
-    document.getElementById('canonical').setAttribute('href', 'https://www.bowenstreetmarket.com/vendor/' + slug);
+    document.getElementById('og-url').setAttribute('content', 'https://www.bowenstreetmarket.com/' + slug);
+    document.getElementById('canonical').setAttribute('href', 'https://www.bowenstreetmarket.com/' + slug);
     if (photos.length > 0) {
       document.getElementById('og-image').setAttribute('content', photos[0]);
     }
@@ -967,7 +967,7 @@
       'name': vendorData.vendor_name,
       'description': vendorData.landing_meta_desc || vendorData.description || '',
       'image': (vendorData.photo_urls || [])[0] || '',
-      'url': 'https://www.bowenstreetmarket.com/vendor/' + vendorSlug,
+      'url': 'https://www.bowenstreetmarket.com/' + vendorSlug,
       'address': {
         '@type': 'PostalAddress',
         'streetAddress': '2837 Bowen St',
@@ -1011,7 +1011,7 @@
           'price': item.sale_price || item.price || 0,
           'priceCurrency': 'USD',
           'availability': 'https://schema.org/InStock',
-          'url': 'https://www.bowenstreetmarket.com/vendor/' + vendorSlug + '#item-' + item.id
+          'url': 'https://www.bowenstreetmarket.com/' + vendorSlug + '#item-' + item.id
         };
       });
       injectSchema({
@@ -1019,7 +1019,7 @@
         '@type': 'ItemList',
         'name': vendorData.vendor_name + ' at Bowenstreet Market',
         'description': 'Items available at ' + vendorData.vendor_name + ', Booth ' + (vendorData.booth_number || '') + ' in Oshkosh, WI',
-        'url': 'https://www.bowenstreetmarket.com/vendor/' + vendorSlug,
+        'url': 'https://www.bowenstreetmarket.com/' + vendorSlug,
         'numberOfItems': items.length,
         'itemListElement': items.map(function (item, i) {
           return {

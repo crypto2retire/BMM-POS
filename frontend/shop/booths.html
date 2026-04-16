@@ -390,7 +390,7 @@ var currentGalleryIndex = 0;
 var currentPhotos = [];
 
 function getInventoryUrl(b) {
-    if (b.landing_slug) return '/vendor/' + encodeURIComponent(b.landing_slug);
+    if (b.landing_slug) return '/' + encodeURIComponent(b.landing_slug);
     return '/shop/vendor/' + b.vendor_id;
 }
 
@@ -482,7 +482,7 @@ function openModal(index) {
         metaHtml += '<a href="' + escHtml(getInventoryUrl(b)) + '" style="color:#C9A96E;text-decoration:none;font-size:0.78rem;border-bottom:1px solid rgba(201,169,110,0.3);padding-bottom:1px" onclick="event.stopPropagation()">View Inventory &rarr;</a>';
     }
     if (b.landing_slug) {
-        metaHtml += '<a href="/vendor/' + escHtml(b.landing_slug) + '" style="color:#C9A96E;text-decoration:none;font-size:0.78rem;border-bottom:1px solid rgba(201,169,110,0.3);padding-bottom:1px" onclick="event.stopPropagation()">Vendor Page &rarr;</a>';
+        metaHtml += '<a href="/' + escHtml(b.landing_slug) + '" style="color:#C9A96E;text-decoration:none;font-size:0.78rem;border-bottom:1px solid rgba(201,169,110,0.3);padding-bottom:1px" onclick="event.stopPropagation()">Vendor Page &rarr;</a>';
     }
     document.getElementById('modal-meta').innerHTML = metaHtml;
 

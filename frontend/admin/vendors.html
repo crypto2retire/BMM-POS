@@ -252,7 +252,7 @@
             <a href="/admin/index.html">Dashboard</a>
             <a href="/admin/vendors.html" class="active">Vendors</a>
             <a href="/admin/rent.html">Rent</a>
-            <a href="/vendor/items.html">Items</a>
+            <a href="/items.html">Items</a>
             <a href="/admin/studio.html">Studio</a>
             <a href="/admin/reports.html">Reports</a>
             <a href="/admin/eod-reports.html">EOD Reports</a>
@@ -269,7 +269,7 @@
     <a href="/admin/index.html">Dashboard</a>
     <a href="/admin/vendors.html" class="active">Vendors</a>
     <a href="/admin/rent.html">Rent</a>
-    <a href="/vendor/items.html">Items</a>
+    <a href="/items.html">Items</a>
     <a href="/admin/studio.html">Studio</a>
             <a href="/admin/reports.html">Reports</a>
             <a href="/admin/eod-reports.html">EOD Reports</a>
@@ -665,7 +665,7 @@
     <a href="/admin/rent.html">
         <span class="nav-icon">&#128179;</span>Rent
     </a>
-    <a href="/vendor/items.html">
+    <a href="/items.html">
         <span class="nav-icon">&#127991;&#65039;</span>Items
     </a>
     <a href="/pos/index.html">
@@ -1025,7 +1025,7 @@
             var slug = v.landing_slug || '';
             if (slug) {
                 previewLink.style.display = 'inline';
-                previewLink.href = '/vendor/' + slug;
+                previewLink.href = '/' + slug;
             }
         } else {
             slugRow.style.display = 'none';
@@ -1131,7 +1131,7 @@
             document.getElementById('e-landing-slug').value = res.landing_slug || slug;
             var previewLink = document.getElementById('landing-preview-link');
             previewLink.style.display = 'inline';
-            previewLink.href = '/vendor/' + (res.landing_slug || slug);
+            previewLink.href = '/' + (res.landing_slug || slug);
             editingVendor.landing_slug = res.landing_slug || slug;
             showAlert('alert-container', 'Landing page URL saved: ' + (res.landing_slug || slug) + '.bowenstreetmarket.com', 'success');
         } catch (e) {
