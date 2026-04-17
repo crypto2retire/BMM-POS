@@ -105,7 +105,28 @@ async def run():
     # on exit. pg_advisory_lock is session-scoped so a crash auto-releases it.
     import app.models  # noqa: F401 — registers all models with Base.metadata
 
-    lock_conn = await engine.connect()
+    # Railway's internal DNS occasionally returns "Temporary failure in name
+    # resolution" for the first connection attempt during pre-deploy. Retry
+    # with backoff instead of failing the whole deploy.
+    import socket
+    lock_conn = None
+    last_err: Optional[BaseException] = None
+    for attempt in range(1, 7):  # ~1+2+4+8+16+32 = 63s max
+        try:
+            lock_conn = await engine.connect()
+            break
+        except (socket.gaierror, OSError) as e:
+            last_err = e
+            delay = 2 ** (attempt - 1)
+            print(
+                f"BMM-POS migrate: DB connect attempt {attempt} failed ({e!r}); "
+                f"retrying in {delay}s…",
+                flush=True,
+            )
+            await asyncio.sleep(delay)
+    if lock_conn is None:
+        print(f"BMM-POS migrate: giving up after retries: {last_err!r}", flush=True)
+        raise last_err  # type: ignore[misc]
     try:
         print(f"BMM-POS migrate: acquiring advisory lock {_MIGRATION_LOCK_KEY}…", flush=True)
         await lock_conn.execute(text("SELECT pg_advisory_lock(:k)"), {"k": _MIGRATION_LOCK_KEY})
