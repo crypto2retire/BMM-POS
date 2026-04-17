@@ -661,6 +661,25 @@ async def specialty_page(slug: str, request: Request):
     return HTMLResponse(html)
 
 
+@app.get("/og/{filename}")
+async def og_image_root(filename: str):
+    """Serve OG image at /og/{slug}.png by delegating to the booth-showcase
+    router. This lets the vendor landing page reference a clean,
+    top-level og:image URL.
+    """
+    from fastapi import HTTPException as _HTTPException
+    if not filename.endswith(".png") and not filename.endswith(".jpg"):
+        raise _HTTPException(status_code=404)
+    slug = filename.rsplit(".", 1)[0]
+    if not slug:
+        raise _HTTPException(status_code=404)
+    from app.database import get_db as _get_db
+    from app.routers.booth_showcase import get_og_image as _get_og_image
+    async for db in _get_db():
+        return await _get_og_image(slug=slug, db=db)
+    raise _HTTPException(status_code=500)
+
+
 @app.get("/{slug}")
 async def vendor_landing_page(slug: str, request: Request):
     # Root-level vendor landing pages: bowenstreetmarket.com/{vendor-name}
@@ -669,7 +688,7 @@ async def vendor_landing_page(slug: str, request: Request):
         raise HTTPException(status_code=404)
     _reserved = ("shop", "admin", "pos", "vendor", "vendors", "specialty",
                  "static", "api", "health", "favicon", "manifest", "robots",
-                 "llms", "sitemaps", "sitemap", "docs")
+                 "llms", "sitemaps", "sitemap", "docs", "og")
     if slug in _reserved:
         raise HTTPException(status_code=404)
     page = Path("frontend/shop/vendor-page.html")
@@ -819,10 +838,18 @@ async def vendor_landing_page(slug: str, request: Request):
                     'property="og:url" content=""',
                     f'property="og:url" content="https://www.bowenstreetmarket.com/{slug}"',
                 )
-                if photos:
+                # Prefer the dynamic OG image route over the raw cover photo
+                # so we always get a branded, 1200×630, text-overlaid card.
+                og_image_url = f"https://www.bowenstreetmarket.com/og/{slug}.png"
+                html = html.replace(
+                    'property="og:image" content=""',
+                    f'property="og:image" content="{og_image_url}"',
+                )
+                # Also add twitter:image if the template lacks it
+                if 'name="twitter:image"' not in html:
                     html = html.replace(
-                        'property="og:image" content=""',
-                        f'property="og:image" content="{photos[0]}"',
+                        f'property="og:image" content="{og_image_url}"',
+                        f'property="og:image" content="{og_image_url}">\n    <meta name="twitter:image" content="{og_image_url}"',
                     )
                 html = html.replace(
                     '<link rel="canonical" href="">',
