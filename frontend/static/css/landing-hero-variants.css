@@ -1,0 +1,314 @@
+/* ============================================================
+   Landing Hero Variants (Phase 1)
+   ------------------------------------------------------------
+   Six interchangeable hero layouts that a vendor picks in the
+   admin UI. Each variant swaps markup + styling. Works with
+   all four template skins (classic / modern / boutique / minimal)
+   by consuming the same CSS custom properties that are injected
+   server-side in app/main.py :: vendor_landing_page.
+
+   Any value surfaced as --landing-* is themeable per vendor.
+   Fallbacks are pulled from the dark "classic" palette so the
+   variants still look reasonable when no custom theme is set.
+   ============================================================ */
+
+:root {
+  --hero-accent: var(--landing-primary, var(--gold, #C9A96E));
+  --hero-text: var(--landing-text, var(--text, #F5F0E8));
+  --hero-bg: var(--landing-background, var(--bg, #1a1a1c));
+  --hero-card: var(--landing-card-bg, var(--surface, #2a2a2e));
+  --hero-secondary: var(--landing-secondary, var(--text-light, #A8A6A1));
+  --hero-border: var(--landing-border, rgba(201,169,110,0.22));
+}
+
+/* ── Shared ─────────────────────────────────────────────── */
+.hero-variant {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  animation: hero-fadeIn 0.7s ease;
+}
+.hero-variant .hero-cta {
+  display: inline-block;
+  background: var(--hero-accent);
+  color: #1a1a1d;
+  padding: 0.75rem 1.8rem;
+  border-radius: 4px;
+  font-family: var(--landing-body-font, 'Inter'), sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: transform 0.2s, filter 0.2s;
+}
+.hero-variant .hero-cta:hover { transform: translateY(-1px); filter: brightness(1.08); }
+.hero-variant .hero-tagline {
+  color: var(--hero-secondary);
+  font-size: 1rem;
+  line-height: 1.55;
+  max-width: 42ch;
+  margin: 0.35rem 0 1.1rem;
+}
+.hero-variant .booth-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  color: var(--hero-accent);
+  border: 1px solid color-mix(in srgb, var(--hero-accent) 40%, transparent);
+  padding: 0.22rem 0.7rem;
+  border-radius: 20px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.9rem;
+}
+.hero-variant h1 {
+  font-family: var(--landing-heading-font, 'EB Garamond'), serif;
+  font-weight: var(--landing-heading-weight, 500);
+  font-style: var(--landing-heading-style, italic);
+  color: var(--hero-text);
+  line-height: 1.05;
+  margin: 0 0 0.6rem;
+}
+
+@keyframes hero-fadeIn  { from { opacity: 0; }                 to { opacity: 1; } }
+@keyframes hero-fadeUp  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes hero-zoomBg  { from { transform: scale(1.04); }     to { transform: scale(1); } }
+
+/* ──────────────────────────────────────────────────────────
+   1) CLASSIC  — single hero photo + overlay (current default)
+   ────────────────────────────────────────────────────────── */
+.hero-variant[data-hero="classic"] {
+  min-height: 420px;
+  background: var(--hero-bg);
+  display: flex; align-items: flex-end;
+}
+.hero-variant[data-hero="classic"] .hero-bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  filter: brightness(0.55);
+  animation: hero-zoomBg 1.2s ease;
+}
+.hero-variant[data-hero="classic"] .hero-gradient {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, color-mix(in srgb, var(--hero-bg) 95%, transparent) 0%, transparent 60%);
+}
+.hero-variant[data-hero="classic"] .hero-content {
+  position: relative; z-index: 2;
+  padding: 3rem 2rem 2.5rem;
+  max-width: 900px; margin: 0 auto; width: 100%;
+  animation: hero-fadeUp 0.8s ease;
+}
+.hero-variant[data-hero="classic"] h1 { font-size: clamp(2rem, 5vw, 3.2rem); }
+
+/* ──────────────────────────────────────────────────────────
+   2) SPLIT — portrait left, copy + CTA right (maker vendors)
+   ────────────────────────────────────────────────────────── */
+.hero-variant[data-hero="split"] {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  min-height: 480px;
+  background: var(--hero-bg);
+}
+.hero-variant[data-hero="split"] .hero-photo {
+  background-size: cover; background-position: center;
+  min-height: 380px;
+}
+.hero-variant[data-hero="split"] .hero-content {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 3rem 2.5rem;
+  animation: hero-fadeUp 0.8s ease;
+}
+.hero-variant[data-hero="split"] h1 { font-size: clamp(1.9rem, 4vw, 2.8rem); }
+.hero-variant[data-hero="split"] .hero-since {
+  font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--hero-accent); margin-bottom: 0.6rem;
+}
+@media (max-width: 780px) {
+  .hero-variant[data-hero="split"] { grid-template-columns: 1fr; }
+  .hero-variant[data-hero="split"] .hero-photo { min-height: 260px; }
+}
+
+/* ──────────────────────────────────────────────────────────
+   3) EDITORIAL — full-bleed magazine cover w/ top-left title
+   ────────────────────────────────────────────────────────── */
+.hero-variant[data-hero="editorial"] {
+  min-height: 560px; position: relative;
+  background: var(--hero-bg);
+}
+.hero-variant[data-hero="editorial"] .hero-bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  animation: hero-zoomBg 1.4s ease;
+}
+.hero-variant[data-hero="editorial"] .hero-vignette {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.05) 35%, rgba(0,0,0,0.55) 100%);
+}
+.hero-variant[data-hero="editorial"] .hero-content {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 2.5rem 3rem; z-index: 2;
+  color: #fff;
+}
+.hero-variant[data-hero="editorial"] .hero-kicker {
+  font-size: 0.72rem; letter-spacing: 0.28em; text-transform: uppercase;
+  color: var(--hero-accent); font-weight: 600;
+}
+.hero-variant[data-hero="editorial"] h1 {
+  color: #fff; font-size: clamp(2.4rem, 6vw, 4.4rem);
+  max-width: 16ch; text-shadow: 0 2px 20px rgba(0,0,0,0.45);
+}
+.hero-variant[data-hero="editorial"] .hero-footline {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  color: #ece7d8; font-size: 0.85rem;
+}
+.hero-variant[data-hero="editorial"] .hero-footline .booth-tag { margin: 0; color: var(--hero-accent); border-color: var(--hero-accent); }
+
+/* ──────────────────────────────────────────────────────────
+   4) COLLAGE — 3-tile asymmetric grid for variety booths
+   ────────────────────────────────────────────────────────── */
+.hero-variant[data-hero="collage"] {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  grid-template-rows: 260px 220px;
+  gap: 6px;
+  background: var(--hero-bg);
+  padding: 6px;
+}
+.hero-variant[data-hero="collage"] .hero-tile {
+  background-size: cover; background-position: center;
+  position: relative;
+}
+.hero-variant[data-hero="collage"] .hero-tile:nth-child(1) { grid-row: 1 / span 2; }
+.hero-variant[data-hero="collage"] .hero-content {
+  grid-column: 2 / span 2;
+  background: var(--hero-card);
+  padding: 1.6rem 1.8rem;
+  display: flex; flex-direction: column; justify-content: center;
+  border-left: 3px solid var(--hero-accent);
+}
+.hero-variant[data-hero="collage"] h1 { font-size: clamp(1.6rem, 3.2vw, 2.4rem); }
+@media (max-width: 820px) {
+  .hero-variant[data-hero="collage"] {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 200px 200px auto;
+  }
+  .hero-variant[data-hero="collage"] .hero-tile:nth-child(1) { grid-row: 1; grid-column: 1 / span 2; }
+  .hero-variant[data-hero="collage"] .hero-content { grid-column: 1 / span 2; }
+}
+
+/* ──────────────────────────────────────────────────────────
+   5) STORY — soft bg + large italic quote (legacy vendors)
+   ────────────────────────────────────────────────────────── */
+.hero-variant[data-hero="story"] {
+  min-height: 460px;
+  background: radial-gradient(ellipse at top left,
+    color-mix(in srgb, var(--hero-accent) 18%, var(--hero-bg)) 0%,
+    var(--hero-bg) 70%);
+  display: flex; align-items: center;
+}
+.hero-variant[data-hero="story"] .hero-content {
+  max-width: 820px; margin: 0 auto; padding: 3rem 2rem;
+  text-align: center;
+  animation: hero-fadeUp 0.9s ease;
+}
+.hero-variant[data-hero="story"] .hero-ornament {
+  display: inline-block; color: var(--hero-accent);
+  font-size: 1.2rem; margin-bottom: 0.8rem; letter-spacing: 0.5em;
+}
+.hero-variant[data-hero="story"] h1 {
+  font-size: clamp(1.9rem, 4vw, 2.8rem);
+  font-style: italic; font-weight: 400; line-height: 1.35;
+}
+.hero-variant[data-hero="story"] .hero-byline {
+  display: block; margin-top: 1.1rem;
+  font-family: var(--landing-body-font, 'Inter'), sans-serif;
+  font-style: normal;
+  font-size: 0.78rem; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--hero-accent);
+}
+
+/* ──────────────────────────────────────────────────────────
+   6) CAROUSEL — scroll-snap rotating photos (event vendors)
+   ────────────────────────────────────────────────────────── */
+.hero-variant[data-hero="carousel"] {
+  min-height: 440px; position: relative;
+  background: var(--hero-bg);
+  overflow: hidden;
+}
+.hero-variant[data-hero="carousel"] .hero-track {
+  display: flex; height: 440px;
+  overflow-x: auto; scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.hero-variant[data-hero="carousel"] .hero-track::-webkit-scrollbar { display: none; }
+.hero-variant[data-hero="carousel"] .hero-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  background-size: cover; background-position: center;
+  position: relative;
+}
+.hero-variant[data-hero="carousel"] .hero-slide::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.7) 100%);
+}
+.hero-variant[data-hero="carousel"] .hero-content {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 2.5rem 2rem; z-index: 2;
+  max-width: 900px; margin: 0 auto; color: #fff;
+}
+.hero-variant[data-hero="carousel"] h1 { color: #fff; font-size: clamp(1.9rem, 4.5vw, 2.8rem); }
+.hero-variant[data-hero="carousel"] .hero-dots {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 6px; z-index: 3;
+}
+.hero-variant[data-hero="carousel"] .hero-dots span {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(255,255,255,0.45);
+}
+.hero-variant[data-hero="carousel"] .hero-dots span.active { background: var(--hero-accent); }
+
+/* ──────────────────────────────────────────────────────────
+   7) PORTRAIT — headshot + signature (personal-brand makers)
+   ────────────────────────────────────────────────────────── */
+.hero-variant[data-hero="portrait"] {
+  min-height: 440px;
+  background: var(--hero-bg);
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  align-items: center;
+  gap: 2rem;
+  padding: 2.5rem 2rem;
+}
+.hero-variant[data-hero="portrait"] .hero-portrait {
+  width: 280px; height: 280px;
+  border-radius: 50%;
+  background-size: cover; background-position: center;
+  border: 3px solid var(--hero-accent);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  justify-self: end;
+}
+.hero-variant[data-hero="portrait"] .hero-content {
+  max-width: 540px;
+  animation: hero-fadeUp 0.8s ease;
+}
+.hero-variant[data-hero="portrait"] .hero-signature {
+  font-family: 'Dancing Script', 'Great Vibes', cursive;
+  font-size: 1.8rem;
+  color: var(--hero-accent);
+  margin-top: 0.6rem;
+}
+.hero-variant[data-hero="portrait"] h1 { font-size: clamp(1.8rem, 3.8vw, 2.6rem); }
+@media (max-width: 760px) {
+  .hero-variant[data-hero="portrait"] { grid-template-columns: 1fr; text-align: center; }
+  .hero-variant[data-hero="portrait"] .hero-portrait { justify-self: center; width: 200px; height: 200px; }
+}
+
+/* ──────────────────────────────────────────────────────────
+   Responsive tightening
+   ────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .hero-variant .hero-content { padding: 1.8rem 1.2rem !important; }
+  .hero-variant h1 { font-size: clamp(1.6rem, 6vw, 2.2rem) !important; }
+}

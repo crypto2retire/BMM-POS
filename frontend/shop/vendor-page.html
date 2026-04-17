@@ -19,6 +19,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&family=Inter:wght@300;400;500;600;700&family=Lora:ital,wght@0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500;600;700&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Poppins:wght@300;400;500;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
 <!-- Template CSS loaded dynamically -->
 <link id="template-css" rel="stylesheet" href="/static/css/landing-classic.css">
+<!-- Hero variants (shared across all templates) -->
+<link rel="stylesheet" href="/static/css/landing-hero-variants.css">
 <style id="landing-reset">
   /* Landing page reset — override main.css global styles */
   body.themed, body.themed * {
@@ -252,10 +254,11 @@
 <div id="vendor-content" style="display:none">
 
   <!-- HERO -->
-  <section id="hero-section" class="vendor-hero landing-hero">
-    <div id="hero-bg" class="vendor-hero-bg landing-hero-bg"></div>
-    <div class="vendor-hero-gradient landing-hero-gradient"></div>
-    <div class="vendor-hero-content landing-hero-content">
+  <section id="hero-section" class="vendor-hero landing-hero hero-variant" data-hero="classic">
+    <!-- Default (classic) hero markup. renderHero() swaps innerHTML for other variants. -->
+    <div id="hero-bg" class="vendor-hero-bg landing-hero-bg hero-bg"></div>
+    <div class="vendor-hero-gradient landing-hero-gradient hero-gradient"></div>
+    <div class="vendor-hero-content landing-hero-content hero-content">
       <div id="hero-booth" class="booth-tag"></div>
       <h1 id="hero-name"></h1>
       <a href="#items-section" class="hero-cta">Shop This Vendor</a>
@@ -517,6 +520,10 @@
       market_name: payload.market_name || 'Bowenstreet Market',
       landing_template: payload.landing_template || 'classic',
       landing_theme: payload.landing_theme || null,
+      landing_hero_style: payload.landing_hero_style || 'classic',
+      landing_tagline: payload.landing_tagline || null,
+      landing_year_started: payload.landing_year_started || null,
+      landing_specialties: payload.landing_specialties || [],
       updated_at: payload.updated_at || null,
     };
 
@@ -689,39 +696,140 @@
   }
 
   // ── RENDER ──
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // Hero variant builders ─ each returns an innerHTML string for #hero-section.
+  // Falls back gracefully when a vendor hasn't populated optional fields.
+  var HERO_BUILDERS = {
+    classic: function(d, photos) {
+      var bgUrl = photos[0] || '';
+      var bgStyle = bgUrl ? 'background-image:url(' + bgUrl + ')'
+                          : 'background:linear-gradient(135deg,' + (currentTheme && currentTheme.colors ? currentTheme.colors.secondary : '#2a2a2e') + ' 0%,' + (currentTheme && currentTheme.colors ? currentTheme.colors.background : '#1a1a1c') + ' 100%)';
+      return ''
+        + '<div class="hero-bg" style="' + bgStyle + '"></div>'
+        + '<div class="hero-gradient"></div>'
+        + '<div class="hero-content">'
+        +   (d.booth_number ? '<div class="booth-tag">Booth ' + escapeHtml(d.booth_number) + '</div>' : '')
+        +   '<h1>' + escapeHtml(d.vendor_name || 'Vendor') + '</h1>'
+        +   (d.landing_tagline ? '<p class="hero-tagline">' + escapeHtml(d.landing_tagline) + '</p>' : '')
+        +   '<a href="#items-section" class="hero-cta">Shop This Vendor</a>'
+        + '</div>';
+    },
+    split: function(d, photos) {
+      var photo = photos[0] || '';
+      return ''
+        + '<div class="hero-photo" style="background-image:url(' + photo + ')"></div>'
+        + '<div class="hero-content">'
+        +   (d.landing_year_started ? '<div class="hero-since">Since ' + escapeHtml(d.landing_year_started) + '</div>' : (d.booth_number ? '<div class="booth-tag">Booth ' + escapeHtml(d.booth_number) + '</div>' : ''))
+        +   '<h1>' + escapeHtml(d.vendor_name || 'Vendor') + '</h1>'
+        +   (d.landing_tagline ? '<p class="hero-tagline">' + escapeHtml(d.landing_tagline) + '</p>' : '')
+        +   '<a href="#items-section" class="hero-cta">Shop the Booth</a>'
+        + '</div>';
+    },
+    editorial: function(d, photos) {
+      var photo = photos[0] || '';
+      var specialty = (d.landing_specialties && d.landing_specialties[0]) || 'Curated Goods';
+      return ''
+        + '<div class="hero-bg" style="background-image:url(' + photo + ')"></div>'
+        + '<div class="hero-vignette"></div>'
+        + '<div class="hero-content">'
+        +   '<div class="hero-kicker">' + escapeHtml(specialty) + ' · Oshkosh, WI</div>'
+        +   '<h1>' + escapeHtml(d.vendor_name || 'Vendor') + '</h1>'
+        +   '<div class="hero-footline">'
+        +     (d.booth_number ? '<div class="booth-tag">Booth ' + escapeHtml(d.booth_number) + '</div>' : '<span></span>')
+        +     '<a href="#items-section" class="hero-cta">Browse Inventory</a>'
+        +   '</div>'
+        + '</div>';
+    },
+    collage: function(d, photos) {
+      var tiles = [0,1,2].map(function(i){
+        var p = photos[i] || photos[0] || '';
+        return '<div class="hero-tile" style="background-image:url(' + p + ')"></div>';
+      }).join('');
+      return ''
+        + tiles
+        + '<div class="hero-content">'
+        +   (d.booth_number ? '<div class="booth-tag">Booth ' + escapeHtml(d.booth_number) + '</div>' : '')
+        +   '<h1>' + escapeHtml(d.vendor_name || 'Vendor') + '</h1>'
+        +   (d.landing_tagline ? '<p class="hero-tagline">' + escapeHtml(d.landing_tagline) + '</p>' : '')
+        +   '<a href="#items-section" class="hero-cta">See Everything</a>'
+        + '</div>';
+    },
+    story: function(d, photos) {
+      var since = d.landing_year_started ? ' — Since ' + d.landing_year_started : '';
+      return ''
+        + '<div class="hero-content">'
+        +   '<div class="hero-ornament">· · ·</div>'
+        +   '<h1>' + escapeHtml(d.landing_tagline || d.vendor_name || 'Vendor') + '</h1>'
+        +   '<span class="hero-byline">' + escapeHtml(d.vendor_name || '') + escapeHtml(since) + (d.booth_number ? ' · Booth ' + escapeHtml(d.booth_number) : '') + '</span>'
+        +   '<div style="margin-top:1.5rem"><a href="#items-section" class="hero-cta">Visit the Booth</a></div>'
+        + '</div>';
+    },
+    carousel: function(d, photos) {
+      var slides = (photos.length ? photos : ['']).slice(0,5).map(function(p){
+        return '<div class="hero-slide" style="background-image:url(' + p + ')"></div>';
+      }).join('');
+      var dots = (photos.length ? photos : ['']).slice(0,5).map(function(_,i){
+        return '<span' + (i===0?' class="active"':'') + '></span>';
+      }).join('');
+      return ''
+        + '<div class="hero-track">' + slides + '</div>'
+        + '<div class="hero-content">'
+        +   (d.booth_number ? '<div class="booth-tag">Booth ' + escapeHtml(d.booth_number) + '</div>' : '')
+        +   '<h1>' + escapeHtml(d.vendor_name || 'Vendor') + '</h1>'
+        +   (d.landing_tagline ? '<p class="hero-tagline">' + escapeHtml(d.landing_tagline) + '</p>' : '')
+        +   '<a href="#items-section" class="hero-cta">Shop Latest Arrivals</a>'
+        + '</div>'
+        + '<div class="hero-dots">' + dots + '</div>';
+    },
+    portrait: function(d, photos) {
+      var photo = photos[0] || '';
+      return ''
+        + '<div class="hero-portrait" style="background-image:url(' + photo + ')"></div>'
+        + '<div class="hero-content">'
+        +   (d.booth_number ? '<div class="booth-tag">Booth ' + escapeHtml(d.booth_number) + '</div>' : '')
+        +   '<h1>' + escapeHtml(d.vendor_name || 'Vendor') + '</h1>'
+        +   (d.landing_tagline ? '<p class="hero-tagline">' + escapeHtml(d.landing_tagline) + '</p>' : '')
+        +   '<div class="hero-signature">~ ' + escapeHtml(d.vendor_name || '') + '</div>'
+        +   '<div style="margin-top:1rem"><a href="#items-section" class="hero-cta">Shop My Work</a></div>'
+        + '</div>';
+    }
+  };
+
   function renderHero() {
     var photos = vendorData.photo_urls || [];
-    var bg = document.getElementById('hero-bg');
+    var section = document.getElementById('hero-section');
+    if (!section) return;
 
-    if (currentTemplate === 'minimal') {
-      // Minimal template: no hero image
-      bg.style.backgroundImage = '';
-      bg.style.display = 'none';
-    } else if (currentTemplate === 'modern' && photos.length > 0) {
-      // Modern: hero image on right side only
-      bg.style.backgroundImage = 'url(' + photos[0] + ')';
-      bg.style.display = 'block';
-    } else {
-      if (photos.length > 0) {
-        bg.style.backgroundImage = 'url(' + photos[0] + ')';
-        bg.style.display = 'block';
-      } else {
-        bg.style.backgroundImage = '';
-        bg.style.display = 'block';
-        if (currentTheme && currentTheme.colors) {
-          bg.style.background = 'linear-gradient(135deg, ' + currentTheme.colors.secondary + ' 0%, ' + currentTheme.colors.background + ' 100%)';
-        } else {
-          bg.style.background = 'linear-gradient(135deg, #1a1a1c 0%, #2a2a2e 50%, #1a1a1c 100%)';
-        }
-      }
+    // Legacy minimal-template behavior: no hero image at all
+    if (currentTemplate === 'minimal' && !vendorData.landing_hero_style) {
+      section.style.display = 'none';
+      return;
     }
 
-    document.getElementById('hero-name').textContent = vendorData.vendor_name || 'Vendor';
-    document.getElementById('hero-booth').textContent = vendorData.booth_number ? 'Booth ' + vendorData.booth_number : '';
-    if (!vendorData.booth_number) {
-      document.getElementById('hero-booth').style.display = 'none';
-    } else {
-      document.getElementById('hero-booth').style.display = '';
+    var style = vendorData.landing_hero_style || 'classic';
+    if (!HERO_BUILDERS[style]) style = 'classic';
+
+    section.setAttribute('data-hero', style);
+    section.innerHTML = HERO_BUILDERS[style](vendorData, photos);
+
+    // Carousel auto-rotate (lightweight, no deps)
+    if (style === 'carousel') {
+      var track = section.querySelector('.hero-track');
+      var dots  = section.querySelectorAll('.hero-dots span');
+      if (track && dots.length > 1) {
+        var i = 0;
+        setInterval(function(){
+          i = (i + 1) % dots.length;
+          track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' });
+          dots.forEach(function(d, idx){ d.classList.toggle('active', idx === i); });
+        }, 5000);
+      }
     }
   }
 

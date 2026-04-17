@@ -86,6 +86,15 @@ class ShowcaseUpdate(BaseModel):
     show_instagram_feed: Optional[bool] = None
     landing_template: Optional[str] = None
     landing_theme: Optional[dict] = None
+    # ── Phase 1 ──
+    landing_hero_style: Optional[str] = None
+    landing_layout: Optional[dict] = None
+    landing_specialties: Optional[list] = None
+    landing_era: Optional[list] = None
+    landing_materials: Optional[list] = None
+    landing_story_blocks: Optional[dict] = None
+    landing_tagline: Optional[str] = None
+    landing_year_started: Optional[int] = None
 
 
 class AIDesignRequest(BaseModel):
@@ -405,6 +414,14 @@ def _to_response(sc: BoothShowcase, item_count: int = 0) -> dict:
         "show_instagram_feed": sc.show_instagram_feed,
         "landing_template": sc.landing_template or "classic",
         "landing_theme": sc.landing_theme,
+        "landing_hero_style": sc.landing_hero_style or "classic",
+        "landing_layout": sc.landing_layout,
+        "landing_specialties": sc.landing_specialties or [],
+        "landing_era": sc.landing_era or [],
+        "landing_materials": sc.landing_materials or [],
+        "landing_story_blocks": sc.landing_story_blocks or {},
+        "landing_tagline": sc.landing_tagline,
+        "landing_year_started": sc.landing_year_started,
     }
 
 
@@ -523,6 +540,35 @@ async def update_my_showcase(
         sc.landing_template = data.landing_template if data.landing_template in valid_templates else "classic"
     if data.landing_theme is not None:
         sc.landing_theme = data.landing_theme
+
+    # ── Phase 1 fields ──
+    if data.landing_hero_style is not None:
+        valid_heroes = ("classic", "split", "editorial", "collage", "story", "carousel", "portrait")
+        sc.landing_hero_style = data.landing_hero_style if data.landing_hero_style in valid_heroes else "classic"
+    if data.landing_layout is not None:
+        sc.landing_layout = data.landing_layout
+    if data.landing_specialties is not None:
+        # clip to 8 entries, 60 chars each
+        sc.landing_specialties = [str(s).strip()[:60] for s in data.landing_specialties if str(s).strip()][:8]
+    if data.landing_era is not None:
+        sc.landing_era = [str(s).strip()[:40] for s in data.landing_era if str(s).strip()][:8]
+    if data.landing_materials is not None:
+        sc.landing_materials = [str(s).strip()[:40] for s in data.landing_materials if str(s).strip()][:12]
+    if data.landing_story_blocks is not None:
+        allowed_keys = ("origin", "specialty", "process", "values", "whats_new")
+        sc.landing_story_blocks = {
+            k: str(v).strip()[:1200]
+            for k, v in (data.landing_story_blocks or {}).items()
+            if k in allowed_keys and v
+        }
+    if data.landing_tagline is not None:
+        sc.landing_tagline = data.landing_tagline.strip()[:200] if data.landing_tagline.strip() else None
+    if data.landing_year_started is not None:
+        try:
+            y = int(data.landing_year_started)
+            sc.landing_year_started = y if 1800 <= y <= 2100 else None
+        except (TypeError, ValueError):
+            sc.landing_year_started = None
 
     sc.updated_at = datetime.now(timezone.utc)
     await db.commit()
@@ -1267,6 +1313,14 @@ async def get_landing_page(
             "market_name": settings.get("store_name", "Bowenstreet Market Mall"),
             "landing_template": sc.landing_template or "classic",
             "landing_theme": sc.landing_theme,
+            "landing_hero_style": sc.landing_hero_style or "classic",
+            "landing_layout": sc.landing_layout,
+            "landing_specialties": sc.landing_specialties or [],
+            "landing_era": sc.landing_era or [],
+            "landing_materials": sc.landing_materials or [],
+            "landing_story_blocks": sc.landing_story_blocks or {},
+            "landing_tagline": sc.landing_tagline,
+            "landing_year_started": sc.landing_year_started,
             "updated_at": sc.updated_at.isoformat() if sc.updated_at else None,
         }
         return JSONResponse(

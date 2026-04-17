@@ -652,6 +652,66 @@
                     </div>
                 </div>
 
+                <!-- ─── Hero Style Picker (Phase 1) ─── -->
+                <div style="margin-bottom:1.5rem" id="hero-style-picker">
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Hero Style — how your page opens</label>
+                    <p style="font-size:0.72rem;color:var(--text-light);margin:0 0 0.6rem">Pick the hero layout that fits your booth. This is the #1 thing visitors see — and the biggest lever for making your page feel unique.</p>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:0.6rem" id="hero-grid">
+                        <div class="hero-thumb" data-hero="classic" onclick="selectHeroStyle('classic')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
+                            <div style="aspect-ratio:4/3;background:linear-gradient(180deg,#44454a 0%,#1a1a1c 100%);border-radius:4px;display:flex;align-items:flex-end;justify-content:center;padding:6px"><div style="height:3px;width:60%;background:#C9A96E;border-radius:1px"></div></div>
+                            <div style="font-size:0.7rem;margin-top:0.3rem">Classic</div>
+                            <div style="font-size:0.62rem;color:var(--text-light)">photo + overlay</div>
+                        </div>
+                        <div class="hero-thumb" data-hero="split" onclick="selectHeroStyle('split')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
+                            <div style="aspect-ratio:4/3;background:#1a1a1c;border-radius:4px;display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:2px"><div style="background:#555"></div><div style="display:flex;flex-direction:column;gap:3px;justify-content:center;padding:3px"><div style="height:3px;width:70%;background:#C9A96E"></div><div style="height:2px;width:50%;background:#888"></div></div></div>
+                            <div style="font-size:0.7rem;margin-top:0.3rem">Split</div>
+                            <div style="font-size:0.62rem;color:var(--text-light)">photo + copy</div>
+                        </div>
+                        <div class="hero-thumb" data-hero="editorial" onclick="selectHeroStyle('editorial')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
+                            <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#333 0%,#111 100%);border-radius:4px;position:relative;padding:4px;display:flex;flex-direction:column;justify-content:space-between"><div style="height:2px;width:30%;background:#C9A96E"></div><div><div style="height:3px;width:80%;background:#eee;margin-bottom:2px"></div><div style="height:2px;width:60%;background:#888"></div></div></div>
+                            <div style="font-size:0.7rem;margin-top:0.3rem">Editorial</div>
+                            <div style="font-size:0.62rem;color:var(--text-light)">magazine style</div>
+                        </div>
+                        <div class="hero-thumb" data-hero="collage" onclick="selectHeroStyle('collage')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
+                            <div style="aspect-ratio:4/3;background:#1a1a1c;border-radius:4px;display:grid;grid-template-columns:1.3fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;padding:2px"><div style="background:#666;grid-row:1 / span 2"></div><div style="background:#555"></div><div style="background:#777"></div><div style="grid-column:2 / span 2;background:#2a2a2e;border-left:2px solid #C9A96E"></div></div>
+                            <div style="font-size:0.7rem;margin-top:0.3rem">Collage</div>
+                            <div style="font-size:0.62rem;color:var(--text-light)">3-tile grid</div>
+                        </div>
+                        <div class="hero-thumb" data-hero="story" onclick="selectHeroStyle('story')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
+                            <div style="aspect-ratio:4/3;background:radial-gradient(ellipse at top left,#3a352d 0%,#1a1a1c 70%);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px"><div style="color:#C9A96E;font-size:0.5rem;letter-spacing:0.4em">· · ·</div><div style="height:3px;width:65%;background:#eee"></div><div style="height:2px;width:40%;background:#C9A96E"></div></div>
+                            <div style="font-size:0.7rem;margin-top:0.3rem">Story</div>
+                            <div style="font-size:0.62rem;color:var(--text-light)">quote + byline</div>
+                        </div>
+                        <div class="hero-thumb" data-hero="carousel" onclick="selectHeroStyle('carousel')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
+                            <div style="aspect-ratio:4/3;background:#1a1a1c;border-radius:4px;position:relative;padding:3px;display:flex;gap:2px"><div style="flex:1;background:#555"></div><div style="flex:1;background:#666"></div><div style="flex:1;background:#444"></div><div style="position:absolute;bottom:3px;left:50%;transform:translateX(-50%);display:flex;gap:2px"><div style="width:3px;height:3px;background:#C9A96E;border-radius:50%"></div><div style="width:3px;height:3px;background:#fff5;border-radius:50%"></div><div style="width:3px;height:3px;background:#fff5;border-radius:50%"></div></div></div>
+                            <div style="font-size:0.7rem;margin-top:0.3rem">Carousel</div>
+                            <div style="font-size:0.62rem;color:var(--text-light)">rotating photos</div>
+                        </div>
+                        <div class="hero-thumb" data-hero="portrait" onclick="selectHeroStyle('portrait')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
+                            <div style="aspect-ratio:4/3;background:#1a1a1c;border-radius:4px;display:grid;grid-template-columns:1fr 1.2fr;gap:4px;padding:4px;align-items:center"><div style="width:100%;aspect-ratio:1;background:#666;border-radius:50%;border:2px solid #C9A96E"></div><div style="display:flex;flex-direction:column;gap:2px"><div style="height:3px;width:80%;background:#eee"></div><div style="height:2px;width:60%;background:#888"></div><div style="height:3px;width:50%;background:#C9A96E;border-radius:1px;margin-top:2px"></div></div></div>
+                            <div style="font-size:0.7rem;margin-top:0.3rem">Portrait</div>
+                            <div style="font-size:0.62rem;color:var(--text-light)">headshot + sig</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ─── Hero Content Fields (Phase 1) ─── -->
+                <div style="display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;margin-bottom:1rem">
+                    <div>
+                        <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem">Tagline (shown on hero)</label>
+                        <input type="text" id="landing-tagline" maxlength="200" placeholder="e.g. Mid-century glassware, one cabinet at a time" style="width:100%;padding:0.55rem 0.7rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:4px">
+                    </div>
+                    <div>
+                        <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem">Year started (optional)</label>
+                        <input type="number" id="landing-year-started" min="1800" max="2100" placeholder="2019" style="width:100%;padding:0.55rem 0.7rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:4px">
+                    </div>
+                </div>
+                <div style="margin-bottom:1.25rem">
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem">Specialties (comma-separated, max 8) — powers SEO + unique H2s</label>
+                    <input type="text" id="landing-specialties" placeholder="e.g. Depression glass, Mid-century barware, Carnival glass" style="width:100%;padding:0.55rem 0.7rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:4px">
+                    <div style="font-size:0.68rem;color:var(--text-light);margin-top:0.25rem">These appear in your hero kicker, in Google's rich results, and will drive internal links to category pages (coming in Phase 3).</div>
+                </div>
+
                 <div style="margin-bottom:1.5rem">
                     <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Art Direction Presets</label>
                     <div class="preset-grid" id="preset-grid">
@@ -1144,6 +1204,15 @@ function renderLandingSection() {
     document.getElementById('landing-faq').value = showcase.landing_faq || '';
     document.getElementById('show-facebook-feed').checked = !!showcase.show_facebook_feed;
     document.getElementById('show-instagram-feed').checked = !!showcase.show_instagram_feed;
+
+    // ── Phase 1 fields ──
+    var tagEl  = document.getElementById('landing-tagline');  if (tagEl)  tagEl.value  = showcase.landing_tagline || '';
+    var yrEl   = document.getElementById('landing-year-started'); if (yrEl) yrEl.value = showcase.landing_year_started || '';
+    var specEl = document.getElementById('landing-specialties');
+    if (specEl) specEl.value = (showcase.landing_specialties || []).join(', ');
+    selectedHeroStyle = showcase.landing_hero_style || 'classic';
+    syncHeroSelectionUI(selectedHeroStyle);
+
     updateAboutCount();
     updateMetaDescCount();
     updateLandingLink();
@@ -1235,7 +1304,14 @@ async function saveLandingDetails() {
                 landing_meta_desc: document.getElementById('landing-meta-desc').value.trim(),
                 landing_faq: document.getElementById('landing-faq').value.trim(),
                 show_facebook_feed: document.getElementById('show-facebook-feed').checked,
-                show_instagram_feed: document.getElementById('show-instagram-feed').checked
+                show_instagram_feed: document.getElementById('show-instagram-feed').checked,
+                landing_hero_style: selectedHeroStyle,
+                landing_tagline: (document.getElementById('landing-tagline') || {}).value ? document.getElementById('landing-tagline').value.trim() : '',
+                landing_year_started: (document.getElementById('landing-year-started') || {}).value
+                    ? parseInt(document.getElementById('landing-year-started').value, 10) || null
+                    : null,
+                landing_specialties: ((document.getElementById('landing-specialties') || {}).value || '')
+                    .split(',').map(function(s){ return s.trim(); }).filter(Boolean)
             })
         });
         var data = await resp.json();
@@ -1340,6 +1416,21 @@ updateFaqImproveBtn();
 
 // ── DESIGN SECTION ──
 var selectedTemplate = 'classic';
+var selectedHeroStyle = 'classic';
+
+function syncHeroSelectionUI(style) {
+    var thumbs = document.querySelectorAll('#hero-grid .hero-thumb');
+    thumbs.forEach(function(t){
+        var isSel = t.getAttribute('data-hero') === style;
+        t.style.borderColor = isSel ? 'var(--accent)' : 'var(--border)';
+        t.style.background = isSel ? 'color-mix(in srgb, var(--accent) 8%, transparent)' : '';
+    });
+}
+
+function selectHeroStyle(style) {
+    selectedHeroStyle = style;
+    syncHeroSelectionUI(style);
+}
 var designChatHistory = [];
 var previewPayloadCache = null;
 var DESIGN_PRESETS = {
@@ -1549,6 +1640,13 @@ function buildLandingPreviewPayload(theme) {
         market_name: 'Bowenstreet Market',
         landing_template: selectedTemplate,
         landing_theme: theme,
+        landing_hero_style: selectedHeroStyle,
+        landing_tagline: ((document.getElementById('landing-tagline') || {}).value || '').trim() || null,
+        landing_year_started: (document.getElementById('landing-year-started') || {}).value
+            ? parseInt(document.getElementById('landing-year-started').value, 10) || null
+            : null,
+        landing_specialties: ((document.getElementById('landing-specialties') || {}).value || '')
+            .split(',').map(function(s){ return s.trim(); }).filter(Boolean),
         updated_at: new Date().toISOString(),
     };
 }
