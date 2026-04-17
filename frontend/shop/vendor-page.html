@@ -162,6 +162,16 @@
   body.no-theme .social-feed-card-body a { color: var(--gold); text-decoration: none; font-size: 0.88rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
   body.no-theme .social-feed-card-body a:hover { text-decoration: underline; }
   body.no-theme .social-feed-icon { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; }
+  /* Phase 2 — story blocks + specialty chips (no-theme fallback styles; template CSS can override) */
+  body.no-theme .story-section { max-width: 900px; margin: 0 auto; padding: 2.5rem 2rem 1.5rem; }
+  body.no-theme .story-block-pub { margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+  body.no-theme .story-block-pub:last-child { border-bottom: none; margin-bottom: 0; }
+  body.no-theme .story-block-pub h2 { font-family: 'EB Garamond', serif; font-size: 1.6rem; color: var(--text); margin: 0 0 0.75rem; font-weight: 500; }
+  body.no-theme .story-block-pub p { color: var(--text); font-size: 0.95rem; line-height: 1.75; white-space: pre-wrap; margin: 0; }
+  body.no-theme .specialties-section { max-width: 900px; margin: 0 auto; padding: 1.5rem 2rem; }
+  body.no-theme .specialties-section h2 { font-family: 'EB Garamond', serif; font-size: 1.4rem; font-style: italic; color: var(--text); margin-bottom: 1rem; }
+  body.no-theme .specialties-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  body.no-theme .specialty-chip { display: inline-block; padding: 0.35rem 0.85rem; border: 1px solid var(--gold); color: var(--gold); border-radius: 20px; font-size: 0.8rem; letter-spacing: 0.03em; }
   body.no-theme .site-footer { background: var(--bg-dark); border-top: 1px solid var(--border); padding: 2.5rem 2rem; margin-top: 3rem; text-align: center; }
   body.no-theme .footer-brand { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.1rem; color: var(--gold); margin-bottom: 0.5rem; }
   body.no-theme .footer-brand a { color: var(--gold); text-decoration: none; }
@@ -254,7 +264,7 @@
 <div id="vendor-content" style="display:none">
 
   <!-- HERO -->
-  <section id="hero-section" class="vendor-hero landing-hero hero-variant" data-hero="classic">
+  <section id="hero-section" class="vendor-hero landing-hero hero-variant" data-hero="classic" data-section-key="hero">
     <!-- Default (classic) hero markup. renderHero() swaps innerHTML for other variants. -->
     <div id="hero-bg" class="vendor-hero-bg landing-hero-bg hero-bg"></div>
     <div class="vendor-hero-gradient landing-hero-gradient hero-gradient"></div>
@@ -338,7 +348,7 @@
 </div>
 
 <!-- FAQ -->
-<section id="faq-section" class="faq-section landing-faq" style="display:none">
+<section id="faq-section" class="faq-section landing-faq" data-section-key="faq" style="display:none">
   <h2>Frequently Asked Questions</h2>
   <div id="faq-container"></div>
 </section>
@@ -524,6 +534,8 @@
       landing_tagline: payload.landing_tagline || null,
       landing_year_started: payload.landing_year_started || null,
       landing_specialties: payload.landing_specialties || [],
+      landing_story_blocks: payload.landing_story_blocks || {},
+      landing_layout: payload.landing_layout || null,
       updated_at: payload.updated_at || null,
     };
 
@@ -534,11 +546,14 @@
     applyTemplateAndTheme(vendorData.landing_template, vendorData.landing_theme, vendorData.updated_at || Date.now());
     renderHero();
     renderAbout();
+    renderStoryBlocks();
+    renderSpecialties();
     renderPhotos();
     renderSEO();
     renderFooterSocials();
     renderFaq();
     renderSocialFeeds();
+    applySectionOrder();
 
     vendorItems = (vendorData.items || []).map(normalizeItem);
     renderItems(vendorItems);
@@ -620,11 +635,14 @@
 
     renderHero();
     renderAbout();
+    renderStoryBlocks();
+    renderSpecialties();
     renderPhotos();
     renderSEO();
     renderFooterSocials();
     renderFaq();
     renderSocialFeeds();
+    applySectionOrder();
 
     vendorItems = (vendorData.items || []).map(normalizeItem);
     renderItems(vendorItems);
@@ -1259,16 +1277,104 @@
   }
 
   // ── UTILS ──
+  // ─── PHASE 2: story blocks + specialties + section reorder ───
+  var PUB_STORY_HEADINGS = {
+    origin:    'How We Got Started',
+    specialty: 'What We\u2019re Known For',
+    process:   'How We Work',
+    values:    'What We Believe In',
+    whats_new: 'What\u2019s New This Month',
+  };
+  var PUB_STORY_ORDER = ['origin','specialty','process','values','whats_new'];
+
+  function renderStoryBlocks() {
+    var blocks = vendorData && vendorData.landing_story_blocks;
+    if (!blocks || typeof blocks !== 'object') return;
+    var sec = document.getElementById('story-section');
+    var container = document.getElementById('story-container');
+    if (!sec || !container) return;
+    var html = '';
+    var shown = 0;
+    PUB_STORY_ORDER.forEach(function(key) {
+      var text = (blocks[key] || '').toString().trim();
+      if (!text) return;
+      shown++;
+      html += '<div class="story-block-pub" data-story-block="'+escAttr(key)+'">' +
+                '<h2>'+escHtml(PUB_STORY_HEADINGS[key] || key)+'</h2>' +
+                '<p>'+escHtml(text)+'</p>' +
+              '</div>';
+    });
+    if (shown === 0) return;
+    container.innerHTML = html;
+    sec.style.display = 'block';
+  }
+
+  function renderSpecialties() {
+    var list = (vendorData && vendorData.landing_specialties) || [];
+    if (!Array.isArray(list) || list.length === 0) return;
+    var sec = document.getElementById('specialties-section');
+    var chips = document.getElementById('specialties-chips');
+    var heading = document.getElementById('specialties-heading');
+    if (!sec || !chips) return;
+    chips.innerHTML = list.slice(0, 8).map(function(s) {
+      var v = String(s || '').trim();
+      if (!v) return '';
+      return '<span class="specialty-chip">'+escHtml(v)+'</span>';
+    }).join('');
+    if (heading && vendorData && vendorData.vendor_name) {
+      heading.textContent = 'What ' + vendorData.vendor_name + ' Specializes In';
+    }
+    sec.style.display = 'block';
+  }
+
+  // Reorder sections inside #vendor-content to match landing_layout.order.
+  // Also “adopts” the FAQ and social-feeds sections — which live outside #vendor-content in the HTML —
+  // so they can participate in the deck. Unknown or missing keys are ignored; sections not listed
+  // fall back to their DOM order.
+  function applySectionOrder() {
+    var layout = vendorData && vendorData.landing_layout;
+    var order = (layout && Array.isArray(layout.order)) ? layout.order.slice() : null;
+    var host = document.getElementById('vendor-content');
+    if (!host) return;
+
+    // Adopt external sections so they sit inside host (makes reorder trivial + predictable)
+    ['faq-section','social-feeds-section','specialties-section','story-section'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (el && el.parentNode !== host) host.appendChild(el);
+    });
+
+    if (!order || order.length === 0) return; // default DOM order wins
+
+    var byKey = {};
+    host.querySelectorAll('[data-section-key]').forEach(function(el){
+      var k = el.getAttribute('data-section-key');
+      if (k && !byKey[k]) byKey[k] = el;
+    });
+    // Append in requested order; anything not mentioned stays after in current order
+    var mentioned = {};
+    order.forEach(function(k){
+      var el = byKey[k];
+      if (el) { host.appendChild(el); mentioned[k] = true; }
+    });
+    Object.keys(byKey).forEach(function(k){
+      if (!mentioned[k]) host.appendChild(byKey[k]);
+    });
+  }
+
   function clearRenderState() {
     document.getElementById('about-section').style.display = 'none';
     document.getElementById('photo-gallery').style.display = 'none';
     document.getElementById('faq-section').style.display = 'none';
     document.getElementById('social-feeds-section').style.display = 'none';
+    var storySec = document.getElementById('story-section'); if (storySec) storySec.style.display = 'none';
+    var specSec  = document.getElementById('specialties-section'); if (specSec) specSec.style.display = 'none';
     document.getElementById('social-links').innerHTML = '';
     document.getElementById('contact-info').innerHTML = '';
     document.getElementById('photo-scroll').innerHTML = '';
     document.getElementById('faq-container').innerHTML = '';
     document.getElementById('social-feeds-grid').innerHTML = '';
+    var storyC = document.getElementById('story-container'); if (storyC) storyC.innerHTML = '';
+    var specC  = document.getElementById('specialties-chips'); if (specC) specC.innerHTML = '';
   }
 
   function escHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
