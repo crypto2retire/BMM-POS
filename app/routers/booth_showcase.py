@@ -11,7 +11,7 @@ from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from PIL import Image
 from sqlalchemy import select, func
@@ -22,6 +22,9 @@ from app.models.vendor import Vendor
 from app.models.booth_showcase import BoothShowcase
 from app.routers.auth import get_current_user
 from app.services import spaces as spaces_svc
+from app.services import similarity as similarity_svc
+from app.services import og_image as og_svc
+from app.services.gsc_ping import schedule_gsc_ping
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +36,27 @@ MAX_VIDEO_SIZE = 50 * 1024 * 1024
 MAX_IMAGE_DIMENSION = 1600
 MAX_PHOTOS = 8
 PHOTO_STALE_DAYS = 60
+CONTENT_STALE_DAYS = 60  # freshness threshold for landing content
 STATIC_ROOT = Path("frontend/static")
+
+# In-process OG cache: {(slug, hash): bytes} — bounded to ~64 entries.
+_OG_CACHE: dict[tuple[str, str], bytes] = {}
+_OG_CACHE_ORDER: list[tuple[str, str]] = []
+_OG_CACHE_MAX = 64
+
+
+def _og_cache_get(key: tuple[str, str]) -> Optional[bytes]:
+    return _OG_CACHE.get(key)
+
+
+def _og_cache_put(key: tuple[str, str], value: bytes) -> None:
+    if key in _OG_CACHE:
+        return
+    _OG_CACHE[key] = value
+    _OG_CACHE_ORDER.append(key)
+    while len(_OG_CACHE_ORDER) > _OG_CACHE_MAX:
+        old = _OG_CACHE_ORDER.pop(0)
+        _OG_CACHE.pop(old, None)
 
 
 def _has_vendor_booth_access(user: Vendor) -> bool:
@@ -326,6 +349,21 @@ def _is_stale(last_update: Optional[datetime]) -> bool:
     return (now - last_update).days >= PHOTO_STALE_DAYS
 
 
+def _content_staleness(updated_at: Optional[datetime]) -> dict:
+    """Return {is_stale: bool, days_since_update: int|None, threshold_days: int}."""
+    if not updated_at:
+        return {"is_stale": False, "days_since_update": None, "threshold_days": CONTENT_STALE_DAYS}
+    now = datetime.now(timezone.utc)
+    if updated_at.tzinfo is None:
+        updated_at = updated_at.replace(tzinfo=timezone.utc)
+    days = (now - updated_at).days
+    return {
+        "is_stale": days >= CONTENT_STALE_DAYS,
+        "days_since_update": days,
+        "threshold_days": CONTENT_STALE_DAYS,
+    }
+
+
 def _public_media_exists(url: Optional[str]) -> bool:
     if not url:
         return False
@@ -383,6 +421,7 @@ async def _public_showcase_payload(db: AsyncSession, sc: BoothShowcase, item_cou
         "landing_tagline": sc.landing_tagline,
         "landing_meta_desc": sc.landing_meta_desc,
         "updated_at": sc.updated_at.isoformat() if sc.updated_at else None,
+        "content_freshness": _content_staleness(sc.updated_at),
     }
 
 
@@ -426,6 +465,7 @@ def _to_response(sc: BoothShowcase, item_count: int = 0) -> dict:
         "landing_story_blocks": sc.landing_story_blocks or {},
         "landing_tagline": sc.landing_tagline,
         "landing_year_started": sc.landing_year_started,
+        "content_freshness": _content_staleness(sc.updated_at),
     }
 
 
@@ -585,6 +625,13 @@ async def update_my_showcase(
         )
     )
     item_count = count_result.scalar() or 0
+
+    # Fire-and-forget GSC ping when the landing page is live
+    try:
+        if sc.landing_page_enabled and sc.landing_slug:
+            schedule_gsc_ping(sc.landing_slug, "URL_UPDATED")
+    except Exception as e:  # pragma: no cover
+        logger.info("gsc ping skipped: %s", e)
 
     return _to_response(sc, item_count)
 
@@ -1108,6 +1155,12 @@ async def admin_update_showcase(
     await db.refresh(sc)
     await db.refresh(vendor)
 
+    try:
+        if sc.landing_page_enabled and sc.landing_slug:
+            schedule_gsc_ping(sc.landing_slug, "URL_UPDATED")
+    except Exception as e:  # pragma: no cover
+        logger.info("gsc ping skipped: %s", e)
+
     return result_data
 
 
@@ -1153,6 +1206,16 @@ async def admin_toggle_landing_page(
     await db.commit()
     await db.refresh(sc)
     await db.refresh(vendor)
+
+    # GSC ping on publish; deletion ping on unpublish
+    try:
+        if sc.landing_slug:
+            schedule_gsc_ping(
+                sc.landing_slug,
+                "URL_UPDATED" if sc.landing_page_enabled else "URL_DELETED",
+            )
+    except Exception as e:  # pragma: no cover
+        logger.info("gsc ping skipped: %s", e)
 
     effective_rent = (vendor.monthly_rent or Decimal("0")) + (vendor.landing_page_fee or Decimal("0"))
 
@@ -1326,6 +1389,7 @@ async def get_landing_page(
             "landing_tagline": sc.landing_tagline,
             "landing_year_started": sc.landing_year_started,
             "updated_at": sc.updated_at.isoformat() if sc.updated_at else None,
+            "content_freshness": _content_staleness(sc.updated_at),
         }
         return JSONResponse(
             content=payload,
@@ -1420,3 +1484,232 @@ async def ai_generate_landing_about(
         raise HTTPException(status_code=502, detail="AI returned empty response")
 
     return {"about": text}
+
+
+# ───────────────────────────────────────────────────────────────
+# Phase 4: Uniqueness guard, Freshness, OG image
+# ───────────────────────────────────────────────────────────────
+
+
+async def _load_peer_story_corpora(
+    db: AsyncSession, exclude_vendor_id: int
+) -> list[tuple[str, str]]:
+    """Load (vendor_name, corpus_text) pairs for all OTHER vendors with
+    enabled landing pages. Cap to ~200 to keep request fast.
+    """
+    q = (
+        select(BoothShowcase)
+        .where(
+            BoothShowcase.vendor_id != exclude_vendor_id,
+            BoothShowcase.landing_page_enabled == True,  # noqa: E712
+        )
+        .limit(200)
+    )
+    result = await db.execute(q)
+    scs = result.scalars().all()
+    pairs: list[tuple[str, str]] = []
+    for s in scs:
+        vname = s.vendor.name if s.vendor else f"Vendor #{s.vendor_id}"
+        corpus = similarity_svc.vendor_corpus(
+            s.landing_tagline,
+            s.landing_meta_desc,
+            s.landing_about,
+            s.landing_story_blocks,
+        )
+        if corpus.strip():
+            pairs.append((vname, corpus))
+    return pairs
+
+
+@router.get("/mine/uniqueness")
+async def get_my_uniqueness_score(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_vendor_booth_user),
+):
+    """Compute a 0-100 uniqueness score for the current vendor's landing
+    copy vs. every other vendor's published landing copy.
+    Higher = more original.
+    """
+    result = await db.execute(
+        select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
+    )
+    sc = result.scalar_one_or_none()
+    if not sc:
+        return {
+            "score": 0,
+            "top_similarity": 0.0,
+            "similar_to": [],
+            "word_count": 0,
+            "message": "Set up your landing page to get a uniqueness score.",
+        }
+
+    target_text = similarity_svc.vendor_corpus(
+        sc.landing_tagline,
+        sc.landing_meta_desc,
+        sc.landing_about,
+        sc.landing_story_blocks,
+    )
+    peers = await _load_peer_story_corpora(db, exclude_vendor_id=current_user.id)
+    return similarity_svc.uniqueness_score(target_text, peers)
+
+
+class UniquenessPreviewRequest(BaseModel):
+    landing_tagline: Optional[str] = None
+    landing_meta_desc: Optional[str] = None
+    landing_about: Optional[str] = None
+    landing_story_blocks: Optional[dict] = None
+
+
+@router.post("/mine/uniqueness/preview")
+async def preview_uniqueness_score(
+    data: UniquenessPreviewRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_vendor_booth_user),
+):
+    """Score a proposed draft (without saving) against peer corpora.
+    Lets the vendor iterate in-editor before committing.
+    """
+    target_text = similarity_svc.vendor_corpus(
+        data.landing_tagline,
+        data.landing_meta_desc,
+        data.landing_about,
+        data.landing_story_blocks,
+    )
+    peers = await _load_peer_story_corpora(db, exclude_vendor_id=current_user.id)
+    return similarity_svc.uniqueness_score(target_text, peers)
+
+
+@router.get("/mine/freshness")
+async def get_my_freshness(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_vendor_booth_user),
+):
+    """Return content- and photo-freshness indicators for the vendor's
+    own landing page. Drives the admin "refresh recommended" banner.
+    """
+    result = await db.execute(
+        select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
+    )
+    sc = result.scalar_one_or_none()
+    if not sc:
+        return {
+            "content": _content_staleness(None),
+            "photos": {
+                "is_stale": False,
+                "days_since_update": None,
+                "threshold_days": PHOTO_STALE_DAYS,
+                "last_photo_update": None,
+            },
+            "has_showcase": False,
+            "suggestions": [],
+        }
+
+    content = _content_staleness(sc.updated_at)
+    photo_days = None
+    if sc.last_photo_update:
+        last = sc.last_photo_update
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        photo_days = (datetime.now(timezone.utc) - last).days
+    photos = {
+        "is_stale": _is_stale(sc.last_photo_update),
+        "days_since_update": photo_days,
+        "threshold_days": PHOTO_STALE_DAYS,
+        "last_photo_update": sc.last_photo_update.isoformat() if sc.last_photo_update else None,
+    }
+
+    suggestions: list[str] = []
+    if content["is_stale"]:
+        suggestions.append(
+            "Refresh your story — small edits signal to Google that this page is alive."
+        )
+    if photos["is_stale"]:
+        suggestions.append(
+            "Add a new photo of recent work, booth setup, or current inventory."
+        )
+    if not (sc.landing_story_blocks or {}).get("whats_new"):
+        suggestions.append(
+            "Fill in \"What's New\" to highlight this season's arrivals or projects."
+        )
+    if not sc.landing_tagline:
+        suggestions.append(
+            "Add a tagline — one crisp sentence that captures what makes you different."
+        )
+
+    return {
+        "content": content,
+        "photos": photos,
+        "has_showcase": True,
+        "landing_page_enabled": sc.landing_page_enabled,
+        "landing_slug": sc.landing_slug,
+        "suggestions": suggestions,
+    }
+
+
+@router.get("/og/{slug}.png")
+async def get_og_image(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Serve a 1200x630 OG image for a vendor landing page.
+
+    Served as JPEG (despite the .png extension for URL stability) — most
+    social platforms accept either. Cached in-process until redeploy.
+    """
+    if not slug or "." in slug or "/" in slug:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    result = await db.execute(
+        select(BoothShowcase).where(
+            BoothShowcase.landing_slug == slug,
+            BoothShowcase.landing_page_enabled == True,  # noqa: E712
+        )
+    )
+    sc = result.scalar_one_or_none()
+    if not sc:
+        raise HTTPException(status_code=404, detail="Landing page not found")
+
+    vendor_name = sc.vendor.name if sc.vendor else "Vendor"
+    tagline = sc.landing_tagline
+    specialties = list(sc.landing_specialties or [])
+
+    # Choose cover: first valid photo or first item image
+    valid_photos = _valid_public_photo_urls(sc.photo_urls)
+    cover_url = valid_photos[0] if valid_photos else await _fallback_item_image_url(db, sc.vendor_id)
+
+    # Cache key factors in anything that affects the rendered output
+    cache_hash = og_svc.content_hash(
+        vendor_name,
+        tagline,
+        "|".join(specialties[:3]),
+        cover_url,
+        (sc.updated_at.isoformat() if sc.updated_at else ""),
+    )
+    key = (slug, cache_hash)
+    cached = _og_cache_get(key)
+    if cached is not None:
+        return Response(
+            content=cached,
+            media_type="image/jpeg",
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+
+    try:
+        img_bytes = og_svc.render_og_image(
+            vendor_name=vendor_name,
+            tagline=tagline,
+            specialties=specialties,
+            cover_url=cover_url,
+            theme=sc.landing_theme,
+            static_root=STATIC_ROOT,
+        )
+    except Exception as e:
+        logger.error("og_image render failed for %s: %s", slug, e, exc_info=True)
+        raise HTTPException(status_code=500, detail="OG image generation failed")
+
+    _og_cache_put(key, img_bytes)
+    return Response(
+        content=img_bytes,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
