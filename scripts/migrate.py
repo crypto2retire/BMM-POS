@@ -175,6 +175,15 @@ async def run():
             # booth_showcases landing page personalization
             "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_template VARCHAR(50) NOT NULL DEFAULT 'classic'",
             "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_theme JSONB",
+            # ── Phase 1: hero variants + section deck + differentiation signals ──
+            "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_hero_style VARCHAR(30) NOT NULL DEFAULT 'classic'",
+            "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_layout JSONB",
+            "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_specialties TEXT[]",
+            "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_era TEXT[]",
+            "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_materials TEXT[]",
+            "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_story_blocks JSONB",
+            "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_tagline VARCHAR(200)",
+            "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_year_started INTEGER",
         ]
         for sql in column_alters:
             await session.execute(text(sql))

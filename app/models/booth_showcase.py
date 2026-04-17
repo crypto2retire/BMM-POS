@@ -39,4 +39,18 @@ class BoothShowcase(Base):
     landing_template: Mapped[Optional[str]] = mapped_column(String(50), default="classic", server_default="classic")
     landing_theme: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 
+    # ── Phase 1: hero variants + section deck + differentiation signals ──
+    # hero_style → one of: classic | split | editorial | collage | story | carousel | portrait
+    landing_hero_style: Mapped[str] = mapped_column(String(30), default="classic", server_default="classic")
+    # layout → ordered list of section keys e.g. ["hero","about","specialties","featured","gallery","faq","contact"]
+    landing_layout: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    # vendor-specific keyword surface (powers unique H2s, alt text, JSON-LD, internal links)
+    landing_specialties: Mapped[Optional[list]] = mapped_column(ARRAY(Text), nullable=True)
+    landing_era: Mapped[Optional[list]] = mapped_column(ARRAY(Text), nullable=True)
+    landing_materials: Mapped[Optional[list]] = mapped_column(ARRAY(Text), nullable=True)
+    # structured story prompts → { origin, specialty, process, values, whats_new }
+    landing_story_blocks: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    landing_tagline: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    landing_year_started: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+
     vendor = relationship("Vendor", backref="booth_showcase", lazy="selectin")

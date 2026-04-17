@@ -551,6 +551,92 @@ async def vendor_landing_page(slug: str, request: Request):
                     f'<link rel="canonical" href="https://www.bowenstreetmarket.com/{slug}">',
                 )
 
+                # ── JSON-LD (LocalBusiness + FAQPage + BreadcrumbList) ──
+                try:
+                    page_url = f"https://www.bowenstreetmarket.com/{slug}"
+                    specialties = list(sc.landing_specialties or [])
+                    ld_nodes = []
+
+                    # LocalBusiness (vendor-scoped, parented to the market)
+                    business_node = {
+                        "@context": "https://schema.org",
+                        "@type": "LocalBusiness",
+                        "@id": f"{page_url}#vendor",
+                        "name": vendor_name,
+                        "url": page_url,
+                        "description": desc,
+                        "parentOrganization": {
+                            "@type": "Organization",
+                            "name": "Bowenstreet Market",
+                            "url": "https://www.bowenstreetmarket.com",
+                        },
+                        "address": {
+                            "@type": "PostalAddress",
+                            "streetAddress": "437 Bowen St",
+                            "addressLocality": "Oshkosh",
+                            "addressRegion": "WI",
+                            "postalCode": "54901",
+                            "addressCountry": "US",
+                        },
+                    }
+                    if photos:
+                        business_node["image"] = photos[:5]
+                    if specialties:
+                        business_node["makesOffer"] = [
+                            {"@type": "Offer", "itemOffered": {"@type": "Product", "name": s}}
+                            for s in specialties[:6]
+                        ]
+                        business_node["keywords"] = ", ".join(specialties[:8])
+                    if sc.landing_year_started:
+                        business_node["foundingDate"] = str(sc.landing_year_started)
+                    ld_nodes.append(business_node)
+
+                    # BreadcrumbList
+                    ld_nodes.append({
+                        "@context": "https://schema.org",
+                        "@type": "BreadcrumbList",
+                        "itemListElement": [
+                            {"@type": "ListItem", "position": 1, "name": "Bowenstreet Market", "item": "https://www.bowenstreetmarket.com/"},
+                            {"@type": "ListItem", "position": 2, "name": "Vendors", "item": "https://www.bowenstreetmarket.com/vendors"},
+                            {"@type": "ListItem", "position": 3, "name": vendor_name, "item": page_url},
+                        ],
+                    })
+
+                    # FAQPage (parses simple Q:/A: or line-pair format from landing_faq)
+                    if sc.landing_faq:
+                        faq_entities = []
+                        raw_lines = [ln.strip() for ln in (sc.landing_faq or "").splitlines() if ln.strip()]
+                        pending_q = None
+                        for ln in raw_lines:
+                            lower = ln.lower()
+                            if lower.startswith("q:") or lower.startswith("q.") or lower.endswith("?"):
+                                pending_q = ln.lstrip("QqQ:.").strip() if ln.lower().startswith("q") else ln
+                                # normalize Q prefixes
+                                if pending_q.lower().startswith("q:"): pending_q = pending_q[2:].strip()
+                            elif pending_q and (lower.startswith("a:") or lower.startswith("a.") or True):
+                                ans = ln
+                                if ans.lower().startswith("a:"): ans = ans[2:].strip()
+                                faq_entities.append({
+                                    "@type": "Question",
+                                    "name": pending_q,
+                                    "acceptedAnswer": {"@type": "Answer", "text": ans},
+                                })
+                                pending_q = None
+                        if faq_entities:
+                            ld_nodes.append({
+                                "@context": "https://schema.org",
+                                "@type": "FAQPage",
+                                "mainEntity": faq_entities[:20],
+                            })
+
+                    ld_script = "\n".join(
+                        f'<script type="application/ld+json">{json.dumps(n, ensure_ascii=False)}</script>'
+                        for n in ld_nodes
+                    )
+                    html = html.replace("</head>", ld_script + "\n</head>", 1)
+                except Exception:
+                    logger.exception("vendor_landing_page: JSON-LD injection failed")
+
             break  # only need one db session
     except Exception:
         logger.exception("vendor_landing_page: pre-render failed, serving unmodified")
