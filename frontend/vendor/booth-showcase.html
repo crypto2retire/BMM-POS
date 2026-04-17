@@ -498,6 +498,20 @@
                 </div>
             </div>
 
+            <!-- ─── PHOTOS (shared with Booth Highlight — same gallery powers both) ─── -->
+            <div class="showcase-card" id="landing-photos-card">
+                <h3>Photos</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    One shared gallery powers your booth card on the mall page <em>and</em> the hero + gallery on your landing page. The first photo is used as the hero banner. Changes here sync automatically with your Booth Highlight photos. (Max 8 photos, 5MB each)
+                </p>
+                <div id="photo-grid-landing" class="photo-grid"></div>
+                <div class="upload-area" id="photo-upload-area-landing" onclick="document.getElementById('photo-input-landing').click()">
+                    <p>Click to add photos or drag and drop</p>
+                    <span style="font-size:0.72rem;color:var(--text-light)">JPG, PNG, GIF, or WebP — up to 5MB each</span>
+                </div>
+                <input type="file" id="photo-input-landing" accept="image/*" multiple style="display:none" onchange="uploadPhotos(this.files)">
+            </div>
+
             <!-- ─── PHASE 4: Originality + Freshness health ─── -->
             <div class="showcase-card" id="page-health-card">
                 <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
@@ -1131,21 +1145,22 @@ function renderFreshness(f) {
 }
 
 function renderPhotos() {
-    var grid = document.getElementById('photo-grid');
-    if (!grid) return;
+    // Render the same photo list into both the booth-highlight grid and the landing-editor grid.
+    // The two cards share one underlying gallery (showcase.photo_urls).
     var photos = (showcase && showcase.photo_urls) || [];
-
-    if (photos.length === 0) {
-        grid.innerHTML = '<p style="font-size:0.78rem;color:var(--text-light);grid-column:1/-1">No photos yet</p>';
-        return;
-    }
-
-    grid.innerHTML = photos.map(function(url) {
+    var emptyHtml = '<p style="font-size:0.78rem;color:var(--text-light);grid-column:1/-1">No photos yet</p>';
+    var filledHtml = photos.map(function(url) {
         return '<div class="photo-item">' +
             '<img src="' + escHtml(url) + '" alt="Booth photo" loading="lazy">' +
             '<button class="delete-photo" onclick="deletePhoto(\'' + escHtml(url) + '\')" title="Remove">&times;</button>' +
             '</div>';
     }).join('');
+
+    ['photo-grid', 'photo-grid-landing'].forEach(function(gridId) {
+        var grid = document.getElementById(gridId);
+        if (!grid) return;
+        grid.innerHTML = photos.length === 0 ? emptyHtml : filledHtml;
+    });
 }
 
 function renderVideo() {
@@ -1230,7 +1245,11 @@ async function uploadPhotos(files) {
     }
     renderPhotos();
     updatePreviewTheme();
-    document.getElementById('photo-input').value = '';
+    // Reset BOTH file inputs (booth-highlight + landing-editor) so a re-upload works from either card
+    ['photo-input', 'photo-input-landing'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+    });
     if (showcase && showcase.photo_urls && showcase.photo_urls.length > 0) {
         showStatus('Photos uploaded!', 'success');
         document.getElementById('stale-banner').style.display = 'none';
