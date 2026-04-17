@@ -660,7 +660,8 @@ async def update_my_showcase(
         valid_heroes = ("classic", "split", "editorial", "collage", "story", "carousel", "portrait")
         sc.landing_hero_style = data.landing_hero_style if data.landing_hero_style in valid_heroes else "classic"
     if data.landing_layout is not None:
-        sc.landing_layout = data.landing_layout
+        existing_layout = sc.landing_layout or {}
+        sc.landing_layout = {**existing_layout, **data.landing_layout}
     if data.landing_specialties is not None:
         # clip to 8 entries, 60 chars each
         sc.landing_specialties = [str(s).strip()[:60] for s in data.landing_specialties if str(s).strip()][:8]
@@ -689,7 +690,8 @@ async def update_my_showcase(
     # powers meta descriptions and search snippets. Only runs when story
     # blocks were touched in this save; failures are swallowed so a flaky
     # AI call never blocks the save.
-    if data.landing_story_blocks is not None:
+    about_is_custom = bool((sc.landing_layout or {}).get("about_is_custom", False))
+    if data.landing_story_blocks is not None and not about_is_custom:
         summary = await _summarize_story_blocks_to_about(
             sc.landing_story_blocks or {},
             vendor_name=current_user.name,

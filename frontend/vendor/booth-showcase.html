@@ -599,6 +599,16 @@
                     You don't have to fill in all five. Even two or three well-written blocks beat a generic About paragraph.
                 </p>
                 <div id="story-blocks-grid" style="display:flex;flex-direction:column;gap:1rem"></div>
+                <details id="custom-about-details" style="margin-top:1.25rem;border-top:1px solid var(--warm-border);padding-top:1rem">
+                    <summary style="cursor:pointer;font-size:0.85rem;color:var(--gold);font-weight:500">Write my own About paragraph instead (optional)</summary>
+                    <p style="font-size:0.72rem;color:var(--text-light);margin:0.5rem 0">By default, the About section is auto-summarized from your Story Blocks. Enable this to write your own opener — your Story Blocks will still appear below.</p>
+                    <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem;margin:0.5rem 0">
+                        <input type="checkbox" id="custom-about-toggle" style="accent-color:var(--gold)">
+                        Use my custom About (overrides auto-summary)
+                    </label>
+                    <textarea id="landing-about-custom" maxlength="5000" style="min-height:160px;width:100%" placeholder="Write your About paragraph here..."></textarea>
+                    <div class="char-count"><span id="custom-about-count">0</span> / 5000</div>
+                </details>
                 <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:1rem">
                     <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save Story Blocks</button>
                 </div>
@@ -1400,6 +1410,11 @@ function renderLandingSection() {
     document.getElementById('landing-meta-title').value = showcase.landing_meta_title || '';
     document.getElementById('landing-meta-desc').value = showcase.landing_meta_desc || '';
     document.getElementById('landing-faq').value = showcase.landing_faq || '';
+    var aboutIsCustom = !!(showcase.landing_layout && showcase.landing_layout.about_is_custom);
+    document.getElementById('custom-about-toggle').checked = aboutIsCustom;
+    document.getElementById('landing-about-custom').value = aboutIsCustom ? (showcase.landing_about || '') : '';
+    document.getElementById('custom-about-count').textContent = document.getElementById('landing-about-custom').value.length;
+    if (aboutIsCustom) { var d = document.getElementById('custom-about-details'); if (d) d.open = true; }
     document.getElementById('show-facebook-feed').checked = !!showcase.show_facebook_feed;
     document.getElementById('show-instagram-feed').checked = !!showcase.show_instagram_feed;
 
@@ -1505,7 +1520,11 @@ async function saveLandingDetails() {
                     : null,
                 landing_specialties: ((document.getElementById('landing-specialties') || {}).value || '')
                     .split(',').map(function(s){ return s.trim(); }).filter(Boolean),
-                landing_story_blocks: collectStoryBlocks()
+                landing_story_blocks: collectStoryBlocks(),
+                landing_about: (document.getElementById('custom-about-toggle').checked
+                    ? document.getElementById('landing-about-custom').value.trim()
+                    : null),
+                landing_layout: { about_is_custom: document.getElementById('custom-about-toggle').checked }
             })
         });
         var data = await resp.json();
@@ -1573,6 +1592,12 @@ async function aiWriteFaq(action) {
 
 document.getElementById('landing-faq').addEventListener('input', updateFaqCount);
 updateFaqImproveBtn();
+
+(function() {
+    var ta = document.getElementById('landing-about-custom');
+    var cnt = document.getElementById('custom-about-count');
+    if (ta && cnt) ta.addEventListener('input', function() { cnt.textContent = ta.value.length; });
+})();
 
 // ─────────────────────────────────────────────────────────────
 // AI helpers for Brand Basics (tagline, specialties) and Meta Title
