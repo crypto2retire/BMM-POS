@@ -162,6 +162,101 @@ def build_landing_faq_prompt(req: AIWriteRequest, vendor_name: str, booth: str, 
     return base
 
 
+# ── Phase 2: Structured story blocks ──
+# Each block answers ONE focused question so the combined output feels
+# genuinely distinct across vendors (instead of the usual "AI about" slop).
+STORY_BLOCK_PROMPTS = {
+    "origin": {
+        "question": "How did you start?",
+        "guidance": (
+            "Write a short origin story — 2–3 sentences. Lead with a concrete moment, year, or "
+            "object that started it all. Avoid generic lines like 'passionate about vintage'. "
+            "Do not use hashtags or emojis."
+        ),
+    },
+    "specialty": {
+        "question": "What do you specialize in?",
+        "guidance": (
+            "Describe the specific thing this vendor hunts for, makes, or curates. 2–3 sentences. "
+            "Name concrete categories, eras, or techniques (e.g. 'mid-century carnival glass', "
+            "'hand-poured tallow soap'). Do not use hashtags or emojis."
+        ),
+    },
+    "process": {
+        "question": "How do you source or create it?",
+        "guidance": (
+            "Walk the customer through how pieces arrive at the booth — estate sales, auctions, "
+            "workshop time, restoration. 2–4 sentences. Specific verbs beat adjectives. "
+            "Do not use hashtags or emojis."
+        ),
+    },
+    "values": {
+        "question": "Why does this matter to you?",
+        "guidance": (
+            "One short paragraph (2–3 sentences) on what the vendor cares about — craftsmanship, "
+            "sustainability, honoring history, supporting local makers. Personal, not corporate. "
+            "Do not use hashtags or emojis."
+        ),
+    },
+    "whats_new": {
+        "question": "What just landed in the booth?",
+        "guidance": (
+            "2–3 sentences teasing what's new or seasonal right now. Reference actual item "
+            "categories when available. Add urgency (\"just in\", \"this week\") without being salesy. "
+            "Do not use hashtags or emojis."
+        ),
+    },
+}
+
+
+def build_landing_story_prompt(
+    req: AIWriteRequest,
+    vendor_name: str,
+    booth: str,
+    items_summary: str,
+    block_key: str,
+    showcase_extras: dict | None = None,
+) -> str:
+    spec = STORY_BLOCK_PROMPTS.get(block_key)
+    if not spec:
+        raise HTTPException(status_code=400, detail=f"Unknown story block: {block_key}")
+
+    extras = showcase_extras or {}
+    specialties = extras.get("specialties") or []
+    era = extras.get("era") or []
+    materials = extras.get("materials") or []
+    year_started = extras.get("year_started")
+    tagline = extras.get("tagline")
+
+    hints = []
+    if specialties: hints.append(f"Specialties: {', '.join(specialties[:6])}.")
+    if era:         hints.append(f"Eras: {', '.join(era[:4])}.")
+    if materials:   hints.append(f"Materials: {', '.join(materials[:6])}.")
+    if year_started: hints.append(f"Vendor started in {year_started}.")
+    if tagline:     hints.append(f"Tagline: {tagline}.")
+    hint_str = " ".join(hints)
+
+    base = (
+        f"You are a copywriter for Bowenstreet Market, a vintage and handcrafted marketplace "
+        f"at 437 Bowen St, Oshkosh, Wisconsin. "
+        f"Vendor: {vendor_name}. Booth: {booth}. They sell: {items_summary}. "
+    )
+    if hint_str:
+        base += hint_str + " "
+
+    base += f"You are writing the answer to ONE question: '{spec['question']}'. {spec['guidance']} "
+
+    if req.action == "improve" and req.existing_content:
+        base += (
+            f"\n\nThe vendor wrote this draft:\n\"{req.existing_content}\"\n\n"
+            "Tighten it, fix grammar, keep their voice. Return ONLY the improved text, no labels."
+        )
+    else:
+        base += "Return ONLY the paragraph text itself — no question label, no intro, no outro."
+
+    return base
+
+
 def build_seo_prompt(req: AIWriteRequest, vendor_name: str, booth: str, items_summary: str) -> str:
     base = (
         f"You are an SEO copywriter for Bowenstreet Market in Oshkosh, Wisconsin. "
@@ -278,6 +373,23 @@ async def ai_write(
             user_prompt = build_landing_faq_prompt(req, vendor_name, booth, items_summary)
         else:
             user_prompt = build_seo_prompt(req, vendor_name, booth, items_summary)
+
+    elif req.content_type.startswith("story_"):
+        # story_origin | story_specialty | story_process | story_values | story_whats_new
+        block_key = req.content_type[len("story_"):]
+        items_summary, showcase = await get_vendor_context(db, current_user)
+        extras = {}
+        if showcase is not None:
+            extras = {
+                "specialties": getattr(showcase, "landing_specialties", None) or [],
+                "era": getattr(showcase, "landing_era", None) or [],
+                "materials": getattr(showcase, "landing_materials", None) or [],
+                "year_started": getattr(showcase, "landing_year_started", None),
+                "tagline": getattr(showcase, "landing_tagline", None),
+            }
+        user_prompt = build_landing_story_prompt(
+            req, vendor_name, booth, items_summary, block_key, extras
+        )
     else:
         raise HTTPException(status_code=400, detail=f"Unknown content type: {req.content_type}")
 

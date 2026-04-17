@@ -515,3 +515,68 @@
   .landing-nav-links a.hide-mobile { display: none; }
   .landing-social-feeds-grid { grid-template-columns: 1fr; }
 }
+
+
+/* ─── PHASE 2: Story Blocks + Specialties ─── */
+.landing-story {
+  max-width: 900px; margin: 1.25rem auto;
+  padding: 2rem 2rem 1rem;
+  animation: landing-fadeUp 0.55s ease;
+}
+.landing-story .story-block-pub {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--landing-secondary, #38383B) 24%, var(--landing-border, #3A3A3C));
+}
+.landing-story .story-block-pub:last-child { border-bottom: none; margin-bottom: 0; }
+.landing-story .story-block-pub h2 {
+  font-family: var(--landing-heading-font, 'EB Garamond'), serif;
+  font-size: 1.4rem;
+  font-style: var(--landing-heading-style, italic);
+  color: var(--landing-text, #F5F5F0);
+  margin: 0 0 0.7rem;
+  font-weight: 500;
+}
+.landing-story .story-block-pub h2::after {
+  content: "";
+  display: block;
+  width: 56px;
+  height: 1px;
+  margin-top: 0.5rem;
+  background: color-mix(in srgb, var(--landing-primary, #C9A96E) 55%, transparent);
+}
+.landing-story .story-block-pub p {
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: var(--landing-text, #F5F5F0);
+  opacity: 0.88;
+  white-space: pre-wrap;
+  margin: 0;
+}
+.landing-specialties {
+  max-width: 900px; margin: 1rem auto;
+  padding: 1.25rem 2rem;
+  animation: landing-fadeUp 0.55s ease;
+}
+.landing-specialties h2 {
+  font-family: var(--landing-heading-font, 'EB Garamond'), serif;
+  font-size: 1.2rem;
+  font-style: var(--landing-heading-style, italic);
+  color: var(--landing-text, #F5F5F0);
+  margin: 0 0 0.85rem;
+  font-weight: 500;
+}
+.landing-specialties-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.landing-specialties .specialty-chip {
+  display: inline-block;
+  padding: 0.35rem 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--landing-primary, #C9A96E) 60%, transparent);
+  color: var(--landing-primary, #C9A96E);
+  border-radius: 20px;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  background: color-mix(in srgb, var(--landing-primary, #C9A96E) 6%, transparent);
+}
+@media (max-width: 640px) {
+  .landing-story, .landing-specialties { padding-left: 1.25rem; padding-right: 1.25rem; }
+}

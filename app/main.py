@@ -512,8 +512,26 @@ async def vendor_landing_page(slug: str, request: Request):
                 # 5. Pre-render SEO meta tags
                 vendor_name = sc.vendor.name if sc.vendor else "Vendor"
                 title = sc.landing_meta_title or f"{vendor_name} — Bowenstreet Market"
+
+                # Phase 2: if no explicit meta_desc, fall back to the first populated story
+                # block — this gives every vendor a unique SERP snippet instead of the same
+                # "Shop {name} at Bowenstreet Market" filler across every page.
+                fallback_desc = None
+                story_blocks = sc.landing_story_blocks or {}
+                if isinstance(story_blocks, dict):
+                    for _key in ("specialty", "origin", "process", "values", "whats_new"):
+                        _val = (story_blocks.get(_key) or "").strip()
+                        if _val:
+                            # Condense to a clean single-line ≤160 chars for meta description
+                            _clean = " ".join(_val.split())
+                            fallback_desc = _clean[:157] + "…" if len(_clean) > 160 else _clean
+                            break
+                if not fallback_desc and (sc.landing_about or "").strip():
+                    _clean = " ".join(sc.landing_about.split())
+                    fallback_desc = _clean[:157] + "…" if len(_clean) > 160 else _clean
                 desc = (
                     sc.landing_meta_desc
+                    or fallback_desc
                     or f"Shop {vendor_name} at Bowenstreet Market in Oshkosh, WI."
                 )
                 photos = sc.photo_urls or []
