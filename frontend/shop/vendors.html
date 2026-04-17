@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All Vendors — Bowenstreet Market</title>
+<meta name="description" content="Browse all vendors at Bowenstreet Market in Oshkosh, WI. Filter by specialty — vintage, handcrafted, antique, and more. See stories, booths, and inventory.">
+<meta property="og:title" content="All Vendors — Bowenstreet Market">
+<meta property="og:description" content="Every vendor at Bowenstreet Market — browse by name or specialty.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.bowenstreetmarket.com/vendors">
+<meta property="og:image" content="https://www.bowenstreetmarket.com/static/images/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://www.bowenstreetmarket.com/vendors">
+<link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+<script type="application/ld+json" id="hub-jsonld"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #38383B; --bg-card: #3a3a3e; --bg-dark: #1a1a1c;
+    --accent: #A8A6A1; --accent-lt:#C5C3BE;
+    --text: #F0EDE8; --text-dim: #A8A6A1;
+    --gold: #C9A96E; --gold-dim: rgba(201,169,110,0.22);
+    --border: #4A4A4D; --warm-border: rgba(201,169,110,0.22);
+  }
+  html { scroll-behavior: smooth; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse at 50% 0%, rgba(201,169,110,0.06) 0%, transparent 55%),
+      radial-gradient(ellipse at 15% 100%, rgba(168,166,161,0.04) 0%, transparent 50%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: 'Roboto', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    line-height: 1.7;
+  }
+  .site-header {
+    background: var(--bg-dark);
+    background-image: radial-gradient(ellipse at 50% 100%, rgba(201,169,110,0.08) 0%, transparent 65%);
+    border-top: 3px solid transparent;
+    border-image: repeating-linear-gradient(90deg, rgba(201,169,110,0.0) 0px, rgba(201,169,110,0.25) 2px, rgba(201,169,110,0.0) 4px) 3;
+    border-bottom: 1px solid rgba(201,169,110,0.12);
+    padding: 3.5rem 1.5rem 2.5rem;
+    text-align: center;
+    animation: fadeIn 0.5s ease;
+  }
+  .site-header h1 {
+    font-family: 'EB Garamond', serif;
+    font-size: clamp(2.4rem, 5.5vw, 4rem);
+    font-weight: 500; letter-spacing: 0.04em;
+    color: var(--text); line-height: 1.05; font-style: italic;
+  }
+  .header-ornament { color: rgba(201,169,110,0.4); font-size: 0.7rem; letter-spacing: 0.4em; margin: 0.5rem 0 0.3rem; }
+  .tagline {
+    font-family: 'Roboto', sans-serif; font-size: 0.68rem;
+    color: var(--text-dim); letter-spacing: 0.25em;
+    margin-top: 0.3rem; text-transform: uppercase; font-weight: 300;
+  }
+  .header-rule {
+    width: 56px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,169,110,0.55), transparent);
+    margin: 1.2rem auto 0;
+  }
+  .nav-row { display:flex; justify-content:center; gap:1.5rem; margin-top:0.8rem; }
+  .nav-row a {
+    font-size:0.75rem; text-transform:uppercase; letter-spacing:0.15em;
+    color:#A8A6A1; text-decoration:none; padding:0.3rem 0;
+    border-bottom:1px solid transparent; transition:all 0.2s;
+  }
+  .nav-row a:hover { color:var(--gold); border-bottom-color:var(--gold); }
+  .nav-row a.current { color: var(--gold); border-bottom-color: var(--gold); }
+
+  .page-intro {
+    max-width: 820px;
+    margin: 2.2rem auto 1.2rem;
+    padding: 0 1.5rem;
+    text-align: center;
+  }
+  .page-intro h2 {
+    font-family: 'EB Garamond', serif; font-style: italic;
+    font-size: 1.75rem; color: var(--text); margin-bottom: 0.6rem;
+  }
+  .page-intro p { font-size: 0.9rem; color: var(--text-dim); line-height: 1.7; }
+
+  .filter-bar {
+    max-width: 1100px;
+    margin: 1.5rem auto 0;
+    padding: 0 1.5rem;
+  }
+  .search-row {
+    display: flex; flex-wrap: wrap; gap: 0.75rem;
+    align-items: center; justify-content: center;
+    margin-bottom: 1.2rem;
+  }
+  .search-input {
+    flex: 1 1 280px; max-width: 420px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    color: var(--text); font-family: 'Roboto', sans-serif;
+    font-size: 0.88rem; padding: 0.65rem 0.9rem;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus { outline: none; border-color: var(--gold); }
+  .sort-select {
+    background: var(--bg-card); border: 1px solid var(--border);
+    color: var(--text); font-family: 'Roboto', sans-serif;
+    font-size: 0.82rem; padding: 0.65rem 0.8rem;
+  }
+
+  .specialty-chips {
+    display: flex; flex-wrap: wrap; gap: 0.45rem;
+    justify-content: center;
+    margin: 0 auto 1rem;
+  }
+  .specialty-chip {
+    display: inline-block;
+    font-size: 0.72rem; letter-spacing: 0.05em;
+    padding: 0.35rem 0.85rem;
+    border: 1px solid var(--warm-border);
+    color: var(--accent-lt);
+    background: transparent;
+    text-decoration: none;
+    border-radius: 20px;
+    transition: all 0.18s;
+    cursor: pointer;
+  }
+  .specialty-chip:hover, .specialty-chip.active {
+    border-color: var(--gold);
+    color: var(--gold);
+    background: var(--gold-dim);
+  }
+  .specialty-chip .count {
+    font-size: 0.65rem; opacity: 0.7; margin-left: 0.3rem;
+  }
+
+  .az-rail {
+    display: flex; flex-wrap: wrap; gap: 0.2rem;
+    justify-content: center;
+    max-width: 900px; margin: 1rem auto 1.5rem;
+    padding: 0 1.5rem;
+  }
+  .az-rail a {
+    font-family: 'EB Garamond', serif;
+    font-size: 0.82rem; color: var(--text-dim);
+    padding: 0.18rem 0.5rem; text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .az-rail a.has-vendors { color: var(--accent-lt); }
+  .az-rail a:hover { color: var(--gold); border-bottom-color: var(--gold); }
+
+  .letter-group {
+    max-width: 1100px; margin: 0 auto 1.5rem; padding: 0 1.5rem;
+  }
+  .letter-header {
+    font-family: 'EB Garamond', serif; font-style: italic;
+    font-size: 1.4rem; color: var(--gold);
+    border-bottom: 1px solid var(--warm-border);
+    padding-bottom: 0.4rem; margin-bottom: 1rem;
+  }
+  .vendors-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.2rem;
+  }
+  .vendor-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    padding: 1rem 1.1rem; overflow: hidden;
+    animation: fadeUp 0.35s ease both;
+    transition: border-color 0.2s, transform 0.2s;
+    display: flex; flex-direction: column; gap: 0.5rem;
+    text-decoration: none; color: inherit;
+  }
+  .vendor-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+  .vendor-card-title {
+    font-family: 'EB Garamond', serif; font-style: italic;
+    font-size: 1.15rem; color: var(--text); line-height: 1.25;
+  }
+  .vendor-booth {
+    display: inline-block; font-size: 0.62rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--bg-dark); background: var(--gold);
+    padding: 0.12rem 0.5rem; align-self: flex-start;
+  }
+  .vendor-tagline {
+    font-size: 0.82rem; color: var(--text-dim);
+    line-height: 1.55;
+    display: -webkit-box; -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .vendor-specs {
+    display: flex; flex-wrap: wrap; gap: 0.3rem;
+    margin-top: 0.3rem;
+  }
+  .vendor-specs a {
+    font-size: 0.65rem; color: var(--accent-lt);
+    border: 1px solid var(--warm-border);
+    padding: 0.15rem 0.55rem;
+    border-radius: 16px;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .vendor-specs a:hover {
+    color: var(--gold); border-color: var(--gold); background: var(--gold-dim);
+  }
+  .card-cta {
+    font-size: 0.7rem; color: var(--gold);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-top: auto; padding-top: 0.4rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .status-line {
+    text-align: center; font-size: 0.85rem;
+    color: var(--text-dim); padding: 2rem 1.5rem;
+  }
+  .empty-state { text-align: center; padding: 3rem 1.5rem; color: var(--text-dim); }
+  .empty-state p { font-size: 0.9rem; margin-bottom: 0.4rem; }
+
+  @media (max-width: 600px) {
+    .vendors-grid { grid-template-columns: 1fr; }
+    .search-input { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1>Bowenstreet Market</h1>
+  <div class="header-ornament">&loz;&nbsp;&nbsp;&loz;&nbsp;&nbsp;&loz;</div>
+  <p class="tagline">All Vendors &middot; Filter by Specialty</p>
+  <div class="header-rule"></div>
+  <div class="nav-row">
+    <a href="/shop/index.html">Shop</a>
+    <a href="/shop/booths.html">Booths</a>
+    <a href="/vendors" class="current">Vendors</a>
+    <a href="/shop/classes.html">Classes</a>
+  </div>
+</header>
+
+<div class="page-intro">
+  <h2>Meet the Makers of Bowenstreet Market</h2>
+  <p>Bowenstreet Market is home to <strong id="hero-count"><!--VENDOR_COUNT--></strong> independent vendors — potters, picker families, book sellers, vintage dealers, and more. Browse them all below, or narrow by specialty to find exactly what you're after.</p>
+</div>
+
+<div class="filter-bar">
+  <div class="search-row">
+    <input type="search" id="vendor-search" class="search-input" placeholder="Search vendors by name..." autocomplete="off" aria-label="Search vendors">
+    <select id="sort-select" class="sort-select" aria-label="Sort vendors">
+      <option value="az">Name A–Z</option>
+      <option value="za">Name Z–A</option>
+      <option value="recent">Recently Updated</option>
+    </select>
+  </div>
+  <div id="specialty-chips" class="specialty-chips" aria-label="Filter by specialty"></div>
+</div>
+
+<nav class="az-rail" id="az-rail" aria-label="Jump to letter"></nav>
+
+<div id="status-line" class="status-line">Loading vendors…</div>
+
+<div id="vendors-container"></div>
+
+<div id="empty-state" class="empty-state" style="display:none">
+  <p>No vendors match your filters.</p>
+  <p style="font-size:0.78rem">Try clearing the specialty filter or a different search term.</p>
+</div>
+
+<div style="text-align:center;padding:2rem 1.5rem 3rem">
+  <a href="/shop/index.html" style="font-size:0.78rem;color:var(--gold);text-decoration:none;letter-spacing:0.12em;text-transform:uppercase;border-bottom:1px solid rgba(201,169,110,0.3);padding-bottom:2px">Browse Our Shop &rarr;</a>
+</div>
+
+<script>
+function escHtml(s) { if (s == null) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+function slugify(s) {
+  return String(s || '').toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/[-\s]+/g, '-') || 'misc';
+}
+
+var ALL_VENDORS = [];
+var ALL_SPECIALTIES = [];
+var STATE = { query: '', sort: 'az', specialty: null };
+
+function vendorUrl(v) {
+  if (v.landing_slug) return '/' + encodeURIComponent(v.landing_slug);
+  return '/shop/vendor/' + v.vendor_id;
+}
+
+function tagline(v) {
+  return v.landing_tagline || v.landing_meta_desc || v.description || '';
+}
+
+function renderChips() {
+  var host = document.getElementById('specialty-chips');
+  if (!ALL_SPECIALTIES.length) { host.style.display = 'none'; return; }
+  var parts = ['<a href="#" class="specialty-chip' + (STATE.specialty == null ? ' active' : '') + '" data-slug="">All</a>'];
+  ALL_SPECIALTIES.forEach(function(s) {
+    var active = STATE.specialty === s.slug ? ' active' : '';
+    parts.push(
+      '<a href="/specialty/' + encodeURIComponent(s.slug) + '" class="specialty-chip' + active + '" data-slug="' + escHtml(s.slug) + '">' +
+      escHtml(s.name) + '<span class="count">' + s.vendor_count + '</span></a>'
+    );
+  });
+  host.innerHTML = parts.join('');
+  host.querySelectorAll('.specialty-chip').forEach(function(a) {
+    a.addEventListener('click', function(ev) {
+      // Allow ctrl/cmd-click to open specialty page in new tab; otherwise filter in place
+      if (ev.metaKey || ev.ctrlKey || ev.shiftKey) return;
+      ev.preventDefault();
+      var slug = a.getAttribute('data-slug') || null;
+      STATE.specialty = slug || null;
+      renderChips();
+      render();
+    });
+  });
+}
+
+function filterAndSort() {
+  var q = STATE.query.toLowerCase().trim();
+  var list = ALL_VENDORS.filter(function(v) {
+    if (STATE.specialty) {
+      var specs = (v.landing_specialties || []).map(slugify);
+      if (specs.indexOf(STATE.specialty) === -1) return false;
+    }
+    if (q) {
+      var hay = ((v.vendor_name || '') + ' ' + (v.title || '') + ' ' + tagline(v)).toLowerCase();
+      if (hay.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+  if (STATE.sort === 'za') {
+    list.sort(function(a, b) { return (b.vendor_name || '').localeCompare(a.vendor_name || ''); });
+  } else if (STATE.sort === 'recent') {
+    list.sort(function(a, b) { return (b.updated_at || '').localeCompare(a.updated_at || ''); });
+  } else {
+    list.sort(function(a, b) { return (a.vendor_name || '').localeCompare(b.vendor_name || ''); });
+  }
+  return list;
+}
+
+function renderRail(list) {
+  var letters = {};
+  list.forEach(function(v) {
+    var ch = ((v.vendor_name || '#').charAt(0) || '#').toUpperCase();
+    if (!/[A-Z]/.test(ch)) ch = '#';
+    letters[ch] = true;
+  });
+  var alphabet = '#ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+  var rail = document.getElementById('az-rail');
+  rail.innerHTML = alphabet.map(function(L) {
+    if (letters[L]) {
+      return '<a href="#letter-' + encodeURIComponent(L) + '" class="has-vendors">' + L + '</a>';
+    }
+    return '<a style="pointer-events:none;opacity:0.3">' + L + '</a>';
+  }).join('');
+}
+
+function renderCards(list) {
+  var container = document.getElementById('vendors-container');
+  if (!list.length) {
+    container.innerHTML = '';
+    document.getElementById('empty-state').style.display = 'block';
+    return;
+  }
+  document.getElementById('empty-state').style.display = 'none';
+
+  // Group by first letter
+  var groups = {};
+  list.forEach(function(v) {
+    var ch = ((v.vendor_name || '#').charAt(0) || '#').toUpperCase();
+    if (!/[A-Z]/.test(ch)) ch = '#';
+    (groups[ch] = groups[ch] || []).push(v);
+  });
+  var letters = Object.keys(groups).sort(function(a, b) {
+    if (a === '#') return 1; if (b === '#') return -1;
+    return a.localeCompare(b);
+  });
+  if (STATE.sort === 'za') letters.reverse();
+
+  var html = letters.map(function(L) {
+    var cards = groups[L].map(function(v) {
+      var specs = (v.landing_specialties || []).slice(0, 4);
+      var specHtml = specs.length ? '<div class="vendor-specs">' + specs.map(function(s) {
+        var sl = slugify(s);
+        return '<a href="/specialty/' + encodeURIComponent(sl) + '" onclick="event.stopPropagation()">' + escHtml(s) + '</a>';
+      }).join('') + '</div>' : '';
+      var tl = tagline(v);
+      return '<a class="vendor-card" href="' + escHtml(vendorUrl(v)) + '">' +
+        (v.booth_number ? '<span class="vendor-booth">Booth ' + escHtml(v.booth_number) + '</span>' : '') +
+        '<div class="vendor-card-title">' + escHtml(v.vendor_name) + '</div>' +
+        (tl ? '<div class="vendor-tagline">' + escHtml(tl) + '</div>' : '') +
+        specHtml +
+        '<div class="card-cta">Visit Page &rarr;</div>' +
+      '</a>';
+    }).join('');
+    return '<section class="letter-group" id="letter-' + encodeURIComponent(L) + '">' +
+      '<h2 class="letter-header">' + L + '</h2>' +
+      '<div class="vendors-grid">' + cards + '</div>' +
+    '</section>';
+  }).join('');
+  container.innerHTML = html;
+}
+
+function render() {
+  var list = filterAndSort();
+  var status = document.getElementById('status-line');
+  status.textContent = list.length + (list.length === 1 ? ' vendor' : ' vendors') + (STATE.specialty ? ' in this specialty' : '');
+  renderRail(list);
+  renderCards(list);
+}
+
+async function loadData() {
+  try {
+    var [vres, sres] = await Promise.all([
+      fetch('/api/v1/booth-showcase/public'),
+      fetch('/api/v1/storefront/specialties')
+    ]);
+    if (!vres.ok) throw new Error('vendors load failed');
+    ALL_VENDORS = (await vres.json()).filter(function(v) { return v.landing_slug; });
+    ALL_SPECIALTIES = sres.ok ? await sres.json() : [];
+
+    var hc = document.getElementById('hero-count');
+    if (hc && (!hc.textContent || hc.textContent.indexOf('VENDOR_COUNT') !== -1)) {
+      hc.textContent = String(ALL_VENDORS.length);
+    }
+
+    renderChips();
+    render();
+  } catch (err) {
+    document.getElementById('status-line').textContent = 'Unable to load vendors. Please try again later.';
+  }
+}
+
+document.getElementById('vendor-search').addEventListener('input', function(e) {
+  STATE.query = e.target.value;
+  render();
+});
+document.getElementById('sort-select').addEventListener('change', function(e) {
+  STATE.sort = e.target.value;
+  render();
+});
+
+loadData();
+</script>
+<script src="/static/js/public-assistant.js"></script>
+<script>initPublicAssistant('All Vendors directory - browse and filter by specialty');</script>
+</body>
+</html>

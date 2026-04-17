@@ -363,25 +363,85 @@ async def robots_txt():
 
 @app.get("/sitemap.xml", response_class=Response)
 async def sitemap_xml():
-    xml = '''<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://www.bowenstreetmarket.com/shop/index.html</loc>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>https://www.bowenstreetmarket.com/shop/booths.html</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://www.bowenstreetmarket.com/</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-</urlset>'''
-    return Response(content=xml, media_type="application/xml")
+    """Dynamic sitemap: market home, /vendors hub, every published vendor
+    landing page, and every specialty category page. Includes <lastmod>
+    from BoothShowcase.updated_at when available.
+    """
+    import re as _sm_re
+    from datetime import datetime, timezone as _tz
+    from app.database import get_db as _get_db
+    from app.models.booth_showcase import BoothShowcase
+
+    BASE = "https://www.bowenstreetmarket.com"
+
+    def _slug(s: str) -> str:
+        s = _sm_re.sub(r"[^\w\s-]", "", (s or "").lower()).strip()
+        return _sm_re.sub(r"[-\s]+", "-", s) or "misc"
+
+    urls: list[tuple[str, str | None, str, str]] = []
+    # (loc, lastmod, changefreq, priority)
+
+    today = datetime.now(_tz.utc).date().isoformat()
+
+    urls.append((f"{BASE}/", today, "daily", "1.0"))
+    urls.append((f"{BASE}/shop/index.html", today, "daily", "0.9"))
+    urls.append((f"{BASE}/shop/booths.html", today, "weekly", "0.8"))
+    urls.append((f"{BASE}/vendors", today, "weekly", "0.8"))
+
+    try:
+        async for db in _get_db():
+            result = await db.execute(
+                select(BoothShowcase)
+                .where(BoothShowcase.is_published == True)
+            )
+            showcases = result.scalars().all()
+
+            specialty_latest: dict = {}  # slug -> (display_name, latest_updated_at)
+
+            for sc in showcases:
+                lastmod = sc.updated_at.date().isoformat() if sc.updated_at else today
+
+                if sc.landing_page_enabled and sc.landing_slug:
+                    urls.append((f"{BASE}/{sc.landing_slug}", lastmod, "weekly", "0.7"))
+
+                for spec in (sc.landing_specialties or []):
+                    name = str(spec or "").strip()
+                    if not name:
+                        continue
+                    slug = _slug(name)
+                    prev = specialty_latest.get(slug)
+                    if prev is None or (sc.updated_at and (prev[1] is None or sc.updated_at > prev[1])):
+                        specialty_latest[slug] = (name[:60], sc.updated_at)
+
+            for slug, (_name, updated) in specialty_latest.items():
+                lastmod = updated.date().isoformat() if updated else today
+                urls.append((f"{BASE}/specialty/{slug}", lastmod, "weekly", "0.6"))
+            break
+    except Exception as exc:
+        logging.getLogger(__name__).warning("sitemap generation fell back: %s", exc)
+
+    # Deduplicate by loc (preserving first occurrence / priority)
+    seen = set()
+    unique = []
+    for u in urls:
+        if u[0] in seen:
+            continue
+        seen.add(u[0])
+        unique.append(u)
+
+    parts = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for loc, lastmod, cf, pr in unique:
+        parts.append("  <url>")
+        parts.append(f"    <loc>{loc}</loc>")
+        if lastmod:
+            parts.append(f"    <lastmod>{lastmod}</lastmod>")
+        parts.append(f"    <changefreq>{cf}</changefreq>")
+        parts.append(f"    <priority>{pr}</priority>")
+        parts.append("  </url>")
+    parts.append('</urlset>')
+
+    return Response(content="\n".join(parts), media_type="application/xml")
 
 
 def _mix_hex(fg: str, bg: str, opacity: float) -> str:
@@ -402,14 +462,214 @@ def _mix_hex(fg: str, bg: str, opacity: float) -> str:
         return fg
 
 
+# ── Phase 3: SEO hub + specialty category pages ──────────────────────
+@app.get("/vendors", response_class=HTMLResponse)
+async def vendors_hub_page(request: Request):
+    """Server-rendered A–Z vendor directory with JSON-LD CollectionPage/ItemList.
+    Client JS fetches /api/v1/booth-showcase/public + /api/v1/storefront/specialties
+    and renders the full filterable grid. Server renders meta + JSON-LD for SEO.
+    """
+    from html import escape as _html_esc
+    page = Path("frontend/shop/vendors.html")
+    if not page.exists():
+        return HTMLResponse("<h1>Page not found</h1>", status_code=404)
+    html = page.read_text(encoding="utf-8")
+
+    page_url = "https://www.bowenstreetmarket.com/vendors"
+    try:
+        from app.database import get_db as _get_db
+        from app.models.booth_showcase import BoothShowcase
+        async for db in _get_db():
+            result = await db.execute(
+                select(BoothShowcase)
+                .where(BoothShowcase.is_published == True)
+                .where(BoothShowcase.landing_page_enabled == True)
+            )
+            showcases = result.scalars().all()
+            vendor_count = len(showcases)
+
+            list_items = []
+            for idx, sc in enumerate(showcases[:50], start=1):
+                if not sc.vendor or not sc.landing_slug:
+                    continue
+                list_items.append({
+                    "@type": "ListItem",
+                    "position": idx,
+                    "url": f"https://www.bowenstreetmarket.com/{sc.landing_slug}",
+                    "name": sc.vendor.name,
+                })
+
+            ld = {
+                "@context": "https://schema.org",
+                "@graph": [
+                    {
+                        "@type": "CollectionPage",
+                        "@id": f"{page_url}#page",
+                        "url": page_url,
+                        "name": "All Vendors — Bowenstreet Market",
+                        "description": f"Browse all {vendor_count} vendors at Bowenstreet Market in Oshkosh, WI.",
+                        "isPartOf": {"@type": "WebSite", "name": "Bowenstreet Market", "url": "https://www.bowenstreetmarket.com"},
+                    },
+                    {
+                        "@type": "BreadcrumbList",
+                        "itemListElement": [
+                            {"@type": "ListItem", "position": 1, "name": "Bowenstreet Market", "item": "https://www.bowenstreetmarket.com/"},
+                            {"@type": "ListItem", "position": 2, "name": "Vendors", "item": page_url},
+                        ],
+                    },
+                    {
+                        "@type": "ItemList",
+                        "name": "All Vendors",
+                        "numberOfItems": vendor_count,
+                        "itemListElement": list_items,
+                    },
+                ],
+            }
+            jsonld_esc = _html_esc(json.dumps(ld, ensure_ascii=False), quote=False)
+            html = html.replace(
+                '<script type="application/ld+json" id="hub-jsonld"></script>',
+                f'<script type="application/ld+json" id="hub-jsonld">{jsonld_esc}</script>',
+            )
+            html = html.replace(
+                '<!--VENDOR_COUNT-->',
+                _html_esc(str(vendor_count)),
+            )
+            break
+    except Exception as exc:
+        logging.getLogger(__name__).warning("/vendors server-render fell back: %s", exc)
+
+    return HTMLResponse(html)
+
+
+@app.get("/specialty/{slug}", response_class=HTMLResponse)
+async def specialty_page(slug: str, request: Request):
+    """Server-rendered specialty category page (e.g. /specialty/vintage-books).
+    Validates the slug against published showcases; 404 otherwise. Injects
+    title, canonical, OG, and JSON-LD ItemList. Client JS does fetch-to-render.
+    """
+    import re as _sp_re
+    from html import escape as _html_esc
+
+    if "." in slug or "/" in slug or not _sp_re.fullmatch(r"[a-z0-9-]{1,80}", slug):
+        raise HTTPException(status_code=404)
+
+    page = Path("frontend/shop/specialty.html")
+    if not page.exists():
+        return HTMLResponse("<h1>Page not found</h1>", status_code=404)
+    html = page.read_text(encoding="utf-8")
+
+    def _slug(s: str) -> str:
+        s = _sp_re.sub(r"[^\w\s-]", "", (s or "").lower()).strip()
+        return _sp_re.sub(r"[-\s]+", "-", s) or "misc"
+
+    try:
+        from app.database import get_db as _get_db
+        from app.models.booth_showcase import BoothShowcase
+        async for db in _get_db():
+            result = await db.execute(
+                select(BoothShowcase)
+                .where(BoothShowcase.is_published == True)
+                .where(BoothShowcase.landing_page_enabled == True)
+            )
+            showcases = result.scalars().all()
+
+            display_name = None
+            matching = []
+            for sc in showcases:
+                for spec in (sc.landing_specialties or []):
+                    name = str(spec or "").strip()
+                    if not name:
+                        continue
+                    if _slug(name) == slug:
+                        if display_name is None:
+                            display_name = name[:60]
+                        matching.append(sc)
+                        break
+
+            if not matching:
+                raise HTTPException(status_code=404, detail="Specialty not found")
+
+            page_url = f"https://www.bowenstreetmarket.com/specialty/{slug}"
+            title = f"{display_name} Vendors — Bowenstreet Market"
+            desc = (
+                f"Browse {len(matching)} vendors specializing in {display_name.lower()} "
+                f"at Bowenstreet Market in Oshkosh, WI. See their booths, stories, and inventory."
+            )
+            if len(desc) > 160:
+                desc = desc[:157] + "…"
+
+            list_items = []
+            for idx, sc in enumerate(matching[:50], start=1):
+                if not sc.vendor or not sc.landing_slug:
+                    continue
+                list_items.append({
+                    "@type": "ListItem",
+                    "position": idx,
+                    "url": f"https://www.bowenstreetmarket.com/{sc.landing_slug}",
+                    "name": sc.vendor.name,
+                })
+
+            ld = {
+                "@context": "https://schema.org",
+                "@graph": [
+                    {
+                        "@type": "CollectionPage",
+                        "@id": f"{page_url}#page",
+                        "url": page_url,
+                        "name": title,
+                        "description": desc,
+                        "isPartOf": {"@type": "WebSite", "name": "Bowenstreet Market", "url": "https://www.bowenstreetmarket.com"},
+                    },
+                    {
+                        "@type": "BreadcrumbList",
+                        "itemListElement": [
+                            {"@type": "ListItem", "position": 1, "name": "Bowenstreet Market", "item": "https://www.bowenstreetmarket.com/"},
+                            {"@type": "ListItem", "position": 2, "name": "Vendors", "item": "https://www.bowenstreetmarket.com/vendors"},
+                            {"@type": "ListItem", "position": 3, "name": display_name, "item": page_url},
+                        ],
+                    },
+                    {
+                        "@type": "ItemList",
+                        "name": f"Vendors — {display_name}",
+                        "numberOfItems": len(matching),
+                        "itemListElement": list_items,
+                    },
+                ],
+            }
+
+            title_esc = _html_esc(title, quote=True)
+            desc_esc = _html_esc(desc, quote=True)
+            name_esc = _html_esc(display_name, quote=False)
+            slug_esc = _html_esc(slug, quote=True)
+            jsonld_esc = _html_esc(json.dumps(ld, ensure_ascii=False), quote=False)
+
+            html = html.replace('<!--SPECIALTY_TITLE-->', title_esc)
+            html = html.replace('<!--SPECIALTY_DESC-->', desc_esc)
+            html = html.replace('<!--SPECIALTY_NAME-->', name_esc)
+            html = html.replace('<!--SPECIALTY_SLUG-->', slug_esc)
+            html = html.replace('<!--SPECIALTY_URL-->', page_url)
+            html = html.replace(
+                '<script type="application/ld+json" id="specialty-jsonld"></script>',
+                f'<script type="application/ld+json" id="specialty-jsonld">{jsonld_esc}</script>',
+            )
+            break
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logging.getLogger(__name__).warning("/specialty/%s server-render fell back: %s", slug, exc)
+
+    return HTMLResponse(html)
+
+
 @app.get("/{slug}")
 async def vendor_landing_page(slug: str, request: Request):
     # Root-level vendor landing pages: bowenstreetmarket.com/{vendor-name}
     # Only match simple slugs — no dots, no slashes, not a known directory
     if "." in slug or "/" in slug:
         raise HTTPException(status_code=404)
-    _reserved = ("shop", "admin", "pos", "vendor", "static", "api", "health",
-                 "favicon", "manifest", "robots", "llms", "sitemaps", "docs")
+    _reserved = ("shop", "admin", "pos", "vendor", "vendors", "specialty",
+                 "static", "api", "health", "favicon", "manifest", "robots",
+                 "llms", "sitemaps", "sitemap", "docs")
     if slug in _reserved:
         raise HTTPException(status_code=404)
     page = Path("frontend/shop/vendor-page.html")
