@@ -20,6 +20,31 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ai", tags=["ai-writer"])
 
+
+async def _load_market_context(db) -> str:
+    from app.models.store_setting import StoreSetting
+    from sqlalchemy import select
+    keys = ["store_address","store_phone","store_email",
+            "hours_monday","hours_tuesday","hours_wednesday","hours_thursday",
+            "hours_friday","hours_saturday","hours_sunday"]
+    result = await db.execute(select(StoreSetting).where(StoreSetting.key.in_(keys)))
+    rows = {r.key: r.value for r in result.scalars().all()}
+    return "\n".join([
+        "Market name: Bowenstreet Market",
+        f"Address: {rows.get('store_address','2837 Bowen St, Oshkosh, WI 54901')}",
+        f"Phone: {rows.get('store_phone','(920) 289-0252')}",
+        f"Email: {rows.get('store_email','info@bowenstreetmarket.com')}",
+        f"Hours — Mon: {rows.get('hours_monday','Closed')}",
+        f"Hours — Tue: {rows.get('hours_tuesday','Closed')}",
+        f"Hours — Wed: {rows.get('hours_wednesday','10:00 AM - 6:00 PM')}",
+        f"Hours — Thu: {rows.get('hours_thursday','10:00 AM - 6:00 PM')}",
+        f"Hours — Fri: {rows.get('hours_friday','10:00 AM - 6:00 PM')}",
+        f"Hours — Sat: {rows.get('hours_saturday','10:00 AM - 4:00 PM')}",
+        f"Hours — Sun: {rows.get('hours_sunday','10:00 AM - 4:00 PM')}",
+        "Parking: Free on-site parking lot at the building.",
+        "Region: Oshkosh, Wisconsin (Fox Valley / Winnebago County, near US-41).",
+    ])
+
 TONES = {
     "warm": "Write in a warm, welcoming, heartfelt tone — like a friend inviting someone to visit.",
     "professional": "Write in a polished, professional tone — confident and credible without being stiff.",
@@ -166,31 +191,28 @@ def build_landing_about_prompt(req: AIWriteRequest, vendor_name: str, booth: str
     return base
 
 
-def build_landing_faq_prompt(req: AIWriteRequest, vendor_name: str, booth: str, items_summary: str) -> str:
+def build_landing_faq_prompt(req: AIWriteRequest, vendor_name: str, booth: str, items_summary: str, market_context: str) -> str:
     base = (
-        f"You are an SEO copywriter for Bowenstreet Market, a vintage and handcrafted goods "
-        f"marketplace at 2837 Bowen St, Oshkosh, Wisconsin. "
-        f"Vendor: {vendor_name}. Booth: {booth}. They sell: {items_summary}. "
+        f"You are an SEO copywriter for Bowenstreet Market, a vintage and handcrafted "
+        f"goods marketplace. Vendor: {vendor_name}. Booth: {booth}. They sell: {items_summary}.\n\n"
+        f"MARKET FACTS (use these verbatim — never output placeholders like [Insert ...]):\n{market_context}\n\n"
     )
     if req.action == "improve" and req.existing_content:
         base += (
-            f"The vendor has these FAQs on their landing page:\n\n"
-            f"{req.existing_content}\n\n"
-            f"Improve them — make each question natural (how a real customer would ask it), "
-            f"ensure answers are helpful and include relevant keywords for local SEO. "
+            f"The vendor has these FAQs:\n\n{req.existing_content}\n\n"
+            f"Improve them — questions should sound natural, answers helpful and keyword-rich for local SEO. "
+            f"Replace any bracketed placeholders like '[Insert hours]' or '[Exit Number]' with real values from MARKET FACTS. "
             f"Return ONLY the improved FAQs in the same format."
         )
     else:
         base += (
-            f"Write 5-7 FAQs for the vendor's landing page. These should answer questions "
-            f"real customers would search for, like:\n"
-            f"- What kind of items does this vendor sell?\n"
-            f"- Where are they located? (Bowenstreet Market, 2837 Bowen St, Oshkosh WI)\n"
-            f"- What are the market hours?\n"
-            f"- Do they take custom orders?\n"
-            f"- How can I contact them?\n"
-            f"Include at least 2 location-specific questions for local SEO. "
-            f"Format each FAQ as: Q: [question]\\nA: [answer]\\n\\n"
+            f"Write 5-7 FAQs real customers would search. Include: what they sell, market location, hours, parking, custom orders, contact.\n"
+            f"CRITICAL RULES:\n"
+            f"- Use exact hours, address, and phone from MARKET FACTS.\n"
+            f"- NEVER write bracketed placeholders like '[Insert ...]', '[Exit Number]', '[fill in]'.\n"
+            f"- If a fact isn't in MARKET FACTS or vendor info, omit that question — do not fabricate.\n"
+            f"- Include at least 2 location-specific questions for local SEO.\n"
+            f"- Format: Q: [question]\\nA: [answer]\\n\\n\n"
             f"Return ONLY the FAQs, no intro or outro."
         )
     return base
@@ -496,7 +518,8 @@ async def ai_write(
         elif req.content_type == "landing_about":
             user_prompt = build_landing_about_prompt(req, vendor_name, booth, items_summary)
         elif req.content_type == "landing_faq":
-            user_prompt = build_landing_faq_prompt(req, vendor_name, booth, items_summary)
+            market_context = await _load_market_context(db)
+            user_prompt = build_landing_faq_prompt(req, vendor_name, booth, items_summary, market_context)
         elif req.content_type == "seo_meta":
             user_prompt = build_seo_prompt(req, vendor_name, booth, items_summary)
         elif req.content_type == "seo_meta_title":
@@ -535,7 +558,8 @@ async def ai_write(
     else:
         raise HTTPException(status_code=400, detail=f"Unknown content type: {req.content_type}")
 
-    text = await call_ai(system_prompt, user_prompt)
+    max_tokens_for_type = 1500 if req.content_type == "landing_faq" else 500
+    text = await call_ai(system_prompt, user_prompt, max_tokens=max_tokens_for_type)
 
     return AIWriteResponse(content=text, tone_used=tone_key)
 
@@ -562,6 +586,7 @@ def build_landing_setup_prompt(
     vendor_name: str,
     booth: str,
     items_summary: str,
+    market_context: str,
 ) -> str:
     """Build a single prompt asking Gemini for a JSON object containing ONLY the needed fields."""
     schema_lines = []
@@ -577,6 +602,7 @@ def build_landing_setup_prompt(
         f"distinctive first draft of their landing-page content. Do not invent products they do not sell.\n\n"
         f"VENDOR: {vendor_name}\n"
         f"BOOTH: {booth}\n\n"
+        f"MARKET FACTS (use these verbatim — never output placeholders like [Insert ...]):\n{market_context}\n\n"
         f"VENDOR'S DESCRIPTION (in their own words):\n"
         f'"""\n{description.strip()}\n"""\n\n'
         f"SAMPLE INVENTORY FROM THEIR BOOTH:\n{items_summary or 'No inventory listed yet.'}\n\n"
@@ -586,7 +612,9 @@ def build_landing_setup_prompt(
         f"- Use concrete nouns from their inventory and description whenever possible.\n"
         f"- Do not invent product categories they did not mention or stock.\n"
         f"- Never use hashtags or emojis.\n"
-        f"- Never use the phrase 'one-stop shop'.\n\n"
+        f"- Never use the phrase 'one-stop shop'.\n"
+        f"- NEVER write bracketed placeholders like '[Insert hours]', '[Exit Number]', '[fill in]'. "
+        f"Use real values from MARKET FACTS, or omit the detail entirely.\n\n"
         f"OUTPUT: Return ONLY valid JSON — no prose before or after, no markdown fences — matching this exact shape:\n"
         f"{{\n{schema_body}\n}}\n"
     )
@@ -632,12 +660,14 @@ async def landing_setup(
     )
 
     items_summary, _showcase = await get_vendor_context(db, current_user)
+    market_context = await _load_market_context(db)
     user_prompt = build_landing_setup_prompt(
         description=desc,
         needed_fields=needed,
         vendor_name=current_user.name,
         booth=current_user.booth_number or "their booth",
         items_summary=items_summary,
+        market_context=market_context,
     )
 
     # ── Call AI (bigger token budget than single-field /write) ────
