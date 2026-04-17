@@ -1,4 +1,6 @@
 import os
+import json
+import re
 import logging
 from typing import Optional, Dict, Any
 
@@ -40,6 +42,38 @@ class AIWriteRequest(BaseModel):
 
 class AIWriteResponse(BaseModel):
     content: str
+    tone_used: str
+
+
+# ─────────────────────────────────────────────────────────────
+# Landing Setup Assistant — one-shot populate of multiple fields
+# ─────────────────────────────────────────────────────────────
+
+# Allowlist of fields the setup assistant can generate.
+# Keys are stable; the frontend maps them to DOM elements.
+LANDING_SETUP_FIELDS = {
+    "tagline",            # single string, 6-12 words
+    "specialties",        # list[str], 4-6 items
+    "story_origin",
+    "story_specialty",
+    "story_process",
+    "story_values",
+    "story_whats_new",
+    "meta_title",
+    "meta_description",
+    "faq",
+}
+
+
+class LandingSetupRequest(BaseModel):
+    description: str
+    tone: str = DEFAULT_TONE
+    needed_fields: list[str]  # subset of LANDING_SETUP_FIELDS
+
+
+class LandingSetupResponse(BaseModel):
+    fields: Dict[str, Any]        # key -> generated value (str or list[str])
+    missing: list[str]            # keys that were requested but AI did not return
     tone_used: str
 
 
@@ -379,7 +413,12 @@ async def get_vendor_context(db: AsyncSession, vendor: Vendor):
     return items_summary, showcase
 
 
-async def call_ai(system_prompt: str, user_prompt: str) -> str:
+async def call_ai(
+    system_prompt: str,
+    user_prompt: str,
+    max_tokens: int = 500,
+    timeout_s: float = 30.0,
+) -> str:
     api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     if not api_key:
         raise HTTPException(status_code=503, detail="AI assistant is not configured")
@@ -390,7 +429,7 @@ async def call_ai(system_prompt: str, user_prompt: str) -> str:
     ]
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=timeout_s) as client:
             resp = await client.post(
                 "https://openrouter.ai/api/v1/chat/completions",
                 headers={
@@ -401,7 +440,7 @@ async def call_ai(system_prompt: str, user_prompt: str) -> str:
                 },
                 json={
                     "model": "google/gemini-2.0-flash-001",
-                    "max_tokens": 500,
+                    "max_tokens": max_tokens,
                     "messages": messages,
                 },
             )
@@ -499,6 +538,167 @@ async def ai_write(
     text = await call_ai(system_prompt, user_prompt)
 
     return AIWriteResponse(content=text, tone_used=tone_key)
+
+
+def _setup_field_schema_line(field_key: str) -> str:
+    """Return the per-field instruction line used inside the JSON schema block."""
+    return {
+        "tagline": '"tagline": "6-12 word distinctive tagline (no quotes, no brand name prefix, no hashtags)"',
+        "specialties": '"specialties": ["4 to 6 short searchable category phrases, each 1-3 words, Title Case"]',
+        "story_origin": '"story_origin": "2-4 sentences about how they got started / what pulled them into this"',
+        "story_specialty": '"story_specialty": "2-4 sentences on what they are known for and what they specialize in"',
+        "story_process": '"story_process": "2-4 sentences on how they source, restore, curate, or make"',
+        "story_values": '"story_values": "2-4 sentences on what they believe in — craftsmanship, history, sustainability, etc."',
+        "story_whats_new": '"story_whats_new": "2-4 sentences on what is fresh in their booth right now"',
+        "meta_title": '"meta_title": "Under 60 characters. End with \' | Bowenstreet Market\'. No quotes."',
+        "meta_description": '"meta_description": "120-160 characters, plain language, no all-caps, no hashtags."',
+        "faq": '"faq": "3-5 question/answer pairs, each formatted exactly as \\"Q: ...\\\\nA: ...\\" separated by a blank line. Questions under 90 characters, answers 1-3 sentences."',
+    }.get(field_key, "")
+
+
+def build_landing_setup_prompt(
+    description: str,
+    needed_fields: list[str],
+    vendor_name: str,
+    booth: str,
+    items_summary: str,
+) -> str:
+    """Build a single prompt asking Gemini for a JSON object containing ONLY the needed fields."""
+    schema_lines = []
+    for key in needed_fields:
+        line = _setup_field_schema_line(key)
+        if line:
+            schema_lines.append("  " + line)
+    schema_body = ",\n".join(schema_lines)
+
+    return (
+        f"A vendor at Bowenstreet Market has described their booth in their own words. "
+        f"Use their description AND their actual inventory to draft a consistent, specific, "
+        f"distinctive first draft of their landing-page content. Do not invent products they do not sell.\n\n"
+        f"VENDOR: {vendor_name}\n"
+        f"BOOTH: {booth}\n\n"
+        f"VENDOR'S DESCRIPTION (in their own words):\n"
+        f'"""\n{description.strip()}\n"""\n\n'
+        f"SAMPLE INVENTORY FROM THEIR BOOTH:\n{items_summary or 'No inventory listed yet.'}\n\n"
+        f"RULES:\n"
+        f"- Write in a distinctive voice — avoid generic antique-mall phrases like 'treasures', "
+        f"'hidden gems', 'something for everyone', 'vintage and more'.\n"
+        f"- Use concrete nouns from their inventory and description whenever possible.\n"
+        f"- Do not invent product categories they did not mention or stock.\n"
+        f"- Never use hashtags or emojis.\n"
+        f"- Never use the phrase 'one-stop shop'.\n\n"
+        f"OUTPUT: Return ONLY valid JSON — no prose before or after, no markdown fences — matching this exact shape:\n"
+        f"{{\n{schema_body}\n}}\n"
+    )
+
+
+def _strip_json_fences(text: str) -> str:
+    """Gemini sometimes wraps JSON in ```json ... ``` fences. Strip them defensively."""
+    t = text.strip()
+    # Remove leading/trailing code fences
+    t = re.sub(r"^```(?:json)?\s*", "", t)
+    t = re.sub(r"\s*```$", "", t)
+    return t.strip()
+
+
+@router.post("/landing-setup", response_model=LandingSetupResponse)
+async def landing_setup(
+    req: LandingSetupRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_role_feature("role_view_ai_assistant")),
+):
+    # ── Validate description ──────────────────────────────────────
+    desc = (req.description or "").strip()
+    if len(desc) < 30:
+        raise HTTPException(status_code=400, detail="Description must be at least 30 characters.")
+    if len(desc) > 4000:
+        raise HTTPException(status_code=400, detail="Description must be under 4000 characters.")
+
+    # ── Validate needed fields against allowlist ──────────────────
+    if not req.needed_fields:
+        raise HTTPException(status_code=400, detail="No fields requested.")
+    needed = [f for f in req.needed_fields if f in LANDING_SETUP_FIELDS]
+    if not needed:
+        raise HTTPException(status_code=400, detail="No valid fields requested.")
+
+    tone_key = req.tone if req.tone in TONES else DEFAULT_TONE
+    tone_instruction = TONES[tone_key]
+
+    # ── Build prompts ─────────────────────────────────────────────
+    system_prompt = (
+        f"You are a helpful copywriter for Bowenstreet Market, a vintage and handcrafted "
+        f"goods marketplace in Oshkosh, Wisconsin. {tone_instruction} "
+        f"You return strict JSON only — no prose, no markdown fences."
+    )
+
+    items_summary, _showcase = await get_vendor_context(db, current_user)
+    user_prompt = build_landing_setup_prompt(
+        description=desc,
+        needed_fields=needed,
+        vendor_name=current_user.name,
+        booth=current_user.booth_number or "their booth",
+        items_summary=items_summary,
+    )
+
+    # ── Call AI (bigger token budget than single-field /write) ────
+    raw = await call_ai(system_prompt, user_prompt, max_tokens=2500, timeout_s=45.0)
+    cleaned = _strip_json_fences(raw)
+
+    # ── Parse JSON defensively ────────────────────────────────────
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        # Best-effort salvage: find the first/last braces
+        first = cleaned.find("{")
+        last = cleaned.rfind("}")
+        if first != -1 and last != -1 and last > first:
+            try:
+                parsed = json.loads(cleaned[first:last + 1])
+            except Exception:
+                logging.warning("landing_setup: failed to parse JSON. Raw: %s", raw[:400])
+                raise HTTPException(status_code=502, detail="AI returned malformed output — please try again.")
+        else:
+            logging.warning("landing_setup: no JSON object found. Raw: %s", raw[:400])
+            raise HTTPException(status_code=502, detail="AI returned malformed output — please try again.")
+
+    if not isinstance(parsed, dict):
+        raise HTTPException(status_code=502, detail="AI returned unexpected shape — please try again.")
+
+    # ── Coerce types + filter to requested fields ─────────────────
+    result: Dict[str, Any] = {}
+    missing: list[str] = []
+    for key in needed:
+        if key not in parsed:
+            missing.append(key)
+            continue
+        val = parsed[key]
+        if key == "specialties":
+            if isinstance(val, list):
+                cleaned_list = [str(x).strip() for x in val if str(x).strip()]
+                if cleaned_list:
+                    result[key] = cleaned_list[:8]
+                else:
+                    missing.append(key)
+            elif isinstance(val, str) and val.strip():
+                # Comma-separated fallback
+                cleaned_list = [p.strip() for p in val.split(",") if p.strip()]
+                if cleaned_list:
+                    result[key] = cleaned_list[:8]
+                else:
+                    missing.append(key)
+            else:
+                missing.append(key)
+        else:
+            if isinstance(val, (list, dict)):
+                # Flatten arrays/objects to a readable string
+                val = json.dumps(val) if isinstance(val, dict) else "\n".join(str(x) for x in val)
+            text = str(val or "").strip().strip('"').strip("'").strip()
+            if text:
+                result[key] = text
+            else:
+                missing.append(key)
+
+    return LandingSetupResponse(fields=result, missing=missing, tone_used=tone_key)
 
 
 @router.get("/tones")

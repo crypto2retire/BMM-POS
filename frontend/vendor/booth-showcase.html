@@ -426,6 +426,56 @@
         </div>
 
         <div id="landing-editor" style="display:none">
+
+            <!-- ─── AI SETUP ASSISTANT (top of page, one-shot populate) ─── -->
+            <div class="showcase-card" id="setup-assistant-card" style="border-color:var(--accent);background:linear-gradient(180deg,rgba(201,169,110,0.08) 0%,var(--surface) 45%)">
+                <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.4rem">
+                    <h3 style="margin:0">&#10024; AI Setup Assistant</h3>
+                    <span style="font-size:0.68rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;padding:2px 6px;border:1px solid rgba(201,169,110,0.35)">Start here</span>
+                </div>
+                <p style="font-size:0.8rem;color:var(--text-light);margin:0 0 0.35rem">
+                    Type a short paragraph about your booth — what you sell, what makes you different, who visits — and I'll draft every text field on this page for you. You'll see each suggestion before anything gets applied, and nothing gets saved until you hit Save on each card.
+                </p>
+                <p style="font-size:0.72rem;color:var(--text-light);margin:0 0 0.75rem">
+                    By default, only <strong>empty</strong> fields get filled, so existing writing stays safe.
+                </p>
+                <div class="form-group">
+                    <label for="setup-description" style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em">Describe your booth (30-1500 characters)</label>
+                    <textarea id="setup-description" maxlength="1500" placeholder="e.g. I've been selling mid-century glassware for about six years. I focus on Depression glass, carnival glass, and barware from the 30s-60s. I hunt estate sales across Wisconsin every weekend. My customers are collectors, people furnishing a vintage bar cart, and anyone wanting something with a story. What sets me apart is that I research each piece and include the maker and era on the tag." style="min-height:110px"></textarea>
+                    <div class="char-count"><span id="setup-desc-count">0</span> / 1500</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:0.75rem">
+                    <label style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em">Tone</label>
+                    <select id="setup-tone" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;font-size:0.78rem;font-family:'Roboto',sans-serif">
+                        <option value="warm">Warm</option>
+                        <option value="professional">Professional</option>
+                        <option value="casual">Casual</option>
+                        <option value="playful">Playful</option>
+                        <option value="rustic">Rustic</option>
+                        <option value="elegant">Elegant</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm" id="setup-generate-btn" onclick="runLandingSetup()" style="margin-left:auto">&#10024; Generate Draft</button>
+                </div>
+                <div id="setup-status" style="font-size:0.78rem;color:var(--text-light);min-height:1.2em"></div>
+
+                <!-- Preview panel (hidden until we have a draft) -->
+                <div id="setup-preview" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--warm-border)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.6rem">
+                        <h4 style="margin:0;font-size:1rem">Draft preview</h4>
+                        <div style="font-size:0.7rem;color:var(--text-light)">
+                            <button type="button" onclick="toggleAllSetupRows(true)" style="background:transparent;border:1px solid var(--border);color:var(--text-light);font-size:0.7rem;padding:2px 8px;cursor:pointer">Check all</button>
+                            <button type="button" onclick="toggleAllSetupRows(false)" style="background:transparent;border:1px solid var(--border);color:var(--text-light);font-size:0.7rem;padding:2px 8px;cursor:pointer;margin-left:4px">Uncheck all</button>
+                        </div>
+                    </div>
+                    <div id="setup-skipped-note" style="font-size:0.72rem;color:var(--text-light);margin-bottom:0.6rem;display:none"></div>
+                    <div id="setup-preview-rows" style="display:flex;flex-direction:column;gap:0.5rem"></div>
+                    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.9rem;padding-top:0.75rem;border-top:1px solid var(--warm-border)">
+                        <button class="btn btn-primary btn-sm" id="setup-apply-btn" onclick="applySetupSelected()">Apply Selected</button>
+                        <button type="button" onclick="cancelSetupPreview()" style="background:transparent;border:1px solid var(--border);color:var(--text-light);font-size:0.78rem;padding:6px 12px;cursor:pointer">Discard Draft</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="showcase-card">
                 <h3>Step 1 &middot; Page URL</h3>
                 <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
@@ -1709,6 +1759,229 @@ function collectStoryBlocks() {
     });
     return out;
 }
+
+// ─────────────────────────────────────────────────────────────
+// AI SETUP ASSISTANT — one-shot populate of landing fields
+// ─────────────────────────────────────────────────────────────
+
+// Single source of truth for which fields the assistant touches and how to read/write each one.
+var SETUP_FIELD_MAP = [
+    { key: 'tagline',           label: 'Tagline',                   getEl: function(){ return document.getElementById('landing-tagline'); }, type: 'input' },
+    { key: 'specialties',       label: 'Specialties',               getEl: function(){ return document.getElementById('landing-specialties'); }, type: 'list' },
+    { key: 'story_origin',      label: 'Story — How We Got Started', getEl: function(){ return document.getElementById('landing-story-origin'); }, type: 'story', storyKey: 'origin' },
+    { key: 'story_specialty',   label: 'Story — What We\u2019re Known For', getEl: function(){ return document.getElementById('landing-story-specialty'); }, type: 'story', storyKey: 'specialty' },
+    { key: 'story_process',     label: 'Story — How We Work',       getEl: function(){ return document.getElementById('landing-story-process'); }, type: 'story', storyKey: 'process' },
+    { key: 'story_values',      label: 'Story — What We Believe In',getEl: function(){ return document.getElementById('landing-story-values'); }, type: 'story', storyKey: 'values' },
+    { key: 'story_whats_new',   label: 'Story — What\u2019s New This Month', getEl: function(){ return document.getElementById('landing-story-whats_new'); }, type: 'story', storyKey: 'whats_new' },
+    { key: 'meta_title',        label: 'SEO Page Title',            getEl: function(){ return document.getElementById('landing-meta-title'); }, type: 'input' },
+    { key: 'meta_description',  label: 'SEO Meta Description',      getEl: function(){ return document.getElementById('landing-meta-desc'); }, type: 'textarea' },
+    { key: 'faq',               label: 'FAQ',                       getEl: function(){ return document.getElementById('landing-faq'); }, type: 'textarea' },
+];
+
+// In-memory holder of the most recent AI draft
+var _setupDraft = null;
+
+function _setupIsFieldEmpty(field) {
+    var el = field.getEl();
+    if (!el) return true;
+    return !(el.value || '').trim();
+}
+
+function updateSetupDescCount() {
+    var ta = document.getElementById('setup-description');
+    var c = document.getElementById('setup-desc-count');
+    if (ta && c) c.textContent = ta.value.length;
+}
+
+async function runLandingSetup() {
+    var btn = document.getElementById('setup-generate-btn');
+    var statusEl = document.getElementById('setup-status');
+    var previewEl = document.getElementById('setup-preview');
+    var descEl = document.getElementById('setup-description');
+    var toneEl = document.getElementById('setup-tone');
+    var description = (descEl.value || '').trim();
+    if (description.length < 30) {
+        statusEl.textContent = 'Please write at least 30 characters describing your booth.';
+        setTimeout(function(){ statusEl.textContent = ''; }, 4500);
+        return;
+    }
+
+    // Which fields are empty right now? Only generate for those.
+    var emptyFields = SETUP_FIELD_MAP.filter(_setupIsFieldEmpty);
+    var filledFields = SETUP_FIELD_MAP.filter(function(f) { return !_setupIsFieldEmpty(f); });
+    if (emptyFields.length === 0) {
+        statusEl.textContent = 'Every field already has content. Clear a field (or two) to get an AI draft for it.';
+        setTimeout(function(){ statusEl.textContent = ''; }, 6000);
+        return;
+    }
+    var needed = emptyFields.map(function(f) { return f.key; });
+
+    btn.disabled = true;
+    previewEl.style.display = 'none';
+    statusEl.textContent = 'Drafting ' + emptyFields.length + ' field' + (emptyFields.length === 1 ? '' : 's') + '... (this usually takes 15-30 seconds)';
+
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/ai/landing-setup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({
+                description: description,
+                tone: toneEl.value || 'warm',
+                needed_fields: needed
+            })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'AI draft failed');
+        _setupDraft = data.fields || {};
+        renderSetupPreview(_setupDraft, filledFields);
+        statusEl.textContent = 'Draft ready. Uncheck anything you don\u2019t want, then Apply Selected.';
+    } catch (err) {
+        statusEl.textContent = err.message;
+        setTimeout(function(){ statusEl.textContent = ''; }, 6000);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function _setupFormatPreview(field, val) {
+    if (val == null) return '';
+    if (field.type === 'list') {
+        var arr = Array.isArray(val) ? val : String(val).split(',');
+        return arr.map(function(x){ return String(x).trim(); }).filter(Boolean).join(', ');
+    }
+    return String(val).trim();
+}
+
+function renderSetupPreview(fields, filledFields) {
+    var rowsEl = document.getElementById('setup-preview-rows');
+    var skippedEl = document.getElementById('setup-skipped-note');
+    var previewEl = document.getElementById('setup-preview');
+    if (!rowsEl || !previewEl) return;
+
+    // Skipped note: which existing-content fields did we intentionally not touch?
+    if (filledFields && filledFields.length > 0) {
+        skippedEl.style.display = 'block';
+        skippedEl.innerHTML = 'Skipped (already has content): <strong>' +
+            filledFields.map(function(f){ return escHtmlAdmin(f.label); }).join(', ') + '</strong>. Clear a field to include it next time.';
+    } else {
+        skippedEl.style.display = 'none';
+    }
+
+    var html = '';
+    SETUP_FIELD_MAP.forEach(function(field) {
+        if (!(field.key in fields)) return; // AI did not return this one, skip
+        var val = fields[field.key];
+        var preview = _setupFormatPreview(field, val);
+        if (!preview) return;
+        var rowId = 'setup-row-' + field.key;
+        var checkId = 'setup-check-' + field.key;
+        html += (
+            '<div id="'+rowId+'" style="background:var(--bg);border:1px solid var(--border);padding:0.55rem 0.7rem;display:flex;gap:0.55rem;align-items:flex-start">' +
+                '<input type="checkbox" id="'+checkId+'" checked data-setup-key="'+field.key+'" style="margin-top:0.25rem;accent-color:var(--accent);flex-shrink:0">' +
+                '<div style="flex:1;min-width:0">' +
+                    '<label for="'+checkId+'" style="display:block;font-size:0.72rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;cursor:pointer">'+escHtmlAdmin(field.label)+'</label>' +
+                    '<div style="font-size:0.82rem;color:var(--text);white-space:pre-wrap;line-height:1.45">'+escHtmlAdmin(preview)+'</div>' +
+                '</div>' +
+            '</div>'
+        );
+    });
+
+    if (!html) {
+        html = '<div style="font-size:0.8rem;color:var(--text-light);padding:0.5rem 0">AI returned no usable drafts. Please try again, maybe with a bit more detail in your description.</div>';
+    }
+    rowsEl.innerHTML = html;
+    previewEl.style.display = 'block';
+}
+
+function toggleAllSetupRows(checked) {
+    document.querySelectorAll('#setup-preview-rows input[type="checkbox"][data-setup-key]').forEach(function(cb) {
+        cb.checked = !!checked;
+    });
+}
+
+function cancelSetupPreview() {
+    _setupDraft = null;
+    var previewEl = document.getElementById('setup-preview');
+    if (previewEl) previewEl.style.display = 'none';
+    var statusEl = document.getElementById('setup-status');
+    if (statusEl) statusEl.textContent = 'Draft discarded.';
+    setTimeout(function(){ if (statusEl) statusEl.textContent = ''; }, 3000);
+}
+
+function _setupApplyValueToField(field, val) {
+    var el = field.getEl();
+    if (!el) return false;
+
+    if (field.type === 'list') {
+        var arr = Array.isArray(val) ? val : String(val).split(',');
+        el.value = arr.map(function(x){ return String(x).trim(); }).filter(Boolean).join(', ');
+    } else {
+        el.value = String(val || '').trim();
+    }
+
+    // Fire input so char counts / improve-buttons / preview sync update
+    try { el.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+
+    // For story blocks: expand the details panel + refresh the status badge
+    if (field.type === 'story' && field.storyKey) {
+        var det = document.querySelector('details[data-story-key="'+field.storyKey+'"]');
+        if (det) {
+            det.open = true;
+            var summary = det.querySelector('summary');
+            if (summary) {
+                var spans = summary.querySelectorAll('span');
+                if (spans.length >= 2) spans[spans.length - 1].textContent = '\u2713 filled';
+            }
+        }
+    }
+    return true;
+}
+
+function applySetupSelected() {
+    if (!_setupDraft) return;
+    var appliedCount = 0;
+    var firstAppliedField = null;
+    SETUP_FIELD_MAP.forEach(function(field) {
+        if (!(field.key in _setupDraft)) return;
+        var cb = document.getElementById('setup-check-' + field.key);
+        if (!cb || !cb.checked) return;
+        if (_setupApplyValueToField(field, _setupDraft[field.key])) {
+            appliedCount++;
+            if (!firstAppliedField) firstAppliedField = field;
+        }
+    });
+
+    // Clean up preview
+    _setupDraft = null;
+    var previewEl = document.getElementById('setup-preview');
+    if (previewEl) previewEl.style.display = 'none';
+
+    var statusEl = document.getElementById('setup-status');
+    if (statusEl) {
+        if (appliedCount > 0) {
+            statusEl.innerHTML = '<span style="color:#6EE7B7">\u2713 Applied ' + appliedCount + ' field' + (appliedCount === 1 ? '' : 's') + '.</span> Review each card below and hit <strong>Save</strong> on the ones you want to keep.';
+            setTimeout(function(){ if (statusEl) statusEl.textContent = ''; }, 12000);
+        } else {
+            statusEl.textContent = 'Nothing applied — no fields were checked.';
+            setTimeout(function(){ if (statusEl) statusEl.textContent = ''; }, 4000);
+        }
+    }
+
+    // Scroll to the first populated field so the vendor can start reviewing
+    if (firstAppliedField) {
+        var el = firstAppliedField.getEl();
+        if (el && el.scrollIntoView) {
+            try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+        }
+    }
+}
+
+// Wire the description character counter
+(function() {
+    var ta = document.getElementById('setup-description');
+    if (ta) { ta.addEventListener('input', updateSetupDescCount); updateSetupDescCount(); }
+})();
 
 async function aiWriteStoryBlock(blockKey, action) {
     var writeBtn = document.getElementById('ai-story-write-'+blockKey);
