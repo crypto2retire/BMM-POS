@@ -521,6 +521,76 @@ async def get_my_showcase(
     return _to_response(sc, item_count)
 
 
+async def _summarize_story_blocks_to_about(
+    story_blocks: dict | None,
+    vendor_name: str,
+    booth: str,
+) -> Optional[str]:
+    """Best-effort: turn filled story blocks into a 1-2 sentence 'about' summary.
+
+    Returns the summary text or None on any failure. Never raises.
+    The About paragraph is retired from the UI, but the backend still stores
+    landing_about for use by the public page renderer (meta tags, snippets, etc.).
+    """
+    try:
+        if not story_blocks:
+            return None
+        # Keep only the non-empty block values in a stable order.
+        order = ("origin", "specialty", "process", "values", "whats_new")
+        filled = [(k, str(story_blocks.get(k, "")).strip()) for k in order]
+        filled = [(k, v) for k, v in filled if v]
+        if not filled:
+            return None
+
+        api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+        if not api_key:
+            return None
+
+        blocks_text = "\n\n".join(f"[{k}] {v}" for k, v in filled)
+        system_prompt = (
+            "You are a copywriter for Bowenstreet Market, a vintage and handcrafted "
+            "goods marketplace in Oshkosh, Wisconsin. Write warmly, specifically, and "
+            "without hashtags or emojis."
+        )
+        user_prompt = (
+            f"Vendor: {vendor_name}. Booth: {booth}.\n\n"
+            f"Here are the vendor's story blocks:\n\n{blocks_text}\n\n"
+            f"Write a 1-2 sentence summary (max ~280 characters) that captures the "
+            f"essence of this vendor — what they sell and what makes them distinctive. "
+            f"This summary is used for SEO meta descriptions and search snippets, so "
+            f"be concrete and natural. Return ONLY the summary text, no quotes or labels."
+        )
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(
+                "https://openrouter.ai/api/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "HTTP-Referer": "https://bowenstreetmarket.com",
+                    "X-Title": "Bowenstreet Market POS",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "google/gemini-2.0-flash-001",
+                    "max_tokens": 200,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                },
+            )
+        if not resp.is_success:
+            return None
+        body = resp.json()
+        text = body.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        if not text:
+            return None
+        # Hard cap to stay within the 5000 char column and reasonable meta length.
+        return text[:500]
+    except Exception as e:  # pragma: no cover
+        logger.info("landing_about auto-summarize skipped: %s", e)
+        return None
+
+
 @router.put("/mine")
 async def update_my_showcase(
     data: ShowcaseUpdate,
@@ -613,6 +683,23 @@ async def update_my_showcase(
             sc.landing_year_started = y if 1800 <= y <= 2100 else None
         except (TypeError, ValueError):
             sc.landing_year_started = None
+
+    # ── Best-effort: auto-summarize story blocks → landing_about ──
+    # The About paragraph was retired from the UI, but landing_about still
+    # powers meta descriptions and search snippets. Only runs when story
+    # blocks were touched in this save; failures are swallowed so a flaky
+    # AI call never blocks the save.
+    if data.landing_story_blocks is not None:
+        summary = await _summarize_story_blocks_to_about(
+            sc.landing_story_blocks or {},
+            vendor_name=current_user.name,
+            booth=current_user.booth_number or "their booth",
+        )
+        if summary:
+            sc.landing_about = summary
+        elif not (sc.landing_story_blocks or {}):
+            # All story blocks cleared → wipe the derived summary too
+            sc.landing_about = None
 
     sc.updated_at = datetime.now(timezone.utc)
     await db.commit()
