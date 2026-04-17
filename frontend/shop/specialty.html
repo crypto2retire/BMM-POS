@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><!--SPECIALTY_TITLE--></title>
+<meta name="description" content="<!--SPECIALTY_DESC-->">
+<meta property="og:title" content="<!--SPECIALTY_TITLE-->">
+<meta property="og:description" content="<!--SPECIALTY_DESC-->">
+<meta property="og:type" content="website">
+<meta property="og:url" content="<!--SPECIALTY_URL-->">
+<meta property="og:image" content="https://www.bowenstreetmarket.com/static/images/og-image.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="<!--SPECIALTY_URL-->">
+<link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+<script type="application/ld+json" id="specialty-jsonld"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #38383B; --bg-card: #3a3a3e; --bg-dark: #1a1a1c;
+    --accent: #A8A6A1; --accent-lt:#C5C3BE;
+    --text: #F0EDE8; --text-dim: #A8A6A1;
+    --gold: #C9A96E; --gold-dim: rgba(201,169,110,0.22);
+    --border: #4A4A4D; --warm-border: rgba(201,169,110,0.22);
+  }
+  html { scroll-behavior: smooth; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse at 50% 0%, rgba(201,169,110,0.06) 0%, transparent 55%),
+      radial-gradient(ellipse at 15% 100%, rgba(168,166,161,0.04) 0%, transparent 50%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: 'Roboto', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    line-height: 1.7;
+  }
+  .site-header {
+    background: var(--bg-dark);
+    background-image: radial-gradient(ellipse at 50% 100%, rgba(201,169,110,0.08) 0%, transparent 65%);
+    border-top: 3px solid transparent;
+    border-image: repeating-linear-gradient(90deg, rgba(201,169,110,0.0) 0px, rgba(201,169,110,0.25) 2px, rgba(201,169,110,0.0) 4px) 3;
+    border-bottom: 1px solid rgba(201,169,110,0.12);
+    padding: 3rem 1.5rem 2rem;
+    text-align: center;
+    animation: fadeIn 0.5s ease;
+  }
+  .site-header h1 {
+    font-family: 'EB Garamond', serif;
+    font-size: clamp(2rem, 5vw, 3.4rem);
+    font-weight: 500; letter-spacing: 0.04em;
+    color: var(--text); line-height: 1.1; font-style: italic;
+  }
+  .header-sub {
+    font-size: 0.72rem; color: var(--text-dim);
+    letter-spacing: 0.25em; margin-top: 0.5rem;
+    text-transform: uppercase;
+  }
+  .header-rule {
+    width: 56px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,169,110,0.55), transparent);
+    margin: 1rem auto 0;
+  }
+  .nav-row { display:flex; justify-content:center; gap:1.5rem; margin-top:0.8rem; }
+  .nav-row a {
+    font-size:0.75rem; text-transform:uppercase; letter-spacing:0.15em;
+    color:#A8A6A1; text-decoration:none; padding:0.3rem 0;
+    border-bottom:1px solid transparent; transition:all 0.2s;
+  }
+  .nav-row a:hover { color:var(--gold); border-bottom-color:var(--gold); }
+  .nav-row a.current { color: var(--gold); border-bottom-color: var(--gold); }
+
+  .breadcrumb {
+    max-width: 1100px; margin: 1.2rem auto 0;
+    padding: 0 1.5rem;
+    font-size: 0.72rem; color: var(--text-dim);
+    letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .breadcrumb a {
+    color: var(--accent-lt); text-decoration: none;
+    border-bottom: 1px solid transparent;
+  }
+  .breadcrumb a:hover { color: var(--gold); border-bottom-color: var(--gold); }
+  .breadcrumb .sep { opacity: 0.5; margin: 0 0.4rem; }
+
+  .page-intro {
+    max-width: 820px;
+    margin: 1.6rem auto 1.4rem;
+    padding: 0 1.5rem;
+    text-align: center;
+  }
+  .page-intro h2 {
+    font-family: 'EB Garamond', serif; font-style: italic;
+    font-size: 1.8rem; color: var(--gold); margin-bottom: 0.5rem;
+  }
+  .page-intro p {
+    font-size: 0.9rem; color: var(--text-dim); line-height: 1.7;
+  }
+  .page-intro .count-pill {
+    display: inline-block;
+    font-size: 0.7rem; letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--bg-dark); background: var(--gold);
+    padding: 0.22rem 0.8rem;
+    margin-top: 0.6rem;
+  }
+
+  .vendors-grid {
+    max-width: 1100px;
+    margin: 0 auto 3rem;
+    padding: 0 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.3rem;
+  }
+  .vendor-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    overflow: hidden;
+    animation: fadeUp 0.35s ease both;
+    transition: border-color 0.2s, transform 0.2s;
+    display: flex; flex-direction: column;
+    text-decoration: none; color: inherit;
+  }
+  .vendor-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+  .vendor-card-img {
+    width: 100%; aspect-ratio: 16/10;
+    object-fit: cover; display: block;
+    background: var(--bg-dark);
+  }
+  .vendor-card-body { padding: 1rem 1.15rem 1.15rem; display:flex; flex-direction:column; gap:0.45rem; flex:1; }
+  .vendor-booth {
+    display: inline-block; font-size: 0.62rem;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--bg-dark); background: var(--gold);
+    padding: 0.12rem 0.5rem; align-self: flex-start;
+  }
+  .vendor-card-title {
+    font-family: 'EB Garamond', serif; font-style: italic;
+    font-size: 1.2rem; color: var(--text); line-height: 1.25;
+  }
+  .vendor-tagline {
+    font-size: 0.82rem; color: var(--text-dim); line-height: 1.55;
+    display: -webkit-box; -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .vendor-specs { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
+  .vendor-specs a, .vendor-specs .current {
+    font-size: 0.65rem; padding: 0.15rem 0.55rem;
+    border: 1px solid var(--warm-border); border-radius: 16px;
+    color: var(--accent-lt); text-decoration: none;
+    transition: all 0.15s;
+  }
+  .vendor-specs a:hover {
+    color: var(--gold); border-color: var(--gold); background: var(--gold-dim);
+  }
+  .vendor-specs .current {
+    color: var(--gold); border-color: var(--gold); background: var(--gold-dim);
+  }
+  .card-cta {
+    font-size: 0.7rem; color: var(--gold);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-top: auto; padding-top: 0.5rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .related-bar {
+    max-width: 1100px; margin: 0 auto 2.5rem;
+    padding: 1.4rem 1.5rem 0;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+  .related-bar h3 {
+    font-family: 'EB Garamond', serif; font-style: italic;
+    font-size: 1.15rem; color: var(--text);
+    margin-bottom: 0.8rem;
+  }
+  .related-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; }
+  .related-chips a {
+    font-size: 0.72rem; letter-spacing: 0.05em;
+    padding: 0.32rem 0.8rem;
+    border: 1px solid var(--warm-border);
+    color: var(--accent-lt); text-decoration: none;
+    border-radius: 20px; transition: all 0.18s;
+  }
+  .related-chips a:hover { color: var(--gold); border-color: var(--gold); background: var(--gold-dim); }
+
+  .status-line { text-align: center; font-size: 0.85rem; color: var(--text-dim); padding: 2rem 1.5rem; }
+  .empty-state { text-align: center; padding: 3rem 1.5rem; color: var(--text-dim); }
+
+  @media (max-width: 600px) { .vendors-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <h1><!--SPECIALTY_NAME--></h1>
+  <div class="header-sub">Vendors at Bowenstreet Market</div>
+  <div class="header-rule"></div>
+  <div class="nav-row">
+    <a href="/shop/index.html">Shop</a>
+    <a href="/shop/booths.html">Booths</a>
+    <a href="/vendors" class="current">Vendors</a>
+    <a href="/shop/classes.html">Classes</a>
+  </div>
+</header>
+
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <a href="/">Bowenstreet Market</a>
+  <span class="sep">›</span>
+  <a href="/vendors">Vendors</a>
+  <span class="sep">›</span>
+  <span><!--SPECIALTY_NAME--></span>
+</nav>
+
+<div class="page-intro">
+  <h2>Find <!--SPECIALTY_NAME--> at Bowenstreet Market</h2>
+  <p id="intro-body">These are our vendors who specialize in this category. Each runs their own booth with their own style, sources, and stories. Visit their pages to see their inventory and plan a trip to Oshkosh, WI.</p>
+  <div id="count-pill" class="count-pill" style="display:none"></div>
+</div>
+
+<div id="status-line" class="status-line">Loading vendors…</div>
+
+<div id="vendors-grid" class="vendors-grid"></div>
+
+<div id="empty-state" class="empty-state" style="display:none">
+  <p>No vendors found for this specialty yet.</p>
+  <p style="font-size:0.78rem"><a href="/vendors" style="color:var(--gold)">Browse all vendors &rarr;</a></p>
+</div>
+
+<section class="related-bar" id="related-bar" style="display:none">
+  <h3>Other Specialties</h3>
+  <div class="related-chips" id="related-chips"></div>
+</section>
+
+<div style="text-align:center;padding:1.5rem 1.5rem 3rem">
+  <a href="/vendors" style="font-size:0.78rem;color:var(--gold);text-decoration:none;letter-spacing:0.12em;text-transform:uppercase;border-bottom:1px solid rgba(201,169,110,0.3);padding-bottom:2px">All Vendors &rarr;</a>
+</div>
+
+<script>
+function escHtml(s) { if (s == null) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+function slugify(s) {
+  return String(s || '').toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/[-\s]+/g, '-') || 'misc';
+}
+
+var CURRENT_SLUG = (function() {
+  var parts = window.location.pathname.split('/').filter(Boolean);
+  return parts[parts.length - 1] || '';
+})();
+
+function vendorUrl(v) {
+  if (v.landing_slug) return '/' + encodeURIComponent(v.landing_slug);
+  return '/shop/vendor/' + v.vendor_id;
+}
+
+function renderVendors(data) {
+  var grid = document.getElementById('vendors-grid');
+  var status = document.getElementById('status-line');
+  var empty = document.getElementById('empty-state');
+  var list = (data && data.vendors) || [];
+  if (!list.length) {
+    status.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  status.style.display = 'none';
+  var pill = document.getElementById('count-pill');
+  pill.textContent = list.length + (list.length === 1 ? ' vendor' : ' vendors');
+  pill.style.display = 'inline-block';
+
+  grid.innerHTML = list.map(function(v, i) {
+    var img = v.cover_image_url || '/static/images/placeholder-booth.jpg';
+    var specs = (v.specialties || []).slice(0, 5).map(function(s) {
+      var sl = slugify(s);
+      if (sl === CURRENT_SLUG) return '<span class="current">' + escHtml(s) + '</span>';
+      return '<a href="/specialty/' + encodeURIComponent(sl) + '" onclick="event.stopPropagation()">' + escHtml(s) + '</a>';
+    }).join('');
+    var tl = v.tagline || v.meta_desc || '';
+    return '<a class="vendor-card" href="' + escHtml(vendorUrl(v)) + '" style="animation-delay:' + (i * 0.04) + 's">' +
+      '<img class="vendor-card-img" src="' + escHtml(img) + '" alt="' + escHtml(v.vendor_name) + ' booth" loading="lazy" onerror="this.onerror=null;this.src=\'/static/images/placeholder-booth.jpg\'">' +
+      '<div class="vendor-card-body">' +
+        (v.booth_number ? '<span class="vendor-booth">Booth ' + escHtml(v.booth_number) + '</span>' : '') +
+        '<div class="vendor-card-title">' + escHtml(v.vendor_name) + '</div>' +
+        (tl ? '<div class="vendor-tagline">' + escHtml(tl) + '</div>' : '') +
+        (specs ? '<div class="vendor-specs">' + specs + '</div>' : '') +
+        '<div class="card-cta">Visit Page &rarr;</div>' +
+      '</div>' +
+    '</a>';
+  }).join('');
+}
+
+async function loadSpecialty() {
+  try {
+    var resp = await fetch('/api/v1/storefront/specialty/' + encodeURIComponent(CURRENT_SLUG));
+    if (resp.status === 404) {
+      document.getElementById('status-line').style.display = 'none';
+      document.getElementById('empty-state').style.display = 'block';
+      return;
+    }
+    if (!resp.ok) throw new Error('fetch failed');
+    var data = await resp.json();
+    renderVendors(data);
+  } catch (err) {
+    document.getElementById('status-line').textContent = 'Unable to load vendors. Please try again later.';
+  }
+}
+
+async function loadRelated() {
+  try {
+    var resp = await fetch('/api/v1/storefront/specialties');
+    if (!resp.ok) return;
+    var all = await resp.json();
+    var others = all.filter(function(s) { return s.slug !== CURRENT_SLUG; }).slice(0, 12);
+    if (!others.length) return;
+    var host = document.getElementById('related-chips');
+    host.innerHTML = others.map(function(s) {
+      return '<a href="/specialty/' + encodeURIComponent(s.slug) + '">' + escHtml(s.name) + '</a>';
+    }).join('');
+    document.getElementById('related-bar').style.display = 'block';
+  } catch (err) { /* optional */ }
+}
+
+loadSpecialty();
+loadRelated();
+</script>
+<script src="/static/js/public-assistant.js"></script>
+<script>initPublicAssistant('Specialty category page - vendors by specialty');</script>
+</body>
+</html>

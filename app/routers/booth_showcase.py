@@ -379,6 +379,10 @@ async def _public_showcase_payload(db: AsyncSession, sc: BoothShowcase, item_cou
         "video_url": sc.video_url,
         "item_count": item_count,
         "landing_slug": sc.landing_slug if sc.landing_page_enabled else None,
+        "landing_specialties": list(sc.landing_specialties or []),
+        "landing_tagline": sc.landing_tagline,
+        "landing_meta_desc": sc.landing_meta_desc,
+        "updated_at": sc.updated_at.isoformat() if sc.updated_at else None,
     }
 
 

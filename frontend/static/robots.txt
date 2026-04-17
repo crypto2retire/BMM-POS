@@ -2,13 +2,15 @@
 User-agent: *
 Allow: /shop/
 Allow: /static/
+Allow: /vendors
+Allow: /specialty/
 Disallow: /admin/
 Disallow: /pos/
 Disallow: /vendor/
 Disallow: /api/
 
-# Sitemap (if available)
-# Sitemap: https://bowenstreetmarket.com/sitemap.xml
+# Sitemap
+Sitemap: https://www.bowenstreetmarket.com/sitemap.xml
 
 # LLM-friendly content
 User-agent: GPTBot

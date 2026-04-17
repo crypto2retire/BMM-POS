@@ -616,3 +616,112 @@ async def payment_confirmed(
     await db.commit()
 
     return {"message": "Payment confirmed! Your item has been reserved."}
+
+
+# ── Phase 3 SEO endpoints ──────────────────────────────────────────────
+import re as _seo_re
+
+
+def _seo_slugify(s: str) -> str:
+    s = _seo_re.sub(r"[^\w\s-]", "", (s or "").lower()).strip()
+    return _seo_re.sub(r"[-\s]+", "-", s) or "misc"
+
+
+@router.get("/specialties")
+async def get_storefront_specialties(db: AsyncSession = Depends(get_db)):
+    """Aggregated list of specialties across all published showcases with vendor counts.
+    Returns: [{slug, name, vendor_count}] sorted by vendor_count desc, then name asc.
+    Used by the /vendors hub page and the Phase 3 specialty directory.
+    """
+    from app.models.booth_showcase import BoothShowcase
+
+    result = await db.execute(
+        select(BoothShowcase.landing_specialties)
+        .where(BoothShowcase.is_published == True)
+        .where(BoothShowcase.landing_page_enabled == True)
+    )
+    rows = result.all()
+
+    # slug -> {"name": first-seen-casing, "count": int}
+    bucket: dict = {}
+    for (specs,) in rows:
+        seen_this_row: set = set()
+        for s in (specs or []):
+            name = str(s or "").strip()
+            if not name:
+                continue
+            slug = _seo_slugify(name)
+            if slug in seen_this_row:
+                continue
+            seen_this_row.add(slug)
+            if slug not in bucket:
+                bucket[slug] = {"name": name[:60], "count": 0}
+            bucket[slug]["count"] += 1
+
+    out = [
+        {"slug": slug, "name": v["name"], "vendor_count": v["count"]}
+        for slug, v in bucket.items()
+    ]
+    out.sort(key=lambda x: (-x["vendor_count"], x["name"].lower()))
+    return out
+
+
+@router.get("/specialty/{slug}")
+async def get_storefront_specialty(slug: str, db: AsyncSession = Depends(get_db)):
+    """Vendors that list this specialty. Case-insensitive slug match across
+    landing_specialties. Returns: {slug, name, vendor_count, vendors: [...]}.
+    """
+    from app.models.booth_showcase import BoothShowcase
+
+    target = _seo_slugify(slug)
+    if target == "misc" and slug.lower() != "misc":
+        raise HTTPException(status_code=404, detail="Specialty not found")
+
+    result = await db.execute(
+        select(BoothShowcase, Vendor)
+        .join(Vendor, Vendor.id == BoothShowcase.vendor_id)
+        .where(BoothShowcase.is_published == True)
+        .where(BoothShowcase.landing_page_enabled == True)
+        .order_by(Vendor.name)
+    )
+    rows = result.all()
+
+    display_name = None
+    vendors_out = []
+    for sc, vendor in rows:
+        specs = sc.landing_specialties or []
+        matched = False
+        for s in specs:
+            name = str(s or "").strip()
+            if not name:
+                continue
+            if _seo_slugify(name) == target:
+                matched = True
+                if display_name is None:
+                    display_name = name[:60]
+                break
+        if not matched:
+            continue
+
+        vendors_out.append({
+            "vendor_id": sc.vendor_id,
+            "vendor_name": vendor.name,
+            "booth_number": vendor.booth_number,
+            "landing_slug": sc.landing_slug,
+            "title": sc.title,
+            "tagline": sc.landing_tagline,
+            "meta_desc": sc.landing_meta_desc,
+            "cover_image_url": (sc.photo_urls or [None])[0] if sc.photo_urls else None,
+            "specialties": list(specs),
+            "updated_at": sc.updated_at.isoformat() if sc.updated_at else None,
+        })
+
+    if not vendors_out:
+        raise HTTPException(status_code=404, detail="Specialty not found")
+
+    return {
+        "slug": target,
+        "name": display_name or target.replace("-", " ").title(),
+        "vendor_count": len(vendors_out),
+        "vendors": vendors_out,
+    }

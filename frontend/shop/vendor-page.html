@@ -1316,10 +1316,18 @@
     var chips = document.getElementById('specialties-chips');
     var heading = document.getElementById('specialties-heading');
     if (!sec || !chips) return;
+    function specSlug(s) {
+      return String(s || '').toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .trim()
+        .replace(/[-\s]+/g, '-') || 'misc';
+    }
     chips.innerHTML = list.slice(0, 8).map(function(s) {
       var v = String(s || '').trim();
       if (!v) return '';
-      return '<span class="specialty-chip">'+escHtml(v)+'</span>';
+      var href = '/specialty/' + encodeURIComponent(specSlug(v));
+      // Phase 3: chips are now internal links to specialty hubs — SEO juice + discovery
+      return '<a class="specialty-chip" href="'+href+'" style="text-decoration:none">'+escHtml(v)+'</a>';
     }).join('');
     if (heading && vendorData && vendorData.vendor_name) {
       heading.textContent = 'What ' + vendorData.vendor_name + ' Specializes In';
