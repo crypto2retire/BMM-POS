@@ -427,7 +427,7 @@
 
         <div id="landing-editor" style="display:none">
             <div class="showcase-card">
-                <h3>Your Page URL</h3>
+                <h3>Step 1 &middot; Page URL</h3>
                 <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
                     Choose a custom URL for your landing page. This is the link you can share on social media, business cards, etc.
                 </p>
@@ -477,9 +477,35 @@
                 <div id="uniqueness-matches" style="font-size:0.75rem;color:var(--text-light);margin-top:0.4rem"></div>
             </div>
 
-            <!-- ─── PHASE 2: STORY BLOCKS (5 focused sections, each with own tone + AI) ─── -->
+            <!-- ─── STEP 2: BRAND BASICS (tagline, year, specialties — promoted out of Design) ─── -->
+            <div class="showcase-card" id="brand-basics-card">
+                <h3>Step 2 &middot; Brand Basics</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
+                    The short, concrete things that make your booth yours. These feed your hero banner, power SEO, and give the AI better material to work with on the Story and FAQ sections below.
+                </p>
+                <div style="display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;margin-bottom:1rem">
+                    <div>
+                        <label for="landing-tagline" style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem">Tagline (shown on your hero)</label>
+                        <input type="text" id="landing-tagline" maxlength="200" placeholder="e.g. Mid-century glassware, one cabinet at a time" style="width:100%;padding:0.55rem 0.7rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:4px">
+                    </div>
+                    <div>
+                        <label for="landing-year-started" style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem">Year started (optional)</label>
+                        <input type="number" id="landing-year-started" min="1800" max="2100" placeholder="2019" style="width:100%;padding:0.55rem 0.7rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:4px">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="landing-specialties">Specialties (comma-separated, max 8)</label>
+                    <input type="text" id="landing-specialties" placeholder="e.g. Depression glass, Mid-century barware, Carnival glass" maxlength="500">
+                    <div style="font-size:0.68rem;color:var(--text-light);margin-top:0.25rem">These appear in your hero kicker, in Google's rich results, and drive internal links to category pages.</div>
+                </div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem">
+                    <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save Brand Basics</button>
+                </div>
+            </div>
+
+            <!-- ─── STEP 3: STORY BLOCKS (5 focused sections, each with own tone + AI) ─── -->
             <div class="showcase-card" id="story-blocks-card">
-                <h3>Your Story, in Blocks</h3>
+                <h3>Step 3 &middot; Your Story</h3>
                 <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.5rem">
                     Instead of one big "About" paragraph that sounds like every other vendor, answer a few focused questions. Each block becomes its own section on your page with a unique heading — that's what keeps your page from looking the same as the one next to you.
                 </p>
@@ -492,11 +518,15 @@
                 </div>
             </div>
 
-            <div class="showcase-card">
-                <h3>Contact Information</h3>
-                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
-                    Add your contact details so customers can reach you directly. All fields are optional — only share what you are comfortable with.
+            <!-- ─── STEP 4: CONTACT & SOCIAL (merged contact + socials + feed embed) ─── -->
+            <div class="showcase-card" id="contact-social-card">
+                <h3>Step 4 &middot; Contact &amp; Social</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:1rem">
+                    How customers reach you, and which of your social profiles get promoted on your page. Everything here is optional — share only what you're comfortable making public.
                 </p>
+
+                <!-- Contact group -->
+                <div style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem">Direct contact</div>
                 <div class="form-group">
                     <label for="landing-email">Email Address <span style="font-weight:300;color:var(--text-light)">(recommended)</span></label>
                     <input type="text" id="landing-email" placeholder="you@example.com" maxlength="200">
@@ -509,14 +539,9 @@
                     <label for="landing-website">Website</label>
                     <input type="text" id="landing-website" placeholder="https://www.yoursite.com" maxlength="300">
                 </div>
-                <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save Contact Info</button>
-            </div>
 
-            <div class="showcase-card">
-                <h3>Social Media</h3>
-                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
-                    Link your social accounts so customers can follow you. Your socials will be displayed alongside the market's socials on your landing page.
-                </p>
+                <!-- Social group -->
+                <div style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.5rem;border-top:1px solid var(--warm-border);padding-top:1rem">Social profiles</div>
                 <div class="form-group">
                     <label for="landing-facebook">Facebook URL</label>
                     <input type="text" id="landing-facebook" placeholder="https://facebook.com/yourbusiness" maxlength="300">
@@ -537,15 +562,13 @@
                     <label for="landing-etsy">Etsy Shop URL</label>
                     <input type="text" id="landing-etsy" placeholder="https://etsy.com/shop/yourbusiness" maxlength="300">
                 </div>
-                <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save Socials</button>
-            </div>
 
-            <div class="showcase-card">
-                <h3>Social Feed Embed</h3>
-                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
-                    Embed your Facebook timeline and/or Instagram profile on your landing page so visitors can see your latest posts and follow you directly.
+                <!-- Feed embed group -->
+                <div style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.5rem;border-top:1px solid var(--warm-border);padding-top:1rem">Live feed on your page</div>
+                <p style="font-size:0.74rem;color:var(--text-light);margin:0 0 0.6rem">
+                    Embed your actual social feed so visitors see your latest posts without leaving your page.
                 </p>
-                <div style="display:flex;flex-direction:column;gap:0.75rem">
+                <div style="display:flex;flex-direction:column;gap:0.5rem">
                     <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;font-size:0.85rem">
                         <input type="checkbox" id="show-facebook-feed" style="accent-color:var(--gold)" onchange="saveLandingDetails()">
                         Show Facebook timeline on my page
@@ -555,16 +578,24 @@
                         Show Instagram profile on my page
                     </label>
                 </div>
-                <p style="font-size:0.72rem;color:var(--text-light);margin-top:0.5rem">
-                    Make sure your Facebook and Instagram URLs are filled in above. Facebook pages must be public for the embed to work.
+                <p style="font-size:0.7rem;color:var(--text-light);margin:0.5rem 0 0">
+                    Make sure your Facebook and Instagram URLs above are filled in. Facebook pages must be public for the embed to work.
                 </p>
+
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:1rem">
+                    <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save Contact &amp; Social</button>
+                </div>
             </div>
 
-            <div class="showcase-card">
-                <h3>SEO Settings</h3>
-                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
-                    Help search engines find your page. These will appear in Google search results.
+            <!-- ─── STEP 5: SEO & FAQ (merged meta tags + FAQ) ─── -->
+            <div class="showcase-card" id="seo-faq-card">
+                <h3>Step 5 &middot; SEO &amp; FAQ</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:1rem">
+                    How your page shows up in Google, and the questions real customers search for. Both power discovery — the meta tags shape your search-result snippet, and FAQs fuel "People Also Ask" and AI answers.
                 </p>
+
+                <!-- SEO meta tags group -->
+                <div style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.5rem">Search engine snippet</div>
                 <div class="form-group">
                     <label for="landing-meta-title">Page Title (shown in search results and browser tab)</label>
                     <input type="text" id="landing-meta-title" placeholder="e.g. Grandma's Treasures — Handcrafted Quilts at Bowenstreet Market" maxlength="200">
@@ -574,13 +605,14 @@
                     <textarea id="landing-meta-desc" placeholder="A short summary (120-160 characters) of what you sell and why people should visit..." maxlength="500" style="min-height:60px"></textarea>
                     <div class="char-count"><span id="meta-desc-count">0</span> / 500</div>
                 </div>
-                <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save SEO</button>
-            </div>
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.75rem">
+                    <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save SEO</button>
+                </div>
 
-            <div class="showcase-card">
-                <h3>FAQ Section</h3>
-                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
-                    Frequently asked questions help search engines understand your page and show up in Google's "People Also Ask" and AI search results. Each Q&amp;A pair should answer something a real customer would search for.
+                <!-- FAQ group -->
+                <div style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin:1rem 0 0.5rem;border-top:1px solid var(--warm-border);padding-top:1rem">FAQ section</div>
+                <p style="font-size:0.74rem;color:var(--text-light);margin:0 0 0.6rem">
+                    Frequently asked questions help search engines understand your page and show up in Google's "People Also Ask" and AI answers. Each Q&amp;A pair should answer something a real customer would search for.
                 </p>
                 <div class="form-group">
                     <textarea id="landing-faq" placeholder="Q: What kind of items do you sell?&#10;A: We specialize in handcrafted quilts, vintage linens, and one-of-a-kind home decor pieces.&#10;&#10;Q: Where is your booth located?&#10;A: We're in Booth A12 at Bowenstreet Market, 2837 Bowen St, Oshkosh, WI." maxlength="8000" style="min-height:220px"></textarea>
@@ -611,9 +643,9 @@
 
             <!-- ── DESIGN SECTION ── -->
             <div class="showcase-card" id="design-section">
-                <h3>🎨 Page Design</h3>
+                <h3>Step 6 &middot; Design</h3>
                 <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:1rem">
-                    Customize how your landing page looks. Pick a template layout, choose your colors, and select fonts — or let the AI design assistant help you create a look that matches your style.
+                    Only the visual side — template, hero layout, section order, colors, and fonts. Your words (tagline, story, FAQ, etc.) live in the steps above.
                 </p>
 
                 <!-- Template Picker -->
@@ -696,23 +728,6 @@
                             <div style="font-size:0.62rem;color:var(--text-light)">headshot + sig</div>
                         </div>
                     </div>
-                </div>
-
-                <!-- ─── Hero Content Fields (Phase 1) ─── -->
-                <div style="display:grid;grid-template-columns:2fr 1fr;gap:0.75rem;margin-bottom:1rem">
-                    <div>
-                        <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem">Tagline (shown on hero)</label>
-                        <input type="text" id="landing-tagline" maxlength="200" placeholder="e.g. Mid-century glassware, one cabinet at a time" style="width:100%;padding:0.55rem 0.7rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:4px">
-                    </div>
-                    <div>
-                        <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem">Year started (optional)</label>
-                        <input type="number" id="landing-year-started" min="1800" max="2100" placeholder="2019" style="width:100%;padding:0.55rem 0.7rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:4px">
-                    </div>
-                </div>
-                <div style="margin-bottom:1.25rem">
-                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem">Specialties (comma-separated, max 8) — powers SEO + unique H2s</label>
-                    <input type="text" id="landing-specialties" placeholder="e.g. Depression glass, Mid-century barware, Carnival glass" style="width:100%;padding:0.55rem 0.7rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:4px">
-                    <div style="font-size:0.68rem;color:var(--text-light);margin-top:0.25rem">These appear in your hero kicker, in Google's rich results, and will drive internal links to category pages (coming in Phase 3).</div>
                 </div>
 
                 <!-- ─── PHASE 2: SECTION DECK ─ drag to reorder ─── -->
