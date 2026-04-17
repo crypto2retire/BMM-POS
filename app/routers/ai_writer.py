@@ -281,6 +281,85 @@ def build_seo_prompt(req: AIWriteRequest, vendor_name: str, booth: str, items_su
     return base
 
 
+def build_seo_title_prompt(req: AIWriteRequest, vendor_name: str, booth: str, items_summary: str) -> str:
+    base = (
+        f"You are an SEO copywriter for Bowenstreet Market in Oshkosh, Wisconsin. "
+        f"Vendor: {vendor_name}. Booth: {booth}. They sell: {items_summary}. "
+    )
+    if req.action == "improve" and req.existing_content:
+        base += (
+            f"The vendor wrote this page title:\n\n"
+            f'"{req.existing_content}"\n\n'
+            f"Improve it for search engines — keep it under 60 characters, "
+            f"front-load the vendor's specialty, and end with ' | Bowenstreet Market'. "
+            f"Return ONLY the improved title, no quotes."
+        )
+    else:
+        base += (
+            f"Write an SEO page title under 60 characters. Front-load the vendor's "
+            f"specialty (what they're best known for), then the vendor name, ending "
+            f"with ' | Bowenstreet Market'. Example format: 'Mid-Century Glassware — "
+            f"Grandma's Treasures | Bowenstreet Market'. "
+            f"Return ONLY the title, no quotes."
+        )
+    return base
+
+
+def build_landing_tagline_prompt(req: AIWriteRequest, vendor_name: str, booth: str, items_summary: str, showcase_extras: dict | None = None) -> str:
+    extras = showcase_extras or {}
+    specialties = extras.get("specialties") or []
+    hint = ""
+    if specialties:
+        hint = f"Known for: {', '.join(specialties[:4])}. "
+
+    base = (
+        f"You are a copywriter for Bowenstreet Market, a vintage and handcrafted "
+        f"goods marketplace in Oshkosh, Wisconsin. "
+        f"Vendor: {vendor_name}. Booth: {booth}. They sell: {items_summary}. {hint}"
+    )
+    if req.action == "improve" and req.existing_content:
+        base += (
+            f"The vendor wrote this tagline:\n\n"
+            f'"{req.existing_content}"\n\n'
+            f"Improve it — tighter, more distinctive, 6-12 words. Specific beats generic "
+            f"('Mid-century glassware, one cabinet at a time' beats 'Quality vintage finds'). "
+            f"No hashtags or emojis. Return ONLY the tagline, no quotes."
+        )
+    else:
+        base += (
+            f"Write a short, distinctive tagline for the vendor's hero banner. "
+            f"6-12 words. Concrete and specific — reference what they actually sell. "
+            f"No hashtags or emojis. Return ONLY the tagline, no quotes."
+        )
+    return base
+
+
+def build_landing_specialties_prompt(req: AIWriteRequest, vendor_name: str, booth: str, items_summary: str) -> str:
+    base = (
+        f"You are an SEO copywriter for Bowenstreet Market, a vintage and handcrafted "
+        f"goods marketplace at 2837 Bowen St, Oshkosh, Wisconsin. "
+        f"Vendor: {vendor_name}. Booth: {booth}. They sell: {items_summary}. "
+    )
+    if req.action == "improve" and req.existing_content:
+        base += (
+            f"The vendor listed these specialties (comma-separated):\n\n"
+            f'"{req.existing_content}"\n\n'
+            f"Tighten and clean them up. Keep them as concrete, searchable categories "
+            f"(e.g. 'Depression glass', 'Mid-century barware', 'Carnival glass'). "
+            f"Return 4-6 items max as a SINGLE comma-separated line. "
+            f"No hashtags, no numbering, no extra text."
+        )
+    else:
+        base += (
+            f"Write 4-6 specialty categories this vendor is known for, as a single "
+            f"comma-separated line. Use searchable terms real shoppers would Google "
+            f"(e.g. 'Depression glass, Mid-century barware, Carnival glass'). "
+            f"No hashtags, no numbering, no extra text. "
+            f"Return ONLY the comma-separated line."
+        )
+    return base
+
+
 async def get_vendor_context(db: AsyncSession, vendor: Vendor):
     items_result = await db.execute(
         select(Item.name, Item.category).where(
@@ -361,7 +440,15 @@ async def ai_write(
     if req.content_type == "product_description":
         user_prompt = build_product_prompt(req, vendor_name)
 
-    elif req.content_type in ("booth_description", "landing_about", "landing_faq", "seo_meta"):
+    elif req.content_type in (
+        "booth_description",
+        "landing_about",
+        "landing_faq",
+        "seo_meta",
+        "seo_meta_title",
+        "landing_tagline",
+        "landing_specialties",
+    ):
         items_summary, showcase = await get_vendor_context(db, current_user)
         existing_title = showcase.title if showcase else None
 
@@ -371,8 +458,24 @@ async def ai_write(
             user_prompt = build_landing_about_prompt(req, vendor_name, booth, items_summary)
         elif req.content_type == "landing_faq":
             user_prompt = build_landing_faq_prompt(req, vendor_name, booth, items_summary)
-        else:
+        elif req.content_type == "seo_meta":
             user_prompt = build_seo_prompt(req, vendor_name, booth, items_summary)
+        elif req.content_type == "seo_meta_title":
+            user_prompt = build_seo_title_prompt(req, vendor_name, booth, items_summary)
+        elif req.content_type == "landing_tagline":
+            showcase_extras = {}
+            if showcase is not None:
+                showcase_extras = {
+                    "specialties": getattr(showcase, "landing_specialties", None) or [],
+                    "era": getattr(showcase, "landing_era", None) or [],
+                    "materials": getattr(showcase, "landing_materials", None) or [],
+                    "year_started": getattr(showcase, "landing_year_started", None),
+                }
+            user_prompt = build_landing_tagline_prompt(
+                req, vendor_name, booth, items_summary, showcase_extras
+            )
+        else:  # landing_specialties
+            user_prompt = build_landing_specialties_prompt(req, vendor_name, booth, items_summary)
 
     elif req.content_type.startswith("story_"):
         # story_origin | story_specialty | story_process | story_values | story_whats_new

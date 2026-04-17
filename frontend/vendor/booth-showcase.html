@@ -487,6 +487,11 @@
                     <div>
                         <label for="landing-tagline" style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem">Tagline (shown on your hero)</label>
                         <input type="text" id="landing-tagline" maxlength="200" placeholder="e.g. Mid-century glassware, one cabinet at a time" style="width:100%;padding:0.55rem 0.7rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:4px">
+                        <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;margin-top:0.35rem">
+                            <button class="ai-btn" id="ai-tagline-btn" onclick="aiWriteTagline('write')" style="font-size:0.72rem;padding:4px 8px">&#10024; Write with AI</button>
+                            <button class="ai-btn" id="ai-improve-tagline-btn" onclick="aiWriteTagline('improve')" style="font-size:0.72rem;padding:4px 8px;display:none">&#10024; Improve</button>
+                        </div>
+                        <span id="ai-tagline-status" style="font-size:0.72rem;color:var(--text-light);margin-top:4px;display:block"></span>
                     </div>
                     <div>
                         <label for="landing-year-started" style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem">Year started (optional)</label>
@@ -497,6 +502,23 @@
                     <label for="landing-specialties">Specialties (comma-separated, max 8)</label>
                     <input type="text" id="landing-specialties" placeholder="e.g. Depression glass, Mid-century barware, Carnival glass" maxlength="500">
                     <div style="font-size:0.68rem;color:var(--text-light);margin-top:0.25rem">These appear in your hero kicker, in Google's rich results, and drive internal links to category pages.</div>
+                    <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;margin-top:0.4rem">
+                        <button class="ai-btn" id="ai-specialties-btn" onclick="aiWriteSpecialties('write')" style="font-size:0.72rem;padding:4px 8px">&#10024; Suggest with AI</button>
+                        <button class="ai-btn" id="ai-improve-specialties-btn" onclick="aiWriteSpecialties('improve')" style="font-size:0.72rem;padding:4px 8px;display:none">&#10024; Improve</button>
+                    </div>
+                    <span id="ai-specialties-status" style="font-size:0.72rem;color:var(--text-light);margin-top:4px;display:block"></span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:0.75rem">
+                    <label style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap">AI tone</label>
+                    <select id="ai-tone-brand" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;font-size:0.78rem;font-family:'Roboto',sans-serif">
+                        <option value="warm">Warm</option>
+                        <option value="professional">Professional</option>
+                        <option value="casual">Casual</option>
+                        <option value="playful">Playful</option>
+                        <option value="rustic">Rustic</option>
+                        <option value="elegant">Elegant</option>
+                    </select>
+                    <span style="font-size:0.68rem;color:var(--text-light)">Applies to the AI buttons above.</span>
                 </div>
                 <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem">
                     <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save Brand Basics</button>
@@ -599,6 +621,11 @@
                 <div class="form-group">
                     <label for="landing-meta-title">Page Title (shown in search results and browser tab)</label>
                     <input type="text" id="landing-meta-title" placeholder="e.g. Grandma's Treasures — Handcrafted Quilts at Bowenstreet Market" maxlength="200">
+                    <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;margin-top:0.35rem">
+                        <button class="ai-btn" id="ai-meta-title-btn" onclick="aiWriteMetaTitle('write')" style="font-size:0.72rem;padding:4px 8px">&#10024; Write with AI</button>
+                        <button class="ai-btn" id="ai-improve-meta-title-btn" onclick="aiWriteMetaTitle('improve')" style="font-size:0.72rem;padding:4px 8px;display:none">&#10024; Improve</button>
+                    </div>
+                    <span id="ai-meta-title-status" style="font-size:0.72rem;color:var(--text-light);margin-top:4px;display:block"></span>
                 </div>
                 <div class="form-group">
                     <label for="landing-meta-desc">Page Description (shown below the title in search results)</label>
@@ -1477,6 +1504,128 @@ async function aiWriteFaq(action) {
 
 document.getElementById('landing-faq').addEventListener('input', updateFaqCount);
 updateFaqImproveBtn();
+
+// ─────────────────────────────────────────────────────────────
+// AI helpers for Brand Basics (tagline, specialties) and Meta Title
+// ─────────────────────────────────────────────────────────────
+function updateTaglineImproveBtn() {
+    var btn = document.getElementById('ai-improve-tagline-btn');
+    if (!btn) return;
+    var v = (document.getElementById('landing-tagline').value || '').trim();
+    btn.style.display = v.length > 3 ? 'inline-flex' : 'none';
+}
+function updateSpecialtiesImproveBtn() {
+    var btn = document.getElementById('ai-improve-specialties-btn');
+    if (!btn) return;
+    var v = (document.getElementById('landing-specialties').value || '').trim();
+    btn.style.display = v.length > 3 ? 'inline-flex' : 'none';
+}
+function updateMetaTitleImproveBtn() {
+    var btn = document.getElementById('ai-improve-meta-title-btn');
+    if (!btn) return;
+    var v = (document.getElementById('landing-meta-title').value || '').trim();
+    btn.style.display = v.length > 3 ? 'inline-flex' : 'none';
+}
+
+async function _aiWriteSimpleField(opts) {
+    // opts: { contentType, targetId, toneSelectId, writeBtnId, improveBtnId, statusId, labels }
+    var btn = document.getElementById(opts.writeBtnId);
+    var improveBtn = document.getElementById(opts.improveBtnId);
+    var statusEl = document.getElementById(opts.statusId);
+    var input = document.getElementById(opts.targetId);
+    var toneEl = document.getElementById(opts.toneSelectId);
+    var tone = toneEl ? toneEl.value : 'warm';
+    var existingContent = (input.value || '').trim();
+    var action = opts.action;
+    if (btn) btn.disabled = true;
+    if (improveBtn) improveBtn.disabled = true;
+    if (statusEl) statusEl.textContent = action === 'improve' ? ('Improving ' + opts.labels.noun + '...') : ('Writing ' + opts.labels.noun + '...');
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var resp = await fetch('/api/v1/ai/write', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({
+                content_type: opts.contentType,
+                tone: tone,
+                action: action,
+                existing_content: action === 'improve' ? existingContent : null
+            })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'AI failed');
+        // Trim whitespace/quotes AI sometimes wraps single-line output in
+        var clean = (data.content || '').trim().replace(/^["'""]+|["'""]+$/g, '').trim();
+        input.value = clean;
+        if (opts.refresh) opts.refresh();
+        if (statusEl) {
+            statusEl.textContent = action === 'improve'
+                ? (opts.labels.noun.charAt(0).toUpperCase() + opts.labels.noun.slice(1) + ' improved! Review and Save.')
+                : (opts.labels.noun.charAt(0).toUpperCase() + opts.labels.noun.slice(1) + ' generated! Review and Save.');
+            setTimeout(function() { statusEl.textContent = ''; }, 6000);
+        }
+    } catch (err) {
+        if (statusEl) {
+            statusEl.textContent = err.message;
+            setTimeout(function() { statusEl.textContent = ''; }, 4000);
+        }
+    } finally {
+        if (btn) btn.disabled = false;
+        if (improveBtn) improveBtn.disabled = false;
+    }
+}
+
+async function aiWriteTagline(action) {
+    await _aiWriteSimpleField({
+        contentType: 'landing_tagline',
+        targetId: 'landing-tagline',
+        toneSelectId: 'ai-tone-brand',
+        writeBtnId: 'ai-tagline-btn',
+        improveBtnId: 'ai-improve-tagline-btn',
+        statusId: 'ai-tagline-status',
+        action: action,
+        labels: { noun: 'tagline' },
+        refresh: updateTaglineImproveBtn
+    });
+}
+
+async function aiWriteSpecialties(action) {
+    await _aiWriteSimpleField({
+        contentType: 'landing_specialties',
+        targetId: 'landing-specialties',
+        toneSelectId: 'ai-tone-brand',
+        writeBtnId: 'ai-specialties-btn',
+        improveBtnId: 'ai-improve-specialties-btn',
+        statusId: 'ai-specialties-status',
+        action: action,
+        labels: { noun: 'specialties' },
+        refresh: updateSpecialtiesImproveBtn
+    });
+}
+
+async function aiWriteMetaTitle(action) {
+    await _aiWriteSimpleField({
+        contentType: 'seo_meta_title',
+        targetId: 'landing-meta-title',
+        toneSelectId: 'ai-tone-brand',
+        writeBtnId: 'ai-meta-title-btn',
+        improveBtnId: 'ai-improve-meta-title-btn',
+        statusId: 'ai-meta-title-status',
+        action: action,
+        labels: { noun: 'page title' },
+        refresh: updateMetaTitleImproveBtn
+    });
+}
+
+// Wire up input listeners to toggle the Improve buttons
+(function() {
+    var tag = document.getElementById('landing-tagline');
+    if (tag) { tag.addEventListener('input', updateTaglineImproveBtn); updateTaglineImproveBtn(); }
+    var spec = document.getElementById('landing-specialties');
+    if (spec) { spec.addEventListener('input', updateSpecialtiesImproveBtn); updateSpecialtiesImproveBtn(); }
+    var meta = document.getElementById('landing-meta-title');
+    if (meta) { meta.addEventListener('input', updateMetaTitleImproveBtn); updateMetaTitleImproveBtn(); }
+})();
 
 // ─────────────────────────────────────────────────────────────
 // PHASE 2: STORY BLOCKS (per-block AI writer + tone picker)
