@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from PIL import Image
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.database import get_db
 from app.models.vendor import Vendor
@@ -792,6 +793,121 @@ async def upload_showcase_photo(
     )
     item_count = count_result.scalar() or 0
 
+    return _to_response(sc, item_count)
+
+
+@router.post("/mine/logo")
+async def upload_showcase_logo(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_vendor_booth_user),
+):
+    """Upload a square logo. Stored at theme.branding.logo_url."""
+    result = await db.execute(
+        select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
+    )
+    sc = result.scalar_one_or_none()
+    if not sc:
+        sc = BoothShowcase(vendor_id=current_user.id)
+        db.add(sc)
+        await db.flush()
+
+    allowed = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
+    ext = os.path.splitext(file.filename or "logo.png")[1].lower() or ".png"
+    if ext not in allowed:
+        raise HTTPException(status_code=400, detail="Unsupported file type. Use JPG, PNG, GIF, or WebP")
+
+    contents = await file.read()
+    if len(contents) > 2_000_000:
+        raise HTTPException(status_code=400, detail="Logo must be under 2MB")
+
+    preserve_png = ext == ".png"
+    out_ext = ".png" if preserve_png else ".jpg"
+    content_type = "image/png" if preserve_png else "image/jpeg"
+    try:
+        img = Image.open(io.BytesIO(contents))
+        if preserve_png:
+            img = img.convert("RGBA")
+        else:
+            img = img.convert("RGB")
+        w, h = img.size
+        side = min(w, h)
+        left = (w - side) // 2
+        top = (h - side) // 2
+        img = img.crop((left, top, left + side, top + side))
+        if side > 600:
+            img = img.resize((600, 600), Image.LANCZOS)
+        buf = io.BytesIO()
+        if preserve_png:
+            img.save(buf, "PNG", optimize=True)
+        else:
+            img.save(buf, "JPEG", quality=88)
+        contents = buf.getvalue()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not process image: {e}")
+
+    filename = f"logo_{current_user.id}_{uuid.uuid4().hex[:10]}{out_ext}"
+    spaces_key = f"booths/logos/{filename}"
+    cdn_url = spaces_svc.upload_bytes(contents, spaces_key, content_type)
+    if cdn_url:
+        logo_url = cdn_url
+    else:
+        logo_dir = os.path.join(UPLOAD_DIR, "logos")
+        os.makedirs(logo_dir, exist_ok=True)
+        filepath = os.path.join(logo_dir, filename)
+        with open(filepath, "wb") as f:
+            f.write(contents)
+        logo_url = f"/static/uploads/booths/logos/{filename}"
+
+    theme = sc.landing_theme or {}
+    branding = theme.get("branding") or {}
+    branding["logo_url"] = logo_url
+    theme["branding"] = branding
+    sc.landing_theme = theme
+    sc.updated_at = datetime.now(timezone.utc)
+    flag_modified(sc, "landing_theme")
+    await db.commit()
+    await db.refresh(sc)
+
+    from app.models.item import Item
+    count_result = await db.execute(
+        select(func.count()).select_from(Item).where(
+            Item.vendor_id == current_user.id, Item.status == "active"
+        )
+    )
+    item_count = count_result.scalar() or 0
+    return _to_response(sc, item_count)
+
+
+@router.delete("/mine/logo")
+async def delete_showcase_logo(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_vendor_booth_user),
+):
+    result = await db.execute(
+        select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
+    )
+    sc = result.scalar_one_or_none()
+    if not sc:
+        raise HTTPException(status_code=404, detail="Showcase not found")
+    theme = sc.landing_theme or {}
+    branding = theme.get("branding") or {}
+    if "logo_url" in branding:
+        del branding["logo_url"]
+        theme["branding"] = branding
+        sc.landing_theme = theme
+        flag_modified(sc, "landing_theme")
+        sc.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+        await db.refresh(sc)
+
+    from app.models.item import Item
+    count_result = await db.execute(
+        select(func.count()).select_from(Item).where(
+            Item.vendor_id == current_user.id, Item.status == "active"
+        )
+    )
+    item_count = count_result.scalar() or 0
     return _to_response(sc, item_count)
 
 

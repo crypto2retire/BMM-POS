@@ -742,6 +742,26 @@
     </div><!-- /landing-section -->
 
 
+            <!-- ─── BRAND LOGO (square, optional) ─── -->
+            <div class="showcase-card" id="landing-logo-card">
+                <h3>Booth logo</h3>
+                <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:0.75rem;line-height:1.6">
+                    Optional square logo — appears as a small brand mark in your page's nav bar (and will be used more prominently on the upcoming editorial templates). We'll crop non-square images to center. PNG with transparency works.
+                </p>
+
+                <div id="logo-preview-wrapper" style="display:flex;gap:1.5rem;align-items:center;margin-bottom:1rem">
+                    <div id="logo-preview" style="width:96px;height:96px;border:1px solid var(--warm-border);background:var(--surface) url('') center/cover;display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:var(--text-light);text-align:center;padding:0.5rem">
+                        No logo yet
+                    </div>
+                    <div style="flex:1">
+                        <button type="button" class="btn btn-sm" onclick="document.getElementById('logo-input').click()" style="margin-bottom:0.5rem">Upload logo</button>
+                        <button type="button" id="logo-remove-btn" class="btn btn-sm" onclick="removeLogo()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--text-light)">Remove</button>
+                        <div style="font-size:0.7rem;color:var(--text-light);margin-top:0.5rem">JPG, PNG, GIF, or WebP · max 2MB · cropped to square</div>
+                    </div>
+                </div>
+                <input type="file" id="logo-input" accept="image/*" style="display:none" onchange="uploadLogo(this.files[0])">
+            </div>
+
             <!-- ── DESIGN SECTION ── -->
             <div class="showcase-card" id="design-section">
                 <h3>Step 6 &middot; Design</h3>
@@ -1068,6 +1088,7 @@ async function loadShowcase() {
         }
 
         renderPhotos();
+        renderLogo();
         renderVideo();
         try { renderLandingSection(); } catch (landingErr) { console.warn('Landing section render skipped:', landingErr); }
         updateBoothImproveBtn();
@@ -1279,6 +1300,67 @@ async function uploadPhotos(files) {
     if (showcase && showcase.photo_urls && showcase.photo_urls.length > 0) {
         showStatus('Photos uploaded!', 'success');
         document.getElementById('stale-banner').style.display = 'none';
+    }
+}
+
+async function uploadLogo(file) {
+    if (!file) return;
+    if (file.size > 2000000) {
+        alert('Logo must be under 2MB');
+        return;
+    }
+    var formData = new FormData();
+    formData.append('file', file);
+    try {
+        var response = await fetch('/api/v1/booth-showcase/mine/logo', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('bmm_token') },
+            body: formData
+        });
+        if (!response.ok) {
+            var err = await response.json().catch(function() { return {}; });
+            throw new Error(err.detail || 'Upload failed');
+        }
+        var data = await response.json();
+        showcase = data;
+        renderLogo();
+        if (typeof updatePreviewTheme === 'function') updatePreviewTheme();
+        document.getElementById('logo-input').value = '';
+    } catch (e) {
+        alert('Could not upload logo: ' + e.message);
+    }
+}
+
+async function removeLogo() {
+    if (!confirm('Remove your booth logo?')) return;
+    try {
+        var response = await fetch('/api/v1/booth-showcase/mine/logo', {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('bmm_token') }
+        });
+        if (!response.ok) throw new Error('Delete failed');
+        var data = await response.json();
+        showcase = data;
+        renderLogo();
+        if (typeof updatePreviewTheme === 'function') updatePreviewTheme();
+    } catch (e) {
+        alert('Could not remove logo: ' + e.message);
+    }
+}
+
+function renderLogo() {
+    var preview = document.getElementById('logo-preview');
+    var removeBtn = document.getElementById('logo-remove-btn');
+    if (!preview || !removeBtn) return;
+    var logoUrl = (showcase && showcase.landing_theme && showcase.landing_theme.branding && showcase.landing_theme.branding.logo_url) || null;
+    if (logoUrl) {
+        preview.style.backgroundImage = "url('" + logoUrl + "')";
+        preview.textContent = '';
+        removeBtn.style.display = 'inline-block';
+    } else {
+        preview.style.backgroundImage = '';
+        preview.textContent = 'No logo yet';
+        removeBtn.style.display = 'none';
     }
 }
 

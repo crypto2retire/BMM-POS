@@ -53,6 +53,10 @@
   body.no-theme .top-nav { position: sticky; top: 0; z-index: 100; background: var(--bg-dark); border-bottom: 1px solid var(--gold-glow); padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; height: 56px; }
   body.no-theme .top-nav a { color: var(--text); text-decoration: none; }
   body.no-theme .nav-brand { font-family: 'EB Garamond', serif; font-style: italic; font-size: 1.15rem; color: var(--gold); letter-spacing: 0.03em; }
+  /* Universal vendor logo mark — renders on all templates in the nav bar */
+  .vendor-logo-mark { display: inline-flex; align-items: center; margin-left: 0.75rem; padding-left: 0.75rem; border-left: 1px solid currentColor; opacity: 0.85; }
+  .vendor-logo-mark img { width: 28px; height: 28px; object-fit: cover; display: block; }
+  @media (max-width: 600px) { .vendor-logo-mark img { width: 24px; height: 24px; } }
   body.no-theme .nav-links { display: flex; gap: 1.25rem; align-items: center; }
   body.no-theme .nav-links a { font-size: 0.82rem; color: var(--text-light); transition: color 0.2s; }
   body.no-theme .nav-links a:hover { color: var(--gold); }
@@ -242,6 +246,7 @@
 <!-- NAV -->
 <nav id="main-nav" class="top-nav landing-nav">
   <a href="/shop/index.html" id="nav-brand" class="nav-brand landing-nav-brand">Bowenstreet Market</a>
+  <span id="vendor-logo-slot" class="vendor-logo-mark" style="display:none"></span>
   <div class="nav-links landing-nav-links">
     <a href="/shop/index.html" class="hide-mobile">Shop All</a>
     <a href="/shop/booths.html" class="hide-mobile">Vendors</a>
@@ -457,7 +462,23 @@
 
       document.body.style.background = c.background;
       document.body.style.color = c.text;
-    } else {
+    }
+
+    // Inject vendor logo in nav bar if set (works for both themed and no-theme paths)
+    var branding = (theme && theme.branding) || {};
+    var logoSlot = document.getElementById('vendor-logo-slot');
+    if (logoSlot) {
+      if (branding.logo_url) {
+        var altBase = (typeof vendorData !== 'undefined' && vendorData && (vendorData.booth_name || vendorData.vendor_name)) || 'Vendor';
+        logoSlot.innerHTML = '<img src="' + branding.logo_url + '" alt="' + altBase + ' logo" loading="lazy">';
+        logoSlot.style.display = 'inline-flex';
+      } else {
+        logoSlot.innerHTML = '';
+        logoSlot.style.display = 'none';
+      }
+    }
+
+    if (!(theme && theme.colors && theme.fonts)) {
       // No theme — use legacy fallback
       document.body.classList.remove('themed');
       document.body.classList.add('no-theme');
