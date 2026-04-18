@@ -586,3 +586,70 @@ body.themed::before {
   .landing-about-text { font-size: 1.05rem; }
   .landing-about-text::first-letter { font-size: 3.5rem; }
 }
+
+/* ── EDITORIAL CHROME — masthead, byline, ornaments ── */
+.editorial-masthead {
+  background: var(--landing-background, var(--ew-paper));
+  color: var(--landing-accent-color, var(--ew-rust));
+  font-family: var(--landing-body-font, 'EB Garamond'), serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  text-align: center;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--landing-accent-color, var(--ew-gold));
+  user-select: none;
+}
+
+.editorial-byline {
+  font-family: var(--landing-body-font, 'EB Garamond'), serif;
+  font-style: italic;
+  font-size: 0.82rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--landing-accent-color, var(--ew-rust));
+  margin: 0 0 2rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--landing-accent-color, var(--ew-gold));
+  border-bottom: 1px solid var(--landing-accent-color, var(--ew-gold));
+  display: inline-block;
+  max-width: 36ch;
+  line-height: 1.4;
+}
+
+.editorial-ornament {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  margin: 3rem auto;
+  max-width: 400px;
+  color: var(--landing-accent-color, var(--ew-gold));
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  user-select: none;
+}
+.editorial-ornament span { line-height: 1; }
+.editorial-ornament .dot {
+  color: var(--landing-text, var(--ew-sepia));
+  opacity: 0.4;
+  font-size: 1.1rem;
+}
+.editorial-ornament::before,
+.editorial-ornament::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--landing-accent-color, var(--ew-gold));
+  opacity: 0.35;
+  max-width: 80px;
+}
+
+/* Mobile tweaks for chrome */
+@media (max-width: 600px) {
+  .editorial-masthead { font-size: 0.62rem; letter-spacing: 0.3em; padding: 0.5rem 0.75rem; }
+  .editorial-byline { font-size: 0.72rem; letter-spacing: 0.14em; max-width: 32ch; }
+  .editorial-ornament { margin: 2rem auto; gap: 0.5rem; font-size: 0.75rem; }
+  .editorial-ornament::before,
+  .editorial-ornament::after { max-width: 40px; }
+}

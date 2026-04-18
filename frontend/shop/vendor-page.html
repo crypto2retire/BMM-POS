@@ -486,6 +486,88 @@
       document.body.style.background = '';
       document.body.style.color = '';
     }
+
+    // ── EDITORIAL CHROME (masthead, byline, ornaments) ──
+    applyEditorialWarmChrome(currentTemplate);
+  }
+
+  // ─── Editorial Warm chrome: masthead issue line, byline, ornaments ───
+  function applyEditorialWarmChrome(template) {
+    // 1. Clean up any previous chrome (idempotent — fires on template switch too)
+    var prior = document.querySelectorAll('.editorial-masthead, .editorial-byline, .editorial-ornament');
+    for (var i = 0; i < prior.length; i++) prior[i].parentNode.removeChild(prior[i]);
+
+    if (template !== 'editorial-warm') return;
+
+    // 2. Masthead issue line — inserted right after the nav
+    var nav = document.getElementById('main-nav');
+    if (nav && !document.querySelector('.editorial-masthead')) {
+      var masthead = document.createElement('div');
+      masthead.className = 'editorial-masthead';
+      masthead.textContent = buildIssueLine();
+      nav.parentNode.insertBefore(masthead, nav.nextSibling);
+    }
+
+    // 3. Byline — inserted between hero h1 and CTA
+    var heroContent = document.querySelector('#hero-section .landing-hero-content');
+    var heroName = document.getElementById('hero-name');
+    var heroCta = heroContent && heroContent.querySelector('.hero-cta');
+    if (heroContent && heroName && heroCta) {
+      var byline = document.createElement('div');
+      byline.className = 'editorial-byline';
+      byline.textContent = buildByline();
+      heroContent.insertBefore(byline, heroCta);
+    }
+
+    // 4. Ornament dividers — after hero, about, and items sections
+    injectOrnamentAfter('hero-section');
+    injectOrnamentAfter('about-section');
+    injectOrnamentAfter('items-section');
+  }
+
+  function buildIssueLine() {
+    var now = new Date();
+    var year = now.getFullYear();
+    var month = now.getMonth();
+    var seasons = ['WINTER', 'WINTER', 'SPRING', 'SPRING', 'SPRING', 'SUMMER',
+                   'SUMMER', 'SUMMER', 'AUTUMN', 'AUTUMN', 'AUTUMN', 'WINTER'];
+    var season = seasons[month];
+    var volNum = Math.max(1, year - 2013);
+    var volRoman = toRoman(volNum);
+    return 'VOLUME ' + volRoman + ' \u00b7 ' + season + ' ' + year + ' \u00b7 OSHKOSH';
+  }
+
+  function buildByline() {
+    if (!vendorData) return '';
+    var name = (vendorData.booth_name || vendorData.vendor_name || '').toUpperCase();
+    var booth = vendorData.booth_number ? ' \u00b7 BOOTH ' + vendorData.booth_number : '';
+    var est = vendorData.landing_year_started ? ' \u00b7 EST. ' + vendorData.landing_year_started : '';
+    return 'CURATED BY ' + name + booth + est;
+  }
+
+  function toRoman(num) {
+    if (num <= 0) return '';
+    var map = [
+      ['M',1000],['CM',900],['D',500],['CD',400],
+      ['C',100],['XC',90],['L',50],['XL',40],
+      ['X',10],['IX',9],['V',5],['IV',4],['I',1]
+    ];
+    var out = '';
+    for (var i = 0; i < map.length; i++) {
+      while (num >= map[i][1]) { out += map[i][0]; num -= map[i][1]; }
+    }
+    return out;
+  }
+
+  function injectOrnamentAfter(sectionId) {
+    var sec = document.getElementById(sectionId);
+    if (!sec) return;
+    if (sec.style.display === 'none' || (sec.offsetParent === null && sec.getBoundingClientRect().height === 0)) return;
+    var orn = document.createElement('div');
+    orn.className = 'editorial-ornament';
+    orn.setAttribute('aria-hidden', 'true');
+    orn.innerHTML = '<span>\u2756</span><span class="dot">\u00b7</span><span>\u2756</span><span class="dot">\u00b7</span><span>\u2756</span>';
+    sec.parentNode.insertBefore(orn, sec.nextSibling);
   }
 
   function mixColors(fg, bg, opacity) {
@@ -695,6 +777,9 @@
     renderCategoryFilters(vendorItems);
     updateCartUI();
     renderAdminDebugBanner();
+
+    // Re-apply editorial chrome after sections render (ornaments need to attach to visible sections)
+    applyEditorialWarmChrome(currentTemplate);
   }
 
   function renderAdminDebugBanner() {
