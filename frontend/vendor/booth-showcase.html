@@ -889,6 +889,11 @@
                             <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Text</label>
                             <input type="color" id="color-text" value="#F5F5F0" style="width:100%;height:36px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--bg)" onchange="updatePreviewTheme()">
                         </div>
+                        <!-- Accent color (optional, used by editorial templates for flourishes) -->
+                        <div>
+                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Accent (script / pull-quote color)</label>
+                            <input type="color" id="color-accent" value="#8B2E1F" style="width:100%;height:36px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--bg)" onchange="updatePreviewTheme()">
+                        </div>
                     </div>
                 </div>
 
@@ -923,6 +928,17 @@
                                 <option value="Lora">Lora</option>
                             </select>
                         </div>
+                    </div>
+                    <!-- Accent / script font (optional, used by editorial templates) -->
+                    <div style="margin-top:0.75rem">
+                        <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Accent font (handwritten / script — optional)</label>
+                        <select id="font-accent" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.5rem;font-size:0.82rem;font-family:'Roboto',sans-serif" onchange="updatePreviewTheme()">
+                            <option value="">None — use default fonts</option>
+                            <option value="Dancing Script">Dancing Script (romantic cursive)</option>
+                            <option value="Caveat">Caveat (casual handwriting)</option>
+                            <option value="Pacifico">Pacifico (flowing brush)</option>
+                            <option value="Great Vibes">Great Vibes (elegant formal)</option>
+                        </select>
                     </div>
                 </div>
 
@@ -2249,10 +2265,12 @@ function applyThemeToControls(theme) {
         if (theme.colors.secondary) document.getElementById('color-secondary').value = theme.colors.secondary;
         if (theme.colors.background) document.getElementById('color-background').value = theme.colors.background;
         if (theme.colors.text) document.getElementById('color-text').value = theme.colors.text;
+        if (theme.colors.accent_color) document.getElementById('color-accent').value = theme.colors.accent_color;
     }
     if (theme.fonts) {
         if (theme.fonts.heading) document.getElementById('font-heading').value = theme.fonts.heading;
         if (theme.fonts.body) document.getElementById('font-body').value = theme.fonts.body;
+        if (theme.fonts.accent_font !== undefined) document.getElementById('font-accent').value = theme.fonts.accent_font || '';
     }
 }
 
@@ -2304,6 +2322,7 @@ function getThemeFromUI() {
             background: document.getElementById('color-background').value,
             text: document.getElementById('color-text').value,
             accent: document.getElementById('color-primary').value,
+            accent_color: document.getElementById('color-accent').value || null,
             card_background: mixHexColors(
                 document.getElementById('color-text').value,
                 document.getElementById('color-background').value,
@@ -2315,7 +2334,8 @@ function getThemeFromUI() {
             heading_weight: '500',
             heading_style: ['Great Vibes', 'Dancing Script', 'Pacifico', 'EB Garamond'].indexOf(document.getElementById('font-heading').value) >= 0 ? 'normal' : 'normal',
             body: document.getElementById('font-body').value,
-            body_weight: '300'
+            body_weight: '300',
+            accent_font: document.getElementById('font-accent').value || null
         }
     };
 }
@@ -2463,14 +2483,14 @@ function bindPreviewInputSync() {
         if (el) el.addEventListener('input', updatePreviewTheme);
     });
 
-    ['color-primary', 'color-secondary', 'color-background', 'color-text'].forEach(function(id) {
+    ['color-primary', 'color-secondary', 'color-background', 'color-text', 'color-accent'].forEach(function(id) {
         var el = document.getElementById(id);
         if (!el) return;
         el.addEventListener('input', updatePreviewTheme);
         el.addEventListener('change', updatePreviewTheme);
     });
 
-    ['font-heading', 'font-body'].forEach(function(id) {
+    ['font-heading', 'font-body', 'font-accent'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('change', updatePreviewTheme);
     });
@@ -2512,8 +2532,10 @@ function resetDesign() {
     document.getElementById('color-secondary').value = '#38383B';
     document.getElementById('color-background').value = '#1A1A1C';
     document.getElementById('color-text').value = '#F5F5F0';
+    document.getElementById('color-accent').value = '#8B2E1F';
     document.getElementById('font-heading').value = 'EB Garamond';
     document.getElementById('font-body').value = 'Roboto';
+    document.getElementById('font-accent').value = '';
     updatePreviewTheme();
     saveDesign();
 }
