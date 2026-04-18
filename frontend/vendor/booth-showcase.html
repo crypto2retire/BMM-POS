@@ -772,7 +772,7 @@
                 <!-- Template Picker -->
                 <div style="margin-bottom:1.5rem">
                     <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Template Layout</label>
-                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem" id="template-grid">
+                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0.6rem" id="template-grid">
                         <div class="template-thumb" data-template="classic" onclick="selectTemplate('classic')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
                             <div style="width:100%;aspect-ratio:4/5;background:linear-gradient(135deg,#1a1a1c 0%,#2a2a2e 100%);border-radius:4px;margin-bottom:0.35rem;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#C9A96E;font-size:0.6rem;gap:2px">
                                 <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:0.7rem">Classic</div>
@@ -804,6 +804,17 @@
                                 <div style="display:flex;gap:3px;margin-top:4px"><div style="width:14px;height:18px;background:#E5E5E5;border-radius:1px"></div><div style="width:14px;height:22px;background:#E5E5E5;border-radius:1px"></div></div>
                             </div>
                             <div style="font-size:0.72rem;color:var(--text-light)">Minimal</div>
+                        </div>
+                        <div class="template-thumb" data-template="editorial-warm" onclick="selectTemplate('editorial-warm')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
+                            <div style="width:100%;aspect-ratio:4/5;background:#F4EFE6;border-radius:4px;margin-bottom:0.35rem;display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:4px;overflow:hidden;position:relative">
+                                <div style="background:#8B2E1F15;display:flex;flex-direction:column;justify-content:center;padding:3px;gap:2px">
+                                    <div style="width:80%;height:1px;background:#8B2E1F;margin-bottom:1px"></div>
+                                    <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:0.6rem;color:#2A1F18;line-height:1">Editorial</div>
+                                    <div style="width:60%;height:2px;background:#2A1F18;margin-top:2px"></div>
+                                </div>
+                                <div style="background:linear-gradient(135deg,#A07654 0%,#6B5235 100%);border-radius:1px"></div>
+                            </div>
+                            <div style="font-size:0.7rem;color:var(--text-light)">Editorial Warm</div>
                         </div>
                     </div>
                 </div>
@@ -2319,6 +2330,13 @@ var DESIGN_PRESETS = {
         colors: { primary: '#111827', secondary: '#9CA3AF', background: '#F8F8F7', text: '#111827' },
         fonts: { heading: 'Inter', body: 'Inter' },
     },
+    'editorial-warm-default': {
+        label: 'Editorial Warm — Antique Magazine',
+        description: 'Cream paper, oxblood accents, italic serifs — Kinfolk meets antique trade journal.',
+        template: 'editorial-warm',
+        colors: { primary: '#2A1F18', secondary: '#6B5235', background: '#F4EFE6', text: '#2A1F18', accent: '#B8860B', card_background: '#FAF7F0', accent_color: '#8B2E1F' },
+        fonts:  { heading: 'EB Garamond', heading_weight: '500', heading_style: 'italic', body: 'EB Garamond', body_weight: '400', accent_font: 'Dancing Script' }
+    },
 };
 
 var AI_DESIGN_STARTERS = {
@@ -2374,6 +2392,7 @@ function makePremium() {
         modern: 'modern-gallery',
         boutique: 'boutique-romance',
         minimal: 'minimal-editorial',
+        'editorial-warm': 'editorial-warm-default',
     };
     var presetKey = byTemplate[selectedTemplate] || 'classic-heirloom';
     applyDesignPreset(presetKey);
