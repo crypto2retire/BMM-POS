@@ -597,3 +597,51 @@ body.themed::before { content: none; }
   .landing-items-grid > *:hover { transform: none; box-shadow: none; }
   .landing-about-text { font-size: 1.1rem; }
 }
+
+/* ── EDITORIAL MODERN CHROME — numbered section labels ── */
+.editorial-section-num {
+  font-family: var(--landing-heading-font, 'Archivo Black'), sans-serif;
+  font-weight: 900;
+  font-size: 0.65em;
+  letter-spacing: -0.02em;
+  color: var(--landing-accent-color, var(--em-lime, #D6F05F));
+  background: var(--landing-text, var(--em-ink, #0A0A0A));
+  padding: 0.05em 0.35em;
+  margin-right: 0.55em;
+  display: inline-block;
+  vertical-align: 0.15em;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+/* Injected headings (for sections that lack a native h2 — photo-gallery, story) */
+.editorial-injected-heading {
+  font-family: var(--landing-heading-font, 'Archivo Black'), sans-serif;
+  font-weight: 900;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  text-transform: uppercase;
+  letter-spacing: -0.03em;
+  color: var(--landing-text, var(--em-ink, #0A0A0A));
+  margin: 0 0 1.5rem;
+  padding: 0 2rem;
+  line-height: 0.9;
+}
+/* Photo gallery already has its own padding wrapper — nudge the heading to align */
+#photo-gallery .editorial-injected-heading {
+  padding: 0;
+  margin-bottom: 1.5rem;
+}
+
+/* Make sure the number badge doesn't break layout on very long section titles */
+.landing-items-header h2 .editorial-section-num,
+.landing-items-header #items-title .editorial-section-num {
+  font-size: 0.5em;
+  vertical-align: 0.5em;
+}
+
+/* Mobile tweaks */
+@media (max-width: 600px) {
+  .editorial-section-num { font-size: 0.55em; padding: 0.1em 0.3em; margin-right: 0.4em; }
+  .editorial-injected-heading { padding: 0 1.5rem; font-size: clamp(1.6rem, 7vw, 2.4rem); }
+  #photo-gallery .editorial-injected-heading { padding: 0; }
+}

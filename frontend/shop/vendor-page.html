@@ -489,6 +489,59 @@
 
     // ── EDITORIAL CHROME (masthead, byline, ornaments) ──
     applyEditorialWarmChrome(currentTemplate);
+    applyEditorialModernChrome(currentTemplate);
+  }
+
+  // ─── Editorial Modern chrome: numbered section labels ───
+  function applyEditorialModernChrome(template) {
+    var priorNums = document.querySelectorAll('.editorial-section-num');
+    for (var i = 0; i < priorNums.length; i++) priorNums[i].parentNode.removeChild(priorNums[i]);
+    var priorHeadings = document.querySelectorAll('.editorial-injected-heading');
+    for (var j = 0; j < priorHeadings.length; j++) priorHeadings[j].parentNode.removeChild(priorHeadings[j]);
+
+    if (template !== 'editorial-modern') return;
+
+    var candidates = [
+      { id: 'about-section',        label: 'ABOUT'   },
+      { id: 'photo-gallery',        label: 'GALLERY' },
+      { id: 'items-section',        label: null      },
+      { id: 'specialties-section',  label: null      },
+      { id: 'story-section',        label: 'STORY'   },
+      { id: 'faq-section',          label: null      },
+      { id: 'social-feeds-section', label: null      }
+    ];
+
+    var counter = 0;
+    for (var k = 0; k < candidates.length; k++) {
+      var c = candidates[k];
+      var sec = document.getElementById(c.id);
+      if (!sec) continue;
+      if (sec.style.display === 'none') continue;
+      var rect = sec.getBoundingClientRect();
+      if (rect.height === 0 && sec.offsetParent === null) continue;
+
+      counter++;
+      var numStr = pad2(counter);
+
+      var h2 = sec.querySelector('h2');
+      if (!h2) {
+        var injected = document.createElement('h2');
+        injected.className = 'editorial-injected-heading';
+        injected.innerHTML =
+          '<span class="editorial-section-num">' + numStr + ' \u2014 </span>' +
+          (c.label || c.id.replace('-section', '').toUpperCase());
+        sec.insertBefore(injected, sec.firstChild);
+      } else {
+        var numSpan = document.createElement('span');
+        numSpan.className = 'editorial-section-num';
+        numSpan.textContent = numStr + ' \u2014 ';
+        h2.insertBefore(numSpan, h2.firstChild);
+      }
+    }
+  }
+
+  function pad2(n) {
+    return n < 10 ? '0' + n : '' + n;
   }
 
   // ─── Editorial Warm chrome: masthead issue line, byline, ornaments ───
@@ -780,6 +833,7 @@
 
     // Re-apply editorial chrome after sections render (ornaments need to attach to visible sections)
     applyEditorialWarmChrome(currentTemplate);
+    applyEditorialModernChrome(currentTemplate);
   }
 
   function renderAdminDebugBanner() {
