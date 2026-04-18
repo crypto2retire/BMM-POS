@@ -404,18 +404,18 @@ async def sitemap_xml():
                 if sc.landing_page_enabled and sc.landing_slug:
                     urls.append((f"{BASE}/{sc.landing_slug}", lastmod, "weekly", "0.7"))
 
-                for spec in (sc.landing_specialties or []):
-                    # If landing_page_enabled is not explicitly set, assume True for backward compat
-                    enabled = sc.landing_page_enabled if sc.landing_page_enabled is not None else True
-                    if not enabled:
-                        continue
-                    name = str(spec or "").strip()
-                    if not name:
-                        continue
-                    slug = _slug(name)
-                    prev = specialty_latest.get(slug)
-                    if prev is None or (sc.updated_at and (prev[1] is None or sc.updated_at > prev[1])):
-                        specialty_latest[slug] = (name[:60], sc.updated_at)
+                    for spec in (sc.landing_specialties or []):
+                        # If landing_page_enabled is not explicitly set, assume True for backward compat
+                        enabled = sc.landing_page_enabled if sc.landing_page_enabled is not None else True
+                        if not enabled:
+                            continue
+                        name = str(spec or "").strip()
+                        if not name:
+                            continue
+                        slug = _slug(name)
+                        prev = specialty_latest.get(slug)
+                        if prev is None or (sc.updated_at and (prev[1] is None or sc.updated_at > prev[1])):
+                            specialty_latest[slug] = (name[:60], sc.updated_at)
 
             for slug, (_name, updated) in specialty_latest.items():
                 lastmod = updated.date().isoformat() if updated else today
@@ -570,7 +570,25 @@ async def specialty_page(slug: str, request: Request):
         from app.database import get_db as _get_db
         from app.models.booth_showcase import BoothShowcase
         async for db in _get_db():
+            result = await db.execute(
+                select(BoothShowcase)
+                .where(BoothShowcase.is_published == True)
+                .where(BoothShowcase.landing_page_enabled == True)
+            )
+            all_showcases = result.scalars().all()
 
+            matching = []
+            display_name = None
+            for sc in all_showcases:
+                for spec in (sc.landing_specialties or []):
+                    spec_slug = _slug(spec)
+                    if spec_slug == slug:
+                        matching.append(sc)
+                        if display_name is None:
+                            display_name = str(spec or "").strip()
+                        break
+
+            if not matching:
                 raise HTTPException(status_code=404, detail="Specialty not found")
 
             page_url = f"https://www.bowenstreetmarket.com/specialty/{slug}"
