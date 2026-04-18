@@ -405,6 +405,10 @@ async def sitemap_xml():
                     urls.append((f"{BASE}/{sc.landing_slug}", lastmod, "weekly", "0.7"))
 
                 for spec in (sc.landing_specialties or []):
+                    # If landing_page_enabled is not explicitly set, assume True for backward compat
+                    enabled = sc.landing_page_enabled if sc.landing_page_enabled is not None else True
+                    if not enabled:
+                        continue
                     name = str(spec or "").strip()
                     if not name:
                         continue
@@ -566,27 +570,7 @@ async def specialty_page(slug: str, request: Request):
         from app.database import get_db as _get_db
         from app.models.booth_showcase import BoothShowcase
         async for db in _get_db():
-            result = await db.execute(
-                select(BoothShowcase)
-                .where(BoothShowcase.is_published == True)
-                .where(BoothShowcase.landing_page_enabled == True)
-            )
-            showcases = result.scalars().all()
 
-            display_name = None
-            matching = []
-            for sc in showcases:
-                for spec in (sc.landing_specialties or []):
-                    name = str(spec or "").strip()
-                    if not name:
-                        continue
-                    if _slug(name) == slug:
-                        if display_name is None:
-                            display_name = name[:60]
-                        matching.append(sc)
-                        break
-
-            if not matching:
                 raise HTTPException(status_code=404, detail="Specialty not found")
 
             page_url = f"https://www.bowenstreetmarket.com/specialty/{slug}"

@@ -70,6 +70,7 @@ async def get_shop_items(
     sort: Optional[str] = Query("newest"),
     page: int = Query(1, ge=1),
     per_page: int = Query(24, ge=1, le=100),
+    landing_slug: Optional[str] = Query(None),
 ):
     query = (
         select(
@@ -168,6 +169,7 @@ async def get_shop_items(
         "page": page,
         "per_page": per_page,
         "total_pages": (total + per_page - 1) // per_page,
+        "landing_slug": landing_slug,
     }
 
 @router.get("/vendor-inventory/{vendor_id}")
