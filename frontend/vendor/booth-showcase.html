@@ -772,7 +772,7 @@
                 <!-- Template Picker -->
                 <div style="margin-bottom:1.5rem">
                     <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Template Layout</label>
-                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0.6rem" id="template-grid">
+                    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:0.5rem" id="template-grid">
                         <div class="template-thumb" data-template="classic" onclick="selectTemplate('classic')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
                             <div style="width:100%;aspect-ratio:4/5;background:linear-gradient(135deg,#1a1a1c 0%,#2a2a2e 100%);border-radius:4px;margin-bottom:0.35rem;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#C9A96E;font-size:0.6rem;gap:2px">
                                 <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:0.7rem">Classic</div>
@@ -815,6 +815,14 @@
                                 <div style="background:linear-gradient(135deg,#A07654 0%,#6B5235 100%);border-radius:1px"></div>
                             </div>
                             <div style="font-size:0.7rem;color:var(--text-light)">Editorial Warm</div>
+                        </div>
+                        <div class="template-thumb" data-template="editorial-modern" onclick="selectTemplate('editorial-modern')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
+                            <div style="width:100%;aspect-ratio:4/5;background:#FAFAFA;border-radius:4px;margin-bottom:0.35rem;display:flex;flex-direction:column;justify-content:flex-end;padding:5px;position:relative;border:1px solid #0A0A0A20">
+                                <div style="position:absolute;top:5px;left:5px;background:#D6F05F;color:#0A0A0A;font-family:'Inter',sans-serif;font-weight:700;font-size:0.42rem;letter-spacing:0.1em;padding:1px 3px">VOL XIII</div>
+                                <div style="font-family:'Archivo Black','Inter Black',sans-serif;font-weight:900;font-size:0.85rem;color:#0A0A0A;line-height:0.85;text-transform:uppercase;letter-spacing:-0.02em">MODERN</div>
+                                <div style="width:100%;height:2px;background:#0A0A0A;margin-top:3px"></div>
+                            </div>
+                            <div style="font-size:0.7rem;color:var(--text-light)">Editorial Modern</div>
                         </div>
                     </div>
                 </div>
@@ -2337,6 +2345,13 @@ var DESIGN_PRESETS = {
         colors: { primary: '#2A1F18', secondary: '#6B5235', background: '#F4EFE6', text: '#2A1F18', accent: '#B8860B', card_background: '#FAF7F0', accent_color: '#8B2E1F' },
         fonts:  { heading: 'EB Garamond', heading_weight: '500', heading_style: 'italic', body: 'EB Garamond', body_weight: '400', accent_font: 'Dancing Script' }
     },
+    'editorial-modern-default': {
+        label: 'Editorial Modern — Brutalist Lime',
+        description: 'Ultra-bold Archivo Black + electric lime accent on near-white. High contrast, art-school energy.',
+        template: 'editorial-modern',
+        colors: { primary: '#0A0A0A', secondary: '#6B6B6B', background: '#FAFAFA', text: '#0A0A0A', accent: '#D6F05F', card_background: '#FFFFFF', accent_color: '#D6F05F' },
+        fonts:  { heading: 'Archivo Black', heading_weight: '900', heading_style: 'normal', body: 'Inter', body_weight: '400', accent_font: '' }
+    },
 };
 
 var AI_DESIGN_STARTERS = {
@@ -2393,6 +2408,7 @@ function makePremium() {
         boutique: 'boutique-romance',
         minimal: 'minimal-editorial',
         'editorial-warm': 'editorial-warm-default',
+        'editorial-modern': 'editorial-modern-default',
     };
     var presetKey = byTemplate[selectedTemplate] || 'classic-heirloom';
     applyDesignPreset(presetKey);
