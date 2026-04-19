@@ -263,7 +263,7 @@ async def ai_design_endpoint(
         reply = design_result.get("reply", "Here's your design!")
 
         if landing_template and isinstance(landing_template, str):
-            valid_templates = ("classic", "modern", "boutique", "minimal")
+            valid_templates = ("classic", "modern", "boutique", "minimal", "editorial-warm", "editorial-modern")
             landing_template = landing_template if landing_template in valid_templates else "classic"
         else:
             landing_template = "classic"
@@ -651,7 +651,7 @@ async def update_my_showcase(
         sc.show_instagram_feed = data.show_instagram_feed
 
     if data.landing_template is not None:
-        valid_templates = ("classic", "modern", "boutique", "minimal")
+        valid_templates = ("classic", "modern", "boutique", "minimal", "editorial-warm", "editorial-modern")
         sc.landing_template = data.landing_template if data.landing_template in valid_templates else "classic"
     if data.landing_theme is not None:
         sc.landing_theme = data.landing_theme
@@ -1339,7 +1339,7 @@ async def admin_update_showcase(
     result_data = {}
 
     if landing_template is not None:
-        valid_templates = ("classic", "modern", "boutique", "minimal")
+        valid_templates = ("classic", "modern", "boutique", "minimal", "editorial-warm", "editorial-modern")
         sc.landing_template = landing_template if landing_template in valid_templates else "classic"
         result_data["landing_template"] = sc.landing_template
 
