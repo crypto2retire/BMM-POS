@@ -826,7 +826,7 @@ async def vendor_landing_page(slug: str, request: Request):
 
                     html = html.replace(
                         '<body class="themed">',
-                        f'<body class="themed" style="background:{bg_c};color:{text_c}">',
+                        f'<body class="themed" data-ssr-theme="true" style="background:{bg_c};color:{text_c}">',
                     )
 
             # 5. Pre-render SEO meta tags (always, even without a saved theme)
