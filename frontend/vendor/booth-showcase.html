@@ -765,9 +765,21 @@
             <!-- ── DESIGN SECTION ── -->
             <div class="showcase-card" id="design-section">
                 <h3>Step 6 &middot; Design</h3>
-                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:1rem">
-                    Only the visual side — template, hero layout, section order, colors, and fonts. Your words (tagline, story, FAQ, etc.) live in the steps above.
-                </p>
+                <!-- Persistent URL banner — shown whenever vendor has a slug -->
+                <div id="design-url-banner" style="display:none;margin-bottom:1rem;background:linear-gradient(135deg,rgba(72,133,89,0.15) 0%,rgba(72,133,89,0.08) 100%);border:1px solid rgba(72,133,89,0.35);border-radius:8px;padding:0.75rem 1rem">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+                        <div>
+                            <div style="font-size:0.7rem;color:#6EE7B7;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.2rem">&#10003; Your page is live</div>
+                            <div style="font-size:0.88rem;color:var(--text)">
+                                <a id="design-live-url" href="#" target="_blank" style="color:#6EE7B7;text-decoration:none;font-weight:500;word-break:break-all"></a>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:0.5rem">
+                            <button onclick="designBannerCopy()" style="background:transparent;border:1px solid rgba(110,231,183,0.4);color:#6EE7B7;padding:0.3rem 0.75rem;font-size:0.72rem;cursor:pointer;border-radius:4px">Copy Link</button>
+                            <a id="design-view-btn" href="#" target="_blank" style="background:rgba(110,231,183,0.15);border:1px solid rgba(110,231,183,0.4);color:#6EE7B7;padding:0.3rem 0.75rem;font-size:0.72rem;text-decoration:none;border-radius:4px">View Page &rarr;</a>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Template Picker -->
                 <div style="margin-bottom:1.5rem">
@@ -1568,9 +1580,31 @@ function updateLandingLink() {
         link.href = url;
         link.textContent = 'bowenstreetmarket.com/' + slug;
         box.style.display = 'block';
+
+        var fullUrl = 'https://www.bowenstreetmarket.com/' + slug;
+        var designBanner = document.getElementById('design-url-banner');
+        var designLiveUrl = document.getElementById('design-live-url');
+        var designViewBtn = document.getElementById('design-view-btn');
+        if (designBanner && designLiveUrl) {
+            designLiveUrl.href = fullUrl;
+            designLiveUrl.textContent = fullUrl;
+            designBanner.style.display = 'block';
+        }
+        if (designViewBtn) designViewBtn.href = fullUrl;
     } else {
         box.style.display = 'none';
+        var designBanner = document.getElementById('design-url-banner');
+        if (designBanner) designBanner.style.display = 'none';
     }
+}
+
+function designBannerCopy() {
+    var slug = showcase.landing_slug;
+    if (!slug) return;
+    var url = 'https://www.bowenstreetmarket.com/' + slug;
+    navigator.clipboard.writeText(url).then(function() {
+        showStatus('Link copied to clipboard!', 'success');
+    });
 }
 
 function copyLandingLink() {
@@ -2317,24 +2351,28 @@ var DESIGN_PRESETS = {
     'classic-heirloom': {
         label: 'Heirloom Ledger',
         template: 'classic',
+        hero_style: 'classic',
         colors: { primary: '#C9A96E', secondary: '#38383B', background: '#1A1A1C', text: '#F5F5F0' },
         fonts: { heading: 'EB Garamond', body: 'Roboto' },
     },
     'modern-gallery': {
         label: 'Gallery Editorial',
         template: 'modern',
+        hero_style: 'split',
         colors: { primary: '#0F766E', secondary: '#334155', background: '#F8FAFC', text: '#0F172A' },
         fonts: { heading: 'Inter', body: 'Inter' },
     },
     'boutique-romance': {
         label: 'Boutique Romance',
         template: 'boutique',
+        hero_style: 'portrait',
         colors: { primary: '#B7794B', secondary: '#D9BFA8', background: '#FFF7F0', text: '#5B3A2E' },
         fonts: { heading: 'Great Vibes', body: 'Lora' },
     },
     'minimal-editorial': {
         label: 'Minimal Editorial',
         template: 'minimal',
+        hero_style: 'story',
         colors: { primary: '#111827', secondary: '#9CA3AF', background: '#F8F8F7', text: '#111827' },
         fonts: { heading: 'Inter', body: 'Inter' },
     },
@@ -2342,6 +2380,7 @@ var DESIGN_PRESETS = {
         label: 'Editorial Warm — Antique Magazine',
         description: 'Cream paper, oxblood accents, italic serifs — Kinfolk meets antique trade journal.',
         template: 'editorial-warm',
+        hero_style: 'editorial',
         colors: { primary: '#2A1F18', secondary: '#6B5235', background: '#F4EFE6', text: '#2A1F18', accent: '#B8860B', card_background: '#FAF7F0', accent_color: '#8B2E1F' },
         fonts:  { heading: 'EB Garamond', heading_weight: '500', heading_style: 'italic', body: 'EB Garamond', body_weight: '400', accent_font: 'Dancing Script' }
     },
@@ -2349,6 +2388,7 @@ var DESIGN_PRESETS = {
         label: 'Editorial Modern — Brutalist Lime',
         description: 'Ultra-bold Archivo Black + electric lime accent on near-white. High contrast, art-school energy.',
         template: 'editorial-modern',
+        hero_style: 'editorial',
         colors: { primary: '#0A0A0A', secondary: '#6B6B6B', background: '#FAFAFA', text: '#0A0A0A', accent: '#D6F05F', card_background: '#FFFFFF', accent_color: '#D6F05F' },
         fonts:  { heading: 'Archivo Black', heading_weight: '900', heading_style: 'normal', body: 'Inter', body_weight: '400', accent_font: '' }
     },
@@ -2397,6 +2437,11 @@ function applyDesignPreset(presetKey) {
     syncTemplateSelectionUI(selectedTemplate);
     applyThemeToControls({ colors: preset.colors, fonts: preset.fonts });
     syncPresetSelectionUI(presetKey);
+
+    if (preset.hero_style) {
+        selectedHeroStyle = preset.hero_style;
+        syncHeroSelectionUI(selectedHeroStyle);
+    }
     updatePreviewTheme();
     showStatus('Applied preset: ' + preset.label + '. Save when ready.', 'success');
 }
@@ -2586,6 +2631,12 @@ function postPreviewPayload(payload) {
     setTimeout(send, 120);
 }
 
+function refreshPreview() {
+    var iframe = document.getElementById('design-preview');
+    if (!iframe || !iframe.contentWindow) return;
+    iframe.contentWindow.postMessage({ type: 'landing-preview-refresh' }, window.location.origin);
+}
+
 function bindPreviewInputSync() {
     [
         'booth-desc',
@@ -2635,7 +2686,14 @@ async function saveDesign() {
         showcase = data;
         statusEl.textContent = 'Design saved!';
         statusEl.style.color = '#6EE7B7';
-        showStatus('Page design updated!', 'success');
+        updateLandingLink();
+        refreshPreview();
+        if (showcase.landing_slug) {
+            var liveUrl = 'https://www.bowenstreetmarket.com/' + showcase.landing_slug;
+            showStatus('\u2713 Design saved! <a href="' + liveUrl + '" target="_blank" style="color:#6EE7B7;text-decoration:underline">View your live page &rarr;</a>', 'success');
+        } else {
+            showStatus('Design saved!', 'success');
+        }
     } catch (err) {
         statusEl.textContent = err.message;
         statusEl.style.color = '#FCA5A5';
@@ -2645,8 +2703,10 @@ async function saveDesign() {
 function resetDesign() {
     if (!confirm('Reset your design to the default classic theme?')) return;
     selectedTemplate = 'classic';
+    selectedHeroStyle = 'classic';
     syncTemplateSelectionUI('classic');
     syncPresetSelectionUI('classic-heirloom');
+    syncHeroSelectionUI('classic');
     document.getElementById('color-primary').value = '#C9A96E';
     document.getElementById('color-secondary').value = '#38383B';
     document.getElementById('color-background').value = '#1A1A1C';

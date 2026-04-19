@@ -679,8 +679,11 @@
     window.addEventListener('message', function (event) {
       if (event.origin !== window.location.origin) return;
       var data = event.data || {};
-      if (data.type !== 'landing-preview-update' || !data.payload) return;
-      applyPreviewPayload(data.payload);
+      if (data.type === 'landing-preview-update' && data.payload) {
+        applyPreviewPayload(data.payload);
+      } else if (data.type === 'landing-preview-refresh') {
+        loadLandingPage();
+      }
     });
   }
 
