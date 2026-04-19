@@ -654,11 +654,11 @@ async def specialty_page(slug: str, request: Request):
                 '<script type="application/ld+json" id="specialty-jsonld"></script>',
                 f'<script type="application/ld+json" id="specialty-jsonld">{jsonld_esc}</script>',
             )
-            break
+            break  # only need one db session
     except HTTPException:
         raise
     except Exception as exc:
-        logging.getLogger(__name__).warning("/specialty/%s server-render fell back: %s", slug, exc)
+        logging.getLogger(__name__).warning("/specialty/%s server-render failed, serving plain page: %s", slug, exc)
 
     return HTMLResponse(html)
 
