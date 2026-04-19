@@ -737,9 +737,16 @@ async def vendor_landing_page(slug: str, request: Request):
                     '</div>',
                 )
 
+            template = sc.landing_template or "classic"
+
+            # 1. Always swap template CSS link (even without a saved theme)
+            html = html.replace(
+                'href="/static/css/landing-classic.css"',
+                f'href="/static/css/landing-{template}.css"',
+            )
+
             if sc and sc.landing_theme:
                 theme = sc.landing_theme
-                template = sc.landing_template or "classic"
                 c = theme.get("colors", {})
                 f = theme.get("fonts", {})
                 text_c = c.get("text", "#111827")
@@ -767,14 +774,8 @@ async def vendor_landing_page(slug: str, request: Request):
                     f"--landing-body-weight: {f.get('body_weight', '400')};"
                 )
 
-                # 1. Swap body class
+                # 2. Swap body class
                 html = html.replace('class="no-theme"', 'class="themed"')
-
-                # 2. Swap template CSS link
-                html = html.replace(
-                    'href="/static/css/landing-classic.css"',
-                    f'href="/static/css/landing-{template}.css"',
-                )
 
                 # 3. Inject CSS variables
                 html = html.replace(
@@ -784,165 +785,182 @@ async def vendor_landing_page(slug: str, request: Request):
                     '</style>',
                 )
 
-                # 4. Add inline styles on body to guarantee no FOUC
-                html = html.replace(
-                    '<body class="themed">',
-                    f'<body class="themed" style="background:{bg_c};color:{text_c}">',
-                )
+            if sc:
+                theme = sc.landing_theme
+                if theme:
+                    c = theme.get("colors", {})
+                    f = theme.get("fonts", {})
+                    text_c = c.get("text", "#111827")
+                    bg_c = c.get("background", "#F9FAFB")
+                    primary = c.get("primary", "#2563EB")
+                    secondary = c.get("secondary", "#64748B")
+                    card_bg = c.get("card_background", "#FFFFFF")
+                    accent = c.get("accent", primary)
 
-                # 5. Pre-render SEO meta tags
-                vendor_name = sc.vendor.name if sc.vendor else "Vendor"
-                title = sc.landing_meta_title or f"{vendor_name} — Bowenstreet Market"
+                    border_c = _mix_hex(text_c, bg_c, 0.15)
 
-                # Phase 2: if no explicit meta_desc, fall back to the first populated story
-                # block — this gives every vendor a unique SERP snippet instead of the same
-                # "Shop {name} at Bowenstreet Market" filler across every page.
-                fallback_desc = None
+                    css_vars = (
+                        f"--landing-primary: {primary};"
+                        f"--landing-secondary: {secondary};"
+                        f"--landing-background: {bg_c};"
+                        f"--landing-text: {text_c};"
+                        f"--landing-accent: {accent};"
+                        f"--landing-card-bg: {card_bg};"
+                        f"--landing-bg-dark: {bg_c};"
+                        f"--landing-border: {border_c};"
+                        f"--landing-heading-font: '{f.get('heading', 'Inter')}', serif;"
+                        f"--landing-heading-weight: {f.get('heading_weight', '600')};"
+                        f"--landing-heading-style: {f.get('heading_style', 'normal')};"
+                        f"--landing-body-font: '{f.get('body', 'Inter')}', sans-serif;"
+                        f"--landing-body-weight: {f.get('body_weight', '400')};"
+                    )
+
+                    html = html.replace('class="no-theme"', 'class="themed"')
+
+                    html = html.replace(
+                        '<style id="theme-vars"></style>',
+                        f'<style id="theme-vars">:root {{ {css_vars} }}'
+                        'body.themed, body.themed * { background-image: none !important; background-attachment: scroll !important; }'
+                        '</style>',
+                    )
+
+                    html = html.replace(
+                        '<body class="themed">',
+                        f'<body class="themed" style="background:{bg_c};color:{text_c}">',
+                    )
+
+            # 5. Pre-render SEO meta tags (always, even without a saved theme)
+            vendor_name = sc.vendor.name if sc and sc.vendor else "Vendor"
+            title = (sc.landing_meta_title or f"{vendor_name} — Bowenstreet Market") if sc else "Vendor — Bowenstreet Market"
+
+            fallback_desc = None
+            if sc:
                 story_blocks = sc.landing_story_blocks or {}
                 if isinstance(story_blocks, dict):
                     for _key in ("specialty", "origin", "process", "values", "whats_new"):
                         _val = (story_blocks.get(_key) or "").strip()
                         if _val:
-                            # Condense to a clean single-line ≤160 chars for meta description
                             _clean = " ".join(_val.split())
                             fallback_desc = _clean[:157] + "…" if len(_clean) > 160 else _clean
                             break
                 if not fallback_desc and (sc.landing_about or "").strip():
                     _clean = " ".join(sc.landing_about.split())
                     fallback_desc = _clean[:157] + "…" if len(_clean) > 160 else _clean
-                desc = (
-                    sc.landing_meta_desc
-                    or fallback_desc
-                    or f"Shop {vendor_name} at Bowenstreet Market in Oshkosh, WI."
-                )
-                photos = sc.photo_urls or []
+            desc = (
+                (sc.landing_meta_desc or fallback_desc or f"Shop {vendor_name} at Bowenstreet Market in Oshkosh, WI.")
+                if sc
+                else "Shop at Bowenstreet Market in Oshkosh, WI."
+            )
+            photos = (sc.photo_urls or []) if sc else []
 
-                title_esc = _html_esc(title, quote=True)
-                desc_esc = _html_esc(desc, quote=True)
+            title_esc = _html_esc(title, quote=True)
+            desc_esc = _html_esc(desc, quote=True)
 
+            html = html.replace(
+                '<title id="page-title">Vendor — Bowenstreet Market</title>',
+                f'<title id="page-title">{title_esc}</title>',
+            )
+            html = html.replace(
+                'name="description" content="Visit this vendor\'s booth at Bowenstreet Market — handcrafted, vintage, and antique goods in Oshkosh, Wisconsin."',
+                f'name="description" content="{desc_esc}"',
+            )
+            html = html.replace(
+                'property="og:title" content="Vendor — Bowenstreet Market"',
+                f'property="og:title" content="{title_esc}"',
+            )
+            html = html.replace(
+                'property="og:description" content="Visit this vendor\'s booth at Bowenstreet Market."',
+                f'property="og:description" content="{desc_esc}"',
+            )
+            html = html.replace(
+                'property="og:url" content=""',
+                f'property="og:url" content="https://www.bowenstreetmarket.com/{slug}"',
+            )
+            og_image_url = f"https://www.bowenstreetmarket.com/og/{slug}.png"
+            html = html.replace(
+                'property="og:image" content=""',
+                f'property="og:image" content="{og_image_url}"',
+            )
+            if 'name="twitter:image"' not in html:
                 html = html.replace(
-                    '<title id="page-title">Vendor — Bowenstreet Market</title>',
-                    f'<title id="page-title">{title_esc}</title>',
-                )
-                html = html.replace(
-                    'name="description" content="Visit this vendor\'s booth at Bowenstreet Market — handcrafted, vintage, and antique goods in Oshkosh, Wisconsin."',
-                    f'name="description" content="{desc_esc}"',
-                )
-                html = html.replace(
-                    'property="og:title" content="Vendor — Bowenstreet Market"',
-                    f'property="og:title" content="{title_esc}"',
-                )
-                html = html.replace(
-                    'property="og:description" content="Visit this vendor\'s booth at Bowenstreet Market."',
-                    f'property="og:description" content="{desc_esc}"',
-                )
-                html = html.replace(
-                    'property="og:url" content=""',
-                    f'property="og:url" content="https://www.bowenstreetmarket.com/{slug}"',
-                )
-                # Prefer the dynamic OG image route over the raw cover photo
-                # so we always get a branded, 1200×630, text-overlaid card.
-                og_image_url = f"https://www.bowenstreetmarket.com/og/{slug}.png"
-                html = html.replace(
-                    'property="og:image" content=""',
                     f'property="og:image" content="{og_image_url}"',
+                    f'property="og:image" content="{og_image_url}">\n    <meta name="twitter:image" content="{og_image_url}"',
                 )
-                # Also add twitter:image if the template lacks it
-                if 'name="twitter:image"' not in html:
-                    html = html.replace(
-                        f'property="og:image" content="{og_image_url}"',
-                        f'property="og:image" content="{og_image_url}">\n    <meta name="twitter:image" content="{og_image_url}"',
-                    )
-                html = html.replace(
-                    '<link rel="canonical" href="">',
-                    f'<link rel="canonical" href="https://www.bowenstreetmarket.com/{slug}">',
-                )
+            html = html.replace(
+                '<link rel="canonical" href="">',
+                f'<link rel="canonical" href="https://www.bowenstreetmarket.com/{slug}">',
+            )
 
-                # ── JSON-LD (LocalBusiness + FAQPage + BreadcrumbList) ──
-                try:
-                    page_url = f"https://www.bowenstreetmarket.com/{slug}"
-                    specialties = list(sc.landing_specialties or [])
-                    ld_nodes = []
+            # ── JSON-LD (LocalBusiness + FAQPage + BreadcrumbList) ──
+            try:
+                page_url = f"https://www.bowenstreetmarket.com/{slug}"
+                specialties = list(sc.landing_specialties or []) if sc else []
+                ld_nodes = []
 
-                    # LocalBusiness (vendor-scoped, parented to the market)
-                    business_node = {
-                        "@context": "https://schema.org",
-                        "@type": "LocalBusiness",
-                        "@id": f"{page_url}#vendor",
-                        "name": vendor_name,
-                        "url": page_url,
-                        "description": desc,
-                        "parentOrganization": {
-                            "@type": "Organization",
-                            "name": "Bowenstreet Market",
-                            "url": "https://www.bowenstreetmarket.com",
-                        },
-                        "address": {
-                            "@type": "PostalAddress",
-                            "streetAddress": "437 Bowen St",
-                            "addressLocality": "Oshkosh",
-                            "addressRegion": "WI",
-                            "postalCode": "54901",
-                            "addressCountry": "US",
-                        },
-                    }
-                    if photos:
-                        business_node["image"] = photos[:5]
-                    if specialties:
-                        business_node["makesOffer"] = [
-                            {"@type": "Offer", "itemOffered": {"@type": "Product", "name": s}}
-                            for s in specialties[:6]
-                        ]
-                        business_node["keywords"] = ", ".join(specialties[:8])
-                    if sc.landing_year_started:
-                        business_node["foundingDate"] = str(sc.landing_year_started)
-                    ld_nodes.append(business_node)
+                business_node = {
+                    "@context": "https://schema.org",
+                    "@type": "LocalBusiness",
+                    "@id": f"{page_url}#vendor",
+                    "name": vendor_name,
+                    "url": page_url,
+                    "description": desc,
+                    "parentOrganization": {
+                        "@type": "Organization",
+                        "name": "Bowenstreet Market",
+                        "url": "https://www.bowenstreetmarket.com",
+                    },
+                    "address": {
+                        "@type": "PostalAddress",
+                        "streetAddress": "437 Bowen St",
+                        "addressLocality": "Oshkosh",
+                        "addressRegion": "WI",
+                        "postalCode": "54901",
+                        "addressCountry": "US",
+                    },
+                }
+                ld_nodes.append(business_node)
 
-                    # BreadcrumbList
-                    ld_nodes.append({
-                        "@context": "https://schema.org",
-                        "@type": "BreadcrumbList",
-                        "itemListElement": [
-                            {"@type": "ListItem", "position": 1, "name": "Bowenstreet Market", "item": "https://www.bowenstreetmarket.com/"},
-                            {"@type": "ListItem", "position": 2, "name": "Vendors", "item": "https://www.bowenstreetmarket.com/vendors"},
-                            {"@type": "ListItem", "position": 3, "name": vendor_name, "item": page_url},
-                        ],
-                    })
+                ld_nodes.append({
+                    "@context": "https://schema.org",
+                    "@type": "BreadcrumbList",
+                    "itemListElement": [
+                        {"@type": "ListItem", "position": 1, "name": "Bowenstreet Market", "item": "https://www.bowenstreetmarket.com/"},
+                        {"@type": "ListItem", "position": 2, "name": "Vendors", "item": f"{page_url}#vendors"},
+                        {"@type": "ListItem", "position": 3, "name": vendor_name, "item": page_url},
+                    ],
+                })
 
-                    # FAQPage (parses simple Q:/A: or line-pair format from landing_faq)
-                    if sc.landing_faq:
+                if sc and sc.landing_faq:
+                    try:
+                        faq_data = json.loads(sc.landing_faq) if isinstance(sc.landing_faq, str) else sc.landing_faq
                         faq_entities = []
-                        raw_lines = [ln.strip() for ln in (sc.landing_faq or "").splitlines() if ln.strip()]
-                        pending_q = None
-                        for ln in raw_lines:
-                            lower = ln.lower()
-                            if lower.startswith("q:") or lower.startswith("q.") or lower.endswith("?"):
-                                pending_q = ln.lstrip("QqQ:.").strip() if ln.lower().startswith("q") else ln
-                                # normalize Q prefixes
-                                if pending_q.lower().startswith("q:"): pending_q = pending_q[2:].strip()
-                            elif pending_q and (lower.startswith("a:") or lower.startswith("a.") or True):
-                                ans = ln
-                                if ans.lower().startswith("a:"): ans = ans[2:].strip()
+                        for item in (faq_data if isinstance(faq_data, list) else []):
+                            q = item.get("question", "").strip()
+                            a = item.get("answer", "").strip()
+                            if q and a:
                                 faq_entities.append({
                                     "@type": "Question",
-                                    "name": pending_q,
-                                    "acceptedAnswer": {"@type": "Answer", "text": ans},
+                                    "name": q,
+                                    "acceptedAnswer": {"@type": "Answer", "text": a},
                                 })
-                                pending_q = None
+                            if len(faq_entities) >= 20:
+                                break
                         if faq_entities:
                             ld_nodes.append({
                                 "@context": "https://schema.org",
                                 "@type": "FAQPage",
                                 "mainEntity": faq_entities[:20],
                             })
+                    except Exception:
+                        pass
 
-                    ld_script = "\n".join(
-                        f'<script type="application/ld+json">{json.dumps(n, ensure_ascii=False)}</script>'
-                        for n in ld_nodes
-                    )
-                    html = html.replace("</head>", ld_script + "\n</head>", 1)
-                except Exception:
-                    logger.exception("vendor_landing_page: JSON-LD injection failed")
+                ld_script = "\n".join(
+                    f'<script type="application/ld+json">{json.dumps(n, ensure_ascii=False)}</script>'
+                    for n in ld_nodes
+                )
+                html = html.replace("</head>", ld_script + "\n</head>", 1)
+            except Exception:
+                logger.exception("vendor_landing_page: JSON-LD injection failed")
 
             break  # only need one db session
     except Exception:
