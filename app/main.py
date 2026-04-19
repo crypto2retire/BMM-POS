@@ -548,7 +548,7 @@ async def vendors_hub_page(request: Request):
 @app.get("/specialty/{slug}", response_class=HTMLResponse)
 async def specialty_page(slug: str, request: Request):
     """Server-rendered specialty category page (e.g. /specialty/vintage-books).
-    DEBUG: if you see THIS docstring on /specialty/*, Railway is running the latest code."""
+    DEBUG: if you see THIS docstring on /specialty/*, Railway is running the latest code.
     Validates the slug against published showcases; 404 otherwise. Injects
     title, canonical, OG, and JSON-LD ItemList. Client JS does fetch-to-render.
     """
@@ -567,6 +567,7 @@ async def specialty_page(slug: str, request: Request):
         s = _sp_re.sub(r"[^\w\s-]", "", (s or "").lower()).strip()
         return _sp_re.sub(r"[-\s]+", "-", s) or "misc"
 
+    _not_found = False
     try:
         from app.database import get_db as _get_db
         from app.models.booth_showcase import BoothShowcase
@@ -590,7 +591,8 @@ async def specialty_page(slug: str, request: Request):
                         break
 
             if not matching:
-                raise HTTPException(status_code=404, detail="Specialty not found")
+                _not_found = True
+                break
 
             page_url = f"https://www.bowenstreetmarket.com/specialty/{slug}"
             title = f"{display_name} Vendors — Bowenstreet Market"
@@ -656,14 +658,13 @@ async def specialty_page(slug: str, request: Request):
                 f'<script type="application/ld+json" id="specialty-jsonld">{jsonld_esc}</script>',
             )
             break  # only need one db session
-    except HTTPException:
-        raise
     except Exception as exc:
-        logging.getLogger(__name__).warning("/specialty/%s server-render failed, serving plain page: %s", slug, exc)
+        logging.getLogger(__name__).warning("/specialty/%s server-render failed: %s", slug, exc)
 
-    resp = HTMLResponse(html)
-    resp.headers["X-Specialty-Debug"] = "v4"
-    return resp
+    if _not_found:
+        raise HTTPException(status_code=404, detail="Specialty not found")
+
+    return HTMLResponse(html)
 
 
 @app.get("/og/{filename}")
