@@ -593,7 +593,8 @@
     var season = seasons[month];
     var volNum = Math.max(1, year - 2013);
     var volRoman = toRoman(volNum);
-    return 'VOLUME ' + volRoman + ' \u00b7 ' + season + ' ' + year + ' \u00b7 OSHKOSH';
+    var est = vendorData && vendorData.landing_year_started ? ' \u00b7 EST. ' + vendorData.landing_year_started : '';
+    return 'VOLUME ' + volRoman + ' \u00b7 ' + season + ' ' + year + ' \u00b7 OSHKOSH' + est;
   }
 
   function buildByline() {
@@ -946,11 +947,12 @@
     editorial: function(d, photos) {
       var photo = photos[0] || '';
       var specialty = (d.landing_specialties && d.landing_specialties[0]) || 'Curated Goods';
+      var since = d.landing_year_started ? 'Est. ' + d.landing_year_started + ' · ' : '';
       return ''
         + '<div class="hero-bg" style="background-image:url(' + photo + ')"></div>'
         + '<div class="hero-vignette"></div>'
         + '<div class="hero-content">'
-        +   '<div class="hero-kicker">' + escapeHtml(specialty) + ' · Oshkosh, WI</div>'
+        +   '<div class="hero-kicker">' + since + escapeHtml(specialty) + ' · Oshkosh, WI</div>'
         +   '<h1>' + escapeHtml(d.vendor_name || 'Vendor') + '</h1>'
         +   '<div class="hero-footline">'
         +     (d.booth_number ? '<div class="booth-tag">Booth ' + escapeHtml(d.booth_number) + '</div>' : '<span></span>')
@@ -1459,12 +1461,11 @@
       var igHandle = igUrl.replace(/\/$/, '').split('/').pop() || '@vendor';
       html += '<div class="social-feed-card landing-social-feed-card">' +
         '<div class="social-feed-card-header landing-social-feed-card-header">📷 Instagram</div>' +
-        '<div class="social-feed-card-body landing-social-feed-card-body">' +
-          '<a href="' + escAttr(igUrl) + '" target="_blank" rel="noopener">' +
-            '<div class="social-feed-icon landing-social-feed-icon" style="background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)">📷</div>' +
-            '<span>Follow ' + escHtml(igHandle) + ' on Instagram</span>' +
-            '<span style="font-size:0.75rem;opacity:0.5">Opens in new tab</span>' +
-          '</a>' +
+        '<div class="social-feed-card-body landing-social-feed-card-body social-ig-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;background:linear-gradient(135deg,#833ab4,#fd1d1d,#fcb045);border-radius:4px;min-height:180px">' +
+          '<div style="font-size:2rem;margin-bottom:0.75rem">📷</div>' +
+          '<div style="font-family:var(--landing-heading-font,\'Inter\',sans-serif);font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:0.25rem;letter-spacing:0.05em">' + escHtml(igHandle) + '</div>' +
+          '<div style="font-size:0.82rem;color:rgba(255,255,255,0.8);margin-bottom:1rem">Follow us on Instagram</div>' +
+          '<a href="' + escAttr(igUrl) + '" target="_blank" rel="noopener" style="display:inline-block;background:#fff;color:#833ab4;font-weight:600;font-size:0.82rem;padding:0.5rem 1.25rem;border-radius:24px;text-decoration:none;letter-spacing:0.03em">Follow @' + escHtml(igHandle) + '</a>' +
         '</div></div>';
     }
 
