@@ -2625,7 +2625,9 @@ async function saveDesign() {
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 landing_template: selectedTemplate,
-                landing_theme: theme
+                landing_theme: theme,
+                landing_hero_style: selectedHeroStyle,
+                landing_layout: { order: (currentSectionOrder || DEFAULT_SECTION_ORDER).slice() },
             })
         });
         var data = await resp.json();
