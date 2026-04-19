@@ -58,6 +58,21 @@ async def _set_marker(session, key: str, description: str) -> None:
     )
 
 
+async def _missing_columns(session, table_name: str, required: list[str]) -> list[str]:
+    result = await session.execute(
+        text(
+            """
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_name = :tbl
+            """
+        ),
+        {"tbl": table_name},
+    )
+    existing = {row[0] for row in result}
+    return [col for col in required if col not in existing]
+
+
 def _ext_for_content_type(content_type: Optional[str]) -> str:
     mapping = {
         "image/jpeg": "jpg",
@@ -140,6 +155,7 @@ async def run():
         async with AsyncSessionLocal() as session:
 
             # ── Step 2: ALTER TABLE column additions ────────────────────────────
+            column_alters_marker = "startup_task_column_alters_v6"
             column_alters = [
                 # vendors
                 "ALTER TABLE vendors ADD COLUMN IF NOT EXISTS rent_flagged BOOLEAN NOT NULL DEFAULT false",
@@ -223,9 +239,39 @@ async def run():
                 "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_tagline VARCHAR(200)",
                 "ALTER TABLE booth_showcases ADD COLUMN IF NOT EXISTS landing_year_started INTEGER",
             ]
-            for sql in column_alters:
-                await session.execute(text(sql))
-            print(f"BMM-POS migrate: {len(column_alters)} column alterations applied", flush=True)
+            if not await _has_marker(session, column_alters_marker):
+                missing = await _missing_columns(
+                    session,
+                    "booth_showcases",
+                    ["landing_template", "landing_theme"],
+                )
+                if missing:
+                    for sql in column_alters:
+                        await session.execute(text(sql))
+                    await _set_marker(
+                        session,
+                        column_alters_marker,
+                        "Column alterations applied (v6)",
+                    )
+                    print(
+                        f"BMM-POS migrate: {len(column_alters)} column alterations applied",
+                        flush=True,
+                    )
+                else:
+                    await _set_marker(
+                        session,
+                        column_alters_marker,
+                        "Column alterations already present; skipped (v6)",
+                    )
+                    print(
+                        "BMM-POS migrate: column alterations skipped (already applied)",
+                        flush=True,
+                    )
+            else:
+                print(
+                    "BMM-POS migrate: column alterations already applied (marker present)",
+                    flush=True,
+                )
 
             # ── Step 3: CREATE TABLE IF NOT EXISTS ─────────────────────────────
             await session.execute(text("""
