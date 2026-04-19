@@ -1498,7 +1498,7 @@ async def get_landing_page(
         result = await db.execute(
             select(BoothShowcase).where(
                 BoothShowcase.landing_slug == slug,
-                BoothShowcase.landing_page_enabled == True,
+                BoothShowcase.landing_page_enabled != False,
             )
         )
         sc = result.scalar_one_or_none()
@@ -1706,7 +1706,7 @@ async def _load_peer_story_corpora(
         select(BoothShowcase)
         .where(
             BoothShowcase.vendor_id != exclude_vendor_id,
-            BoothShowcase.landing_page_enabled == True,  # noqa: E712
+            BoothShowcase.landing_page_enabled != False,
         )
         .limit(200)
     )
@@ -1867,7 +1867,7 @@ async def get_og_image(
     result = await db.execute(
         select(BoothShowcase).where(
             BoothShowcase.landing_slug == slug,
-            BoothShowcase.landing_page_enabled == True,  # noqa: E712
+            BoothShowcase.landing_page_enabled != False,
         )
     )
     sc = result.scalar_one_or_none()

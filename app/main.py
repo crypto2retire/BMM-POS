@@ -401,7 +401,7 @@ async def sitemap_xml():
             for sc in showcases:
                 lastmod = sc.updated_at.date().isoformat() if sc.updated_at else today
 
-                if sc.landing_page_enabled and sc.landing_slug:
+                if (sc.landing_page_enabled != False) and sc.landing_slug:
                     urls.append((f"{BASE}/{sc.landing_slug}", lastmod, "weekly", "0.7"))
 
                     for spec in (sc.landing_specialties or []):
@@ -487,7 +487,7 @@ async def vendors_hub_page(request: Request):
             result = await db.execute(
                 select(BoothShowcase)
                 .where(BoothShowcase.is_published == True)
-                .where(BoothShowcase.landing_page_enabled == True)
+                .where(BoothShowcase.landing_page_enabled != False)
             )
             showcases = result.scalars().all()
             vendor_count = len(showcases)
@@ -573,7 +573,7 @@ async def specialty_page(slug: str, request: Request):
             result = await db.execute(
                 select(BoothShowcase)
                 .where(BoothShowcase.is_published == True)
-                .where(BoothShowcase.landing_page_enabled == True)
+                .where(BoothShowcase.landing_page_enabled != False)
             )
             all_showcases = result.scalars().all()
 
@@ -713,7 +713,7 @@ async def vendor_landing_page(slug: str, request: Request):
                 select(BoothShowcase)
                 .where(
                     BoothShowcase.landing_slug == slug,
-                    BoothShowcase.landing_page_enabled == True,
+                    BoothShowcase.landing_page_enabled != False,
                 )
             )
             sc = result.scalar_one_or_none()

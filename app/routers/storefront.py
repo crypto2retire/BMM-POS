@@ -640,7 +640,7 @@ async def get_storefront_specialties(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(BoothShowcase.landing_specialties)
         .where(BoothShowcase.is_published == True)
-        .where(BoothShowcase.landing_page_enabled == True)
+        .where(BoothShowcase.landing_page_enabled != False)
     )
     rows = result.all()
 
@@ -683,7 +683,7 @@ async def get_storefront_specialty(slug: str, db: AsyncSession = Depends(get_db)
         select(BoothShowcase, Vendor)
         .join(Vendor, Vendor.id == BoothShowcase.vendor_id)
         .where(BoothShowcase.is_published == True)
-        .where(BoothShowcase.landing_page_enabled == True)
+        .where(BoothShowcase.landing_page_enabled != False)
         .order_by(Vendor.name)
     )
     rows = result.all()
