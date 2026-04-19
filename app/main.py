@@ -548,6 +548,7 @@ async def vendors_hub_page(request: Request):
 @app.get("/specialty/{slug}", response_class=HTMLResponse)
 async def specialty_page(slug: str, request: Request):
     """Server-rendered specialty category page (e.g. /specialty/vintage-books).
+    DEBUG: if you see THIS docstring on /specialty/*, Railway is running the latest code."""
     Validates the slug against published showcases; 404 otherwise. Injects
     title, canonical, OG, and JSON-LD ItemList. Client JS does fetch-to-render.
     """
@@ -660,7 +661,9 @@ async def specialty_page(slug: str, request: Request):
     except Exception as exc:
         logging.getLogger(__name__).warning("/specialty/%s server-render failed, serving plain page: %s", slug, exc)
 
-    return HTMLResponse(html)
+    resp = HTMLResponse(html)
+    resp.headers["X-Specialty-Debug"] = "v4"
+    return resp
 
 
 @app.get("/og/{filename}")
