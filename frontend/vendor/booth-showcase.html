@@ -312,6 +312,13 @@
 </nav>
 
 <div class="main-content">
+    <div id="loading-state" style="text-align:center;padding:4rem 2rem">
+        <div style="display:inline-block;width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:bmm-spin 0.6s linear infinite;margin-bottom:1rem"></div>
+        <div style="font-size:0.85rem;color:var(--text-light)">Loading your booth&hellip;</div>
+        <style>@keyframes bmm-spin{to{transform:rotate(360deg)}}</style>
+    </div>
+
+    <div id="content-wrapper" style="display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:0.5rem">
         <h1 style="font-family:'EB Garamond',serif;font-style:italic;font-size:1.5rem;color:var(--text)">My Booth</h1>
         <div id="booth-badge" class="booth-number-badge" style="display:none"></div>
@@ -1032,7 +1039,9 @@
             </div>
     </div><!-- /section-landing-page -->
 
-</div>
+    </div><!-- /content-wrapper -->
+
+</div><!-- /main-content -->
 
 <nav class="mobile-bottom-nav">
     <a href="/vendor/dashboard.html">
@@ -1125,7 +1134,11 @@ async function loadShowcase() {
         updateBoothImproveBtn();
         // Phase 4: page health (uniqueness + freshness)
         try { loadPageHealth(); } catch (healthErr) { console.warn('Page health skipped:', healthErr); }
+
+        document.getElementById('loading-state').style.display = 'none';
+        document.getElementById('content-wrapper').style.display = 'block';
     } catch (err) {
+        document.getElementById('loading-state').innerHTML = '<div style="color:#FCA5A5;font-size:0.88rem">' + escHtml(err.message || 'Failed to load booth') + '</div><a href="/vendor/dashboard.html" style="display:inline-block;margin-top:1rem;color:var(--accent)">Back to Dashboard</a>';
         showStatus(err.message, 'error');
     }
 }

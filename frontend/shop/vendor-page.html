@@ -426,11 +426,10 @@
     var ssrHandled = document.body.hasAttribute('data-ssr-theme');
 
     if (theme && theme.colors && theme.fonts) {
-      // Apply theme
-      document.body.classList.remove('no-theme');
-      document.body.classList.add('themed');
-
       if (!ssrHandled) {
+        document.body.classList.remove('no-theme');
+        document.body.classList.add('themed');
+
         var c = theme.colors;
         var f = theme.fonts;
         var styleEl = document.getElementById('theme-vars');
@@ -450,10 +449,8 @@
           '--landing-body-weight: ' + (f.body_weight || '300') + ';' +
           '--landing-accent-color: ' + (c.accent_color || c.primary) + ';' +
           '--landing-accent-font: ' + (f.accent_font ? "'" + f.accent_font + "', cursive" : 'inherit') + ';' +
-        '}' +
-        'body.themed, body.themed * { background-image: none !important; background-attachment: scroll !important; }';
+        '}';
 
-        // Dynamically load the accent Google Font if set and not already loaded
         if (f.accent_font) {
           var fontId = 'dynamic-accent-font-' + f.accent_font.replace(/[^a-z0-9]/gi, '');
           if (!document.getElementById(fontId)) {

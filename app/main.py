@@ -833,6 +833,32 @@ async def vendor_landing_page(slug: str, request: Request):
                         f'<body class="themed" data-ssr-theme="true" style="background:{bg_c};color:{text_c}">',
                     )
 
+                    # 4b. Inline critical template CSS to eliminate FOUC entirely
+                    try:
+                        css_path = Path(f"frontend/static/css/landing-{template}.css")
+                        if css_path.exists():
+                            raw_css = css_path.read_text(encoding="utf-8")
+                            critical_lines = []
+                            in_block = False
+                            brace_depth = 0
+                            for line in raw_css.split("\n"):
+                                stripped = line.strip()
+                                if any(kw in stripped for kw in [".landing-nav", ".landing-hero", ".landing-about", "body.themed", "@keyframes landing-fade"]):
+                                    in_block = True
+                                if in_block:
+                                    critical_lines.append(line)
+                                    brace_depth += stripped.count("{") - stripped.count("}")
+                                    if brace_depth <= 0 and "{" in "".join(critical_lines):
+                                        in_block = False
+                                        brace_depth = 0
+                            critical_css = "\n".join(critical_lines)
+                            html = html.replace(
+                                f'<style id="theme-vars">:root {{ {css_vars} }}</style>',
+                                f'<style id="theme-vars">:root {{ {css_vars} }}{critical_css}</style>',
+                            )
+                    except Exception:
+                        pass
+
             # 5. Pre-render SEO meta tags (always, even without a saved theme)
             vendor_name = sc.vendor.name if sc and sc.vendor else "Vendor"
             title = (sc.landing_meta_title or f"{vendor_name} — Bowenstreet Market") if sc else "Vendor — Bowenstreet Market"
