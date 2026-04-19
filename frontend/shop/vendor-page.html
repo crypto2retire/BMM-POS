@@ -680,6 +680,10 @@
   function setupPreviewBridge() {
     document.body.classList.remove('no-theme');
     document.body.classList.add('themed');
+    document.body.style.background = '#fff';
+    document.body.style.color = '#333';
+    document.getElementById('not-found').style.display = 'none';
+    document.getElementById('vendor-content').style.display = 'none';
     window.addEventListener('message', function (event) {
       if (event.origin !== window.location.origin) return;
       var data = event.data || {};
