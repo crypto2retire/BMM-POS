@@ -978,34 +978,99 @@ async def vendor_landing_page(slug: str, request: Request):
                 if price_range:
                     business_node["priceRange"] = price_range
 
-                # Phase 3.1: pull store hours from StoreSetting if admin has set them
+                # Phase 3.1: derive openingHoursSpecification from hours_* settings
+                # Falls back to store_hours_json if present, but primarily reads
+                # the per-day settings already editable in admin Settings UI.
                 try:
                     from app.models.store_setting import StoreSetting
-                    hrs_row = await db.execute(
-                        select(StoreSetting).where(StoreSetting.key == "store_hours_json")
+                    import re as _hrs_re
+
+                    def _parse_hours_str(val: str):
+                        """Parse '10:00 AM - 6:00 PM' into ('10:00', '18:00').
+                        Returns None if closed or unparseable."""
+                        if not val or val.strip().lower() in ("closed", ""):
+                            return None
+                        # Match patterns like "10:00 AM - 6:00 PM" or "10AM-6PM"
+                        m = _hrs_re.match(
+                            r'(\d{1,2}):?(\d{2})?\s*(AM|PM)?\s*[-–to]+\s*(\d{1,2}):?(\d{2})?\s*(AM|PM)?',
+                            val.strip(), _hrs_re.IGNORECASE
+                        )
+                        if not m:
+                            return None
+                        def _to24(h, mins, ampm):
+                            h = int(h)
+                            mins = int(mins) if mins else 0
+                            if ampm:
+                                ampm = ampm.upper()
+                                if ampm == 'PM' and h != 12:
+                                    h += 12
+                                elif ampm == 'AM' and h == 12:
+                                    h = 0
+                            return f"{h:02d}:{mins:02d}"
+                        opens = _to24(m.group(1), m.group(2), m.group(3))
+                        closes = _to24(m.group(4), m.group(5), m.group(6))
+                        return (opens, closes)
+
+                    _day_keys = [
+                        ("Monday", "hours_monday"),
+                        ("Tuesday", "hours_tuesday"),
+                        ("Wednesday", "hours_wednesday"),
+                        ("Thursday", "hours_thursday"),
+                        ("Friday", "hours_friday"),
+                        ("Saturday", "hours_saturday"),
+                        ("Sunday", "hours_sunday"),
+                    ]
+                    hrs_rows = await db.execute(
+                        select(StoreSetting).where(
+                            StoreSetting.key.in_([k for _, k in _day_keys])
+                        )
                     )
-                    hrs_setting = hrs_row.scalar_one_or_none()
-                    if hrs_setting and hrs_setting.value:
-                        parsed = json.loads(hrs_setting.value)
-                        # Expected shape: [{"days":["Monday","Tuesday"], "opens":"10:00", "closes":"18:00"}, ...]
-                        if isinstance(parsed, list) and parsed:
-                            specs = []
-                            for entry in parsed:
-                                if not isinstance(entry, dict):
-                                    continue
-                                days = entry.get("days") or []
-                                opens = (entry.get("opens") or "").strip()
-                                closes = (entry.get("closes") or "").strip()
-                                if not days or not opens or not closes:
-                                    continue
-                                specs.append({
-                                    "@type": "OpeningHoursSpecification",
-                                    "dayOfWeek": days if isinstance(days, list) else [days],
-                                    "opens": opens,
-                                    "closes": closes,
-                                })
-                            if specs:
-                                business_node["openingHoursSpecification"] = specs
+                    hrs_map = {r.key: r.value for r in hrs_rows.scalars().all()}
+
+                    # Group days with identical hours to produce compact specs
+                    hours_groups: dict[tuple, list] = {}
+                    for day_name, db_key in _day_keys:
+                        val = hrs_map.get(db_key, "")
+                        parsed = _parse_hours_str(val)
+                        if parsed:
+                            hours_groups.setdefault(parsed, []).append(day_name)
+
+                    if hours_groups:
+                        specs = []
+                        for (opens, closes), days in hours_groups.items():
+                            specs.append({
+                                "@type": "OpeningHoursSpecification",
+                                "dayOfWeek": days,
+                                "opens": opens,
+                                "closes": closes,
+                            })
+                        business_node["openingHoursSpecification"] = specs
+                    else:
+                        # Fallback: check store_hours_json if per-day settings are all empty/closed
+                        hrs_json_row = await db.execute(
+                            select(StoreSetting).where(StoreSetting.key == "store_hours_json")
+                        )
+                        hrs_setting = hrs_json_row.scalar_one_or_none()
+                        if hrs_setting and hrs_setting.value:
+                            parsed_json = json.loads(hrs_setting.value)
+                            if isinstance(parsed_json, list) and parsed_json:
+                                specs = []
+                                for entry in parsed_json:
+                                    if not isinstance(entry, dict):
+                                        continue
+                                    days = entry.get("days") or []
+                                    opens = (entry.get("opens") or "").strip()
+                                    closes = (entry.get("closes") or "").strip()
+                                    if not days or not opens or not closes:
+                                        continue
+                                    specs.append({
+                                        "@type": "OpeningHoursSpecification",
+                                        "dayOfWeek": days if isinstance(days, list) else [days],
+                                        "opens": opens,
+                                        "closes": closes,
+                                    })
+                                if specs:
+                                    business_node["openingHoursSpecification"] = specs
                 except Exception:
                     logger.exception("vendor_landing_page: openingHours injection failed")
 
