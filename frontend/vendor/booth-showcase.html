@@ -310,6 +310,16 @@
         @media (min-width: 901px) {
             .preview-drawer-toggle { display: none; }
         }
+
+        /* ── Phase 2 Step 7: Design sub-tabs ── */
+        #design-section[data-design-subtab] [data-design-group] { display: none; }
+        #design-section[data-design-subtab="template-hero"] [data-design-group="template-hero"],
+        #design-section[data-design-subtab="section-order"] [data-design-group="section-order"],
+        #design-section[data-design-subtab="colors-fonts"] [data-design-group="colors-fonts"] { display: block; }
+        #design-subtabs {
+            margin: 0.5rem 0 1.25rem;
+            border-bottom: 2px solid var(--border);
+        }
             background: var(--bg);
             border: 1px solid var(--border);
             margin-bottom: 1rem;
@@ -959,6 +969,14 @@
                     </div>
                 </div>
 
+                <!-- ── Phase 2 Step 7: Design sub-tab bar ── -->
+                <div class="booth-tabs" id="design-subtabs" role="tablist">
+                    <button type="button" class="booth-tab active" data-design-subtab="template-hero">Template &amp; Hero</button>
+                    <button type="button" class="booth-tab" data-design-subtab="section-order">Section Order</button>
+                    <button type="button" class="booth-tab" data-design-subtab="colors-fonts">Colors &amp; Fonts</button>
+                </div>
+
+                <div data-design-group="template-hero">
                 <!-- Template Picker -->
                 <div style="margin-bottom:1.5rem">
                     <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Template Layout</label>
@@ -1060,6 +1078,9 @@
                     </div>
                 </div>
 
+                </div><!-- /data-design-group=template-hero -->
+
+                <div data-design-group="section-order">
                 <!-- ─── PHASE 2: SECTION DECK ─ drag to reorder ─── -->
                 <div style="margin-bottom:1.5rem">
                     <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.35rem">Section Order (drag to reorder)</label>
@@ -1072,6 +1093,9 @@
                     </div>
                 </div>
 
+                </div><!-- /data-design-group=section-order -->
+
+                <div data-design-group="colors-fonts">
                 <div style="margin-bottom:1.5rem">
                     <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Art Direction Presets</label>
                     <div class="preset-grid" id="preset-grid">
@@ -1180,12 +1204,13 @@
                 </div>
                 <span id="design-status" style="font-size:0.75rem; color:var(--text-light); display:block"></span>
 
-                <!-- Live Preview -->
-                <div style="margin-top:1.25rem">
-                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Live Preview</label>
-                    <div style="position:relative;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg)">
-                        <iframe id="design-preview" style="width:100%;height:500px;border:none;display:block;pointer-events:none" src="about:blank"></iframe>
-                    </div>
+                </div><!-- /data-design-group=colors-fonts -->
+
+                <!-- Legacy in-card preview iframe — kept in DOM so existing JS refs still work,
+                     but hidden since the pinned side preview replaces it. Can be removed in
+                     Step 8 cleanup once all design-preview JS refs are migrated. -->
+                <div style="display:none" aria-hidden="true">
+                    <iframe id="design-preview" style="width:100%;height:1px;border:none;display:block" src="about:blank"></iframe>
                 </div>
             </div>
 
@@ -1753,6 +1778,7 @@ function renderLandingSection() {
     updateMetaDescCount();
     updateLandingLink();
     loadDesignFromShowcase();
+    initDesignSubtabs();
 
     // ── Phase 2: decide dashboard mode ──
     // Once is_published has ever been true, stay in tabs mode forever (even if later unpublished).
@@ -1936,6 +1962,27 @@ function togglePreviewDrawer() {
     if (!p) return;
     var closed = p.getAttribute('data-drawer-closed') === 'true';
     p.setAttribute('data-drawer-closed', closed ? 'false' : 'true');
+}
+
+// ── Phase 2 Step 7: Design sub-tabs ──
+function initDesignSubtabs() {
+    var section = document.getElementById('design-section');
+    var bar = document.getElementById('design-subtabs');
+    if (!section || !bar || bar.dataset.wired) return;
+    bar.dataset.wired = 'true';
+
+    function setActive(key) {
+        section.setAttribute('data-design-subtab', key);
+        bar.querySelectorAll('.booth-tab').forEach(function(btn) {
+            btn.classList.toggle('active', btn.dataset.designSubtab === key);
+        });
+    }
+
+    bar.querySelectorAll('.booth-tab').forEach(function(btn) {
+        btn.addEventListener('click', function() { setActive(btn.dataset.designSubtab); });
+    });
+
+    setActive('template-hero');  // default
 }
 
 // ── Phase 2 Step 6: Discoverability card ──
