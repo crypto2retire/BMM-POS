@@ -601,6 +601,10 @@
 
         <div id="landing-editor" style="display:none">
 
+            <!-- ─── Phase 2: new shells (hidden until mode is chosen) ─── -->
+            <div id="wizard-shell" style="display:none"></div>
+            <div id="tab-shell" style="display:none"></div>
+
             <!-- ─── AI SETUP ASSISTANT (top of page, one-shot populate) ─── -->
             <div class="showcase-card" id="setup-assistant-card" style="border-color:var(--accent);background:linear-gradient(180deg,rgba(201,169,110,0.08) 0%,var(--surface) 45%)">
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.4rem">
@@ -1742,6 +1746,51 @@ function renderLandingSection() {
     updateMetaDescCount();
     updateLandingLink();
     loadDesignFromShowcase();
+
+    // ── Phase 2: decide dashboard mode ──
+    // Once is_published has ever been true, stay in tabs mode forever (even if later unpublished).
+    // Brief's rule: wizard only for landing_page_enabled=true AND never-published vendors.
+    var mode = showcase.is_published ? 'tabs' : 'wizard';
+    document.body.setAttribute('data-landing-mode', mode);
+    if (mode === 'tabs') {
+        renderTabShell();
+    } else {
+        renderWizardShell();
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Phase 2: Dashboard mode shells (Step 3 scaffold — stubs only)
+// ─────────────────────────────────────────────────────────────
+var TABS = [
+    { key: 'brand',   label: 'Brand',   fields: ['tagline','year','specialties','booth-title','booth-desc'] },
+    { key: 'story',   label: 'Story',   fields: ['story-blocks','landing-about-custom'] },
+    { key: 'media',   label: 'Media',   fields: ['photos','video','logo'] },
+    { key: 'contact', label: 'Contact', fields: ['email','phone','website','facebook','instagram','tiktok','twitter','etsy','show-facebook-feed','show-instagram-feed'] },
+    { key: 'seo',     label: 'SEO',     fields: ['meta-title','meta-desc','faq'] },
+    { key: 'design',  label: 'Design',  fields: ['template','hero','section-deck','colors','fonts'] }
+];
+
+var WIZARD_STEPS = [
+    { key: 'url',     label: 'URL',     required: ['slug'] },
+    { key: 'media',   label: 'Photos',  required: ['photos-min-1'] },
+    { key: 'brand',   label: 'Brand',   required: ['tagline-or-booth-name'] },
+    { key: 'story',   label: 'Story',   required: ['story-block-min-1-or-about'] },
+    { key: 'contact', label: 'Contact', required: [], skippable: true },
+    { key: 'seo',     label: 'SEO',     required: [], skippable: true },
+    { key: 'review',  label: 'Review',  required: [], isReview: true }
+];
+
+function renderTabShell() {
+    document.getElementById('tab-shell').style.display = '';
+    document.getElementById('wizard-shell').style.display = 'none';
+    // Step 4 fills this in.
+}
+
+function renderWizardShell() {
+    document.getElementById('wizard-shell').style.display = '';
+    document.getElementById('tab-shell').style.display = 'none';
+    // Step 5 fills this in.
 }
 
 function updateMetaDescCount() {
