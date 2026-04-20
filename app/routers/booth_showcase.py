@@ -2001,3 +2001,74 @@ async def get_related_vendors(
             shared_tag_count=_score(sc),
         ))
     return out
+
+
+# =========================================================================
+# Discoverability summary (dashboard surfacing of cross-vendor rail)
+# =========================================================================
+
+class DiscoverabilityOut(BaseModel):
+    shared_specialty_count: int
+    total_published_vendors: int
+    top_shared_specialties: list[str] = []
+    has_specialties: bool
+
+
+@router.get("/mine/discoverability", response_model=DiscoverabilityOut)
+async def get_my_discoverability(
+    current_user: Vendor = Depends(require_vendor_booth_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return a small summary telling a vendor how many other published vendors
+    share at least one specialty tag with them. This approximates how often
+    their page may appear in another vendor's "You might also like" rail.
+
+    No per-pair precision — the rail itself caps at 4, so exact counts would
+    be misleading. This is an honest upper-bound: "vendors that could recommend you".
+    """
+    stmt_me = select(BoothShowcase).where(BoothShowcase.vendor_id == current_user.id)
+    res_me = await db.execute(stmt_me)
+    me = res_me.scalar_one_or_none()
+    my_tags = set(me.landing_specialties or []) if me else set()
+
+    stmt_others = (
+        select(BoothShowcase.landing_specialties)
+        .join(Vendor, Vendor.id == BoothShowcase.vendor_id)
+        .where(
+            BoothShowcase.landing_page_enabled == True,  # noqa: E712
+            BoothShowcase.vendor_id != current_user.id,
+            Vendor.is_active == True,  # noqa: E712
+        )
+    )
+    res_others = await db.execute(stmt_others)
+    other_tag_lists = [row[0] or [] for row in res_others.all()]
+
+    total_published = len(other_tag_lists)
+
+    if not my_tags:
+        return DiscoverabilityOut(
+            shared_specialty_count=0,
+            total_published_vendors=total_published,
+            top_shared_specialties=[],
+            has_specialties=False,
+        )
+
+    shared_count = 0
+    tag_frequency: dict[str, int] = {}
+    for tags in other_tag_lists:
+        overlap = my_tags.intersection(set(tags))
+        if overlap:
+            shared_count += 1
+            for t in overlap:
+                tag_frequency[t] = tag_frequency.get(t, 0) + 1
+
+    top = sorted(tag_frequency.items(), key=lambda kv: kv[1], reverse=True)[:3]
+    top_tags = [t for t, _ in top]
+
+    return DiscoverabilityOut(
+        shared_specialty_count=shared_count,
+        total_published_vendors=total_published,
+        top_shared_specialties=top_tags,
+        has_specialties=True,
+    )
