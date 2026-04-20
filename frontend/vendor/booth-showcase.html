@@ -1938,10 +1938,240 @@ function togglePreviewDrawer() {
     p.setAttribute('data-drawer-closed', closed ? 'false' : 'true');
 }
 
+// ── Phase 2 Step 5: Wizard mode ──
+var wizardCurrent = 0;
+
+// Map wizard step keys to the same card IDs the tabs use.
+var WIZARD_STEP_CARDS = {
+    url:     ['slug-card'],
+    media:   ['landing-photos-card'],
+    brand:   ['brand-basics-card', 'page-health-card'],
+    story:   ['story-blocks-card'],
+    contact: ['contact-social-card'],
+    seo:     ['seo-faq-card'],
+    review:  []  // built inline from buildReviewPanel()
+};
+
 function renderWizardShell() {
-    document.getElementById('wizard-shell').style.display = '';
+    var shell = document.getElementById('wizard-shell');
+    shell.style.display = '';
     document.getElementById('tab-shell').style.display = 'none';
-    // Step 5 fills this in.
+
+    if (!shell.dataset.built) {
+        buildWizardShellDOM(shell);
+        shell.dataset.built = 'true';
+    }
+    wizardCurrent = findFirstIncompleteStep();
+    activateWizardStep(wizardCurrent);
+    mountPreviewIframe();
+}
+
+function buildWizardShellDOM(shell) {
+    shell.innerHTML = ''
+        + '<div class="dashboard-split">'
+        +   '<div class="dashboard-split__main">'
+        +     '<div class="wizard-stepper" id="wizard-stepper" role="tablist"></div>'
+        +     '<div id="wizard-step-panels"></div>'
+        +     '<div class="wizard-actions">'
+        +       '<button type="button" id="wizard-back" class="btn btn-sm" style="background:transparent;border:1px solid var(--border);color:var(--text-light)">Back</button>'
+        +       '<button type="button" id="wizard-skip" class="btn btn-sm" style="background:transparent;border:1px solid var(--border);color:var(--text-light)">Skip for now</button>'
+        +       '<span class="spacer"></span>'
+        +       '<button type="button" id="wizard-next" class="btn btn-primary btn-sm">Next &rarr;</button>'
+        +       '<button type="button" id="wizard-publish" class="btn btn-primary btn-sm" style="display:none;background:var(--gold);color:var(--bg)">&#10024; Publish</button>'
+        +     '</div>'
+        +   '</div>'
+        +   '<aside class="dashboard-split__preview" id="preview-panel">'
+        +     '<div class="dashboard-split__preview-header"><span>Live preview</span><a id="preview-open-tab" href="#" target="_blank" rel="noopener" style="color:var(--gold);font-size:0.72rem;text-decoration:none">Open in new tab &#8599;</a></div>'
+        +     '<iframe id="landing-preview" title="Your landing page preview"></iframe>'
+        +   '</aside>'
+        + '</div>'
+        + '<button type="button" class="preview-drawer-toggle" onclick="togglePreviewDrawer()">Preview &#8593;</button>';
+
+    // Stepper pills
+    var stepper = shell.querySelector('#wizard-stepper');
+    WIZARD_STEPS.forEach(function(s, i) {
+        var btn = document.createElement('button');
+        btn.className = 'wizard-step';
+        btn.type = 'button';
+        btn.innerHTML = '<span class="wizard-step__num">' + (i+1) + '</span>' + s.label;
+        btn.addEventListener('click', function() { activateWizardStep(i); });
+        stepper.appendChild(btn);
+    });
+
+    // One empty panel per step; cards are appended to them at activation time
+    var panels = shell.querySelector('#wizard-step-panels');
+    WIZARD_STEPS.forEach(function(s) {
+        var p = document.createElement('div');
+        p.className = 'wizard-step-panel';
+        p.id = 'wizard-panel-' + s.key;
+        p.style.display = 'none';
+        panels.appendChild(p);
+    });
+
+    shell.querySelector('#wizard-back').addEventListener('click', function() {
+        activateWizardStep(Math.max(0, wizardCurrent - 1));
+    });
+    shell.querySelector('#wizard-next').addEventListener('click', function() {
+        if (!isStepValid(wizardCurrent)) {
+            showStatus('Fill the required field before continuing.', 'error');
+            return;
+        }
+        activateWizardStep(Math.min(WIZARD_STEPS.length - 1, wizardCurrent + 1));
+    });
+    shell.querySelector('#wizard-skip').addEventListener('click', function() {
+        activateWizardStep(Math.min(WIZARD_STEPS.length - 1, wizardCurrent + 1));
+    });
+    shell.querySelector('#wizard-publish').addEventListener('click', publishFromWizard);
+}
+
+function activateWizardStep(i) {
+    wizardCurrent = i;
+    var step = WIZARD_STEPS[i];
+    document.querySelectorAll('.wizard-step').forEach(function(el, idx) {
+        el.classList.toggle('active', idx === i);
+        el.classList.toggle('done', idx < i);
+    });
+    document.querySelectorAll('.wizard-step-panel').forEach(function(p) { p.style.display = 'none'; });
+    var panel = document.getElementById('wizard-panel-' + step.key);
+    if (!panel) return;
+    panel.style.display = '';
+
+    // Clear prior children (we re-parent fresh each visit).
+    // NOTE: innerHTML = '' on the panel is safe because cards living here were MOVED in
+    // by appendChild on previous activations — they don't have a permanent home here.
+    // But calling innerHTML='' would also destroy them. Instead, we move them out first.
+    while (panel.firstChild) {
+        // Detach and re-append to a hidden holding zone so listeners survive
+        var detached = panel.firstChild;
+        panel.removeChild(detached);
+        // Drop onto a global stash element so it's still in the DOM tree (listeners live)
+        stashOffscreen(detached);
+    }
+
+    if (step.key === 'review') {
+        panel.appendChild(buildReviewPanel());
+    } else {
+        (WIZARD_STEP_CARDS[step.key] || []).forEach(function(cardId) {
+            var el = document.getElementById(cardId);
+            if (el) panel.appendChild(el);
+        });
+    }
+
+    var backBtn = document.getElementById('wizard-back');
+    var skipBtn = document.getElementById('wizard-skip');
+    var nextBtn = document.getElementById('wizard-next');
+    var pubBtn = document.getElementById('wizard-publish');
+    if (backBtn) backBtn.style.display = (i === 0) ? 'none' : '';
+    if (skipBtn) skipBtn.style.display = step.skippable ? '' : 'none';
+    if (nextBtn) nextBtn.style.display = (step.key === 'review') ? 'none' : '';
+    if (pubBtn)  pubBtn.style.display  = (step.key === 'review') ? '' : 'none';
+
+    refreshWizardValidity();
+}
+
+// Hidden stash where cards live when not displayed in a wizard step.
+function stashOffscreen(el) {
+    var stash = document.getElementById('wizard-card-stash');
+    if (!stash) {
+        stash = document.createElement('div');
+        stash.id = 'wizard-card-stash';
+        stash.style.display = 'none';
+        document.body.appendChild(stash);
+    }
+    stash.appendChild(el);
+}
+
+function isStepValid(i) {
+    var s = WIZARD_STEPS[i];
+    if (!s.required || !s.required.length) return true;
+    return s.required.every(function(r) {
+        switch (r) {
+            case 'slug': return !!(showcase && showcase.landing_slug);
+            case 'photos-min-1': return !!(showcase && Array.isArray(showcase.photo_urls) && showcase.photo_urls.length > 0);
+            case 'tagline-or-booth-name': return !!(showcase && (showcase.landing_tagline || showcase.title));
+            case 'story-block-min-1-or-about':
+                return !!(showcase && ((Array.isArray(showcase.landing_story_blocks) && showcase.landing_story_blocks.length > 0)
+                    || (showcase.landing_layout && showcase.landing_layout.about_is_custom && showcase.landing_about)));
+            default: return true;
+        }
+    });
+}
+
+function findFirstIncompleteStep() {
+    for (var i = 0; i < WIZARD_STEPS.length; i++) {
+        if (!isStepValid(i)) return i;
+    }
+    return WIZARD_STEPS.length - 1;  // all valid → go to Review
+}
+
+function allRequiredStepsValid() {
+    return WIZARD_STEPS.every(function(s, idx) {
+        if (!s.required || !s.required.length) return true;
+        return isStepValid(idx);
+    });
+}
+
+function refreshWizardValidity() {
+    var nextBtn = document.getElementById('wizard-next');
+    var pubBtn = document.getElementById('wizard-publish');
+    if (nextBtn) nextBtn.disabled = !isStepValid(wizardCurrent);
+    if (pubBtn) pubBtn.disabled = !allRequiredStepsValid();
+}
+
+function buildReviewPanel() {
+    var wrap = document.createElement('div');
+    wrap.className = 'showcase-card';
+    wrap.innerHTML = ''
+        + '<h3>Almost there</h3>'
+        + '<p style="font-size:0.82rem;color:var(--text-light)">Review what visitors will see. Required items must be green before you can publish.</p>'
+        + '<ul id="wizard-review-checklist" style="list-style:none;padding:0;margin:1rem 0"></ul>'
+        + '<div id="wizard-review-disco"></div>'
+        + '<p style="font-size:0.75rem;color:var(--text-light);margin-top:1rem">After you publish, you can keep editing from the tabs view. You can unpublish anytime.</p>';
+    var checklist = wrap.querySelector('#wizard-review-checklist');
+    var rows = [
+        { label: 'Custom URL',               ok: !!(showcase && showcase.landing_slug) },
+        { label: 'At least one photo',       ok: !!(showcase && Array.isArray(showcase.photo_urls) && showcase.photo_urls.length > 0) },
+        { label: 'Tagline or booth name',    ok: !!(showcase && (showcase.landing_tagline || showcase.title)) },
+        { label: 'At least one story block', ok: !!(showcase && ((Array.isArray(showcase.landing_story_blocks) && showcase.landing_story_blocks.length > 0)
+                                               || (showcase.landing_layout && showcase.landing_layout.about_is_custom && showcase.landing_about))) }
+    ];
+    rows.forEach(function(r) {
+        var li = document.createElement('li');
+        li.style.cssText = 'display:flex;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid var(--warm-border);font-size:0.85rem';
+        li.innerHTML = '<span style="color:' + (r.ok ? '#6EE7B7' : 'var(--gold)') + '">' + (r.ok ? '\u2713' : '\u25CB') + '</span>' + r.label;
+        checklist.appendChild(li);
+    });
+    // Discoverability card (Step 6 populates)
+    var disco = document.createElement('div');
+    disco.id = 'disco-card-review';
+    wrap.querySelector('#wizard-review-disco').appendChild(disco);
+    if (typeof requestDiscoverability === 'function') {
+        requestDiscoverability('disco-card-review');
+    }
+    return wrap;
+}
+
+async function publishFromWizard() {
+    var token = sessionStorage.getItem('bmm_token');
+    var pubBtn = document.getElementById('wizard-publish');
+    if (pubBtn) pubBtn.disabled = true;
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine', {
+            method: 'PUT',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_published: true })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'Publish failed');
+        showcase = data;
+        showStatus('Your page is live! Share your link.', 'success');
+        // Re-render into tabs mode. reclaimTabPanelCards() in Step 4 finds cards wherever they are.
+        renderLandingSection();
+        if (typeof activateTab === 'function') activateTab('brand');
+    } catch (e) {
+        showStatus(e.message || 'Publish failed', 'error');
+        if (pubBtn) pubBtn.disabled = false;
+    }
 }
 
 function updateMetaDescCount() {
