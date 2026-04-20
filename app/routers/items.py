@@ -221,7 +221,7 @@ async def list_items(
     await _require_view_items(db, current_user)
 
     query = select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants))
-    if current_user.role not in ("admin", "cashier"):
+    if current_user.role == "vendor":
         query = query.where(Item.vendor_id == current_user.id)
     elif vendor_id:
         query = query.where(Item.vendor_id == vendor_id)
@@ -274,7 +274,7 @@ async def list_items_listing(
         raise HTTPException(status_code=400, detail="Invalid sort direction")
 
     base_filters = []
-    if current_user.role not in ("admin", "cashier"):
+    if current_user.role == "vendor":
         base_filters.append(Item.vendor_id == current_user.id)
     elif vendor_id:
         base_filters.append(Item.vendor_id == vendor_id)

@@ -2452,9 +2452,11 @@
             if (searchTerm && searchTerm.trim()) params.set('q', searchTerm.trim());
 
             const payload = parseToken();
-            if (isVendorMode) {
+            if (currentRole === 'vendor') {
                 params.set('vendor_id', String(payload.vendor_id));
-            } else if (currentRole !== 'vendor' && selectedVendorId) {
+            } else if (isVendorMode) {
+                params.set('vendor_id', String(payload.vendor_id));
+            } else if (selectedVendorId) {
                 params.set('vendor_id', String(selectedVendorId));
             }
 
@@ -2554,6 +2556,11 @@
             document.getElementById('nav-home').textContent = 'Dashboard';
             document.getElementById('bottom-nav').style.display = '';
             document.getElementById('page-title').textContent = 'My Items';
+        }
+
+        if (currentRole === 'vendor') {
+            isVendorMode = true;
+            selectedVendorId = session.vendor_id;
         }
 
         applyItemAccessMode(session);
