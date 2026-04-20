@@ -375,6 +375,21 @@
   <div id="social-feeds-grid" class="social-feeds-grid landing-social-feeds-grid"></div>
 </section>
 
+<!-- RELATED VENDORS ("You might also like") -->
+<section id="related-section" class="landing-section related-section" data-section-key="related" style="display:none;">
+  <div class="container landing-inner">
+    <div class="related-header">
+      <div>
+        <div class="landing-kicker">Continue exploring</div>
+        <h2>You might also like</h2>
+        <p class="related-sub">Curated vendors with overlapping specialties.</p>
+      </div>
+      <a href="/vendors" class="related-seeall">View all vendors →</a>
+    </div>
+    <div id="related-grid" class="related-grid"><!-- populated by renderRelatedVendors() --></div>
+  </div>
+</section>
+
 <!-- FOOTER -->
 <footer id="site-footer" class="site-footer landing-footer">
   <div class="footer-brand landing-footer-brand"><a href="/">Bowenstreet Market</a></div>
@@ -745,6 +760,7 @@
     renderFooterSocials();
     renderFaq();
     renderSocialFeeds();
+    renderRelatedVendors();
     applySectionOrder();
 
     vendorItems = (vendorData.items || []).map(normalizeItem);
@@ -834,6 +850,7 @@
     renderFooterSocials();
     renderFaq();
     renderSocialFeeds();
+    renderRelatedVendors();
     applySectionOrder();
 
     vendorItems = (vendorData.items || []).map(normalizeItem);
@@ -1437,6 +1454,42 @@
     document.getElementById('vendor-content').style.display = 'none';
   }
 
+  function renderRelatedVendors() {
+    var sec = document.getElementById('related-section');
+    var grid = document.getElementById('related-grid');
+    var slug = vendorData && vendorData.landing_slug;
+    if (!sec || !grid || !slug) return;
+
+    fetch('/api/v1/booth-showcase/related/' + encodeURIComponent(slug) + '?limit=4', {
+      headers: { 'Accept': 'application/json' }
+    })
+      .then(function(r) { return r.ok ? r.json() : []; })
+      .then(function(list) {
+        if (!Array.isArray(list) || list.length === 0) {
+          sec.style.display = 'none';
+          return;
+        }
+        grid.innerHTML = list.map(function(v) {
+          var photo = v.cover_image_url || '';
+          var booth = v.booth_number ? 'Booth ' + escHtml(v.booth_number) : '';
+          var name  = escHtml(v.name || '');
+          var href  = '/shop/vendor/' + encodeURIComponent(v.slug);
+          return ''
+            + '<a href="' + href + '" class="related-card">'
+            +   '<div class="related-card-media">'
+            +     '<div class="related-card-photo" style="background-image: url(' + JSON.stringify(photo) + ');"></div>'
+            +   '</div>'
+            +   '<div class="related-card-body">'
+            +     (booth ? '<div class="related-card-booth">' + booth + '</div>' : '')
+            +     '<h3>' + name + '</h3>'
+            +   '</div>'
+            + '</a>';
+        }).join('');
+        sec.style.display = '';
+      })
+      .catch(function() { sec.style.display = 'none'; });
+  }
+
   function renderSocialFeeds() {
     var showFb = vendorData.show_facebook_feed && vendorData.landing_facebook;
     var showIg = vendorData.show_instagram_feed && vendorData.landing_instagram;
@@ -1543,7 +1596,7 @@
     if (!host) return;
 
     // Adopt external sections so they sit inside host (makes reorder trivial + predictable)
-    ['faq-section','social-feeds-section','specialties-section','story-section'].forEach(function(id){
+    ['faq-section','social-feeds-section','specialties-section','story-section','related-section'].forEach(function(id){
       var el = document.getElementById(id);
       if (el && el.parentNode !== host) host.appendChild(el);
     });
@@ -1573,6 +1626,8 @@
     document.getElementById('social-feeds-section').style.display = 'none';
     var storySec = document.getElementById('story-section'); if (storySec) storySec.style.display = 'none';
     var specSec  = document.getElementById('specialties-section'); if (specSec) specSec.style.display = 'none';
+    var relSec  = document.getElementById('related-section'); if (relSec) relSec.style.display = 'none';
+    var relGrid = document.getElementById('related-grid'); if (relGrid) relGrid.innerHTML = '';
     document.getElementById('social-links').innerHTML = '';
     document.getElementById('contact-info').innerHTML = '';
     document.getElementById('photo-scroll').innerHTML = '';
