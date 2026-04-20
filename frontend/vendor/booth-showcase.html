@@ -1938,6 +1938,45 @@ function togglePreviewDrawer() {
     p.setAttribute('data-drawer-closed', closed ? 'false' : 'true');
 }
 
+// ── Phase 2 Step 6: Discoverability card ──
+async function requestDiscoverability(containerId) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var token = sessionStorage.getItem('bmm_token');
+    container.innerHTML = '<div class="disco-card"><div class="sub">Loading discoverability\u2026</div></div>';
+    try {
+        var resp = await fetch('/api/v1/booth-showcase/mine/discoverability', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!resp.ok) throw new Error('Failed');
+        var data = await resp.json();
+        container.innerHTML = renderDiscoCardHTML(data);
+    } catch (e) {
+        container.innerHTML = '';  // silently hide on failure; not critical UI
+    }
+}
+
+function renderDiscoCardHTML(d) {
+    function esc(s) { var t = document.createElement('div'); t.textContent = s; return t.innerHTML; }
+    if (!d || !d.has_specialties) {
+        return ''
+            + '<div class="disco-card">'
+            +   '<h4>Help visitors discover your booth</h4>'
+            +   '<div class="sub">Add 2\u20134 specialty tags above so other vendors\u2019 pages can recommend yours. Specialties power our \u201cYou might also like\u201d rail that runs at the bottom of every landing page.</div>'
+            + '</div>';
+    }
+    var tagHTML = (d.top_shared_specialties || []).map(function(t) {
+        return '<span class="tag">' + esc(t) + '</span>';
+    }).join('');
+    return ''
+        + '<div class="disco-card">'
+        +   '<h4>Your page is discoverable</h4>'
+        +   '<div class="metric">' + (d.shared_specialty_count|0) + '</div>'
+        +   '<div class="sub">of ' + (d.total_published_vendors|0) + ' published vendors share at least one of your specialties. When visitors reach those pages, yours may appear in the \u201cYou might also like\u201d rail.</div>'
+        +   (tagHTML ? '<div class="tags">' + tagHTML + '</div>' : '')
+        + '</div>';
+}
+
 // ── Phase 2 Step 5: Wizard mode ──
 var wizardCurrent = 0;
 
