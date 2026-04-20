@@ -143,6 +143,173 @@
                 letter-spacing: 0.04em;
             }
         }
+
+        /* ── Phase 2: tab-bar status dots + horizontal scroll on mobile ── */
+        .booth-tabs {
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .booth-tabs::-webkit-scrollbar { display: none; }
+        .booth-tab .dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            margin-left: 0.5rem;
+            background: var(--text-light);
+            opacity: 0.4;
+        }
+        .booth-tab[data-status="complete"] .dot { background: #6EE7B7; opacity: 0.9; }
+        .booth-tab[data-status="required"] .dot { background: var(--gold); opacity: 0.9; }
+
+        /* ── Phase 2: dashboard split layout (wizard OR tabs) ── */
+        .dashboard-split {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+            gap: 1.5rem;
+            align-items: start;
+        }
+        .dashboard-split__main { min-width: 0; }
+        .dashboard-split__preview {
+            position: sticky;
+            top: 80px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            max-height: calc(100vh - 100px);
+            display: flex;
+            flex-direction: column;
+        }
+        .dashboard-split__preview-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 0.8rem;
+            border-bottom: 1px solid var(--warm-border);
+            font-size: 0.72rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .dashboard-split__preview iframe {
+            flex: 1;
+            border: 0;
+            background: var(--bg);
+            width: 100%;
+        }
+
+        /* ── Phase 2: wizard stepper ── */
+        .wizard-stepper {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.8rem 0;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .wizard-stepper::-webkit-scrollbar { display: none; }
+        .wizard-step {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.7rem;
+            font-size: 0.75rem;
+            color: var(--text-light);
+            background: transparent;
+            border: 1px solid transparent;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+        .wizard-step.active {
+            color: var(--gold);
+            border-color: var(--warm-border);
+            background: rgba(201,169,110,0.08);
+        }
+        .wizard-step.done { color: #6EE7B7; }
+        .wizard-step__num {
+            width: 20px;
+            height: 20px;
+            border: 1px solid currentColor;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+        }
+        .wizard-step.done .wizard-step__num::before { content: "✓"; }
+        .wizard-step.done .wizard-step__num { font-size: 0; }
+        .wizard-step.done .wizard-step__num::before { font-size: 0.75rem; }
+
+        .wizard-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            padding: 1rem 0;
+            margin-top: 1rem;
+            border-top: 1px solid var(--warm-border);
+        }
+        .wizard-actions .spacer { flex: 1; }
+
+        /* ── Phase 2: Discoverability card ── */
+        .disco-card {
+            background: linear-gradient(180deg, rgba(110,231,183,0.06) 0%, var(--surface) 60%);
+            border: 1px solid var(--warm-border);
+            padding: 1rem 1.1rem;
+            margin-bottom: 1rem;
+        }
+        .disco-card h4 {
+            font-family: 'EB Garamond', serif;
+            font-style: italic;
+            font-size: 1rem;
+            color: var(--text);
+            margin: 0 0 0.3rem;
+        }
+        .disco-card .metric {
+            font-family: 'EB Garamond', serif;
+            font-size: 2rem;
+            color: var(--gold);
+            line-height: 1;
+            margin: 0.3rem 0;
+        }
+        .disco-card .sub {
+            font-size: 0.78rem;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+        .disco-card .tags { margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .disco-card .tag {
+            font-size: 0.7rem;
+            color: var(--text);
+            border: 1px solid var(--warm-border);
+            padding: 0.15rem 0.45rem;
+        }
+
+        /* ── Phase 2: mobile breakpoint — preview drawer ── */
+        @media (max-width: 900px) {
+            .dashboard-split { grid-template-columns: 1fr; }
+            .dashboard-split__preview {
+                position: static;
+                max-height: 60vh;
+            }
+            .dashboard-split__preview[data-drawer-closed="true"] { display: none; }
+            .preview-drawer-toggle {
+                position: fixed;
+                bottom: 70px;
+                right: 1rem;
+                z-index: 50;
+                background: var(--gold);
+                color: var(--bg);
+                border: 0;
+                padding: 0.6rem 1rem;
+                font-size: 0.78rem;
+                letter-spacing: 0.06em;
+                cursor: pointer;
+            }
+        }
+        @media (min-width: 901px) {
+            .preview-drawer-toggle { display: none; }
+        }
             background: var(--bg);
             border: 1px solid var(--border);
             margin-bottom: 1rem;
