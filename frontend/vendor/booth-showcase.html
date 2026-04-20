@@ -162,6 +162,68 @@
         .booth-tab[data-status="complete"] .dot { background: #6EE7B7; opacity: 0.9; }
         .booth-tab[data-status="required"] .dot { background: var(--gold); opacity: 0.9; }
 
+        /* ── Phase 3.3: Photo Coach ────────────────────────── */
+        .photo-coach {
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--gold);
+            background: var(--surface);
+            margin-bottom: 1rem;
+        }
+        .photo-coach-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s;
+        }
+        .photo-coach-header:hover { background: var(--surface-2); }
+        .photo-coach-header .coach-chevron {
+            font-size: 0.7rem;
+            color: var(--gold);
+            transition: transform 0.2s;
+        }
+        .photo-coach.open .coach-chevron { transform: rotate(90deg); }
+        .photo-coach-header span { font-size: 0.82rem; font-weight: 500; color: var(--text); }
+        .photo-coach-body {
+            display: none;
+            padding: 0 1.25rem 1.25rem;
+        }
+        .photo-coach.open .photo-coach-body { display: block; }
+        .coach-tip-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .coach-tip-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .coach-example {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .coach-example svg { width: 100%; max-width: 180px; height: auto; border: 2px solid; }
+        .coach-example.bad svg  { border-color: #991B1B; }
+        .coach-example.good svg { border-color: var(--gold); }
+        .coach-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+        .coach-example.bad  .coach-label { color: #FCA5A5; }
+        .coach-example.good .coach-label { color: var(--gold); }
+        .coach-tip-text {
+            grid-column: 1 / -1;
+            font-size: 0.8rem;
+            color: var(--text-light);
+            line-height: 1.5;
+            margin-top: 0.25rem;
+        }
+        @media (max-width: 560px) {
+            .coach-tip-row { gap: 0.5rem; }
+            .coach-example svg { max-width: 140px; }
+        }
+
         /* ── Phase 2: dashboard split layout (wizard OR tabs) ── */
         .dashboard-split {
             display: grid;
@@ -560,6 +622,104 @@
         <span id="ai-booth-status" style="font-size:0.75rem; color:var(--text-light); margin-top:6px; display:block"></span>
     </div>
 
+    <!-- Phase 3.3: Photo Coach Tip Card -->
+    <div class="photo-coach" id="photo-coach">
+        <div class="photo-coach-header" onclick="document.getElementById('photo-coach').classList.toggle('open')">
+            <span class="coach-chevron">&#9656;</span>
+            <span>&#128248; Photo Tips &mdash; Take better booth photos</span>
+        </div>
+        <div class="photo-coach-body">
+            <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:1.25rem">
+                Your first photo becomes the <strong style="color:var(--gold)">hero banner</strong> on your landing page. These tips help it look great.
+            </p>
+
+            <!-- Tip 1: Lighting -->
+            <div class="coach-tip-row">
+                <div class="coach-example bad">
+                    <svg viewBox="0 0 180 120" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="180" height="120" fill="#1a1a1a"/>
+                        <rect x="30" y="25" width="50" height="70" rx="2" fill="#2a2a2a" opacity="0.7"/>
+                        <rect x="100" y="35" width="50" height="60" rx="2" fill="#252525" opacity="0.6"/>
+                        <text x="90" y="110" text-anchor="middle" fill="#555" font-size="10" font-family="sans-serif">too dark</text>
+                    </svg>
+                    <span class="coach-label">&#10007; Too Dark</span>
+                </div>
+                <div class="coach-example good">
+                    <svg viewBox="0 0 180 120" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="180" height="120" fill="#e8e0d4"/>
+                        <circle cx="150" cy="20" r="14" fill="#C9A96E" opacity="0.5"/>
+                        <rect x="30" y="25" width="50" height="70" rx="2" fill="#b8a88a"/>
+                        <rect x="100" y="35" width="50" height="60" rx="2" fill="#c4b494"/>
+                        <text x="90" y="110" text-anchor="middle" fill="#7a6f5f" font-size="10" font-family="sans-serif">natural light</text>
+                    </svg>
+                    <span class="coach-label">&#10003; Well Lit</span>
+                </div>
+                <div class="coach-tip-text">
+                    Use natural light. Photograph near a window or outside. Avoid flash &mdash; it washes out colors and creates harsh shadows.
+                </div>
+            </div>
+
+            <!-- Tip 2: Composition -->
+            <div class="coach-tip-row">
+                <div class="coach-example bad">
+                    <svg viewBox="0 0 180 120" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="180" height="120" fill="#3a3832"/>
+                        <rect x="5" y="10" width="30" height="40" rx="1" fill="#5a5549" transform="rotate(-8 20 30)"/>
+                        <rect x="25" y="5" width="35" height="50" rx="1" fill="#4a4540" transform="rotate(5 42 30)"/>
+                        <rect x="55" y="15" width="25" height="35" rx="1" fill="#625d55" transform="rotate(-3 67 32)"/>
+                        <rect x="80" y="8" width="30" height="45" rx="1" fill="#504c45" transform="rotate(7 95 30)"/>
+                        <rect x="110" y="12" width="28" height="38" rx="1" fill="#585350" transform="rotate(-5 124 31)"/>
+                        <rect x="140" y="6" width="35" height="48" rx="1" fill="#4e4a43" transform="rotate(4 157 30)"/>
+                        <rect x="10" y="55" width="40" height="55" rx="1" fill="#5d5850"/>
+                        <rect x="55" y="60" width="35" height="50" rx="1" fill="#4b4740"/>
+                        <rect x="95" y="50" width="40" height="60" rx="1" fill="#555045"/>
+                        <rect x="140" y="58" width="35" height="55" rx="1" fill="#4a4640"/>
+                        <text x="90" y="115" text-anchor="middle" fill="#888" font-size="9" font-family="sans-serif">too cluttered</text>
+                    </svg>
+                    <span class="coach-label">&#10007; Cluttered</span>
+                </div>
+                <div class="coach-example good">
+                    <svg viewBox="0 0 180 120" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="180" height="120" fill="#e8e0d4"/>
+                        <rect x="25" y="20" width="40" height="65" rx="2" fill="#b8a88a"/>
+                        <rect x="75" y="30" width="35" height="55" rx="2" fill="#c4b494"/>
+                        <rect x="120" y="25" width="38" height="60" rx="2" fill="#bfaf90"/>
+                        <text x="90" y="110" text-anchor="middle" fill="#7a6f5f" font-size="10" font-family="sans-serif">3&ndash;5 key pieces</text>
+                    </svg>
+                    <span class="coach-label">&#10003; Clean &amp; Focused</span>
+                </div>
+                <div class="coach-tip-text">
+                    Show 3&ndash;5 key pieces, not everything. Step back so the full display is visible. Your first photo becomes the hero banner &mdash; make it count.
+                </div>
+            </div>
+
+            <!-- Tip 3: Size & Orientation -->
+            <div class="coach-tip-row">
+                <div class="coach-example bad">
+                    <svg viewBox="0 0 180 120" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="180" height="120" fill="#2d2d30"/>
+                        <rect x="65" y="5" width="50" height="80" rx="2" fill="#444" stroke="#555" stroke-width="1"/>
+                        <text x="90" y="55" text-anchor="middle" fill="#777" font-size="8" font-family="sans-serif">portrait</text>
+                        <text x="90" y="110" text-anchor="middle" fill="#888" font-size="9" font-family="sans-serif">gets cropped</text>
+                    </svg>
+                    <span class="coach-label">&#10007; Portrait / Small</span>
+                </div>
+                <div class="coach-example good">
+                    <svg viewBox="0 0 180 120" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="180" height="120" fill="#e8e0d4"/>
+                        <rect x="10" y="15" width="160" height="80" rx="2" fill="#c4b494" stroke="#C9A96E" stroke-width="1"/>
+                        <text x="90" y="60" text-anchor="middle" fill="#7a6f5f" font-size="10" font-family="sans-serif">1200 &times; 800+</text>
+                        <text x="90" y="110" text-anchor="middle" fill="#7a6f5f" font-size="10" font-family="sans-serif">landscape</text>
+                    </svg>
+                    <span class="coach-label">&#10003; Wide Landscape</span>
+                </div>
+                <div class="coach-tip-text">
+                    Shoot landscape (horizontal). Aim for at least 1200 &times; 800 pixels. Your hero banner is wide &mdash; portrait photos get cropped awkwardly.
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="showcase-card">
         <h3>Photos</h3>
         <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
@@ -691,6 +851,9 @@
                 <h3>Photos</h3>
                 <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
                     One shared gallery powers your booth card on the mall page <em>and</em> the hero + gallery on your landing page. The first photo is used as the hero banner. Changes here sync automatically with your Booth Highlight photos. (Max 8 photos, 5MB each)
+                </p>
+                <p style="font-size:0.72rem;color:var(--gold);margin-bottom:0.75rem;border-left:3px solid var(--gold);padding-left:0.6rem">
+                    &#128161; Tip: Shoot landscape, use natural light, and feature 3&ndash;5 key pieces. See full photo tips in the Booth Highlight tab.
                 </p>
                 <div id="photo-grid-landing" class="photo-grid"></div>
                 <div class="upload-area" id="photo-upload-area-landing" onclick="document.getElementById('photo-input-landing').click()">
