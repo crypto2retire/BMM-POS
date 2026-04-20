@@ -603,3 +603,23 @@
     transform: none !important;
   }
 }
+
+/* ── Phase 3.1: Related-rail baseline (classic-template owns full styling;
+   these rules just give the <img> shape a sane default here so the lazy-load
+   swap doesn't render naked intrinsic-sized images). ── */
+.related-card-media {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4/5;
+  background: #141418;
+}
+.related-card-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  transition: transform 0.8s ease;
+}
+.related-card-photo--empty { background: #141418; }
+.related-card:hover .related-card-photo { transform: scale(1.05); }

@@ -711,9 +711,13 @@
 .related-card-photo {
   width: 100%;
   height: 100%;
-  background-size: cover;
-  background-position: center;
+  object-fit: cover;
+  object-position: center;
+  display: block;
   transition: transform 0.8s ease;
+}
+.related-card-photo--empty {
+  background: #141418;
 }
 .related-card:hover .related-card-photo { transform: scale(1.05); }
 .related-card-body { padding: 1.5rem 0 0; }

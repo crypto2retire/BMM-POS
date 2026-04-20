@@ -1474,11 +1474,16 @@
           var booth = v.booth_number ? 'Booth ' + escHtml(v.booth_number) : '';
           var name  = escHtml(v.name || '');
           var href  = '/shop/vendor/' + encodeURIComponent(v.slug);
+          // Real <img> so we get native loading="lazy" + decoding="async" + CLS protection
+          var imgTag = photo
+            ? '<img class="related-card-photo" src="' + escHtml(photo) + '"'
+              + ' alt="' + name + ' at Bowenstreet Market"'
+              + ' loading="lazy" decoding="async"'
+              + ' width="400" height="500">'
+            : '<div class="related-card-photo related-card-photo--empty" aria-hidden="true"></div>';
           return ''
             + '<a href="' + href + '" class="related-card">'
-            +   '<div class="related-card-media">'
-            +     '<div class="related-card-photo" style="background-image: url(' + JSON.stringify(photo) + ');"></div>'
-            +   '</div>'
+            +   '<div class="related-card-media">' + imgTag + '</div>'
             +   '<div class="related-card-body">'
             +     (booth ? '<div class="related-card-booth">' + booth + '</div>' : '')
             +     '<h3>' + name + '</h3>'
