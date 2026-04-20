@@ -1272,11 +1272,12 @@ function showStatus(msg, type) {
     el.textContent = msg;
     el.className = 'status-msg ' + type;
     setTimeout(function() { el.className = 'status-msg'; }, 4000);
-    // Phase 2: any success event triggers a debounced preview refresh.
-    // refreshPreview() is a no-op if the iframe isn't mounted (wizard or booth-highlight modes).
-    if (type === 'success' && typeof refreshPreview === 'function') {
+    // Phase 2: any success event triggers a debounced reload of the PINNED preview iframe.
+    // Uses refreshMainPreview (not refreshPreview — that's the legacy postMessage handler
+    // for the now-hidden #design-preview live-theme iframe).
+    if (type === 'success' && typeof refreshMainPreview === 'function') {
         if (__previewRefreshTimer) clearTimeout(__previewRefreshTimer);
-        __previewRefreshTimer = setTimeout(refreshPreview, 400);
+        __previewRefreshTimer = setTimeout(refreshMainPreview, 400);
     }
 }
 
@@ -1946,7 +1947,10 @@ function mountPreviewIframe() {
     if (openLink) openLink.href = url;
 }
 
-function refreshPreview() {
+// Phase 2: reloads the pinned preview iframe. Named to avoid colliding with the
+// pre-existing refreshPreview() at line ~3330 which posts a live-theme message
+// to the (now-hidden) #design-preview iframe.
+function refreshMainPreview() {
     var iframe = document.getElementById('landing-preview');
     if (!iframe || !iframe.src || iframe.src === 'about:blank') return;
     try {
@@ -1954,7 +1958,7 @@ function refreshPreview() {
     } catch (e) {
         iframe.src = iframe.src.split('#')[0];  // fallback reload
     }
-    refreshTabStatusDots();
+    if (typeof refreshTabStatusDots === 'function') refreshTabStatusDots();
 }
 
 function togglePreviewDrawer() {
