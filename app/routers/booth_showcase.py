@@ -1918,3 +1918,86 @@ async def get_og_image(
         media_type="image/jpeg",
         headers={"Cache-Control": "public, max-age=86400"},
     )
+
+
+# =========================================================================
+# Related vendors (cross-vendor discovery rail)
+# =========================================================================
+
+class RelatedVendorOut(BaseModel):
+    slug: str
+    name: str
+    booth_number: Optional[str] = None
+    cover_image_url: Optional[str] = None
+    shared_tag_count: int = 0
+
+
+@router.get("/related/{slug}", response_model=list[RelatedVendorOut])
+async def get_related_vendors(
+    slug: str,
+    limit: int = 4,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return up to `limit` published vendors who share specialty tags with the given vendor.
+    Ranking: vendors with more overlapping tags come first. Falls back to random
+    published vendors if the target vendor has no tags or no overlaps exist.
+
+    Used by the "You might also like" rail on the public landing page.
+    """
+    limit = max(1, min(limit, 8))
+
+    # Load source vendor's specialties
+    stmt_src = select(BoothShowcase).where(BoothShowcase.landing_slug == slug)
+    res_src = await db.execute(stmt_src)
+    source = res_src.scalar_one_or_none()
+    if not source or not source.landing_page_enabled:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    source_tags = list(source.landing_specialties or [])
+
+    # Load all other published vendors
+    stmt_all = (
+        select(BoothShowcase, Vendor)
+        .join(Vendor, Vendor.id == BoothShowcase.vendor_id)
+        .where(
+            BoothShowcase.landing_page_enabled == True,  # noqa: E712
+            BoothShowcase.landing_slug != slug,
+            Vendor.is_active == True,  # noqa: E712
+        )
+    )
+    res_all = await db.execute(stmt_all)
+    rows = res_all.all()
+
+    def _score(sc: BoothShowcase) -> int:
+        tags = set(sc.landing_specialties or [])
+        return len(tags.intersection(source_tags))
+
+    # Rank: by shared-tag count desc, then by recency (most recently updated first)
+    ranked = sorted(
+        rows,
+        key=lambda r: (_score(r[0]), r[0].updated_at or r[0].created_at),
+        reverse=True,
+    )
+
+    # If source has tags and we have overlaps, prefer those. Otherwise fall back
+    # to the full ranked list (by recency) so the rail is never empty.
+    if source_tags and any(_score(r[0]) > 0 for r in ranked):
+        ranked = [r for r in ranked if _score(r[0]) > 0] + [r for r in ranked if _score(r[0]) == 0]
+
+    picked = ranked[:limit]
+
+    out: list[RelatedVendorOut] = []
+    for sc, v in picked:
+        valid_photos = _valid_public_photo_urls(sc.photo_urls)
+        cover = valid_photos[0] if valid_photos else None
+        if not cover:
+            cover = await _fallback_item_image_url(db, sc.vendor_id)
+        out.append(RelatedVendorOut(
+            slug=sc.landing_slug or "",
+            name=v.name,
+            booth_number=v.booth_number,
+            cover_image_url=cover,
+            shared_tag_count=_score(sc),
+        ))
+    return out
