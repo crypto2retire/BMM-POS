@@ -605,3 +605,26 @@
 @media (max-width: 640px) {
   .landing-story, .landing-specialties { padding-left: 1.25rem; padding-right: 1.25rem; }
 }
+
+/* ── Phase 3.1: Ken Burns hero zoom ────────────────────────── */
+@keyframes bmm-ken-burns {
+  0%   { transform: scale(1.00); }
+  100% { transform: scale(1.08); }
+}
+
+.landing-hero .hero-bg,
+.landing-hero .vendor-hero-bg,
+.landing-hero .hero-photo {
+  animation: bmm-ken-burns 18s ease-in-out 0s infinite alternate;
+  will-change: transform;
+  transform-origin: center center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero .hero-bg,
+  .landing-hero .vendor-hero-bg,
+  .landing-hero .hero-photo {
+    animation: none !important;
+    transform: none !important;
+  }
+}
