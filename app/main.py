@@ -11,7 +11,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, PlainTextResponse, Response, FileResponse, HTMLResponse
 from pathlib import Path
-from sqlalchemy import text, select
+from sqlalchemy import text, select, func
 from fastapi import Depends
 
 logger = logging.getLogger("bmm-startup")
@@ -927,6 +927,33 @@ async def vendor_landing_page(slug: str, request: Request):
                 specialties = list(sc.landing_specialties or []) if sc else []
                 ld_nodes = []
 
+                # Phase 3.1: derive priceRange from vendor items
+                price_range = None
+                try:
+                    if sc and sc.vendor_id:
+                        from app.models.item import Item
+                        price_rows = await db.execute(
+                            select(
+                                func.min(Item.price).label("min_p"),
+                                func.max(Item.price).label("max_p"),
+                            ).where(
+                                Item.vendor_id == sc.vendor_id,
+                                Item.status == "active",
+                                Item.price > 0,
+                            )
+                        )
+                        row = price_rows.one_or_none()
+                        if row and row.min_p is not None and row.max_p is not None:
+                            mn = float(row.min_p)
+                            mx = float(row.max_p)
+                            if abs(mx - mn) < 0.01:
+                                price_range = f"${mn:.0f}"
+                            else:
+                                price_range = f"${mn:.0f}\u2013${mx:.0f}"
+                except Exception:
+                    logger.exception("vendor_landing_page: priceRange derivation failed")
+                    price_range = None
+
                 business_node = {
                     "@context": "https://schema.org",
                     "@type": "LocalBusiness",
@@ -948,6 +975,40 @@ async def vendor_landing_page(slug: str, request: Request):
                         "addressCountry": "US",
                     },
                 }
+                if price_range:
+                    business_node["priceRange"] = price_range
+
+                # Phase 3.1: pull store hours from StoreSetting if admin has set them
+                try:
+                    from app.models.store_setting import StoreSetting
+                    hrs_row = await db.execute(
+                        select(StoreSetting).where(StoreSetting.key == "store_hours_json")
+                    )
+                    hrs_setting = hrs_row.scalar_one_or_none()
+                    if hrs_setting and hrs_setting.value:
+                        parsed = json.loads(hrs_setting.value)
+                        # Expected shape: [{"days":["Monday","Tuesday"], "opens":"10:00", "closes":"18:00"}, ...]
+                        if isinstance(parsed, list) and parsed:
+                            specs = []
+                            for entry in parsed:
+                                if not isinstance(entry, dict):
+                                    continue
+                                days = entry.get("days") or []
+                                opens = (entry.get("opens") or "").strip()
+                                closes = (entry.get("closes") or "").strip()
+                                if not days or not opens or not closes:
+                                    continue
+                                specs.append({
+                                    "@type": "OpeningHoursSpecification",
+                                    "dayOfWeek": days if isinstance(days, list) else [days],
+                                    "opens": opens,
+                                    "closes": closes,
+                                })
+                            if specs:
+                                business_node["openingHoursSpecification"] = specs
+                except Exception:
+                    logger.exception("vendor_landing_page: openingHours injection failed")
+
                 ld_nodes.append(business_node)
 
                 ld_nodes.append({
