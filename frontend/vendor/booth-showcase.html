@@ -654,7 +654,7 @@
                 </div>
             </div>
 
-            <div class="showcase-card">
+            <div class="showcase-card" id="slug-card">
                 <h3>Step 1 &middot; Page URL</h3>
                 <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
                     Choose a custom URL for your landing page. This is the link you can share on social media, business cards, etc.
@@ -1241,11 +1241,18 @@ var showcase = null;
 function escHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function escAttr(s) { return escHtml(s).replace(/"/g, '&quot;'); }
 
+var __previewRefreshTimer = null;
 function showStatus(msg, type) {
     var el = document.getElementById('status-msg');
     el.textContent = msg;
     el.className = 'status-msg ' + type;
     setTimeout(function() { el.className = 'status-msg'; }, 4000);
+    // Phase 2: any success event triggers a debounced preview refresh.
+    // refreshPreview() is a no-op if the iframe isn't mounted (wizard or booth-highlight modes).
+    if (type === 'success' && typeof refreshPreview === 'function') {
+        if (__previewRefreshTimer) clearTimeout(__previewRefreshTimer);
+        __previewRefreshTimer = setTimeout(refreshPreview, 400);
+    }
 }
 
 function handleLogout() {
@@ -1781,10 +1788,154 @@ var WIZARD_STEPS = [
     { key: 'review',  label: 'Review',  required: [], isReview: true }
 ];
 
+// ── Phase 2 Step 4: Tabs mode ──
 function renderTabShell() {
-    document.getElementById('tab-shell').style.display = '';
+    var shell = document.getElementById('tab-shell');
+    shell.style.display = '';
     document.getElementById('wizard-shell').style.display = 'none';
-    // Step 4 fills this in.
+
+    if (!shell.dataset.built) {
+        buildTabShellDOM(shell);
+        shell.dataset.built = 'true';
+    } else {
+        // Re-adopt any cards that wizard mode may have moved elsewhere
+        reclaimTabPanelCards();
+    }
+
+    var initial = (window.location.hash || '').replace('#','') || 'brand';
+    activateTab(TABS.some(function(t){return t.key===initial;}) ? initial : 'brand');
+    refreshTabStatusDots();
+    mountPreviewIframe();
+}
+
+// Mapping: which existing card IDs live in which tab panel.
+var TAB_PANEL_MAP = {
+    brand:   ['slug-card', 'brand-basics-card', 'disco-card-brand-holder', 'page-health-card'],
+    story:   ['story-blocks-card'],
+    media:   ['landing-photos-card', 'landing-logo-card'],
+    contact: ['contact-social-card'],
+    seo:     ['seo-faq-card'],
+    design:  ['design-section', 'ai-design-chat']
+};
+
+function buildTabShellDOM(shell) {
+    shell.innerHTML = ''
+        + '<div class="dashboard-split">'
+        +   '<div class="dashboard-split__main">'
+        +     '<div class="booth-tabs" id="booth-tabbar" role="tablist"></div>'
+        +     '<div id="booth-tab-panels"></div>'
+        +   '</div>'
+        +   '<aside class="dashboard-split__preview" id="preview-panel">'
+        +     '<div class="dashboard-split__preview-header"><span>Live preview</span><a id="preview-open-tab" href="#" target="_blank" rel="noopener" style="color:var(--gold);font-size:0.72rem;text-decoration:none">Open in new tab &#8599;</a></div>'
+        +     '<iframe id="landing-preview" title="Your landing page preview"></iframe>'
+        +   '</aside>'
+        + '</div>'
+        + '<button type="button" class="preview-drawer-toggle" onclick="togglePreviewDrawer()">Preview &#8593;</button>';
+
+    // Tab buttons
+    var tabbar = shell.querySelector('#booth-tabbar');
+    TABS.forEach(function(t) {
+        var b = document.createElement('button');
+        b.className = 'booth-tab';
+        b.type = 'button';
+        b.dataset.tab = t.key;
+        b.setAttribute('role', 'tab');
+        b.innerHTML = t.label + '<span class="dot"></span>';
+        b.addEventListener('click', function() { activateTab(t.key); });
+        tabbar.appendChild(b);
+    });
+
+    // Panels + a holder for the Disco card on Brand tab (populated in Step 6)
+    var panels = shell.querySelector('#booth-tab-panels');
+    Object.keys(TAB_PANEL_MAP).forEach(function(key) {
+        var p = document.createElement('div');
+        p.className = 'booth-tab-panel';
+        p.id = 'panel-' + key;
+        panels.appendChild(p);
+    });
+
+    // Placeholder holder for Discoverability card — created empty, populated in Step 6
+    var brandPanel = document.getElementById('panel-brand');
+    if (brandPanel) {
+        var disco = document.createElement('div');
+        disco.id = 'disco-card-brand-holder';
+        brandPanel.appendChild(disco);
+    }
+
+    reclaimTabPanelCards();
+}
+
+// Find each mapped card in the DOM (wherever it currently lives) and move it into its tab panel.
+function reclaimTabPanelCards() {
+    Object.keys(TAB_PANEL_MAP).forEach(function(key) {
+        var panel = document.getElementById('panel-' + key);
+        if (!panel) return;
+        TAB_PANEL_MAP[key].forEach(function(cardId) {
+            var el = document.getElementById(cardId);
+            if (el && el.parentNode !== panel) {
+                panel.appendChild(el);  // preserves listeners
+            }
+        });
+    });
+}
+
+function activateTab(key) {
+    document.querySelectorAll('.booth-tab').forEach(function(b) {
+        var active = b.dataset.tab === key;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('.booth-tab-panel').forEach(function(p) {
+        p.classList.toggle('active', p.id === 'panel-' + key);
+    });
+    try { window.history.replaceState(null, '', '#' + key); } catch (e) {}
+
+    // Step 6: kick a Disco fetch the first time Brand is activated
+    if (key === 'brand' && typeof requestDiscoverability === 'function') {
+        requestDiscoverability('disco-card-brand-holder');
+    }
+}
+
+function refreshTabStatusDots() {
+    var required = {
+        brand:   !!(showcase && (showcase.landing_tagline || showcase.title)),
+        story:   !!(showcase && ((Array.isArray(showcase.landing_story_blocks) && showcase.landing_story_blocks.length > 0)
+                 || (showcase.landing_layout && showcase.landing_layout.about_is_custom && showcase.landing_about))),
+        media:   !!(showcase && Array.isArray(showcase.photo_urls) && showcase.photo_urls.length > 0)
+    };
+    TABS.forEach(function(t) {
+        var el = document.querySelector('.booth-tab[data-tab="' + t.key + '"]');
+        if (!el) return;
+        if (required[t.key] === undefined) { el.removeAttribute('data-status'); return; }
+        el.setAttribute('data-status', required[t.key] ? 'complete' : 'required');
+    });
+}
+
+function mountPreviewIframe() {
+    var iframe = document.getElementById('landing-preview');
+    var openLink = document.getElementById('preview-open-tab');
+    if (!iframe || !showcase || !showcase.landing_slug) return;
+    var url = '/' + showcase.landing_slug + '?preview=1';
+    if (iframe.src !== window.location.origin + url) iframe.src = url;
+    if (openLink) openLink.href = url;
+}
+
+function refreshPreview() {
+    var iframe = document.getElementById('landing-preview');
+    if (!iframe || !iframe.src || iframe.src === 'about:blank') return;
+    try {
+        iframe.contentWindow.location.reload();
+    } catch (e) {
+        iframe.src = iframe.src.split('#')[0];  // fallback reload
+    }
+    refreshTabStatusDots();
+}
+
+function togglePreviewDrawer() {
+    var p = document.getElementById('preview-panel');
+    if (!p) return;
+    var closed = p.getAttribute('data-drawer-closed') === 'true';
+    p.setAttribute('data-drawer-closed', closed ? 'false' : 'true');
 }
 
 function renderWizardShell() {
