@@ -23,7 +23,11 @@
 <link rel="stylesheet" href="/static/css/landing-hero-variants.css">
 <style id="landing-reset">
   /* Landing page reset — override main.css global styles */
-  body.themed, body.themed * {
+  body.themed {
+    background-image: none !important;
+    background-attachment: scroll !important;
+  }
+  body.themed *:not(.hero-bg):not(.hero-photo):not(.hero-tile):not(.hero-slide):not(.hero-portrait):not(.landing-hero-bg) {
     background-image: none !important;
     background-attachment: scroll !important;
   }
