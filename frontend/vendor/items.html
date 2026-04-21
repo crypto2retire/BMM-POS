@@ -894,26 +894,41 @@
             return;
         }
         try {
-            const params = new URLSearchParams();
-            params.set('limit', '10000');
-            params.set('offset', '0');
-            params.set('sort_by', sortColumn);
-            params.set('sort_dir', sortDirection);
-            if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter);
-            if (searchTerm && searchTerm.trim()) params.set('q', searchTerm.trim());
+            // Server caps limit at 200 — page through until we have everything.
+            const PAGE = 200;
             const payload = parseToken();
+            const baseParams = new URLSearchParams();
+            baseParams.set('sort_by', sortColumn);
+            baseParams.set('sort_dir', sortDirection);
+            if (statusFilter && statusFilter !== 'all') baseParams.set('status', statusFilter);
+            if (searchTerm && searchTerm.trim()) baseParams.set('q', searchTerm.trim());
             if (currentRole === 'vendor' || isVendorMode) {
-                params.set('vendor_id', String(payload.vendor_id));
+                baseParams.set('vendor_id', String(payload.vendor_id));
             } else if (selectedVendorId) {
-                params.set('vendor_id', String(selectedVendorId));
+                baseParams.set('vendor_id', String(selectedVendorId));
             }
-            const data = await apiGet('/api/v1/items/listing?' + params.toString());
-            const matching = (data.items || []).filter(isSelectableItem);
-            matching.forEach(function(item) { selectedItemIds.add(item.id); });
+
+            let offset = 0;
+            let total = null;
+            let matched = 0;
+            // Safety cap of 50 pages (10k items) to avoid runaway loops.
+            for (let i = 0; i < 50; i++) {
+                const params = new URLSearchParams(baseParams);
+                params.set('limit', String(PAGE));
+                params.set('offset', String(offset));
+                const data = await apiGet('/api/v1/items/listing?' + params.toString());
+                const pageItems = (data.items || []).filter(isSelectableItem);
+                pageItems.forEach(function(item) { selectedItemIds.add(item.id); });
+                matched += pageItems.length;
+                if (total === null) total = Number(data.total || 0);
+                offset += PAGE;
+                if (!data.items || data.items.length < PAGE || offset >= total) break;
+            }
+
             updateSelectionUI();
             displayItems();
-            if (matching.length > allItems.length) {
-                showAlert('alert-container', matching.length + ' item(s) selected across all pages.', 'success');
+            if (matched > allItems.length) {
+                showAlert('alert-container', matched + ' item(s) selected across all pages.', 'success');
             }
         } catch (e) {
             showAlert('alert-container', (e && e.message) || 'Select all failed.', 'error');
