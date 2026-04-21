@@ -162,6 +162,39 @@
         .booth-tab[data-status="complete"] .dot { background: #6EE7B7; opacity: 0.9; }
         .booth-tab[data-status="required"] .dot { background: var(--gold); opacity: 0.9; }
 
+        /* ── Phase 4B: Palette cards ──────────────────────── */
+        .palette-card {
+            cursor: pointer;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 0.5rem;
+            text-align: center;
+            transition: border-color 0.2s, transform 0.15s;
+            background: var(--surface);
+        }
+        .palette-card:hover { border-color: var(--text-light); transform: translateY(-1px); }
+        .palette-card.active { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+        .palette-card .palette-swatches {
+            display: flex;
+            gap: 3px;
+            justify-content: center;
+            margin-bottom: 0.35rem;
+        }
+        .palette-card .palette-swatches span {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .palette-card .palette-name {
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+        @media (max-width: 560px) {
+            .palette-card .palette-swatches span { width: 14px; height: 14px; }
+        }
+
         /* ── Phase 3.3: Photo Coach ────────────────────────── */
         .photo-coach {
             border: 1px solid var(--border);
@@ -1132,242 +1165,98 @@
                     </div>
                 </div>
 
-                <!-- ── Phase 2 Step 7: Design sub-tab bar ── -->
-                <div class="booth-tabs" id="design-subtabs" role="tablist">
-                    <button type="button" class="booth-tab active" data-design-subtab="template-hero">Template &amp; Hero</button>
-                    <button type="button" class="booth-tab" data-design-subtab="section-order">Section Order</button>
-                    <button type="button" class="booth-tab" data-design-subtab="colors-fonts">Colors &amp; Fonts</button>
-                </div>
+                <!-- ── Phase 4B: Simplified design controls ── -->
 
-                <div data-design-group="template-hero">
-                <!-- Template Picker -->
+                <!-- Template Picker (2 templates) -->
                 <div style="margin-bottom:1.5rem">
-                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Template Layout</label>
-                    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:0.5rem" id="template-grid">
-                        <div class="template-thumb" data-template="classic" onclick="selectTemplate('classic')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
-                            <div style="width:100%;aspect-ratio:4/5;background:linear-gradient(135deg,#1a1a1c 0%,#2a2a2e 100%);border-radius:4px;margin-bottom:0.35rem;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#C9A96E;font-size:0.6rem;gap:2px">
-                                <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:0.7rem">Classic</div>
-                                <div style="width:70%;height:1px;background:#C9A96E40"></div>
-                                <div style="width:60%;height:3px;background:#C9A96E30;border-radius:1px"></div>
-                                <div style="display:flex;gap:2px;margin-top:3px"><div style="width:12px;height:12px;background:#C9A96E15;border:1px solid #C9A96E25;border-radius:2px"></div><div style="width:12px;height:12px;background:#C9A96E15;border:1px solid #C9A96E25;border-radius:2px"></div></div>
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Choose a Template</label>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem" id="template-grid">
+                        <div class="template-thumb" data-template="classic" onclick="selectTemplate('classic')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.75rem;text-align:center;transition:border-color 0.2s">
+                            <div style="width:100%;aspect-ratio:4/3;background:linear-gradient(135deg,#1a1a1c 0%,#2a2a2e 100%);border-radius:4px;margin-bottom:0.5rem;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#C9A96E;gap:4px">
+                                <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:1rem">Classic</div>
+                                <div style="width:50%;height:1px;background:#C9A96E60"></div>
+                                <div style="font-size:0.6rem;color:#C9A96E80">Warm &middot; Antique &middot; Elegant</div>
                             </div>
-                            <div style="font-size:0.72rem;color:var(--text-light)">Classic</div>
+                            <div style="font-size:0.82rem;font-weight:500;color:var(--text)">Classic</div>
+                            <div style="font-size:0.68rem;color:var(--text-light)">Dark heirloom aesthetic with gold accents</div>
                         </div>
-                        <div class="template-thumb" data-template="modern" onclick="selectTemplate('modern')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
-                            <div style="width:100%;aspect-ratio:4/5;background:#F9FAFB;border-radius:4px;margin-bottom:0.35rem;display:flex;gap:2px;padding:3px;overflow:hidden">
-                                <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:2px"><div style="width:70%;height:3px;background:#2563EB;border-radius:1px;margin-bottom:2px"></div><div style="width:50%;height:2px;background:#00000020;border-radius:1px"></div></div>
-                                <div style="flex:1;background:#E5E7EB;border-radius:2px"></div>
+                        <div class="template-thumb" data-template="modern" onclick="selectTemplate('modern')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.75rem;text-align:center;transition:border-color 0.2s">
+                            <div style="width:100%;aspect-ratio:4/3;background:#FAFAFA;border-radius:4px;margin-bottom:0.5rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1px solid #E5E7EB">
+                                <div style="font-family:'Poppins',sans-serif;font-weight:600;font-size:1rem;color:#E85D3A">Modern</div>
+                                <div style="width:40%;height:2px;background:#E85D3A;border-radius:2px"></div>
+                                <div style="font-size:0.6rem;color:#666">Bright &middot; Fun &middot; Colorful</div>
                             </div>
-                            <div style="font-size:0.72rem;color:var(--text-light)">Modern</div>
-                        </div>
-                        <div class="template-thumb" data-template="boutique" onclick="selectTemplate('boutique')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
-                            <div style="width:100%;aspect-ratio:4/5;background:linear-gradient(135deg,#FFF8F0 0%,#F3E4D1 100%);border-radius:4px;margin-bottom:0.35rem;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#B8860B;font-size:0.6rem;gap:2px">
-                                <div style="font-family:'Great Vibes',cursive;font-size:0.85rem;color:#5D4037">Boutique</div>
-                                <div style="width:40%;height:1px;background:#B8860B40"></div>
-                                <div style="width:45%;height:2px;background:#B8860B20;border-radius:8px"></div>
-                            </div>
-                            <div style="font-size:0.72rem;color:var(--text-light)">Boutique</div>
-                        </div>
-                        <div class="template-thumb" data-template="minimal" onclick="selectTemplate('minimal')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
-                            <div style="width:100%;aspect-ratio:4/5;background:#FAFAFA;border-radius:4px;margin-bottom:0.35rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
-                                <div style="width:60%;height:2px;background:#171717;border-radius:1px"></div>
-                                <div style="width:40%;height:1px;background:#17171730;border-radius:1px"></div>
-                                <div style="display:flex;gap:3px;margin-top:4px"><div style="width:14px;height:18px;background:#E5E5E5;border-radius:1px"></div><div style="width:14px;height:22px;background:#E5E5E5;border-radius:1px"></div></div>
-                            </div>
-                            <div style="font-size:0.72rem;color:var(--text-light)">Minimal</div>
-                        </div>
-                        <div class="template-thumb" data-template="editorial-warm" onclick="selectTemplate('editorial-warm')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
-                            <div style="width:100%;aspect-ratio:4/5;background:#F4EFE6;border-radius:4px;margin-bottom:0.35rem;display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:4px;overflow:hidden;position:relative">
-                                <div style="background:#8B2E1F15;display:flex;flex-direction:column;justify-content:center;padding:3px;gap:2px">
-                                    <div style="width:80%;height:1px;background:#8B2E1F;margin-bottom:1px"></div>
-                                    <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:0.6rem;color:#2A1F18;line-height:1">Editorial</div>
-                                    <div style="width:60%;height:2px;background:#2A1F18;margin-top:2px"></div>
-                                </div>
-                                <div style="background:linear-gradient(135deg,#A07654 0%,#6B5235 100%);border-radius:1px"></div>
-                            </div>
-                            <div style="font-size:0.7rem;color:var(--text-light)">Editorial Warm</div>
-                        </div>
-                        <div class="template-thumb" data-template="editorial-modern" onclick="selectTemplate('editorial-modern')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center;transition:border-color 0.2s">
-                            <div style="width:100%;aspect-ratio:4/5;background:#FAFAFA;border-radius:4px;margin-bottom:0.35rem;display:flex;flex-direction:column;justify-content:flex-end;padding:5px;position:relative;border:1px solid #0A0A0A20">
-                                <div style="position:absolute;top:5px;left:5px;background:#D6F05F;color:#0A0A0A;font-family:'Inter',sans-serif;font-weight:700;font-size:0.42rem;letter-spacing:0.1em;padding:1px 3px">VOL XIII</div>
-                                <div style="font-family:'Archivo Black','Inter Black',sans-serif;font-weight:900;font-size:0.85rem;color:#0A0A0A;line-height:0.85;text-transform:uppercase;letter-spacing:-0.02em">MODERN</div>
-                                <div style="width:100%;height:2px;background:#0A0A0A;margin-top:3px"></div>
-                            </div>
-                            <div style="font-size:0.7rem;color:var(--text-light)">Editorial Modern</div>
+                            <div style="font-size:0.82rem;font-weight:500;color:var(--text)">Modern</div>
+                            <div style="font-size:0.68rem;color:var(--text-light)">Light, playful layout with vibrant colors</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- ─── Hero Style Picker (Phase 1) ─── -->
+                <!-- Palette Picker (4 per template) -->
+                <div style="margin-bottom:1.5rem">
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Choose a Color Palette</label>
+                    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem" id="palette-grid">
+                        <!-- Populated dynamically by renderPaletteGrid() -->
+                    </div>
+                </div>
+
+                <!-- Hero Style Picker (3 styles) -->
                 <div style="margin-bottom:1.5rem" id="hero-style-picker">
-                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Hero Style — how your page opens</label>
-                    <p style="font-size:0.72rem;color:var(--text-light);margin:0 0 0.6rem">Pick the hero layout that fits your booth. This is the #1 thing visitors see — and the biggest lever for making your page feel unique.</p>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:0.6rem" id="hero-grid">
-                        <div class="hero-thumb" data-hero="classic" onclick="selectHeroStyle('classic')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Choose a Hero Style</label>
+                    <p style="font-size:0.72rem;color:var(--text-light);margin:0 0 0.6rem">This is the first thing visitors see at the top of your page.</p>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem" id="hero-grid">
+                        <div class="hero-thumb" data-hero="classic" onclick="selectHeroStyle('classic')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center">
                             <div style="aspect-ratio:4/3;background:linear-gradient(180deg,#44454a 0%,#1a1a1c 100%);border-radius:4px;display:flex;align-items:flex-end;justify-content:center;padding:6px"><div style="height:3px;width:60%;background:#C9A96E;border-radius:1px"></div></div>
-                            <div style="font-size:0.7rem;margin-top:0.3rem">Classic</div>
-                            <div style="font-size:0.62rem;color:var(--text-light)">photo + overlay</div>
+                            <div style="font-size:0.75rem;margin-top:0.35rem;font-weight:500">Full Banner</div>
+                            <div style="font-size:0.62rem;color:var(--text-light)">Big photo with text overlay</div>
                         </div>
-                        <div class="hero-thumb" data-hero="split" onclick="selectHeroStyle('split')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
+                        <div class="hero-thumb" data-hero="split" onclick="selectHeroStyle('split')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center">
                             <div style="aspect-ratio:4/3;background:#1a1a1c;border-radius:4px;display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:2px"><div style="background:#555"></div><div style="display:flex;flex-direction:column;gap:3px;justify-content:center;padding:3px"><div style="height:3px;width:70%;background:#C9A96E"></div><div style="height:2px;width:50%;background:#888"></div></div></div>
-                            <div style="font-size:0.7rem;margin-top:0.3rem">Split</div>
-                            <div style="font-size:0.62rem;color:var(--text-light)">photo + copy</div>
+                            <div style="font-size:0.75rem;margin-top:0.35rem;font-weight:500">Side by Side</div>
+                            <div style="font-size:0.62rem;color:var(--text-light)">Photo left, text right</div>
                         </div>
-                        <div class="hero-thumb" data-hero="editorial" onclick="selectHeroStyle('editorial')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
-                            <div style="aspect-ratio:4/3;background:linear-gradient(135deg,#333 0%,#111 100%);border-radius:4px;position:relative;padding:4px;display:flex;flex-direction:column;justify-content:space-between"><div style="height:2px;width:30%;background:#C9A96E"></div><div><div style="height:3px;width:80%;background:#eee;margin-bottom:2px"></div><div style="height:2px;width:60%;background:#888"></div></div></div>
-                            <div style="font-size:0.7rem;margin-top:0.3rem">Editorial</div>
-                            <div style="font-size:0.62rem;color:var(--text-light)">magazine style</div>
-                        </div>
-                        <div class="hero-thumb" data-hero="collage" onclick="selectHeroStyle('collage')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
+                        <div class="hero-thumb" data-hero="collage" onclick="selectHeroStyle('collage')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.5rem;text-align:center">
                             <div style="aspect-ratio:4/3;background:#1a1a1c;border-radius:4px;display:grid;grid-template-columns:1.3fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:2px;padding:2px"><div style="background:#666;grid-row:1 / span 2"></div><div style="background:#555"></div><div style="background:#777"></div><div style="grid-column:2 / span 2;background:#2a2a2e;border-left:2px solid #C9A96E"></div></div>
-                            <div style="font-size:0.7rem;margin-top:0.3rem">Collage</div>
-                            <div style="font-size:0.62rem;color:var(--text-light)">3-tile grid</div>
-                        </div>
-                        <div class="hero-thumb" data-hero="story" onclick="selectHeroStyle('story')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
-                            <div style="aspect-ratio:4/3;background:radial-gradient(ellipse at top left,#3a352d 0%,#1a1a1c 70%);border-radius:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px"><div style="color:#C9A96E;font-size:0.5rem;letter-spacing:0.4em">· · ·</div><div style="height:3px;width:65%;background:#eee"></div><div style="height:2px;width:40%;background:#C9A96E"></div></div>
-                            <div style="font-size:0.7rem;margin-top:0.3rem">Story</div>
-                            <div style="font-size:0.62rem;color:var(--text-light)">quote + byline</div>
-                        </div>
-                        <div class="hero-thumb" data-hero="carousel" onclick="selectHeroStyle('carousel')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
-                            <div style="aspect-ratio:4/3;background:#1a1a1c;border-radius:4px;position:relative;padding:3px;display:flex;gap:2px"><div style="flex:1;background:#555"></div><div style="flex:1;background:#666"></div><div style="flex:1;background:#444"></div><div style="position:absolute;bottom:3px;left:50%;transform:translateX(-50%);display:flex;gap:2px"><div style="width:3px;height:3px;background:#C9A96E;border-radius:50%"></div><div style="width:3px;height:3px;background:#fff5;border-radius:50%"></div><div style="width:3px;height:3px;background:#fff5;border-radius:50%"></div></div></div>
-                            <div style="font-size:0.7rem;margin-top:0.3rem">Carousel</div>
-                            <div style="font-size:0.62rem;color:var(--text-light)">rotating photos</div>
-                        </div>
-                        <div class="hero-thumb" data-hero="portrait" onclick="selectHeroStyle('portrait')" style="cursor:pointer;border:2px solid var(--border);border-radius:8px;padding:0.4rem;text-align:center">
-                            <div style="aspect-ratio:4/3;background:#1a1a1c;border-radius:4px;display:grid;grid-template-columns:1fr 1.2fr;gap:4px;padding:4px;align-items:center"><div style="width:100%;aspect-ratio:1;background:#666;border-radius:50%;border:2px solid #C9A96E"></div><div style="display:flex;flex-direction:column;gap:2px"><div style="height:3px;width:80%;background:#eee"></div><div style="height:2px;width:60%;background:#888"></div><div style="height:3px;width:50%;background:#C9A96E;border-radius:1px;margin-top:2px"></div></div></div>
-                            <div style="font-size:0.7rem;margin-top:0.3rem">Portrait</div>
-                            <div style="font-size:0.62rem;color:var(--text-light)">headshot + sig</div>
+                            <div style="font-size:0.75rem;margin-top:0.35rem;font-weight:500">Photo Collage</div>
+                            <div style="font-size:0.62rem;color:var(--text-light)">Multi-photo tile grid</div>
                         </div>
                     </div>
                 </div>
 
-                </div><!-- /data-design-group=template-hero -->
-
-                <div data-design-group="section-order">
-                <!-- ─── PHASE 2: SECTION DECK ─ drag to reorder ─── -->
-                <div style="margin-bottom:1.5rem">
-                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.35rem">Section Order (drag to reorder)</label>
-                    <div style="font-size:0.68rem;color:var(--text-light);margin-bottom:0.5rem">Drag the cards up or down to change the order sections appear on your public page. Every vendor picks their own order — two pages with the same template will look different.</div>
-                    <ul id="section-deck" style="list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0.35rem"></ul>
-                    <div style="display:flex;gap:0.5rem;margin-top:0.6rem;align-items:center">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="saveSectionDeck()">Save Order</button>
-                        <button type="button" onclick="resetSectionDeck()" style="background:transparent;border:1px solid var(--border);color:var(--text-light);padding:0.35rem 0.7rem;font-size:0.72rem;cursor:pointer;border-radius:4px">Reset to default</button>
-                        <span id="section-deck-status" style="font-size:0.7rem;color:var(--text-light)"></span>
-                    </div>
-                </div>
-
-                </div><!-- /data-design-group=section-order -->
-
-                <div data-design-group="colors-fonts">
-                <div style="margin-bottom:1.5rem">
-                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Art Direction Presets</label>
-                    <div class="preset-grid" id="preset-grid">
-                        <button type="button" class="preset-card" data-preset="classic-heirloom" onclick="applyDesignPreset('classic-heirloom')">
-                            <div class="name">Heirloom Ledger</div>
-                            <div class="desc">Dark antique classic with elegant serif type.</div>
-                            <div class="preset-swatches"><span style="background:#C9A96E"></span><span style="background:#38383B"></span><span style="background:#1A1A1C"></span><span style="background:#F5F5F0"></span></div>
-                        </button>
-                        <button type="button" class="preset-card" data-preset="modern-gallery" onclick="applyDesignPreset('modern-gallery')">
-                            <div class="name">Gallery Editorial</div>
-                            <div class="desc">Crisp modern layout with strong art-forward contrast.</div>
-                            <div class="preset-swatches"><span style="background:#0F766E"></span><span style="background:#334155"></span><span style="background:#F8FAFC"></span><span style="background:#0F172A"></span></div>
-                        </button>
-                        <button type="button" class="preset-card" data-preset="boutique-romance" onclick="applyDesignPreset('boutique-romance')">
-                            <div class="name">Boutique Romance</div>
-                            <div class="desc">Soft luxury palette with handcrafted boutique warmth.</div>
-                            <div class="preset-swatches"><span style="background:#B7794B"></span><span style="background:#D9BFA8"></span><span style="background:#FFF7F0"></span><span style="background:#5B3A2E"></span></div>
-                        </button>
-                        <button type="button" class="preset-card" data-preset="minimal-editorial" onclick="applyDesignPreset('minimal-editorial')">
-                            <div class="name">Minimal Editorial</div>
-                            <div class="desc">Quiet monochrome with museum-like presentation.</div>
-                            <div class="preset-swatches"><span style="background:#111827"></span><span style="background:#9CA3AF"></span><span style="background:#F8F8F7"></span><span style="background:#111827"></span></div>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Color Pickers -->
-                <div style="margin-bottom:1.5rem">
-                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Colors</label>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:0.75rem">
-                        <div>
-                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Primary (accent)</label>
-                            <input type="color" id="color-primary" value="#C9A96E" style="width:100%;height:36px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--bg)" onchange="updatePreviewTheme()">
+                <!-- Logo (moved here from Media tab) -->
+                <div style="margin-bottom:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Booth Logo (optional)</label>
+                    <p style="font-size:0.72rem;color:var(--text-light);margin:0 0 0.75rem">A small brand mark in your page's nav bar. We'll crop to square.</p>
+                    <div style="display:flex;gap:1rem;align-items:center">
+                        <div id="logo-preview-design" style="width:64px;height:64px;border:1px solid var(--warm-border);background:var(--surface) url('') center/cover;display:flex;align-items:center;justify-content:center;font-size:0.6rem;color:var(--text-light);text-align:center;padding:0.25rem;flex-shrink:0">
+                            No logo
                         </div>
                         <div>
-                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Secondary</label>
-                            <input type="color" id="color-secondary" value="#38383B" style="width:100%;height:36px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--bg)" onchange="updatePreviewTheme()">
+                            <button type="button" class="btn btn-sm" onclick="document.getElementById('logo-input').click()">Upload</button>
+                            <button type="button" id="logo-remove-btn-design" class="btn btn-sm" onclick="removeLogo()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--text-light);margin-left:0.25rem">Remove</button>
+                            <div style="font-size:0.65rem;color:var(--text-light);margin-top:0.35rem">JPG, PNG, GIF, or WebP &middot; max 2MB</div>
                         </div>
-                        <div>
-                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Background</label>
-                            <input type="color" id="color-background" value="#1A1A1C" style="width:100%;height:36px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--bg)" onchange="updatePreviewTheme()">
-                        </div>
-                        <div>
-                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Text</label>
-                            <input type="color" id="color-text" value="#F5F5F0" style="width:100%;height:36px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--bg)" onchange="updatePreviewTheme()">
-                        </div>
-                        <!-- Accent color (optional, used by editorial templates for flourishes) -->
-                        <div>
-                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Accent (script / pull-quote color)</label>
-                            <input type="color" id="color-accent" value="#8B2E1F" style="width:100%;height:36px;border:1px solid var(--border);border-radius:4px;cursor:pointer;background:var(--bg)" onchange="updatePreviewTheme()">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Font Selectors -->
-                <div style="margin-bottom:1.5rem">
-                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Fonts</label>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
-                        <div>
-                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Heading Font</label>
-                            <select id="font-heading" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.5rem;font-size:0.82rem;font-family:'Roboto',sans-serif" onchange="updatePreviewTheme()">
-                                <option value="EB Garamond">EB Garamond</option>
-                                <option value="Playfair Display">Playfair Display</option>
-                                <option value="Lora">Lora</option>
-                                <option value="Roboto">Roboto</option>
-                                <option value="Inter">Inter</option>
-                                <option value="Poppins">Poppins</option>
-                                <option value="Montserrat">Montserrat</option>
-                                <option value="Great Vibes">Great Vibes</option>
-                                <option value="Dancing Script">Dancing Script</option>
-                                <option value="Pacifico">Pacifico</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Body Font</label>
-                            <select id="font-body" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.5rem;font-size:0.82rem;font-family:'Roboto',sans-serif" onchange="updatePreviewTheme()">
-                                <option value="Roboto">Roboto</option>
-                                <option value="Inter">Inter</option>
-                                <option value="Poppins">Poppins</option>
-                                <option value="Montserrat">Montserrat</option>
-                                <option value="EB Garamond">EB Garamond</option>
-                                <option value="Playfair Display">Playfair Display</option>
-                                <option value="Lora">Lora</option>
-                            </select>
-                        </div>
-                    </div>
-                    <!-- Accent / script font (optional, used by editorial templates) -->
-                    <div style="margin-top:0.75rem">
-                        <label style="font-size:0.7rem;color:var(--text-light);display:block;margin-bottom:0.25rem">Accent font (handwritten / script — optional)</label>
-                        <select id="font-accent" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem 0.5rem;font-size:0.82rem;font-family:'Roboto',sans-serif" onchange="updatePreviewTheme()">
-                            <option value="">None — use default fonts</option>
-                            <option value="Dancing Script">Dancing Script (romantic cursive)</option>
-                            <option value="Caveat">Caveat (casual handwriting)</option>
-                            <option value="Pacifico">Pacifico (flowing brush)</option>
-                            <option value="Great Vibes">Great Vibes (elegant formal)</option>
-                        </select>
                     </div>
                 </div>
 
                 <!-- Action Buttons -->
                 <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
-                    <button class="btn btn-primary btn-sm" onclick="saveDesign()">&#128308; Save Design</button>
-                    <button class="btn btn-sm" onclick="makePremium()" style="background:var(--accent);color:var(--bg);border:1px solid var(--accent)">&#10024; Make It Premium</button>
+                    <button class="btn btn-primary btn-sm" onclick="saveDesign()">Save Design</button>
                     <button class="btn btn-sm" onclick="resetDesign()" style="background:transparent;border:1px solid var(--border);color:var(--text-light)">Reset to Default</button>
-                    <button class="ai-btn" id="ai-design-btn" onclick="openAIDesign()">&#10024; AI Design Assistant</button>
                 </div>
                 <span id="design-status" style="font-size:0.75rem; color:var(--text-light); display:block"></span>
 
-                </div><!-- /data-design-group=colors-fonts -->
+                <!-- Hidden form controls — populated by palette selection, read by getThemeFromUI() -->
+                <div style="display:none" aria-hidden="true">
+                    <input type="color" id="color-primary" value="#C9A96E">
+                    <input type="color" id="color-secondary" value="#38383B">
+                    <input type="color" id="color-background" value="#1A1A1C">
+                    <input type="color" id="color-text" value="#F5F5F0">
+                    <input type="color" id="color-accent" value="#C9A96E">
+                    <select id="font-heading"><option value="EB Garamond">EB Garamond</option><option value="Playfair Display">Playfair Display</option><option value="Cormorant Garamond">Cormorant Garamond</option><option value="Libre Baskerville">Libre Baskerville</option><option value="Poppins">Poppins</option><option value="Montserrat">Montserrat</option><option value="Outfit">Outfit</option><option value="Space Grotesk">Space Grotesk</option></select>
+                    <select id="font-body"><option value="Roboto">Roboto</option><option value="Inter">Inter</option><option value="Source Sans Pro">Source Sans Pro</option><option value="Lato">Lato</option><option value="Open Sans">Open Sans</option><option value="Nunito">Nunito</option><option value="DM Sans">DM Sans</option><option value="Work Sans">Work Sans</option></select>
+                    <select id="font-accent"><option value="">None</option></select>
+                </div>
 
                 <!-- Legacy in-card preview iframe — kept in DOM so existing JS refs still work,
                      but hidden since the pinned side preview replaces it. Can be removed in
@@ -1760,18 +1649,32 @@ async function removeLogo() {
 }
 
 function renderLogo() {
+    var logoUrl = (showcase && showcase.landing_theme && showcase.landing_theme.branding && showcase.landing_theme.branding.logo_url) || null;
     var preview = document.getElementById('logo-preview');
     var removeBtn = document.getElementById('logo-remove-btn');
-    if (!preview || !removeBtn) return;
-    var logoUrl = (showcase && showcase.landing_theme && showcase.landing_theme.branding && showcase.landing_theme.branding.logo_url) || null;
-    if (logoUrl) {
-        preview.style.backgroundImage = "url('" + logoUrl + "')";
-        preview.textContent = '';
-        removeBtn.style.display = 'inline-block';
-    } else {
-        preview.style.backgroundImage = '';
-        preview.textContent = 'No logo yet';
-        removeBtn.style.display = 'none';
+    if (preview && removeBtn) {
+        if (logoUrl) {
+            preview.style.backgroundImage = "url('" + logoUrl + "')";
+            preview.textContent = '';
+            removeBtn.style.display = 'inline-block';
+        } else {
+            preview.style.backgroundImage = '';
+            preview.textContent = 'No logo yet';
+            removeBtn.style.display = 'none';
+        }
+    }
+    var designPreview = document.getElementById('logo-preview-design');
+    var designRemoveBtn = document.getElementById('logo-remove-btn-design');
+    if (designPreview) {
+        if (logoUrl) {
+            designPreview.style.backgroundImage = "url('" + logoUrl + "')";
+            designPreview.textContent = '';
+            if (designRemoveBtn) designRemoveBtn.style.display = 'inline-block';
+        } else {
+            designPreview.style.backgroundImage = '';
+            designPreview.textContent = 'No logo';
+            if (designRemoveBtn) designRemoveBtn.style.display = 'none';
+        }
     }
 }
 
@@ -1959,6 +1862,111 @@ function renderLandingSection() {
 // ─────────────────────────────────────────────────────────────
 // Phase 2: Dashboard mode shells (Step 3 scaffold — stubs only)
 // ─────────────────────────────────────────────────────────────
+// ── Phase 4B: Curated palette system ──
+var PALETTES = {
+    classic: [
+        {
+            key: 'warm-gold', name: 'Warm Gold',
+            colors: { primary: '#C9A96E', secondary: '#38383B', background: '#1A1A1C', text: '#F5F5F0', accent: '#C9A96E', accent_color: '#C9A96E' },
+            fonts: { heading: 'EB Garamond', body: 'Roboto', heading_weight: '500', body_weight: '300', heading_style: 'normal', accent_font: null }
+        },
+        {
+            key: 'rustic-earth', name: 'Rustic Earth',
+            colors: { primary: '#8B6F47', secondary: '#2D2A26', background: '#1C1A17', text: '#EDE8E0', accent: '#8B6F47', accent_color: '#8B6F47' },
+            fonts: { heading: 'Playfair Display', body: 'Source Sans Pro', heading_weight: '500', body_weight: '300', heading_style: 'normal', accent_font: null }
+        },
+        {
+            key: 'antique-rose', name: 'Antique Rose',
+            colors: { primary: '#B5838D', secondary: '#3A3040', background: '#1E1A20', text: '#F0EBF0', accent: '#B5838D', accent_color: '#B5838D' },
+            fonts: { heading: 'Cormorant Garamond', body: 'Lato', heading_weight: '500', body_weight: '300', heading_style: 'normal', accent_font: null }
+        },
+        {
+            key: 'aged-brass', name: 'Aged Brass',
+            colors: { primary: '#A89060', secondary: '#2F3630', background: '#1A1E1A', text: '#EAE8E0', accent: '#A89060', accent_color: '#A89060' },
+            fonts: { heading: 'Libre Baskerville', body: 'Open Sans', heading_weight: '500', body_weight: '300', heading_style: 'normal', accent_font: null }
+        }
+    ],
+    modern: [
+        {
+            key: 'bold-bright', name: 'Bold & Bright',
+            colors: { primary: '#E85D3A', secondary: '#2B2D42', background: '#FAFAFA', text: '#1A1A2E', accent: '#E85D3A', accent_color: '#E85D3A' },
+            fonts: { heading: 'Poppins', body: 'Inter', heading_weight: '600', body_weight: '400', heading_style: 'normal', accent_font: null }
+        },
+        {
+            key: 'ocean-breeze', name: 'Ocean Breeze',
+            colors: { primary: '#0891B2', secondary: '#164E63', background: '#F0FDFA', text: '#0C4A6E', accent: '#0891B2', accent_color: '#0891B2' },
+            fonts: { heading: 'Montserrat', body: 'Nunito', heading_weight: '600', body_weight: '400', heading_style: 'normal', accent_font: null }
+        },
+        {
+            key: 'sunset-pop', name: 'Sunset Pop',
+            colors: { primary: '#F59E0B', secondary: '#78350F', background: '#FFFBEB', text: '#1C1917', accent: '#F59E0B', accent_color: '#F59E0B' },
+            fonts: { heading: 'Outfit', body: 'DM Sans', heading_weight: '600', body_weight: '400', heading_style: 'normal', accent_font: null }
+        },
+        {
+            key: 'garden-fresh', name: 'Garden Fresh',
+            colors: { primary: '#16A34A', secondary: '#14532D', background: '#F0FDF4', text: '#052E16', accent: '#16A34A', accent_color: '#16A34A' },
+            fonts: { heading: 'Space Grotesk', body: 'Work Sans', heading_weight: '600', body_weight: '400', heading_style: 'normal', accent_font: null }
+        }
+    ]
+};
+
+var selectedPalette = 'warm-gold';
+
+function selectPalette(paletteKey) {
+    selectedPalette = paletteKey;
+    var tmpl = null;
+    Object.keys(PALETTES).forEach(function(t) {
+        PALETTES[t].forEach(function(p) {
+            if (p.key === paletteKey) tmpl = t;
+        });
+    });
+    if (tmpl && tmpl !== selectedTemplate) {
+        selectedTemplate = tmpl;
+        syncTemplateSelectionUI(tmpl);
+    }
+    var palette = getPaletteByKey(paletteKey);
+    if (!palette) return;
+    document.getElementById('color-primary').value = palette.colors.primary;
+    document.getElementById('color-secondary').value = palette.colors.secondary;
+    document.getElementById('color-background').value = palette.colors.background;
+    document.getElementById('color-text').value = palette.colors.text;
+    document.getElementById('color-accent').value = palette.colors.accent_color || palette.colors.primary;
+    document.getElementById('font-heading').value = palette.fonts.heading;
+    document.getElementById('font-body').value = palette.fonts.body;
+    if (document.getElementById('font-accent')) {
+        document.getElementById('font-accent').value = palette.fonts.accent_font || '';
+    }
+    document.querySelectorAll('.palette-card').forEach(function(el) {
+        el.classList.toggle('active', el.dataset.palette === paletteKey);
+    });
+    updatePreviewTheme();
+}
+
+function getPaletteByKey(key) {
+    var found = null;
+    Object.keys(PALETTES).forEach(function(t) {
+        PALETTES[t].forEach(function(p) {
+            if (p.key === key) found = p;
+        });
+    });
+    return found;
+}
+
+function getPaletteForCurrentTheme() {
+    if (!showcase || !showcase.landing_theme) return null;
+    var theme = showcase.landing_theme;
+    if (theme.palette) return theme.palette;
+    var primary = theme.colors && theme.colors.primary;
+    if (!primary) return null;
+    var match = null;
+    Object.keys(PALETTES).forEach(function(t) {
+        PALETTES[t].forEach(function(p) {
+            if (p.colors.primary.toLowerCase() === primary.toLowerCase()) match = p.key;
+        });
+    });
+    return match;
+}
+
 var TABS = [
     { key: 'brand',   label: 'Brand',   fields: ['tagline','year','specialties','booth-title','booth-desc'] },
     { key: 'story',   label: 'Story',   fields: ['story-blocks','landing-about-custom'] },
@@ -2132,25 +2140,7 @@ function togglePreviewDrawer() {
 }
 
 // ── Phase 2 Step 7: Design sub-tabs ──
-function initDesignSubtabs() {
-    var section = document.getElementById('design-section');
-    var bar = document.getElementById('design-subtabs');
-    if (!section || !bar || bar.dataset.wired) return;
-    bar.dataset.wired = 'true';
-
-    function setActive(key) {
-        section.setAttribute('data-design-subtab', key);
-        bar.querySelectorAll('.booth-tab').forEach(function(btn) {
-            btn.classList.toggle('active', btn.dataset.designSubtab === key);
-        });
-    }
-
-    bar.querySelectorAll('.booth-tab').forEach(function(btn) {
-        btn.addEventListener('click', function() { setActive(btn.dataset.designSubtab); });
-    });
-
-    setActive('template-hero');  // default
-}
+function initDesignSubtabs() { /* Phase 4B: removed — single panel now */ }
 
 // ── Phase 2 Step 6: Discoverability card ──
 async function requestDiscoverability(containerId) {
@@ -3335,14 +3325,43 @@ function useAIDesignStarter(key) {
 function selectTemplate(template) {
     selectedTemplate = template;
     syncTemplateSelectionUI(template);
-    syncPresetSelectionUI('');
+    renderPaletteGrid(template);
+    var currentBelongs = false;
+    (PALETTES[template] || []).forEach(function(p) {
+        if (p.key === selectedPalette) currentBelongs = true;
+    });
+    if (!currentBelongs && PALETTES[template] && PALETTES[template].length > 0) {
+        selectPalette(PALETTES[template][0].key);
+    }
     updatePreviewTheme();
+}
+
+function renderPaletteGrid(template) {
+    var grid = document.getElementById('palette-grid');
+    if (!grid) return;
+    var palettes = PALETTES[template] || [];
+    grid.innerHTML = '';
+    palettes.forEach(function(p) {
+        var card = document.createElement('div');
+        card.className = 'palette-card' + (p.key === selectedPalette ? ' active' : '');
+        card.dataset.palette = p.key;
+        card.onclick = function() { selectPalette(p.key); };
+        card.innerHTML = '<div class="palette-swatches">'
+            + '<span style="background:' + p.colors.primary + '"></span>'
+            + '<span style="background:' + p.colors.background + '"></span>'
+            + '<span style="background:' + p.colors.text + '"></span>'
+            + '<span style="background:' + p.colors.secondary + '"></span>'
+            + '</div>'
+            + '<div class="palette-name">' + p.name + '</div>';
+        grid.appendChild(card);
+    });
 }
 
 function getThemeFromUI() {
     var existing = (showcase && showcase.landing_theme) ? showcase.landing_theme : {};
     var merged = {};
     Object.keys(existing).forEach(function(k) { merged[k] = existing[k]; });
+    merged.palette = selectedPalette;
     merged.colors = {
         primary: document.getElementById('color-primary').value,
         secondary: document.getElementById('color-secondary').value,
@@ -3667,6 +3686,8 @@ function loadDesignFromShowcase() {
     if (showcase.landing_theme) {
         applyThemeToControls(showcase.landing_theme);
     }
+    selectedPalette = getPaletteForCurrentTheme() || (selectedTemplate === 'modern' ? 'bold-bright' : 'warm-gold');
+    renderPaletteGrid(selectedTemplate);
     syncPresetSelectionUI('');
     updatePreviewTheme();
 }
