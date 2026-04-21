@@ -2002,7 +2002,7 @@ function renderTabShell() {
 var TAB_PANEL_MAP = {
     brand:   ['slug-card', 'brand-basics-card', 'disco-card-brand-holder', 'page-health-card'],
     story:   ['story-blocks-card'],
-    media:   ['landing-photos-card', 'landing-logo-card'],
+    media:   ['landing-photos-card', 'photo-coach', 'landing-logo-card'],
     contact: ['contact-social-card'],
     seo:     ['seo-faq-card'],
     design:  ['design-section', 'ai-design-chat']
@@ -2197,7 +2197,7 @@ var wizardCurrent = 0;
 // Map wizard step keys to the same card IDs the tabs use.
 var WIZARD_STEP_CARDS = {
     url:     ['slug-card'],
-    media:   ['landing-photos-card'],
+    media:   ['landing-photos-card', 'photo-coach'],
     brand:   ['brand-basics-card', 'page-health-card'],
     story:   ['story-blocks-card'],
     contact: ['contact-social-card'],
@@ -3340,29 +3340,31 @@ function selectTemplate(template) {
 }
 
 function getThemeFromUI() {
-    return {
-        colors: {
-            primary: document.getElementById('color-primary').value,
-            secondary: document.getElementById('color-secondary').value,
-            background: document.getElementById('color-background').value,
-            text: document.getElementById('color-text').value,
-            accent: document.getElementById('color-primary').value,
-            accent_color: document.getElementById('color-accent').value || null,
-            card_background: mixHexColors(
-                document.getElementById('color-text').value,
-                document.getElementById('color-background').value,
-                0.08
-            )
-        },
-        fonts: {
-            heading: document.getElementById('font-heading').value,
-            heading_weight: '500',
-            heading_style: ['Great Vibes', 'Dancing Script', 'Pacifico', 'EB Garamond'].indexOf(document.getElementById('font-heading').value) >= 0 ? 'normal' : 'normal',
-            body: document.getElementById('font-body').value,
-            body_weight: '300',
-            accent_font: document.getElementById('font-accent').value || null
-        }
+    var existing = (showcase && showcase.landing_theme) ? showcase.landing_theme : {};
+    var merged = {};
+    Object.keys(existing).forEach(function(k) { merged[k] = existing[k]; });
+    merged.colors = {
+        primary: document.getElementById('color-primary').value,
+        secondary: document.getElementById('color-secondary').value,
+        background: document.getElementById('color-background').value,
+        text: document.getElementById('color-text').value,
+        accent: document.getElementById('color-primary').value,
+        accent_color: document.getElementById('color-accent').value || null,
+        card_background: mixHexColors(
+            document.getElementById('color-text').value,
+            document.getElementById('color-background').value,
+            0.08
+        )
     };
+    merged.fonts = {
+        heading: document.getElementById('font-heading').value,
+        heading_weight: '500',
+        heading_style: ['Great Vibes', 'Dancing Script', 'Pacifico', 'EB Garamond'].indexOf(document.getElementById('font-heading').value) >= 0 ? 'normal' : 'normal',
+        body: document.getElementById('font-body').value,
+        body_weight: '300',
+        accent_font: document.getElementById('font-accent').value || null
+    };
+    return merged;
 }
 
 function mixHexColors(fg, bg, opacity) {
