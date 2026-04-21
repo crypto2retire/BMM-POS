@@ -1120,7 +1120,7 @@
     gallery.style.display = 'block';
     var scroll = document.getElementById('photo-scroll');
     scroll.innerHTML = photos.map(function (url) {
-      return '<img src="' + escAttr(url) + '" alt="Booth photo" loading="lazy">';
+      return '<img src="' + escAttr(url) + '" alt="Booth photo" loading="eager">';
     }).join('');
   }
 
