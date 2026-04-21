@@ -2060,6 +2060,7 @@ function selectPalette(paletteKey) {
         el.classList.toggle('active', el.dataset.palette === paletteKey);
     });
     updatePreviewTheme();
+    debouncedDesignAutoSave();
 }
 
 function getPaletteByKey(key) {
@@ -2164,16 +2165,38 @@ async function runAISetupGenerate() {
     if (aiSetupData.contact) description += " Contact: " + aiSetupData.contact;
 
     var descEl = document.getElementById('setup-description');
-    var previewCard = document.getElementById('setup-assistant-card');
-    if (previewCard) previewCard.style.display = '';
-    if (descEl) {
-        descEl.value = description;
-        try {
-            await runLandingSetup();
-            addAISetupMessage('assistant', "Done! I've drafted your page content. Review it above and click 'Apply Selected' to use it. Then click Next to continue to Photos.");
-        } catch (e) {
-            addAISetupMessage('assistant', "I had trouble generating the draft. You can continue with manual setup — click Next to go to Photos and fill things in as you go.");
-        }
+    if (descEl) descEl.value = description;
+
+    var token = sessionStorage.getItem('bmm_token');
+    try {
+        var neededFields = SETUP_FIELD_MAP.filter(_setupIsFieldEmpty).map(function(f){ return f.key; });
+        if (neededFields.length === 0) neededFields = SETUP_FIELD_MAP.map(function(f){ return f.key; });
+        var resp = await fetch('/api/v1/ai/landing-setup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({
+                description: description,
+                tone: 'warm',
+                needed_fields: neededFields
+            })
+        });
+        var data = await resp.json();
+        if (!resp.ok) throw new Error(data.detail || 'AI draft failed');
+        var fields = data.fields || {};
+
+        var appliedCount = 0;
+        SETUP_FIELD_MAP.forEach(function(field) {
+            if (field.key in fields) {
+                if (_setupApplyValueToField(field, fields[field.key])) appliedCount++;
+            }
+        });
+
+        if (typeof syncOriginalsToStoryFields === 'function') syncOriginalsToStoryFields();
+
+        addAISetupMessage('assistant', "Done! I filled in " + appliedCount + " fields for you. Click Next to review your photos, then continue through the remaining steps to customize your page.");
+
+    } catch (e) {
+        addAISetupMessage('assistant', "I had trouble generating the draft. You can continue with manual setup — click Next to go to Photos and fill things in as you go.");
     }
 }
 
@@ -3523,7 +3546,21 @@ function syncHeroSelectionUI(style) {
 function selectHeroStyle(style) {
     selectedHeroStyle = style;
     syncHeroSelectionUI(style);
+    updatePreviewTheme();
+    debouncedDesignAutoSave();
 }
+
+// Auto-save design with debounce so rapid clicks don't spam the server
+var _designAutoSaveTimer = null;
+function debouncedDesignAutoSave() {
+    clearTimeout(_designAutoSaveTimer);
+    _designAutoSaveTimer = setTimeout(function() {
+        saveDesign().then(function() {
+            if (typeof refreshMainPreview === 'function') refreshMainPreview();
+        }).catch(function() {});
+    }, 600);
+}
+
 var designChatHistory = [];
 var previewPayloadCache = null;
 var DESIGN_PRESETS = {
@@ -3658,8 +3695,10 @@ function selectTemplate(template) {
     });
     if (!currentBelongs && PALETTES[template] && PALETTES[template].length > 0) {
         selectPalette(PALETTES[template][0].key);
+        return; // selectPalette already calls updatePreviewTheme + auto-save
     }
     updatePreviewTheme();
+    debouncedDesignAutoSave();
 }
 
 function renderPaletteGrid(template) {
