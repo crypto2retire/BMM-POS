@@ -46,6 +46,7 @@ class VendorUpdate(BaseModel):
     security_deposit_balance: Optional[Decimal] = None
     rent_flagged: Optional[bool] = None
     notes: Optional[str] = None
+    assistant_enabled: Optional[bool] = None
 
 class VendorResponse(BaseModel):
     id: int

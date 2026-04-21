@@ -479,6 +479,24 @@
                         <textarea class="form-control" id="e-notes" placeholder="Internal notes about this vendor&hellip;"></textarea>
                     </div>
                 </div>
+                <!-- AI Assistant Section -->
+                <div class="form-row" style="margin-top:0.5rem;padding-top:0.75rem;border-top:1px solid var(--border)">
+                    <div class="form-group form-full">
+                        <label class="form-label" style="display:flex;align-items:center;gap:0.5rem">
+                            AI Assistant
+                            <span id="ai-status-badge" style="font-size:0.7rem;padding:2px 8px;border-radius:10px;background:rgba(76,175,80,0.18);color:#66bb6a">ENABLED</span>
+                        </label>
+                        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+                            <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;font-size:0.85rem">
+                                <input type="checkbox" id="e-ai-enabled" onchange="toggleAI()" style="accent-color:var(--gold)">
+                                Enable AI Chat Assistant
+                            </label>
+                        </div>
+                        <div style="font-size:0.75rem;color:var(--text-dim);margin-top:0.35rem">
+                            When enabled, visitors see an AI chat button on this vendor's landing page.
+                        </div>
+                    </div>
+                </div>
                 <!-- Landing Page Section -->
                 <div class="form-row" style="margin-top:0.5rem;padding-top:0.75rem;border-top:1px solid var(--border)">
                     <div class="form-group form-full">
@@ -1037,6 +1055,20 @@
         }
         updateEffectiveRentDisplay();
 
+        // AI Assistant state
+        var aiEnabled = v.assistant_enabled !== false;  // default true
+        document.getElementById('e-ai-enabled').checked = aiEnabled;
+        var aiBadge = document.getElementById('ai-status-badge');
+        if (aiEnabled) {
+            aiBadge.textContent = 'ENABLED';
+            aiBadge.style.background = 'rgba(76,175,80,0.18)';
+            aiBadge.style.color = '#66bb6a';
+        } else {
+            aiBadge.textContent = 'DISABLED';
+            aiBadge.style.background = 'rgba(244,67,54,0.15)';
+            aiBadge.style.color = '#ef5350';
+        }
+
         // Load deposit history
         loadDepositHistory(v.id);
 
@@ -1080,6 +1112,29 @@
         var lpEnabled = document.getElementById('e-landing-enabled').checked;
         var fee = lpEnabled ? 10 : 0;
         document.getElementById('landing-effective-rent').textContent = '$' + (baseRent + fee).toFixed(2);
+    }
+
+    async function toggleAI() {
+        if (!editingVendor) return;
+        var enabled = document.getElementById('e-ai-enabled').checked;
+        try {
+            await apiPut('/api/v1/vendors/' + editingVendor.id, { assistant_enabled: enabled });
+            editingVendor.assistant_enabled = enabled;
+            var aiBadge = document.getElementById('ai-status-badge');
+            if (enabled) {
+                aiBadge.textContent = 'ENABLED';
+                aiBadge.style.background = 'rgba(76,175,80,0.18)';
+                aiBadge.style.color = '#66bb6a';
+            } else {
+                aiBadge.textContent = 'DISABLED';
+                aiBadge.style.background = 'rgba(244,67,54,0.15)';
+                aiBadge.style.color = '#ef5350';
+            }
+            showAlert('alert-container', 'AI assistant ' + (enabled ? 'enabled' : 'disabled') + '.', 'success');
+        } catch (err) {
+            document.getElementById('e-ai-enabled').checked = !enabled;
+            showAlert('alert-container', (err && err.message) || 'Failed to update AI setting.', 'error');
+        }
     }
 
     async function toggleLandingPage() {
