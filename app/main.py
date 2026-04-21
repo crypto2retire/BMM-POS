@@ -785,7 +785,8 @@ async def vendor_landing_page(slug: str, request: Request):
                 html = html.replace(
                     '<style id="theme-vars"></style>',
                     f'<style id="theme-vars">:root {{ {css_vars} }}'
-                    'body.themed, body.themed * { background-image: none !important; background-attachment: scroll !important; }'
+                    'body.themed { background-image: none !important; background-attachment: scroll !important; }'
+                    'body.themed *:not(.hero-bg):not(.hero-photo):not(.hero-tile):not(.hero-slide):not(.hero-portrait):not(.landing-hero-bg) { background-image: none !important; background-attachment: scroll !important; }'
                     '</style>',
                 )
 
@@ -824,7 +825,8 @@ async def vendor_landing_page(slug: str, request: Request):
                     html = html.replace(
                         '<style id="theme-vars"></style>',
                         f'<style id="theme-vars">:root {{ {css_vars} }}'
-                        'body.themed, body.themed * { background-image: none !important; background-attachment: scroll !important; }'
+                        'body.themed { background-image: none !important; background-attachment: scroll !important; }'
+                    'body.themed *:not(.hero-bg):not(.hero-photo):not(.hero-tile):not(.hero-slide):not(.hero-portrait):not(.landing-hero-bg) { background-image: none !important; background-attachment: scroll !important; }'
                         '</style>',
                     )
 
