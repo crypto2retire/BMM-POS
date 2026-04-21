@@ -865,7 +865,10 @@
     }
 
     function getVisibleItems() {
-        let filtered = getFilteredItems();
+        // allItems is the server-paginated current page; the status/search/sort
+        // filters were already applied server-side. Still defensive-filter by
+        // status here in case stale data lingers.
+        let filtered = allItems.slice();
         if (statusFilter === 'active') {
             filtered = filtered.filter(function(i) { return i.status === 'active'; });
         } else if (statusFilter === 'inactive') {
@@ -880,15 +883,41 @@
         return getVisibleItems().filter(isSelectableItem);
     }
 
-    function toggleSelectAll() {
-        const filtered = getVisibleSelectableItems();
-        if (selectedItemIds.size === filtered.length && filtered.length > 0) {
+    async function toggleSelectAll() {
+        // "Select All Matching" — selects every item matching the current
+        // status+search filter across ALL pages, not just the visible page.
+        // If anything is already selected, clear instead.
+        if (selectedItemIds.size > 0) {
             selectedItemIds.clear();
-        } else {
-            filtered.forEach(item => selectedItemIds.add(item.id));
+            updateSelectionUI();
+            displayItems();
+            return;
         }
-        updateSelectionUI();
-        displayItems();
+        try {
+            const params = new URLSearchParams();
+            params.set('limit', '10000');
+            params.set('offset', '0');
+            params.set('sort_by', sortColumn);
+            params.set('sort_dir', sortDirection);
+            if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter);
+            if (searchTerm && searchTerm.trim()) params.set('q', searchTerm.trim());
+            const payload = parseToken();
+            if (currentRole === 'vendor' || isVendorMode) {
+                params.set('vendor_id', String(payload.vendor_id));
+            } else if (selectedVendorId) {
+                params.set('vendor_id', String(selectedVendorId));
+            }
+            const data = await apiGet('/api/v1/items/listing?' + params.toString());
+            const matching = (data.items || []).filter(isSelectableItem);
+            matching.forEach(function(item) { selectedItemIds.add(item.id); });
+            updateSelectionUI();
+            displayItems();
+            if (matching.length > allItems.length) {
+                showAlert('alert-container', matching.length + ' item(s) selected across all pages.', 'success');
+            }
+        } catch (e) {
+            showAlert('alert-container', (e && e.message) || 'Select all failed.', 'error');
+        }
     }
 
     function selectVisibleItems() {
@@ -910,9 +939,12 @@
 
     function updateSelectionUI() {
         const bar = document.getElementById('batch-actions-bar');
+        // Only prune IDs that are on the current page AND no longer selectable.
+        // IDs from other pages (allItems doesn't contain them) must be preserved
+        // for cross-page "Select All Matching" to work.
         selectedItemIds.forEach(function(id) {
             var item = allItems.find(function(entry) { return entry.id === id; });
-            if (!isSelectableItem(item)) selectedItemIds.delete(id);
+            if (item && !isSelectableItem(item)) selectedItemIds.delete(id);
         });
         const count = selectedItemIds.size;
         const toolsCount = document.getElementById('sale-tools-selected-count');
