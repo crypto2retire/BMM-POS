@@ -57,12 +57,12 @@
         <!-- Desktop: all buttons visible -->
         <button class="btn btn-primary batch-desktop-only" id="batch-print-btn" onclick="printSelectedLabels()" style="font-size:0.75rem; padding:0.4rem 1rem">Print Selected Labels</button>
         <button class="btn btn-outline batch-desktop-only" onclick="selectUnprinted()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select Unprinted</button>
-        <button class="btn btn-outline batch-desktop-only" onclick="toggleSelectAll()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select All Matching</button>
+        <button class="btn btn-outline batch-desktop-only" onclick="toggleSelectAll()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Select All</button>
         <button class="btn btn-secondary batch-desktop-only" onclick="clearSelection()" style="font-size:0.72rem; padding:0.35rem 0.8rem">Clear Selection</button>
 
         <!-- Mobile: primary actions + More dropdown -->
         <button class="btn btn-primary batch-mobile-only" onclick="printSelectedLabels()" style="font-size:0.78rem; padding:0.5rem 1rem">Print Labels</button>
-        <button class="btn btn-outline batch-mobile-only" onclick="toggleSelectAll()" style="font-size:0.78rem; padding:0.5rem 0.8rem">Select All Matching</button>
+        <button class="btn btn-outline batch-mobile-only" onclick="toggleSelectAll()" style="font-size:0.78rem; padding:0.5rem 0.8rem">Select All</button>
         <div class="batch-more-wrap batch-mobile-only">
             <button type="button" class="batch-more-btn" id="batch-more-btn" onclick="toggleBatchMenu(event)" aria-haspopup="menu" aria-expanded="false">More &#x25BE;</button>
             <div class="batch-more-menu" id="batch-more-menu">
@@ -135,7 +135,7 @@
         <div class="sale-tools-copy">1. Select all matching items or hand-pick the ones you want. 2. Enter the discount amount and sale dates. 3. Apply or clear the sale in one step.</div>
         <div class="sale-tools-summary"><strong id="sale-tools-selected-count">0</strong> item(s) selected</div>
         <div class="sale-tools-actions">
-            <button class="btn btn-outline" type="button" onclick="toggleSelectAll()">Select All Matching</button>
+            <button class="btn btn-outline" type="button" onclick="toggleSelectAll()">Select All</button>
             <button class="btn btn-primary" type="button" id="sale-tools-apply-btn" onclick="openBulkSaleModal()" style="background:var(--gold);border-color:var(--gold);color:#1a1a1d" disabled>Set Discount &amp; Dates</button>
             <button class="btn btn-outline" type="button" id="sale-tools-clear-btn" onclick="bulkClearSale()" style="color:var(--warning);border-color:color-mix(in srgb, var(--warning) 35%, transparent)" disabled>Clear Sale From Selected</button>
             <button class="btn btn-secondary" type="button" onclick="clearSelection()">Clear Selection</button>
@@ -884,7 +884,7 @@
     }
 
     async function toggleSelectAll() {
-        // "Select All Matching" — selects every item matching the current
+        // "Select All" — selects every item matching the current
         // status+search filter across ALL pages, not just the visible page.
         // If anything is already selected, clear instead.
         if (selectedItemIds.size > 0) {
@@ -956,7 +956,7 @@
         const bar = document.getElementById('batch-actions-bar');
         // Only prune IDs that are on the current page AND no longer selectable.
         // IDs from other pages (allItems doesn't contain them) must be preserved
-        // for cross-page "Select All Matching" to work.
+        // for cross-page "Select All" to work.
         selectedItemIds.forEach(function(id) {
             var item = allItems.find(function(entry) { return entry.id === id; });
             if (item && !isSelectableItem(item)) selectedItemIds.delete(id);
