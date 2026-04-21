@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Body, Query
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from PIL import Image
@@ -65,8 +65,21 @@ def _has_vendor_booth_access(user: Vendor) -> bool:
 
 
 async def require_vendor_booth_user(
+    as_vendor_id: Optional[int] = Query(None, description="Admin-only: operate on this vendor's showcase instead of your own."),
+    db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ) -> Vendor:
+    # Admin impersonation: an admin can act on any vendor's showcase by passing ?as_vendor_id=N.
+    # All downstream code reads `current_user.id` / `.name` / `.booth_number`, so returning the
+    # target vendor makes every /mine endpoint operate on that vendor without further changes.
+    if as_vendor_id is not None:
+        if current_user.role != "admin":
+            raise HTTPException(status_code=403, detail="Admin access required to edit another vendor's showcase.")
+        result = await db.execute(select(Vendor).where(Vendor.id == as_vendor_id))
+        target = result.scalar_one_or_none()
+        if not target:
+            raise HTTPException(status_code=404, detail="Vendor not found.")
+        return target
     if not _has_vendor_booth_access(current_user):
         raise HTTPException(status_code=403, detail="Vendor booth access required.")
     return current_user

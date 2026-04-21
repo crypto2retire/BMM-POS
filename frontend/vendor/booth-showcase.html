@@ -597,6 +597,7 @@
     </div>
 
     <div id="alert-container"></div>
+    <div id="admin-mode-banner" style="display:none;padding:0.75rem 1rem;margin-bottom:1rem;background:rgba(201,169,110,0.18);border:1px solid var(--gold,#C9A96E);border-left:4px solid var(--gold,#C9A96E);color:var(--text,#F0EDE8);font-size:0.9rem;border-radius:0"></div>
     <div id="stale-banner" class="stale-banner" style="display:none">
         <span>&#9888;</span>
         <span>Your booth photos are over 60 days old. Fresh photos help attract customers — consider updating them!</span>
@@ -1432,6 +1433,21 @@
 <script>
 var showcase = null;
 
+// ── Admin editor mode ──────────────────────────────────────────────────────
+// When an admin opens /vendor/booth-showcase.html?vendor_id=N, the editor
+// operates on that vendor's showcase. apiPath() appends ?as_vendor_id=N to
+// every /mine API URL; the backend's require_vendor_booth_user dependency
+// resolves that to the target vendor when the caller is an admin.
+var __urlParams = new URLSearchParams(window.location.search);
+var adminVendorId = __urlParams.get('vendor_id');
+var isAdminMode = !!adminVendorId;
+
+function apiPath(url) {
+    if (!isAdminMode) return url;
+    var sep = url.indexOf('?') >= 0 ? '&' : '?';
+    return url + sep + 'as_vendor_id=' + encodeURIComponent(adminVendorId);
+}
+
 function escHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function escAttr(s) { return escHtml(s).replace(/"/g, '&quot;'); }
 
@@ -1468,26 +1484,44 @@ document.addEventListener('click', function(e) {
 
 async function loadShowcase() {
     try {
+        // In admin mode, require admin role (not vendor-booth access).
         var session = await window.bmmAuth.requirePageAccess({
-            access: 'canAccessVendorBooth',
+            access: isAdminMode ? 'canAccessAdminDashboard' : 'canAccessVendorBooth',
             title: 'Booth Showcase Restricted',
-            message: 'Your account does not currently have booth access.'
+            message: isAdminMode
+                ? 'Admin access is required to edit another vendor\u2019s landing page.'
+                : 'Your account does not currently have booth access.'
         });
         if (!session) return;
 
         var token = sessionStorage.getItem('bmm_token');
-        document.getElementById('vendor-name').textContent = session.name || 'Vendor';
-        if (session.booth_number) {
-            var badge = document.getElementById('booth-badge');
-            badge.textContent = 'Booth ' + escHtml(session.booth_number);
-            badge.style.display = 'inline-block';
-        }
 
-        var resp = await fetch('/api/v1/booth-showcase/mine', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine'), {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         if (!resp.ok) throw new Error('Failed to load showcase');
         showcase = await resp.json();
+
+        // Header: show target vendor's name/booth (from showcase payload) so admins
+        // clearly see whose page they're editing.
+        var displayName = showcase.vendor_name || session.name || 'Vendor';
+        var displayBooth = showcase.booth_number || session.booth_number;
+        document.getElementById('vendor-name').textContent = displayName;
+        if (displayBooth) {
+            var badge = document.getElementById('booth-badge');
+            badge.textContent = 'Booth ' + escHtml(displayBooth);
+            badge.style.display = 'inline-block';
+        }
+
+        // Admin banner
+        if (isAdminMode) {
+            var banner = document.getElementById('admin-mode-banner');
+            if (banner) {
+                banner.innerHTML = 'Editing as admin for: <strong>' + escHtml(displayName) +
+                    (displayBooth ? ' (Booth ' + escHtml(displayBooth) + ')' : '') + '</strong>';
+                banner.style.display = 'block';
+            }
+        }
 
         document.getElementById('booth-title').value = showcase.title || '';
         document.getElementById('booth-desc').value = showcase.description || '';
@@ -1533,8 +1567,8 @@ async function loadPageHealth() {
     var token = sessionStorage.getItem('bmm_token');
     try {
         var results = await Promise.all([
-            fetch('/api/v1/booth-showcase/mine/uniqueness', { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch('/api/v1/booth-showcase/mine/freshness', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch(apiPath('/api/v1/booth-showcase/mine/uniqueness'), { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch(apiPath('/api/v1/booth-showcase/mine/freshness'), { headers: { 'Authorization': 'Bearer ' + token } }),
         ]);
         if (results[0].ok) {
             var u = await results[0].json();
@@ -1652,7 +1686,7 @@ function updateCharCount() {
 async function saveDetails() {
     var token = sessionStorage.getItem('bmm_token');
     try {
-        var resp = await fetch('/api/v1/booth-showcase/mine', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine'), {
             method: 'PUT',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1673,7 +1707,7 @@ async function saveDetails() {
 async function togglePublish(checked) {
     var token = sessionStorage.getItem('bmm_token');
     try {
-        var resp = await fetch('/api/v1/booth-showcase/mine', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine'), {
             method: 'PUT',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ is_published: checked })
@@ -1697,7 +1731,7 @@ async function uploadPhotos(files) {
         var form = new FormData();
         form.append('file', files[i]);
         try {
-            var resp = await fetch('/api/v1/booth-showcase/mine/photo', {
+            var resp = await fetch(apiPath('/api/v1/booth-showcase/mine/photo'), {
                 method: 'POST',
                 headers: { 'Authorization': 'Bearer ' + token },
                 body: form
@@ -1732,7 +1766,7 @@ async function uploadLogo(file) {
     var formData = new FormData();
     formData.append('file', file);
     try {
-        var response = await fetch('/api/v1/booth-showcase/mine/logo', {
+        var response = await fetch(apiPath('/api/v1/booth-showcase/mine/logo'), {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('bmm_token') },
             body: formData
@@ -1754,7 +1788,7 @@ async function uploadLogo(file) {
 async function removeLogo() {
     if (!confirm('Remove your booth logo?')) return;
     try {
-        var response = await fetch('/api/v1/booth-showcase/mine/logo', {
+        var response = await fetch(apiPath('/api/v1/booth-showcase/mine/logo'), {
             method: 'DELETE',
             headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('bmm_token') }
         });
@@ -1802,7 +1836,7 @@ async function deletePhoto(url) {
     if (!confirm('Remove this photo?')) return;
     var token = sessionStorage.getItem('bmm_token');
     try {
-        var resp = await fetch('/api/v1/booth-showcase/mine/photo', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine/photo'), {
             method: 'DELETE',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ photo_url: url })
@@ -1827,7 +1861,7 @@ async function uploadVideo(file) {
     var form = new FormData();
     form.append('file', file);
     try {
-        var resp = await fetch('/api/v1/booth-showcase/mine/video', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine/video'), {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + token },
             body: form
@@ -1847,7 +1881,7 @@ async function removeVideo() {
     if (!confirm('Remove the video?')) return;
     var token = sessionStorage.getItem('bmm_token');
     try {
-        var resp = await fetch('/api/v1/booth-showcase/mine/video', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine/video'), {
             method: 'DELETE',
             headers: { 'Authorization': 'Bearer ' + token }
         });
@@ -2305,7 +2339,7 @@ async function aiWriteStory(mode) {
         var prompt = mode === 'write'
             ? 'Write a 2-3 sentence About section for a vendor booth. Their tagline is: "' + tagline + '". Write in a warm, inviting tone.'
             : 'Improve this About section text while keeping the same meaning. Make it warmer and more engaging: "' + current + '"';
-        var resp = await fetch('/api/v1/booth-showcase/mine/ai-write', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine/ai-write'), {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: prompt, field: 'about', tone: 'warm' })
@@ -2500,7 +2534,7 @@ async function requestDiscoverability(containerId) {
     var token = sessionStorage.getItem('bmm_token');
     container.innerHTML = '<div class="disco-card"><div class="sub">Loading discoverability\u2026</div></div>';
     try {
-        var resp = await fetch('/api/v1/booth-showcase/mine/discoverability', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine/discoverability'), {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         if (!resp.ok) throw new Error('Failed');
@@ -2748,7 +2782,7 @@ async function publishFromWizard() {
     var pubBtn = document.getElementById('wizard-publish');
     if (pubBtn) pubBtn.disabled = true;
     try {
-        var resp = await fetch('/api/v1/booth-showcase/mine', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine'), {
             method: 'PUT',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ is_published: true })
@@ -2826,7 +2860,7 @@ async function saveSlug() {
     statusEl.textContent = 'Saving...';
     statusEl.style.color = 'var(--text-light)';
     try {
-        var resp = await fetch('/api/v1/booth-showcase/mine/landing-slug', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine/landing-slug'), {
             method: 'PUT',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ slug: slug })
@@ -2849,7 +2883,7 @@ async function saveSlug() {
 async function saveLandingDetails() {
     var token = sessionStorage.getItem('bmm_token');
     try {
-        var resp = await fetch('/api/v1/booth-showcase/mine', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine'), {
             method: 'PUT',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3503,7 +3537,7 @@ async function saveSectionDeck() {
     statusEl.textContent = 'Saving\u2026';
     var token = sessionStorage.getItem('bmm_token');
     try {
-        var resp = await fetch('/api/v1/booth-showcase/mine', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine'), {
             method: 'PUT',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ landing_layout: { order: order } })
@@ -3922,7 +3956,7 @@ async function saveDesign() {
     statusEl.textContent = 'Saving design...';
     statusEl.style.color = 'var(--text-light)';
     try {
-        var resp = await fetch('/api/v1/booth-showcase/mine', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine'), {
             method: 'PUT',
             headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -4003,7 +4037,7 @@ async function sendAIDesign() {
     var token = sessionStorage.getItem('bmm_token');
     try {
         var currentTheme = getThemeFromUI();
-        var resp = await fetch('/api/v1/booth-showcase/mine/ai-design', {
+        var resp = await fetch(apiPath('/api/v1/booth-showcase/mine/ai-design'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
             body: JSON.stringify({
