@@ -2009,22 +2009,22 @@ var PALETTES = {
     modern: [
         {
             key: 'bold-bright', name: 'Bold & Bright',
-            colors: { primary: '#E85D3A', secondary: '#2B2D42', background: '#FAFAFA', text: '#1A1A2E', accent: '#E85D3A', accent_color: '#E85D3A' },
+            colors: { primary: '#E85D3A', secondary: '#2B2D42', background: '#FAFAFA', text: '#1A1A2E', accent: '#E85D3A', accent_color: '#E85D3A', card_background: '#FFFFFF' },
             fonts: { heading: 'Poppins', body: 'Inter', heading_weight: '600', body_weight: '400', heading_style: 'normal', accent_font: null }
         },
         {
             key: 'ocean-breeze', name: 'Ocean Breeze',
-            colors: { primary: '#0891B2', secondary: '#164E63', background: '#F0FDFA', text: '#0C4A6E', accent: '#0891B2', accent_color: '#0891B2' },
+            colors: { primary: '#0891B2', secondary: '#164E63', background: '#F0FDFA', text: '#0C4A6E', accent: '#0891B2', accent_color: '#0891B2', card_background: '#FFFFFF' },
             fonts: { heading: 'Montserrat', body: 'Nunito', heading_weight: '600', body_weight: '400', heading_style: 'normal', accent_font: null }
         },
         {
             key: 'sunset-pop', name: 'Sunset Pop',
-            colors: { primary: '#F59E0B', secondary: '#78350F', background: '#FFFBEB', text: '#1C1917', accent: '#F59E0B', accent_color: '#F59E0B' },
+            colors: { primary: '#F59E0B', secondary: '#78350F', background: '#FFFBEB', text: '#1C1917', accent: '#F59E0B', accent_color: '#F59E0B', card_background: '#FFFFFF' },
             fonts: { heading: 'Outfit', body: 'DM Sans', heading_weight: '600', body_weight: '400', heading_style: 'normal', accent_font: null }
         },
         {
             key: 'garden-fresh', name: 'Garden Fresh',
-            colors: { primary: '#16A34A', secondary: '#14532D', background: '#F0FDF4', text: '#052E16', accent: '#16A34A', accent_color: '#16A34A' },
+            colors: { primary: '#16A34A', secondary: '#14532D', background: '#F0FDF4', text: '#052E16', accent: '#16A34A', accent_color: '#16A34A', card_background: '#FFFFFF' },
             fonts: { heading: 'Space Grotesk', body: 'Work Sans', heading_weight: '600', body_weight: '400', heading_style: 'normal', accent_font: null }
         }
     ]
@@ -3727,6 +3727,8 @@ function getThemeFromUI() {
     var merged = {};
     Object.keys(existing).forEach(function(k) { merged[k] = existing[k]; });
     merged.palette = selectedPalette;
+    var paletteObj = getPaletteByKey(selectedPalette);
+    var paletteCardBg = (paletteObj && paletteObj.colors && paletteObj.colors.card_background) ? paletteObj.colors.card_background : null;
     merged.colors = {
         primary: document.getElementById('color-primary').value,
         secondary: document.getElementById('color-secondary').value,
@@ -3734,7 +3736,7 @@ function getThemeFromUI() {
         text: document.getElementById('color-text').value,
         accent: document.getElementById('color-primary').value,
         accent_color: document.getElementById('color-accent').value || null,
-        card_background: mixHexColors(
+        card_background: paletteCardBg || mixHexColors(
             document.getElementById('color-text').value,
             document.getElementById('color-background').value,
             0.08
