@@ -808,8 +808,52 @@
             <div id="wizard-shell" style="display:none"></div>
             <div id="tab-shell" style="display:none"></div>
 
+            <!-- Phase 4C: Get Started card (wizard step 1) -->
+            <div class="showcase-card" id="setup-get-started-card" style="border-left:4px solid var(--gold)">
+                <h3 style="margin-bottom:0.25rem">Let's set up your vendor page!</h3>
+                <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1.25rem;line-height:1.6">
+                    We'll walk you through a few quick steps to create your page. Choose how you'd like to get started:
+                </p>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem" id="setup-choice-grid">
+                    <div onclick="startAISetup()" style="cursor:pointer;border:2px solid var(--border);padding:1.25rem;text-align:center;transition:border-color 0.2s;background:linear-gradient(180deg,rgba(201,169,110,0.08) 0%,var(--surface) 60%)">
+                        <div style="font-size:1.5rem;margin-bottom:0.5rem">&#129302;</div>
+                        <div style="font-size:0.92rem;font-weight:500;color:var(--text);margin-bottom:0.35rem">AI Setup</div>
+                        <div style="font-size:0.75rem;color:var(--text-light);line-height:1.5">
+                            Answer a few questions and we'll build your page for you. Fastest way to get started.
+                        </div>
+                    </div>
+                    <div onclick="startManualSetup()" style="cursor:pointer;border:2px solid var(--border);padding:1.25rem;text-align:center;transition:border-color 0.2s">
+                        <div style="font-size:1.5rem;margin-bottom:0.5rem">&#128221;</div>
+                        <div style="font-size:0.92rem;font-weight:500;color:var(--text);margin-bottom:0.35rem">Manual Setup</div>
+                        <div style="font-size:0.75rem;color:var(--text-light);line-height:1.5">
+                            Fill in each section step by step at your own pace. Full control over every detail.
+                        </div>
+                    </div>
+                </div>
+
+                <div id="ai-setup-chat" style="display:none">
+                    <div style="border:1px solid var(--warm-border);background:var(--bg);padding:1rem;margin-bottom:1rem;max-height:300px;overflow-y:auto" id="ai-setup-messages"></div>
+                    <div style="display:flex;gap:0.5rem">
+                        <input type="text" id="ai-setup-input" placeholder="Type your answer..." style="flex:1;padding:0.55rem 0.7rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border)" onkeydown="if(event.key==='Enter')sendAISetupMsg()">
+                        <button class="btn btn-primary btn-sm" onclick="sendAISetupMsg()">Send</button>
+                    </div>
+                    <div style="display:flex;gap:0.35rem;flex-wrap:wrap;margin-top:0.5rem" id="ai-setup-chips"></div>
+                </div>
+
+                <div style="border-top:1px solid var(--border);padding-top:1rem;margin-top:0.5rem">
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.35rem">Your page URL</label>
+                    <div style="display:flex;gap:0;align-items:stretch">
+                        <span style="background:var(--bg);border:1px solid var(--border);border-right:none;padding:0.55rem 0.7rem;font-size:0.82rem;color:var(--text-light);white-space:nowrap">bowenstreetmarket.com/</span>
+                        <input type="text" id="landing-slug-setup" placeholder="your-booth-name" maxlength="100" style="flex:1;padding:0.55rem 0.7rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border);font-size:0.82rem" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'')">
+                        <button class="btn btn-primary btn-sm" onclick="saveSlugFromSetup()" style="border-left:none">Save URL</button>
+                    </div>
+                    <div id="slug-setup-status" style="font-size:0.72rem;color:var(--text-light);margin-top:0.3rem"></div>
+                </div>
+            </div>
+
             <!-- ─── AI SETUP ASSISTANT (top of page, one-shot populate) ─── -->
-            <div class="showcase-card" id="setup-assistant-card" style="border-color:var(--accent);background:linear-gradient(180deg,rgba(201,169,110,0.08) 0%,var(--surface) 45%)">
+            <div class="showcase-card" id="setup-assistant-card" style="display:none;border-color:var(--accent);background:linear-gradient(180deg,rgba(201,169,110,0.08) 0%,var(--surface) 45%)">
                 <div style="display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.4rem">
                     <h3 style="margin:0">&#10024; AI Setup Assistant</h3>
                     <span style="font-size:0.68rem;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;padding:2px 6px;border:1px solid rgba(201,169,110,0.35)">Start here</span>
@@ -857,7 +901,7 @@
                 </div>
             </div>
 
-            <div class="showcase-card" id="slug-card">
+            <div class="showcase-card" id="slug-card" style="display:none">
                 <h3>Step 1 &middot; Page URL</h3>
                 <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
                     Choose a custom URL for your landing page. This is the link you can share on social media, business cards, etc.
@@ -926,7 +970,7 @@
             </div>
 
             <!-- ─── STEP 2: BRAND BASICS (tagline, year, specialties — promoted out of Design) ─── -->
-            <div class="showcase-card" id="brand-basics-card">
+            <div class="showcase-card" id="brand-basics-card" style="display:none">
                 <h3>Step 2 &middot; Brand Basics</h3>
                 <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.75rem">
                     The short, concrete things that make your booth yours. These feed your hero banner, power SEO, and give the AI better material to work with on the Story and FAQ sections below.
@@ -974,7 +1018,7 @@
             </div>
 
             <!-- ─── STEP 3: STORY BLOCKS (5 focused sections, each with own tone + AI) ─── -->
-            <div class="showcase-card" id="story-blocks-card">
+            <div class="showcase-card" id="story-blocks-card" style="display:none">
                 <h3>Step 3 &middot; Your Story</h3>
                 <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:0.5rem">
                     Instead of one big "About" paragraph that sounds like every other vendor, answer a few focused questions. Each block becomes its own section on your page with a unique heading — that's what keeps your page from looking the same as the one next to you.
@@ -999,7 +1043,7 @@
             </div>
 
             <!-- ─── STEP 4: CONTACT & SOCIAL (merged contact + socials + feed embed) ─── -->
-            <div class="showcase-card" id="contact-social-card">
+            <div class="showcase-card" id="contact-social-card" style="display:none">
                 <h3>Step 4 &middot; Contact &amp; Social</h3>
                 <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:1rem">
                     How customers reach you, and which of your social profiles get promoted on your page. Everything here is optional — share only what you're comfortable making public.
@@ -1065,6 +1109,79 @@
                 <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:1rem">
                     <button class="btn btn-primary btn-sm" onclick="saveLandingDetails()">Save Contact &amp; Social</button>
                 </div>
+            </div>
+
+            <!-- Phase 4C: Your Story card (merged brand + story + contact) -->
+            <div class="showcase-card" id="your-story-card">
+                <h3>Tell us about your booth</h3>
+                <p style="font-size:0.78rem;color:var(--text-light);margin-bottom:1.25rem;line-height:1.6">
+                    This information powers your landing page &mdash; the tagline goes on your banner, the about text tells your story, and the contact info lets customers reach you.
+                </p>
+
+                <div class="form-group">
+                    <label for="landing-tagline-story" style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em">Tagline <span style="color:var(--gold);font-size:0.6rem">REQUIRED</span></label>
+                    <input type="text" id="landing-tagline-story" maxlength="200" placeholder="e.g. Mid-century glassware, one cabinet at a time" style="width:100%;padding:0.55rem 0.7rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border)">
+                    <div style="font-size:0.68rem;color:var(--text-light);margin-top:0.25rem">A short, punchy line &mdash; shows on your page banner</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="landing-year-story" style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em">Year started <span style="font-weight:300;color:var(--text-light);text-transform:none;letter-spacing:0">(optional)</span></label>
+                    <input type="number" id="landing-year-story" min="1800" max="2100" placeholder="2019" style="width:120px;padding:0.55rem 0.7rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border)">
+                </div>
+
+                <div class="form-group">
+                    <label for="landing-about-story" style="font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em">About your booth</label>
+                    <textarea id="landing-about-story" maxlength="5000" placeholder="What do you sell? What makes your booth special? How did you get started? (2-4 sentences is perfect)" style="min-height:140px;width:100%"></textarea>
+                    <div class="char-count"><span id="about-story-count">0</span> / 5000</div>
+                    <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;margin-top:0.35rem">
+                        <button class="ai-btn" onclick="aiWriteStory('write')" style="font-size:0.72rem;padding:4px 8px">&#10024; Help me write this</button>
+                        <button class="ai-btn" id="ai-improve-story-btn" onclick="aiWriteStory('improve')" style="font-size:0.72rem;padding:4px 8px;display:none">&#10024; Improve my text</button>
+                    </div>
+                    <span id="ai-story-status" style="font-size:0.72rem;color:var(--text-light);margin-top:4px;display:block"></span>
+                </div>
+
+                <details style="border-top:1px solid var(--border);padding-top:1rem;margin-top:0.5rem">
+                    <summary style="cursor:pointer;font-size:0.82rem;color:var(--gold);font-weight:500">Contact &amp; social links (optional)</summary>
+                    <div style="padding-top:0.75rem">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+                            <div class="form-group">
+                                <label for="landing-email-story">Email</label>
+                                <input type="text" id="landing-email-story" placeholder="you@example.com" maxlength="200">
+                            </div>
+                            <div class="form-group">
+                                <label for="landing-phone-story">Phone</label>
+                                <input type="text" id="landing-phone-story" placeholder="(920) 555-0123" maxlength="50">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="landing-website-story">Website</label>
+                            <input type="text" id="landing-website-story" placeholder="https://www.yoursite.com" maxlength="300">
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+                            <div class="form-group">
+                                <label for="landing-instagram-story">Instagram</label>
+                                <input type="text" id="landing-instagram-story" placeholder="https://instagram.com/you" maxlength="300">
+                            </div>
+                            <div class="form-group">
+                                <label for="landing-facebook-story">Facebook</label>
+                                <input type="text" id="landing-facebook-story" placeholder="https://facebook.com/you" maxlength="300">
+                            </div>
+                            <div class="form-group">
+                                <label for="landing-tiktok-story">TikTok</label>
+                                <input type="text" id="landing-tiktok-story" placeholder="https://tiktok.com/@you" maxlength="300">
+                            </div>
+                            <div class="form-group">
+                                <label for="landing-etsy-story">Etsy Shop</label>
+                                <input type="text" id="landing-etsy-story" placeholder="https://etsy.com/shop/you" maxlength="300">
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:1rem">
+                    <button class="btn btn-primary btn-sm" onclick="saveYourStory()">Save</button>
+                </div>
+                <span id="your-story-status" style="font-size:0.72rem;color:var(--text-light);margin-top:6px;display:block"></span>
             </div>
 
             <!-- ─── STEP 5: SEO & FAQ (merged meta tags + FAQ) ─── -->
@@ -1387,6 +1504,9 @@ async function loadShowcase() {
         renderLogo();
         renderVideo();
         try { renderLandingSection(); } catch (landingErr) { console.warn('Landing section render skipped:', landingErr); }
+        try { syncOriginalsToStoryFields(); } catch (e) {}
+        var slugSetup = document.getElementById('landing-slug-setup');
+        if (slugSetup && showcase && showcase.landing_slug) slugSetup.value = showcase.landing_slug;
         updateBoothImproveBtn();
         // Phase 4: page health (uniqueness + freshness)
         try { loadPageHealth(); } catch (healthErr) { console.warn('Page health skipped:', healthErr); }
@@ -1967,23 +2087,233 @@ function getPaletteForCurrentTheme() {
     return match;
 }
 
+// ── Phase 4C: Get Started / Your Story helpers ──
+
+function startAISetup() {
+    document.getElementById('setup-choice-grid').style.display = 'none';
+    document.getElementById('ai-setup-chat').style.display = 'block';
+    addAISetupMessage('assistant', "Hi! I'm here to help set up your vendor page. Let's start with the basics — what do you sell in your booth?");
+    addAISetupChips(['Vintage & Antique', 'Handcrafted', 'Art & Prints', 'Furniture', 'Jewelry', 'Collectibles', 'Home Decor']);
+}
+
+function startManualSetup() {
+    if (typeof activateWizardStep === 'function') activateWizardStep(1);
+}
+
+function addAISetupMessage(role, text) {
+    var container = document.getElementById('ai-setup-messages');
+    if (!container) return;
+    var div = document.createElement('div');
+    div.style.cssText = role === 'assistant'
+        ? 'background:rgba(201,169,110,0.1);border:1px solid rgba(201,169,110,0.2);padding:0.6rem 0.8rem;margin-bottom:0.5rem;font-size:0.82rem;color:var(--text);line-height:1.5'
+        : 'background:var(--surface-2);border:1px solid var(--border);padding:0.6rem 0.8rem;margin-bottom:0.5rem;font-size:0.82rem;color:var(--text);line-height:1.5;text-align:right';
+    div.textContent = text;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function addAISetupChips(labels) {
+    var container = document.getElementById('ai-setup-chips');
+    if (!container) return;
+    container.innerHTML = '';
+    labels.forEach(function(label) {
+        var chip = document.createElement('button');
+        chip.className = 'btn btn-sm';
+        chip.style.cssText = 'font-size:0.72rem;padding:0.25rem 0.6rem;background:transparent;border:1px solid var(--warm-border);color:var(--gold)';
+        chip.textContent = label;
+        chip.onclick = function() {
+            document.getElementById('ai-setup-input').value = label;
+            sendAISetupMsg();
+        };
+        container.appendChild(chip);
+    });
+}
+
+var aiSetupStep = 0;
+var aiSetupData = {};
+
+async function sendAISetupMsg() {
+    var input = document.getElementById('ai-setup-input');
+    var msg = input.value.trim();
+    if (!msg) return;
+    input.value = '';
+    document.getElementById('ai-setup-chips').innerHTML = '';
+    addAISetupMessage('user', msg);
+
+    aiSetupStep++;
+    if (aiSetupStep === 1) {
+        aiSetupData.sells = msg;
+        addAISetupMessage('assistant', "Great! How would you describe your style or vibe?");
+        addAISetupChips(['Rustic & Farmhouse', 'Elegant & Refined', 'Eclectic & Colorful', 'Minimalist & Clean', 'Bohemian & Free-spirited', 'Industrial & Vintage']);
+    } else if (aiSetupStep === 2) {
+        aiSetupData.style = msg;
+        addAISetupMessage('assistant', "Tell me a bit about yourself — how did you get started, or what do you love about what you do? (Even a sentence or two is enough!)");
+    } else if (aiSetupStep === 3) {
+        aiSetupData.backstory = msg;
+        addAISetupMessage('assistant', "Last one — what's the best way for customers to reach you? (email, phone, Instagram, etc.) Or type 'skip' to add this later.");
+        addAISetupChips(['Skip for now']);
+    } else if (aiSetupStep === 4) {
+        aiSetupData.contact = msg.toLowerCase() === 'skip' ? '' : msg;
+        addAISetupMessage('assistant', "Perfect! Let me draft your page content...");
+        await runAISetupGenerate();
+    }
+}
+
+async function runAISetupGenerate() {
+    var description = "I sell " + aiSetupData.sells + ". My style is " + aiSetupData.style + ". " + aiSetupData.backstory;
+    if (aiSetupData.contact) description += " Contact: " + aiSetupData.contact;
+
+    var descEl = document.getElementById('setup-description');
+    var previewCard = document.getElementById('setup-assistant-card');
+    if (previewCard) previewCard.style.display = '';
+    if (descEl) {
+        descEl.value = description;
+        try {
+            await runLandingSetup();
+            addAISetupMessage('assistant', "Done! I've drafted your page content. Review it above and click 'Apply Selected' to use it. Then click Next to continue to Photos.");
+        } catch (e) {
+            addAISetupMessage('assistant', "I had trouble generating the draft. You can continue with manual setup — click Next to go to Photos and fill things in as you go.");
+        }
+    }
+}
+
+function saveSlugFromSetup() {
+    var slugInput = document.getElementById('landing-slug-setup');
+    var statusEl = document.getElementById('slug-setup-status');
+    var slug = (slugInput.value || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (!slug) {
+        statusEl.textContent = 'Please enter a URL slug';
+        statusEl.style.color = '#FCA5A5';
+        return;
+    }
+    var originalSlugInput = document.getElementById('landing-slug');
+    if (originalSlugInput) originalSlugInput.value = slug;
+    slugInput.value = slug;
+    if (typeof saveSlug === 'function') {
+        statusEl.textContent = 'Saving...';
+        statusEl.style.color = 'var(--text-light)';
+        saveSlug();
+    }
+}
+
+async function saveYourStory() {
+    var statusEl = document.getElementById('your-story-status');
+    statusEl.textContent = 'Saving...';
+    statusEl.style.color = 'var(--text-light)';
+
+    syncStoryFieldsToOriginals();
+
+    try {
+        await saveLandingDetails();
+        if (showcase && !showcase.landing_meta_title) {
+            var autoTitle = (showcase.vendor_name || '') + ' at Bowenstreet Market';
+            if (showcase.landing_tagline) autoTitle += ' — ' + showcase.landing_tagline;
+            var metaTitleEl = document.getElementById('landing-meta-title');
+            if (metaTitleEl) metaTitleEl.value = autoTitle.substring(0, 200);
+        }
+        if (showcase && !showcase.landing_meta_desc && showcase.landing_about) {
+            var metaDescEl = document.getElementById('landing-meta-desc');
+            if (metaDescEl) metaDescEl.value = showcase.landing_about.substring(0, 160);
+        }
+        statusEl.textContent = 'Saved!';
+        statusEl.style.color = '#6EE7B7';
+        setTimeout(function() { statusEl.textContent = ''; }, 3000);
+    } catch (e) {
+        statusEl.textContent = e.message || 'Failed to save';
+        statusEl.style.color = '#FCA5A5';
+    }
+}
+
+function syncStoryFieldsToOriginals() {
+    var pairs = [
+        ['landing-tagline-story', 'landing-tagline'],
+        ['landing-year-story', 'landing-year-started'],
+        ['landing-about-story', 'landing-about-custom'],
+        ['landing-email-story', 'landing-email'],
+        ['landing-phone-story', 'landing-phone'],
+        ['landing-website-story', 'landing-website'],
+        ['landing-instagram-story', 'landing-instagram'],
+        ['landing-facebook-story', 'landing-facebook'],
+        ['landing-tiktok-story', 'landing-tiktok'],
+        ['landing-etsy-story', 'landing-etsy'],
+    ];
+    pairs.forEach(function(pair) {
+        var src = document.getElementById(pair[0]);
+        var dst = document.getElementById(pair[1]);
+        if (src && dst) dst.value = src.value;
+    });
+    var aboutToggle = document.getElementById('custom-about-toggle');
+    var aboutField = document.getElementById('landing-about-story');
+    if (aboutToggle && aboutField && aboutField.value.trim()) aboutToggle.checked = true;
+}
+
+function syncOriginalsToStoryFields() {
+    var pairs = [
+        ['landing-tagline', 'landing-tagline-story'],
+        ['landing-year-started', 'landing-year-story'],
+        ['landing-about-custom', 'landing-about-story'],
+        ['landing-email', 'landing-email-story'],
+        ['landing-phone', 'landing-phone-story'],
+        ['landing-website', 'landing-website-story'],
+        ['landing-instagram', 'landing-instagram-story'],
+        ['landing-facebook', 'landing-facebook-story'],
+        ['landing-tiktok', 'landing-tiktok-story'],
+        ['landing-etsy', 'landing-etsy-story'],
+    ];
+    pairs.forEach(function(pair) {
+        var src = document.getElementById(pair[0]);
+        var dst = document.getElementById(pair[1]);
+        if (src && dst && src.value) dst.value = src.value;
+    });
+    if (showcase && showcase.landing_about) {
+        var aboutStory = document.getElementById('landing-about-story');
+        if (aboutStory && !aboutStory.value) aboutStory.value = showcase.landing_about;
+    }
+}
+
+async function aiWriteStory(mode) {
+    var statusEl = document.getElementById('ai-story-status');
+    var aboutEl = document.getElementById('landing-about-story');
+    statusEl.textContent = mode === 'write' ? 'Writing...' : 'Improving...';
+    try {
+        var token = sessionStorage.getItem('bmm_token');
+        var tagline = document.getElementById('landing-tagline-story').value || '';
+        var current = aboutEl.value || '';
+        var prompt = mode === 'write'
+            ? 'Write a 2-3 sentence About section for a vendor booth. Their tagline is: "' + tagline + '". Write in a warm, inviting tone.'
+            : 'Improve this About section text while keeping the same meaning. Make it warmer and more engaging: "' + current + '"';
+        var resp = await fetch('/api/v1/booth-showcase/mine/ai-write', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: prompt, field: 'about', tone: 'warm' })
+        });
+        if (!resp.ok) throw new Error('AI generation failed');
+        var data = await resp.json();
+        if (data.text) {
+            aboutEl.value = data.text;
+            var improveBtn = document.getElementById('ai-improve-story-btn');
+            if (improveBtn) improveBtn.style.display = 'inline-block';
+        }
+        statusEl.textContent = '';
+    } catch (e) {
+        statusEl.textContent = e.message || 'Failed';
+        statusEl.style.color = '#FCA5A5';
+    }
+}
+
 var TABS = [
-    { key: 'brand',   label: 'Brand',   fields: ['tagline','year','specialties','booth-title','booth-desc'] },
-    { key: 'story',   label: 'Story',   fields: ['story-blocks','landing-about-custom'] },
-    { key: 'media',   label: 'Media',   fields: ['photos','video','logo'] },
-    { key: 'contact', label: 'Contact', fields: ['email','phone','website','facebook','instagram','tiktok','twitter','etsy','show-facebook-feed','show-instagram-feed'] },
-    { key: 'seo',     label: 'SEO',     fields: ['meta-title','meta-desc','faq'] },
-    { key: 'design',  label: 'Design',  fields: ['template','hero','section-deck','colors','fonts'] }
+    { key: 'media',    label: 'Photos',      fields: ['photos','video'] },
+    { key: 'story',    label: 'Your Story',  fields: ['tagline','year','about','contact'] },
+    { key: 'design',   label: 'Look & Feel', fields: ['template','palette','hero','logo'] },
+    { key: 'advanced', label: 'Advanced',    fields: ['meta-title','meta-desc','faq','specialties'] }
 ];
 
 var WIZARD_STEPS = [
-    { key: 'url',     label: 'URL',     required: ['slug'] },
-    { key: 'media',   label: 'Photos',  required: ['photos-min-1'] },
-    { key: 'brand',   label: 'Brand',   required: ['tagline-or-booth-name'] },
-    { key: 'story',   label: 'Story',   required: ['story-block-min-1-or-about'] },
-    { key: 'contact', label: 'Contact', required: [], skippable: true },
-    { key: 'seo',     label: 'SEO',     required: [], skippable: true },
-    { key: 'review',  label: 'Review',  required: [], isReview: true }
+    { key: 'setup',   label: 'Get Started', required: ['slug'] },
+    { key: 'media',   label: 'Photos',      required: ['photos-min-1'] },
+    { key: 'story',   label: 'Your Story',  required: ['tagline-or-booth-name'] },
+    { key: 'design',  label: 'Pick a Look', required: [], skippable: true },
+    { key: 'review',  label: 'Publish',     required: [], isReview: true }
 ];
 
 // ── Phase 2 Step 4: Tabs mode ──
@@ -2008,12 +2338,10 @@ function renderTabShell() {
 
 // Mapping: which existing card IDs live in which tab panel.
 var TAB_PANEL_MAP = {
-    brand:   ['slug-card', 'brand-basics-card', 'disco-card-brand-holder', 'page-health-card'],
-    story:   ['story-blocks-card'],
-    media:   ['landing-photos-card', 'photo-coach', 'landing-logo-card'],
-    contact: ['contact-social-card'],
-    seo:     ['seo-faq-card'],
-    design:  ['design-section', 'ai-design-chat']
+    media:    ['photo-coach', 'landing-photos-card'],
+    story:    ['your-story-card'],
+    design:   ['design-section'],
+    advanced: ['seo-faq-card', 'page-health-card']
 };
 
 function buildTabShellDOM(shell) {
@@ -2186,12 +2514,10 @@ var wizardCurrent = 0;
 
 // Map wizard step keys to the same card IDs the tabs use.
 var WIZARD_STEP_CARDS = {
-    url:     ['slug-card'],
-    media:   ['landing-photos-card', 'photo-coach'],
-    brand:   ['brand-basics-card', 'page-health-card'],
-    story:   ['story-blocks-card'],
-    contact: ['contact-social-card'],
-    seo:     ['seo-faq-card'],
+    setup:   ['setup-get-started-card'],
+    media:   ['photo-coach', 'landing-photos-card'],
+    story:   ['your-story-card'],
+    design:  ['design-section'],
     review:  []  // built inline from buildReviewPanel()
 };
 
