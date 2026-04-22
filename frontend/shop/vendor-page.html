@@ -1610,7 +1610,12 @@
       if (el && el.parentNode !== host) host.appendChild(el);
     });
 
-    if (!order || order.length === 0) return; // default DOM order wins
+    // Default order: gallery right after hero for maximum visual impact.
+    // (Previously fell back to DOM order, but the appendChild calls above
+    // shuffled gallery below items.)
+    if (!order || order.length === 0) {
+      order = ['hero','gallery','about','featured','specialties','story','faq','social_feeds','related'];
+    }
 
     var byKey = {};
     host.querySelectorAll('[data-section-key]').forEach(function(el){
