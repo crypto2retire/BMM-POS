@@ -233,6 +233,7 @@
    6) CAROUSEL — scroll-snap rotating photos (event vendors)
    ────────────────────────────────────────────────────────── */
 .hero-variant[data-hero="carousel"] {
+  display: block;  /* override templates that set .landing-hero { display: flex/grid } */
   min-height: 440px; position: relative;
   background: var(--hero-bg);
   overflow: hidden;
