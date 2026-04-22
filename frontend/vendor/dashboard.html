@@ -444,6 +444,7 @@
                                 <th>Item</th>
                                 <th>Qty Sold</th>
                                 <th>Gross Sales</th>
+                                <th>Profit</th>
                                 <th>Last Sold</th>
                                 <th>Status</th>
                                 <th>On Hand</th>
@@ -667,6 +668,11 @@
     function renderSoldItemsTable(items) {
         if (!items.length) return '';
         return items.map(function(item) {
+            var profitHtml = item.profit != null
+                ? (Number(item.profit) >= 0
+                    ? '<span style="color:#66bb6a">$' + Number(item.profit).toFixed(2) + '</span>'
+                    : '<span style="color:#ef5350">-$' + Math.abs(Number(item.profit)).toFixed(2) + '</span>')
+                : '<span style="color:var(--text-light)">—</span>';
             return '<tr>' +
                 '<td><div class="sold-item-name">' +
                     soldItemThumb(item) +
@@ -677,6 +683,7 @@
                 '</div></td>' +
                 '<td>' + item.qty_sold + '</td>' +
                 '<td>$' + Number(item.gross_sales || 0).toFixed(2) + '</td>' +
+                '<td>' + profitHtml + '</td>' +
                 '<td>' + escHtml(item.last_sold_at_display || '—') + '</td>' +
                 '<td>' + statusBadge(item.status || 'active') + '</td>' +
                 '<td>' + (item.quantity_on_hand ?? 0) + '</td>' +

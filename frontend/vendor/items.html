@@ -176,6 +176,7 @@
             <button type="button" class="modal-close" onclick="closeModal()" aria-label="Close item form">✕</button>
         </div>
         <div class="modal-body">
+            <div id="date-added-display" style="font-size:0.72rem;color:var(--text-light);margin-top:-0.3rem;margin-bottom:0.5rem;display:none"></div>
             <div id="modal-alert"></div>
             <form id="item-form" onsubmit="return false">
 
@@ -288,13 +289,27 @@
                         <label class="form-label">Price *</label>
                         <input class="form-control" type="number" id="f-price"
                             step="0.01" min="0" required
-                            placeholder="0.00" inputmode="decimal">
+                            placeholder="0.00" inputmode="decimal"
+                            oninput="updateMarginDisplay()">
                     </div>
                     <div class="form-group">
                         <label class="form-label">Sale Price</label>
                         <input class="form-control" type="number" id="f-sale-price"
                             step="0.01" min="0"
                             placeholder="Leave blank" inputmode="decimal">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Cost (what you paid)</label>
+                        <input class="form-control" type="number" id="f-cost"
+                            step="0.01" min="0"
+                            placeholder="Optional" inputmode="decimal"
+                            oninput="updateMarginDisplay()">
+                    </div>
+                    <div class="form-group" id="margin-display" style="display:flex;align-items:center;padding-top:1.4rem">
+                        <span id="margin-text" style="font-size:0.82rem;color:var(--text-light)"></span>
                     </div>
                 </div>
 
@@ -568,6 +583,7 @@
             'f-category',
             'f-description',
             'f-price',
+            'f-cost',
             'f-quantity',
             'f-sale-price',
             'f-sale-start',
@@ -1159,6 +1175,29 @@
     }
 
     // ── Modal ──────────────────────────────────────────────────────────
+    function updateMarginDisplay() {
+        var price = parseFloat(document.getElementById('f-price').value);
+        var cost = parseFloat(document.getElementById('f-cost').value);
+        var marginText = document.getElementById('margin-text');
+        if (!marginText) return;
+        if (!isNaN(price) && !isNaN(cost) && cost > 0 && price > 0) {
+            var margin = price - cost;
+            var pct = ((margin / price) * 100).toFixed(1);
+            if (margin > 0) {
+                marginText.textContent = 'Margin: $' + margin.toFixed(2) + ' (' + pct + '%)';
+                marginText.style.color = '#66bb6a';
+            } else if (margin === 0) {
+                marginText.textContent = 'Break even';
+                marginText.style.color = 'var(--gold)';
+            } else {
+                marginText.textContent = 'Loss: $' + Math.abs(margin).toFixed(2);
+                marginText.style.color = '#ef5350';
+            }
+        } else {
+            marginText.textContent = '';
+        }
+    }
+
     function toggleConsignmentRate() {
         const checked = document.getElementById('f-is-consignment').checked;
         document.getElementById('consignment-rate-group').style.display = checked ? 'block' : 'none';
@@ -1179,8 +1218,25 @@
         document.getElementById('f-category').value = item?.category || '';
         document.getElementById('f-description').value = item?.description || '';
         document.getElementById('f-price').value = item?.price || '';
+        document.getElementById('f-cost').value = item?.cost || '';
+        updateMarginDisplay();
         document.getElementById('f-quantity').value = item?.quantity ?? 1;
         document.getElementById('f-sale-price').value = item?.sale_price || '';
+
+        // Show date added (read-only)
+        var dateAddedEl = document.getElementById('date-added-display');
+        if (dateAddedEl) {
+            if (item && item.created_at) {
+                var d = new Date(item.created_at);
+                var daysAgo = Math.floor((Date.now() - d.getTime()) / 86400000);
+                var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                var ageStr = daysAgo === 0 ? 'today' : daysAgo === 1 ? '1 day ago' : daysAgo + ' days ago';
+                dateAddedEl.textContent = 'Added ' + dateStr + ' (' + ageStr + ')';
+                dateAddedEl.style.display = 'block';
+            } else {
+                dateAddedEl.style.display = 'none';
+            }
+        }
         document.getElementById('f-sale-start').value = item?.sale_start || '';
         document.getElementById('f-sale-end').value = item?.sale_end || '';
         document.getElementById('f-is-online').checked = item?.is_online || false;
@@ -1803,6 +1859,7 @@
             is_consignment: false,
             consignment_rate: null,
             label_style: document.getElementById('f-label-style').value,
+            cost: parseFloat(document.getElementById('f-cost').value) || null,
         };
 
         // Include variables and variants if defined
@@ -1886,6 +1943,8 @@
             if (!editingId && addAnother) {
                 document.getElementById('f-name').value = '';
                 document.getElementById('f-price').value = '';
+                document.getElementById('f-cost').value = '';
+                updateMarginDisplay();
                 document.getElementById('f-quantity').value = '1';
                 document.getElementById('f-description').value = '';
                 document.getElementById('f-sale-price').value = '';
@@ -2356,6 +2415,7 @@
                 <th style="cursor:default">Sale Price</th>
                 <th ${sortArrow('quantity')}>Qty <span class="sort-arrow">${sortColumn === 'quantity' ? (sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '&#9650;'}</span></th>
                 <th ${sortArrow('status')}>Status <span class="sort-arrow">${sortColumn === 'status' ? (sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '&#9650;'}</span></th>
+                <th ${sortArrow('created_at')}>Added <span class="sort-arrow">${sortColumn === 'created_at' ? (sortDirection === 'asc' ? '&#9650;' : '&#9660;') : '&#9650;'}</span></th>
                 <th style="cursor:default">Actions</th>
             </tr></thead><tbody>`;
 
@@ -2379,6 +2439,11 @@
             const isActive = item.status === 'active';
             const rowClass = isActive ? '' : ' class="inactive-row"';
 
+            const createdDate = item.created_at ? new Date(item.created_at) : null;
+            const dateDisplay = createdDate ? createdDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '&mdash;';
+            const daysOld = createdDate ? Math.floor((Date.now() - createdDate.getTime()) / 86400000) : 0;
+            const ageColor = daysOld > 90 ? '#ef5350' : daysOld > 60 ? 'var(--gold)' : 'var(--text-light)';
+
             html += `<tr${rowClass}>
                 <td style="padding:0 4px"><input type="checkbox" class="item-select-cb" data-item-id="${item.id}" ${selChecked} ${checkboxDisabled} onchange="toggleItemSelect(${item.id})" style="width:15px;height:15px;accent-color:var(--gold);cursor:${canSelect ? 'pointer' : 'not-allowed'};opacity:${canSelect ? '1' : '0.45'}" title="${canSelect ? 'Select item' : 'Archived items are view-only'}"></td>
                 <td>${photoHtml}</td>
@@ -2388,6 +2453,7 @@
                 <td>${salePriceHtml}</td>
                 <td style="text-align:center">${item.quantity ?? 1}</td>
                 <td>${statusBadge(item.status)}${!item.label_printed ? ' <span class="item-needs-label-chip item-needs-label-chip--compact">NEW</span>' : ''}</td>
+                <td style="white-space:nowrap;font-size:0.75rem"><span style="color:${ageColor}" title="${daysOld} days old">${dateDisplay}</span></td>
                 <td><div class="actions-cell">
                     <button class="btn btn-outline" onclick="openModal(${itemJson})">${canMutate ? 'Edit' : 'View'}</button>
                     ${canPrintLabels ? `<button class="btn btn-secondary" onclick="printDymoLabel(${item.id})">${isReprint ? 'Reprint' : 'Print Label'}</button>` : ''}

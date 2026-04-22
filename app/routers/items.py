@@ -203,6 +203,7 @@ def item_to_response(item: Item) -> ItemResponse:
         created_at=item.created_at,
         booth_number=booth_number,
         label_printed=item.label_printed,
+        cost=getattr(item, 'cost', None),
         variables=variables_list,
         variants=variants_list,
     )
@@ -397,6 +398,7 @@ async def create_item(
         sale_start=data.sale_start,
         sale_end=data.sale_end,
         label_style=data.label_style or "standard",
+        cost=data.cost,
     )
     db.add(item)
     await db.flush()  # flush to get item.id

@@ -694,6 +694,7 @@ async def pos_create_sale(
             discount_type=i_disc_type if i_disc_amt > 0 else None,
             discount_value=i_disc_val if i_disc_amt > 0 else None,
             discount_amount=i_disc_amt if i_disc_amt > 0 else None,
+            unit_cost=getattr(item, 'cost', None),
         )
         db.add(sale_item)
 
@@ -790,6 +791,7 @@ async def pos_create_sale(
                 discount_type=si.discount_type,
                 discount_value=si.discount_value,
                 discount_amount=si.discount_amount,
+                unit_cost=getattr(si, 'unit_cost', None),
             )
         )
 
@@ -972,6 +974,7 @@ async def void_sale(
                 discount_type=si.discount_type,
                 discount_value=si.discount_value,
                 discount_amount=si.discount_amount,
+                unit_cost=getattr(si, 'unit_cost', None),
             )
         )
 

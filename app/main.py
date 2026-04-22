@@ -73,6 +73,40 @@ async def lifespan(app: FastAPI):
         print(f"BMM-POS: schema create_all FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("database_schema", e, critical=True)
 
+    # ── Ensure 'cost' column exists on items table ──
+    try:
+        async with engine.begin() as conn:
+            result = await conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'items' AND column_name = 'cost'"
+            ))
+            if not result.scalar_one_or_none():
+                await conn.execute(text(
+                    "ALTER TABLE items ADD COLUMN cost NUMERIC(10,2) DEFAULT NULL"
+                ))
+                print("BMM-POS: added 'cost' column to items table", file=sys.stderr, flush=True)
+        _record_startup_ok("items_cost_column")
+    except Exception as e:
+        print(f"BMM-POS: items cost column check FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("items_cost_column", e)
+
+    # ── Ensure 'unit_cost' column exists on sale_items table ──
+    try:
+        async with engine.begin() as conn:
+            result = await conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'sale_items' AND column_name = 'unit_cost'"
+            ))
+            if not result.scalar_one_or_none():
+                await conn.execute(text(
+                    "ALTER TABLE sale_items ADD COLUMN unit_cost NUMERIC(10,2) DEFAULT NULL"
+                ))
+                print("BMM-POS: added 'unit_cost' column to sale_items table", file=sys.stderr, flush=True)
+        _record_startup_ok("sale_items_unit_cost_column")
+    except Exception as e:
+        print(f"BMM-POS: sale_items unit_cost column check FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("sale_items_unit_cost_column", e)
+
     # ── DB connectivity check ──
     try:
         async with AsyncSessionLocal() as session:

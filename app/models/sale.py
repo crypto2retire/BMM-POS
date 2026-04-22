@@ -52,6 +52,7 @@ class SaleItem(Base):
     discount_type: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     discount_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
     discount_amount: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
+    unit_cost: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
 
     sale: Mapped["Sale"] = relationship("Sale", back_populates="items")
     item: Mapped["Item"] = relationship("Item")

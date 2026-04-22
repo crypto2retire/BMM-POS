@@ -430,6 +430,7 @@ async def vendor_sold_items(
             Item.image_path.label("image_path"),
             func.coalesce(func.sum(SaleItem.quantity), 0).label("qty_sold"),
             func.coalesce(func.sum(SaleItem.line_total), 0).label("gross_sales"),
+            func.coalesce(func.sum(SaleItem.unit_cost * SaleItem.quantity), 0).label("total_cost"),
             func.count(func.distinct(Sale.id)).label("sale_count"),
             func.max(Sale.created_at).label("last_sold_at"),
         )
@@ -468,6 +469,8 @@ async def vendor_sold_items(
             last_sold_at=row.last_sold_at,
             last_sold_at_display=_format_cst(row.last_sold_at),
             image_path=row.image_path,
+            total_cost=Decimal(str(row.total_cost or 0)).quantize(Decimal("0.01"), ROUND_HALF_UP) if row.total_cost else None,
+            profit=(Decimal(str(row.gross_sales or 0)) - Decimal(str(row.total_cost or 0))).quantize(Decimal("0.01"), ROUND_HALF_UP) if row.total_cost else None,
         )
         for row in rows
     ]

@@ -40,6 +40,7 @@ class SaleItemResponse(BaseModel):
     discount_type: Optional[str] = None
     discount_value: Optional[Decimal] = None
     discount_amount: Optional[Decimal] = None
+    unit_cost: Optional[Decimal] = None
 
     model_config = {"from_attributes": True}
 
@@ -88,6 +89,8 @@ class VendorSoldItemSummary(BaseModel):
     last_sold_at: Optional[datetime] = None
     last_sold_at_display: Optional[str] = None
     image_path: Optional[str] = None
+    total_cost: Optional[Decimal] = None
+    profit: Optional[Decimal] = None
 
 
 class VendorSoldItemsResponse(BaseModel):

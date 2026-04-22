@@ -33,6 +33,7 @@ class Item(Base):
     verified_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     archive_expires_at: Mapped[Optional[datetime]] = mapped_column(TIMESTAMP(timezone=True), nullable=True)
     import_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    cost: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2), nullable=True)
 
     vendor = relationship("Vendor", back_populates="items")
     sale_items = relationship("SaleItem", back_populates="item")

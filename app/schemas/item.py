@@ -53,6 +53,7 @@ class ItemCreate(BaseModel):
     is_consignment: Optional[bool] = False
     consignment_rate: Optional[Decimal] = None
     label_style: Optional[str] = "standard"
+    cost: Optional[Decimal] = None
     variables: Optional[List[VariableDefinition]] = None  # max 2
     variants: Optional[List[VariantInput]] = None
 
@@ -87,6 +88,7 @@ class ItemUpdate(BaseModel):
     is_consignment: Optional[bool] = None
     consignment_rate: Optional[Decimal] = None
     label_style: Optional[str] = None
+    cost: Optional[Decimal] = None
     variables: Optional[List[VariableDefinition]] = None
     variants: Optional[List[VariantInput]] = None
 
@@ -118,6 +120,7 @@ class ItemResponse(BaseModel):
     verified_at: Optional[datetime] = None
     archive_expires_at: Optional[datetime] = None
     import_source: Optional[str] = None
+    cost: Optional[Decimal] = None
     variables: Optional[List[dict]] = None  # [{"name": "Size", "options": ["S","M","L"]}]
     variants: Optional[List[VariantResponse]] = None
 
