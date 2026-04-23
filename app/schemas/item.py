@@ -152,6 +152,7 @@ class ItemListingResponse(BaseModel):
     active_count: int
     inactive_count: int
     archive_count: int
+    sold_count: int = 0
 
 class BarcodeResponse(BaseModel):
     item: ItemResponse

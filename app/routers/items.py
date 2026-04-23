@@ -17,6 +17,7 @@ from app.models.item_image import ItemImage
 from app.models.item_variable import ItemVariable
 from app.models.item_variant import ItemVariant
 from app.models.vendor import Vendor
+from app.models.sale import SaleItem
 from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse, ItemListingResponse, VariantResponse
 from app.routers.auth import get_current_user
 from app.routers.settings import role_feature_allowed, get_setting
@@ -290,11 +291,23 @@ async def list_items_listing(
             )
         )
 
+    from app.models.sale import Sale
+    sold_subq = (
+        select(SaleItem.item_id)
+        .join(Sale, Sale.id == SaleItem.sale_id)
+        .where(Sale.is_voided.is_(False))
+        .group_by(SaleItem.item_id)
+    )
+    if current_user.role == "vendor":
+        sold_subq = sold_subq.where(SaleItem.vendor_id == current_user.id)
+    sold_subq = sold_subq.subquery()
+
     counts_query = select(
         func.count(Item.id).label("total"),
         func.count(Item.id).filter(Item.status == "active").label("active_count"),
         func.count(Item.id).filter(Item.status == "inactive").label("inactive_count"),
         func.count(Item.id).filter(Item.status.in_(("sold", "removed", "pending_delete"))).label("archive_count"),
+        func.count(Item.id).filter(Item.id.in_(select(sold_subq.c.item_id))).label("sold_count"),
     )
     if base_filters:
         counts_query = counts_query.where(*base_filters)
@@ -310,6 +323,8 @@ async def list_items_listing(
         item_query = item_query.where(Item.status == "inactive")
     elif status_filter == "archive":
         item_query = item_query.where(Item.status.in_(("sold", "removed", "pending_delete")))
+    elif status_filter == "sold":
+        item_query = item_query.where(Item.id.in_(select(sold_subq.c.item_id)))
 
     sort_column = allowed_sorts[sort_by]
     if sort_dir == "asc":
@@ -327,6 +342,8 @@ async def list_items_listing(
         total = counts.inactive_count or 0
     elif status_filter == "archive":
         total = counts.archive_count or 0
+    elif status_filter == "sold":
+        total = counts.sold_count or 0
     else:
         total = counts.total or 0
 
@@ -336,6 +353,7 @@ async def list_items_listing(
         active_count=int(counts.active_count or 0),
         inactive_count=int(counts.inactive_count or 0),
         archive_count=int(counts.archive_count or 0),
+        sold_count=int(counts.sold_count or 0),
     )
 
 

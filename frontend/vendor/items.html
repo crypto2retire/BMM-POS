@@ -99,6 +99,7 @@
             <div class="filter-label-bar" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.75rem">
                 <div class="status-filter-bar" id="status-filter-bar" style="margin-bottom:0">
                     <button class="active" data-status="active" onclick="setStatusFilter('active')">For Sale</button>
+                    <button data-status="sold" onclick="setStatusFilter('sold')">Sold</button>
                     <button data-status="inactive" onclick="setStatusFilter('inactive')">Not For Sale</button>
                     <button data-status="archive" onclick="setStatusFilter('archive')">Archive</button>
                     <button data-status="all" onclick="setStatusFilter('all')">All</button>
@@ -538,7 +539,7 @@
 
     let allItems = [];
     let currentTotalItems = 0;
-    let inventoryCounts = { active: 0, inactive: 0, archive: 0, all: 0 };
+    let inventoryCounts = { active: 0, inactive: 0, archive: 0, sold: 0, all: 0 };
     let currentView = localStorage.getItem('bmm_items_view') || 'list';
     let searchTerm = '';
     let sortColumn = 'created_at';
@@ -2247,11 +2248,13 @@
         var activeCount = inventoryCounts.active || 0;
         var inactiveCount = inventoryCounts.inactive || 0;
         var archiveCount = inventoryCounts.archive || 0;
+        var soldCount = inventoryCounts.sold || 0;
         var allCount = inventoryCounts.all || 0;
         var btns = document.querySelectorAll('.status-filter-bar button');
         btns.forEach(function(b) {
             var s = b.getAttribute('data-status');
             if (s === 'active') b.textContent = 'For Sale (' + activeCount + ')';
+            else if (s === 'sold') b.textContent = 'Sold (' + soldCount + ')';
             else if (s === 'inactive') b.textContent = 'Not For Sale (' + inactiveCount + ')';
             else if (s === 'archive') b.textContent = 'Archive (' + archiveCount + ')';
             else b.textContent = 'All (' + allCount + ')';
@@ -2549,6 +2552,7 @@
             active: Number(data.active_count || 0),
             inactive: Number(data.inactive_count || 0),
             archive: Number(data.archive_count || 0),
+            sold: Number(data.sold_count || 0),
             all: Number((data.active_count || 0) + (data.inactive_count || 0) + (data.archive_count || 0))
         };
         displayItems();
@@ -2600,7 +2604,7 @@
         currentRole = session.role;
         isVendorMode = (currentRole === 'admin' || currentRole === 'cashier') && session.is_vendor;
         var requestedStatus = new URLSearchParams(window.location.search).get('status');
-        if (requestedStatus && ['active', 'inactive', 'archive', 'all'].indexOf(requestedStatus) !== -1) {
+        if (requestedStatus && ['active', 'inactive', 'archive', 'sold', 'all'].indexOf(requestedStatus) !== -1) {
             statusFilter = requestedStatus;
         }
 
