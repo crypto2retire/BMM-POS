@@ -554,8 +554,9 @@ async def pos_create_sale(
         item = locked_items.get(cart_item.barcode)
         if not item:
             raise HTTPException(status_code=404, detail=f"Item with barcode {cart_item.barcode!r} not found")
-        if item.status != "active":
-            raise HTTPException(status_code=400, detail=f"Item {item.name!r} is not available for sale")
+        item_status = (item.status or "").strip().lower()
+        if item_status not in ("active", ""):
+            raise HTTPException(status_code=400, detail=f"Item {item.name!r} is not available for sale (status: {item.status})")
         if item.quantity < cart_item.quantity:
             raise HTTPException(
                 status_code=400,

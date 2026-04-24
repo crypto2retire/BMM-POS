@@ -124,6 +124,20 @@ async def lifespan(app: FastAPI):
         print(f"BMM-POS: sale_items unit_cost column check FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("sale_items_unit_cost_column", e)
 
+    # ── Fix NULL item statuses ──
+    try:
+        async with engine.begin() as conn:
+            result = await conn.execute(text(
+                "UPDATE items SET status = 'active' WHERE status IS NULL OR status = ''"
+            ))
+            count = result.rowcount or 0
+            if count > 0:
+                print(f"BMM-POS: fixed {count} items with NULL/empty status", file=sys.stderr, flush=True)
+        _record_startup_ok("items_status_fix")
+    except Exception as e:
+        print(f"BMM-POS: items status fix FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("items_status_fix", e)
+
     # ── DB connectivity check ──
     try:
         async with AsyncSessionLocal() as session:
