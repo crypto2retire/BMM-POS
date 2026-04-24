@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +17,7 @@ from app.models.item import Item
 from app.routers.auth import get_current_user
 from app.routers.settings import role_feature_allowed
 from app.services.rent_payments import apply_rent_payment, display_rent_notes, extract_rent_reference, stamp_rent_notes
+from app.services.audit import log_audit
 from app.timezone import STORE_TZ
 
 router = APIRouter(prefix="/vendor", tags=["vendor-rent"])
@@ -377,6 +378,7 @@ async def pay_rent(
 
 @router.post("/rent-confirmed")
 async def rent_confirmed(
+    request: Request,
     body: RentConfirmRequest,
     db: AsyncSession = Depends(get_db),
     current_vendor: Vendor = Depends(get_current_user),
@@ -446,6 +448,16 @@ async def rent_confirmed(
         reference_tag=reference_tag,
     ))
     await db.commit()
+
+    await log_audit(
+        db=db,
+        vendor_id=current_vendor.id,
+        action="rent_confirmed",
+        entity_type="rent_payment",
+        details=f"Amount: ${float(amount):.2f}, Period: {period}, Method: square",
+        request=request,
+    )
+
     if applied_periods and credit_remainder > 0:
         message = (
             f"Rent payment recorded. Applied to {', '.join(p.strftime('%B %Y') for p in applied_periods)}. "

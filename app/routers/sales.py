@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta, timezone
 import datetime as dt
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, func
 from sqlalchemy.orm import selectinload
@@ -20,6 +20,7 @@ from app.schemas.sale import (
 from app.routers.auth import get_current_user
 from app.config import settings
 from app.routers.settings import get_tax_rate, require_staff_feature, role_feature_allowed
+from app.services.audit import log_audit
 from app.timezone import STORE_TZ as _STORE_TZ
 
 router = APIRouter(prefix="/sales", tags=["sales"])
@@ -262,6 +263,15 @@ async def create_sale(
             db.add(VendorBalance(vendor_id=vendor_id, balance=amount))
 
     await db.commit()
+
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="create_sale",
+        entity_type="sale",
+        entity_id=str(sale.id),
+        details=f"Payment: {data.payment_method}, Total: ${float(total):.2f}, Items: {len(data.items)}",
+    )
 
     result = await db.execute(
         select(Sale)

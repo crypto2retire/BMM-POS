@@ -196,6 +196,7 @@ async def list_vendors(
 
 @router.post("/", response_model=VendorResponse, status_code=201)
 async def create_vendor(
+    request: Request,
     vendor: VendorCreate,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_role("admin"))
@@ -224,6 +225,15 @@ async def create_vendor(
     )
     db.add(db_vendor)
     await db.commit()
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="create_vendor",
+        entity_type="vendor",
+        entity_id=str(db_vendor.id),
+        details=f"Email: {db_vendor.email}, Role: {db_vendor.role}",
+        request=request,
+    )
     await db.refresh(db_vendor)
     return db_vendor
 
@@ -302,6 +312,7 @@ async def get_vendor(
 
 @router.put("/{vendor_id}", response_model=VendorResponse)
 async def update_vendor(
+    request: Request,
     vendor_id: int,
     vendor_update: VendorUpdate,
     db: AsyncSession = Depends(get_db),
@@ -318,6 +329,14 @@ async def update_vendor(
         setattr(vendor, key, value)
 
     await db.commit()
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="update_vendor",
+        entity_type="vendor",
+        entity_id=str(vendor_id),
+        request=request,
+    )
     await db.refresh(vendor)
     return vendor
 

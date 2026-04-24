@@ -15,6 +15,7 @@ from app.models.item import Item
 from app.models.vendor import Vendor
 from app.models.reservation import Reservation
 from app.routers.settings import get_tax_rate
+from app.services.audit import log_audit
 
 router = APIRouter(prefix="/storefront", tags=["shop"])
 
@@ -555,6 +556,17 @@ async def create_cart_payment(
         reservations.append(reservation)
 
     await db.commit()
+
+    await log_audit(
+        db=db,
+        vendor_id=None,
+        action="create_cart_payment",
+        entity_type="reservation",
+        entity_id=checkout_group_id,
+        details=f"Items: {len(items)}, Customer: {req.customer_name}, Total: ${float(total):.2f}",
+        request=request,
+    )
+
     for reservation in reservations:
         await db.refresh(reservation)
 
@@ -656,6 +668,17 @@ async def payment_confirmed(
         pending_count += 1
 
     await db.commit()
+
+    await log_audit(
+        db=db,
+        vendor_id=None,
+        action="payment_confirmed",
+        entity_type="reservation",
+        entity_id=reference_id,
+        details=f"Confirmed {pending_count} reservations",
+        request=request,
+    )
+
     item_word = "item" if pending_count == 1 else "items"
     return {"message": f"Payment confirmed! {pending_count} {item_word} reserved."}
 

@@ -4,7 +4,7 @@ import shutil
 from decimal import Decimal
 from datetime import date
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Body, Request
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
@@ -18,6 +18,7 @@ from app.models.item_variable import ItemVariable
 from app.models.item_variant import ItemVariant
 from app.models.vendor import Vendor
 from app.models.sale import SaleItem
+from app.services.audit import log_audit
 from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse, ItemListingResponse, VariantResponse
 from app.routers.auth import get_current_user
 from app.routers.settings import role_feature_allowed, get_setting
@@ -357,6 +358,7 @@ async def list_items_listing(
 
 @router.post("/", response_model=ItemResponse, status_code=status.HTTP_201_CREATED)
 async def create_item(
+    request: Request,
     data: ItemCreate,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
@@ -594,6 +596,7 @@ async def get_item(
 
 @router.put("/{item_id}", response_model=ItemResponse)
 async def update_item(
+    request: Request,
     item_id: int,
     data: ItemUpdate,
     db: AsyncSession = Depends(get_db),
@@ -654,6 +657,15 @@ async def update_item(
 
     await db.commit()
 
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="update_item",
+        entity_type="item",
+        entity_id=str(item_id),
+        request=request,
+    )
+
     result = await db.execute(
         select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item.id)
     )
@@ -663,6 +675,7 @@ async def update_item(
 
 @router.post("/{item_id}/photo", response_model=ItemResponse)
 async def upload_item_photo(
+    request: Request,
     item_id: int,
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
@@ -747,6 +760,15 @@ async def upload_item_photo(
     item.image_path = photo_url
     await db.commit()
 
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="upload_item_photo",
+        entity_type="item",
+        entity_id=str(item_id),
+        request=request,
+    )
+
     result = await db.execute(
         select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item.id)
     )
@@ -785,8 +807,18 @@ async def delete_item_photo(
 
     if item.image_path == photo_url:
         item.image_path = urls[0] if urls else None
-
     await db.commit()
+
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="create_item",
+        entity_type="item",
+        entity_id=str(item.id),
+        details=f"SKU: {item.sku}, Name: {item.name}",
+        request=request,
+    )
+
     result = await db.execute(
         select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item.id)
     )
@@ -1069,6 +1101,7 @@ async def reactivate_item(
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_item(
+    request: Request,
     item_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
@@ -1085,3 +1118,12 @@ async def delete_item(
 
     item.status = "removed"
     await db.commit()
+
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="delete_item",
+        entity_type="item",
+        entity_id=str(item_id),
+        request=request,
+    )

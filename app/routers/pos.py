@@ -39,6 +39,7 @@ from app.schemas.gift_card import (
 from app.services import poynt
 from app.services.llm_gateway import ai_runtime_mode, chat_completion
 from app.services.rent_payments import apply_rent_payment, stamp_rent_notes
+from app.services.audit import log_audit
 from app.config import settings
 from app.routers.notifications import bg_notify_product_sold, bg_notify_order_confirmation
 from app.routers.settings import get_tax_rate
@@ -771,6 +772,15 @@ async def pos_create_sale(
 
     await db.commit()
 
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="create_sale",
+        entity_type="sale",
+        entity_id=str(sale.id),
+        details=f"Payment: {data.payment_method}, Total: ${float(total):.2f}, Items: {len(data.items)}",
+    )
+
     result = await db.execute(
         select(Sale)
         .options(
@@ -873,6 +883,7 @@ async def pos_create_sale(
 
 @router.post("/sale/{sale_id}/void", response_model=SaleResponse)
 async def void_sale(
+    request: Request,
     sale_id: int,
     data: VoidSaleRequest = VoidSaleRequest(),
     db: AsyncSession = Depends(get_db),
@@ -958,6 +969,16 @@ async def void_sale(
             ))
 
     await db.commit()
+
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="void_sale",
+        entity_type="sale",
+        entity_id=str(sale_id),
+        details=f"Reason: {data.reason or 'No reason provided'}",
+        request=request,
+    )
 
     result = await db.execute(
         select(Sale)
@@ -1750,6 +1771,14 @@ async def activate_gift_card(
         db.add(txn)
 
     await db.commit()
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="activate_gift_card",
+        entity_type="gift_card",
+        entity_id=card.barcode,
+        details=f"Initial balance: ${float(data.initial_balance):.2f}",
+    )
     await db.refresh(card)
     return card
 
@@ -1836,6 +1865,14 @@ async def load_gift_card(
     )
     db.add(txn)
     await db.commit()
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="load_gift_card",
+        entity_type="gift_card",
+        entity_id=barcode,
+        details=f"Loaded: ${float(load_amount):.2f}, New balance: ${float(new_balance):.2f}",
+    )
     await db.refresh(card)
     return card
 
@@ -1880,6 +1917,14 @@ async def redeem_gift_card(
     )
     db.add(txn)
     await db.commit()
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="redeem_gift_card",
+        entity_type="gift_card",
+        entity_id=barcode,
+        details=f"Redeemed: ${float(redeem_amount):.2f}, New balance: ${float(new_balance):.2f}",
+    )
     await db.refresh(card)
     return card
 
