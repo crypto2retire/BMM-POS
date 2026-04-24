@@ -12,6 +12,9 @@ from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, status
+
+# Router defined before other module-level code
+router = APIRouter(prefix="/pos", tags=["pos"])
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_, func, cast, Date, case
 from sqlalchemy.orm import selectinload
@@ -42,8 +45,6 @@ from app.services.rent_payments import apply_rent_payment, stamp_rent_notes
 from app.services.audit import log_audit
 from app.services.email import send_email_safe
 from app.services.rate_limit import check_rate_limit
-
-router = APIRouter(prefix="/pos", tags=["pos"])
 
 ONLINE_PAYMENT_METHODS = ("cash", "card", "split", "gift_card", "crypto_blackbox")
 
