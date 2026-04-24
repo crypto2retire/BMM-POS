@@ -646,6 +646,72 @@ async def rent_charge_status(
         raise HTTPException(status_code=502, detail=f"Failed to check payment status: {str(exc)}")
 
 
+def _calculate_payout_row(vendor: Vendor, bal: VendorBalance | None, rent_already_paid: bool) -> dict:
+    """
+    Shared month-end payout calculation used by both preview and processing.
+
+    Flow:
+      1. If rent already paid this period (via Square/manual) → skip rent entirely
+      2. Calculate rent_due = monthly_rent + landing_page_fee
+      3. Apply prepaid rent_balance credit toward rent_due
+      4. If rent still owed, deduct remainder from sales_balance
+      5. Remaining sales → payout or carry forward
+      6. Any unpaid rent → negative rent_balance carries to next month
+    """
+    sales = Decimal(str(bal.balance)) if bal and bal.balance else Decimal("0")
+    rent_bal = Decimal(str(bal.rent_balance)) if bal and bal.rent_balance else Decimal("0")
+    rent_due = Decimal(str(vendor.monthly_rent or 0)) + Decimal(str(vendor.landing_page_fee or 0))
+
+    rent_from_credit = Decimal("0")
+    rent_from_sales = Decimal("0")
+    shortfall = Decimal("0")
+
+    if not rent_already_paid and rent_due > 0:
+        # Apply prepaid rent credit
+        if rent_bal > 0:
+            rent_from_credit = min(rent_bal, rent_due)
+            rent_bal -= rent_from_credit
+
+        # Rent still owed after credit?
+        still_owed = rent_due - rent_from_credit
+        if still_owed > 0 and sales > 0:
+            rent_from_sales = min(sales, still_owed)
+            sales -= rent_from_sales
+            still_owed -= rent_from_sales
+
+        # Any remaining rent owed is shortfall → negative rent_balance
+        if still_owed > 0:
+            rent_bal -= still_owed
+            shortfall = still_owed
+    elif rent_already_paid:
+        # Rent paid via Square/manual — credit already in rent_balance, nothing to deduct
+        pass
+
+    # Remaining sales → payout or carry
+    carry_balance = not bool(getattr(vendor, "auto_payout_enabled", True))
+    if carry_balance:
+        carry_forward = sales.quantize(Decimal("0.01"), ROUND_HALF_UP) if sales > 0 else Decimal("0")
+        net = Decimal("0.00")
+    else:
+        net = sales.quantize(Decimal("0.01"), ROUND_HALF_UP) if sales > 0 else Decimal("0")
+        carry_forward = Decimal("0.00")
+
+    total_rent_deducted = (rent_from_credit + rent_from_sales).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+    return {
+        "sales": sales,
+        "rent_bal": rent_bal.quantize(Decimal("0.01"), ROUND_HALF_UP),
+        "rent_due": rent_due,
+        "rent_from_credit": rent_from_credit.quantize(Decimal("0.01"), ROUND_HALF_UP),
+        "rent_from_sales": rent_from_sales.quantize(Decimal("0.01"), ROUND_HALF_UP),
+        "total_rent_deducted": total_rent_deducted,
+        "shortfall": shortfall.quantize(Decimal("0.01"), ROUND_HALF_UP),
+        "net": net,
+        "carry_forward": carry_forward,
+        "carry_balance": carry_balance,
+    }
+
+
 @router.get("/payout-preview")
 async def payout_preview(
     db: AsyncSession = Depends(get_db),
@@ -671,48 +737,33 @@ async def payout_preview(
             select(VendorBalance).where(VendorBalance.vendor_id == v.id).limit(1)
         )
         bal = bal_result.scalar_one_or_none()
-        gross = float(bal.balance) if bal else 0.0
-        rent = float(v.monthly_rent or 0) + float(v.landing_page_fee or 0)
 
         rent_paid_result = await db.execute(
             select(RentPayment).where(
                 RentPayment.vendor_id == v.id,
                 RentPayment.period_month == period,
+                RentPayment.status == "paid",
             )
         )
         rent_already_paid = rent_paid_result.scalar_one_or_none() is not None
 
-        if rent_already_paid:
-            rent_to_deduct = 0.0
-        else:
-            rent_to_deduct = rent
-
-        if gross >= rent_to_deduct:
-            remaining_after_rent = round(gross - rent_to_deduct, 2)
-            if getattr(v, "auto_payout_enabled", True):
-                net = remaining_after_rent
-                carry_forward = 0.0
-            else:
-                net = 0.0
-                carry_forward = remaining_after_rent
-            shortfall = 0.0
-        else:
-            net = 0.0
-            carry_forward = 0.0
-            shortfall = round(rent_to_deduct - gross, 2)
+        calc = _calculate_payout_row(v, bal, rent_already_paid)
 
         rows.append({
             "vendor_id": v.id,
             "name": v.name,
             "booth_number": v.booth_number or "—",
             "email": v.email or "",
-            "gross_sales": round(gross, 2),
-            "monthly_rent": rent,
+            "gross_sales": float(Decimal(str(bal.balance if bal and bal.balance else 0)).quantize(Decimal("0.01"), ROUND_HALF_UP)),
+            "monthly_rent": float(calc["rent_due"]),
+            "rent_credit": float(Decimal(str(bal.rent_balance if bal and bal.rent_balance else 0)).quantize(Decimal("0.01"), ROUND_HALF_UP)),
             "rent_already_paid": rent_already_paid,
-            "rent_to_deduct": round(rent_to_deduct, 2),
-            "net_payout": net,
-            "carry_forward": carry_forward,
-            "shortfall": shortfall,
+            "rent_from_credit": float(calc["rent_from_credit"]),
+            "rent_from_sales": float(calc["rent_from_sales"]),
+            "rent_to_deduct": float(calc["total_rent_deducted"]),
+            "net_payout": float(calc["net"]),
+            "carry_forward": float(calc["carry_forward"]),
+            "shortfall": float(calc["shortfall"]),
             "payout_method": v.payout_method or "—",
             "auto_payout_enabled": bool(getattr(v, "auto_payout_enabled", True)),
         })
@@ -775,71 +826,73 @@ async def process_payouts(
             select(VendorBalance).where(VendorBalance.vendor_id == v.id).limit(1).with_for_update()
         )
         bal = bal_result.scalar_one_or_none()
-        sales = Decimal(str(bal.balance)) if bal and bal.balance else Decimal("0")
-        rent_bal = Decimal(str(bal.rent_balance)) if bal and bal.rent_balance else Decimal("0")
-        rent = Decimal(str(v.monthly_rent or 0)) + Decimal(str(v.landing_page_fee or 0))
 
-        # ── Step 1: Deduct this month's rent from rent_balance ──
-        rent_bal -= rent  # can go negative
+        rent_paid_result = await db.execute(
+            select(RentPayment).where(
+                RentPayment.vendor_id == v.id,
+                RentPayment.period_month == period,
+                RentPayment.status == "paid",
+            )
+        )
+        rent_already_paid = rent_paid_result.scalar_one_or_none() is not None
 
-        # ── Step 2: If rent_balance is negative, cover from sales_balance ──
-        rent_covered_from_sales = Decimal("0")
-        if rent_bal < 0 and sales > 0:
-            transfer = min(sales, abs(rent_bal))
-            rent_bal += transfer
-            sales -= transfer
-            rent_covered_from_sales = transfer
+        calc = _calculate_payout_row(v, bal, rent_already_paid)
+        net = calc["net"]
+        carry_forward = calc["carry_forward"]
+        shortfall = calc["shortfall"]
+        rent_from_sales = calc["rent_from_sales"]
+        rent_from_credit = calc["rent_from_credit"]
+        total_rent_deducted = calc["total_rent_deducted"]
 
-        # ── Step 3: Remaining sales_balance is either paid out or carried ──
-        carry_balance = not bool(getattr(v, "auto_payout_enabled", True))
-        if carry_balance:
-            carry_forward = sales.quantize(Decimal("0.01"), ROUND_HALF_UP) if sales > 0 else Decimal("0")
-            net = Decimal("0.00")
-        else:
-            net = sales.quantize(Decimal("0.01"), ROUND_HALF_UP) if sales > 0 else Decimal("0")
-            carry_forward = Decimal("0.00")
-
-        # Track shortfall (rent still owed after sales applied)
-        shortfall = abs(rent_bal).quantize(Decimal("0.01"), ROUND_HALF_UP) if rent_bal < 0 else Decimal("0")
         if shortfall > 0:
             shortfall_count += 1
 
-        # Total rent actually deducted from sales for the payout record
-        total_rent_deducted = rent_covered_from_sales.quantize(Decimal("0.01"), ROUND_HALF_UP)
+        gross_sales = Decimal(str(bal.balance if bal and bal.balance else 0)).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
         payout = Payout(
             vendor_id=v.id,
             period_month=period,
-            gross_sales=Decimal(str(bal.balance if bal else 0)).quantize(Decimal("0.01"), ROUND_HALF_UP),
+            gross_sales=gross_sales,
             rent_deducted=total_rent_deducted,
             net_payout=net,
             payout_method=v.payout_method,
             zelle_handle=v.zelle_handle if hasattr(v, 'zelle_handle') else None,
-            status="carried" if carry_balance else "pending",
+            status="carried" if calc["carry_balance"] else "pending",
             notes=(
                 f"Processed by {current_user.name}"
-                + (" | Balance carried forward" if carry_balance and carry_forward > 0 else "")
+                + (f" | Rent from credit: ${float(rent_from_credit):.2f}" if rent_from_credit > 0 else "")
+                + (f" | Rent from sales: ${float(rent_from_sales):.2f}" if rent_from_sales > 0 else "")
+                + (" | Balance carried forward" if calc["carry_balance"] and carry_forward > 0 else "")
                 + (f" | Shortfall: ${float(shortfall):.2f}" if shortfall > 0 else "")
             ),
         )
         db.add(payout)
 
-        # Record rent deduction from balance as a rent payment if any was taken from sales
-        if rent_covered_from_sales > 0:
+        # Record rent payment if any rent was deducted this period
+        if total_rent_deducted > 0 and not rent_already_paid:
             rent_payment = RentPayment(
                 vendor_id=v.id,
-                amount=rent_covered_from_sales,
+                amount=total_rent_deducted,
                 period_month=period,
-                method="balance",
+                method="credit" if rent_from_credit > 0 and rent_from_sales == 0 else ("balance" if rent_from_sales > 0 else "credit"),
                 status="paid",
-                notes=f"Deducted from sales by {current_user.name}",
+                notes=f"Deducted by {current_user.name}"
+                + (f" (credit: ${float(rent_from_credit):.2f}" if rent_from_credit > 0 else "")
+                + (f", from sales: ${float(rent_from_sales):.2f}" if rent_from_sales > 0 else "") + ")",
             )
             db.add(rent_payment)
 
-        # ── Step 4: Update balances ──
+        # Update balances
         if bal:
-            bal.balance = carry_forward if carry_balance else Decimal("0")
-            bal.rent_balance = rent_bal.quantize(Decimal("0.01"), ROUND_HALF_UP)  # carries forward (may be negative)
+            bal.balance = carry_forward if calc["carry_balance"] else Decimal("0")
+            bal.rent_balance = calc["rent_bal"]
+        else:
+            bal = VendorBalance(
+                vendor_id=v.id,
+                balance=carry_forward if calc["carry_balance"] else Decimal("0"),
+                rent_balance=calc["rent_bal"],
+            )
+            db.add(bal)
 
         total_net += net
         processed += 1
@@ -849,19 +902,19 @@ async def process_payouts(
                 if shortfall > 0 and rent_emails_on:
                     subj, html, plain = await rent_shortfall_email(
                         vendor_name=v.name or "Vendor",
-                        gross_sales=float((bal.balance if bal and bal.balance else Decimal("0")).quantize(Decimal("0.01"), ROUND_HALF_UP)),
-                        rent_amount=float(rent),
+                        gross_sales=float(gross_sales),
+                        rent_amount=float(calc["rent_due"]),
                         shortfall=float(shortfall),
                         booth=v.booth_number or "—",
                         period=period_label,
                         db=db,
                     )
                     await send_email_safe(v.email, subj, html, plain)
-                elif net > 0 and payout_emails_on and not carry_balance:
-                    if rent_emails_on and total_rent_deducted > 0:
+                elif net > 0 and payout_emails_on and not calc["carry_balance"]:
+                    if total_rent_deducted > 0:
                         subj, html, plain = await payout_with_rent_email(
                             vendor_name=v.name or "Vendor",
-                            gross_sales=float((bal.balance if bal and bal.balance else Decimal("0")).quantize(Decimal("0.01"), ROUND_HALF_UP)),
+                            gross_sales=float(gross_sales),
                             rent_deducted=float(total_rent_deducted),
                             net_payout=float(net),
                             period=period_label,
