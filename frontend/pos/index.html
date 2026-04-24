@@ -3528,7 +3528,7 @@ table { width: 100%; border-collapse: collapse; }
             }
             result.innerHTML = html;
         } catch (err) {
-            result.innerHTML = '<p class="text-danger-center">' + (err.message || 'Gift card not found') + '</p>';
+            result.innerHTML = '<p class="text-danger-center">' + escHtml(err.message || 'Gift card not found') + '</p>';
         }
     }
 
@@ -4002,7 +4002,7 @@ table { width: 100%; border-collapse: collapse; }
             var sale = await apiGet('/api/v1/sales/' + saleNum);
             renderReceiptResults([sale]);
         } catch (err) {
-            results.innerHTML = '<p class="text-danger-center">' + (err.message || 'Not found') + '</p>';
+            results.innerHTML = '<p class="text-danger-center">' + escHtml(err.message || 'Not found') + '</p>';
         }
     }
 
@@ -4025,7 +4025,7 @@ table { width: 100%; border-collapse: collapse; }
             }
             renderReceiptResults(sales, rangeLabel);
         } catch (err) {
-            results.innerHTML = '<p class="text-danger-center">' + (err.message || 'Search failed') + '</p>';
+            results.innerHTML = '<p class="text-danger-center">' + escHtml(err.message || 'Search failed') + '</p>';
         }
     }
 

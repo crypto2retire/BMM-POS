@@ -21,17 +21,48 @@ _SENSITIVE_KEYS = {
     "password", "password_hash", "token", "access_token", "refresh_token",
     "card_transaction_id", "square_payment_id", "poynt_transaction_id",
     "gift_card_barcode", "authorization", "api_key", "secret", "private_key",
-    "cvv", "card_number", "account_number",
+    "cvv", "card_number", "account_number", "code", "reset_code",
+    "new_password", "current_password", "confirm_password",
+}
+
+# Endpoints that should never have their request body logged
+_EXCLUDED_ENDPOINTS = {
+    "/api/v1/auth/login",
+    "/api/v1/auth/forgot-password",
+    "/api/v1/auth/reset-password",
+    "/api/v1/auth/change-password",
 }
 
 _MAX_STACK_TRACE = 20000  # characters
 _MAX_REQUEST_BODY = 10000  # characters
 
 
-def _sanitize_request_body(body: str) -> str:
-    """Strip sensitive fields from a JSON request body string."""
+def _sanitize_request_body(body: str, content_type: Optional[str] = None, endpoint: Optional[str] = None) -> str:
+    """Strip sensitive fields from request body. Handles JSON and form-urlencoded."""
     if not body or not body.strip():
         return ""
+
+    # Don't log bodies for auth endpoints
+    if endpoint and endpoint in _EXCLUDED_ENDPOINTS:
+        return "[REDACTED — auth endpoint]"
+
+    content_type = (content_type or "").lower()
+
+    # Handle form-urlencoded data
+    if "application/x-www-form-urlencoded" in content_type:
+        try:
+            from urllib.parse import parse_qs
+            parsed = parse_qs(body, keep_blank_values=True)
+            for key in list(parsed.keys()):
+                if key.lower() in _SENSITIVE_KEYS:
+                    parsed[key] = ["***REDACTED***"]
+            # Re-encode truncated
+            result = "&".join(f"{k}={v[0]}" for k, v in parsed.items())
+            return result[:_MAX_REQUEST_BODY]
+        except Exception:
+            return body[:_MAX_REQUEST_BODY]
+
+    # Handle JSON data
     try:
         data = json.loads(body)
     except json.JSONDecodeError:
@@ -126,7 +157,12 @@ async def log_error(
             try:
                 body_bytes = await request.body()
                 if body_bytes:
-                    req_body = _sanitize_request_body(body_bytes.decode("utf-8", errors="replace"))
+                    content_type = request.headers.get("content-type")
+                    req_body = _sanitize_request_body(
+                        body_bytes.decode("utf-8", errors="replace"),
+                        content_type=content_type,
+                        endpoint=req_endpoint,
+                    )
             except Exception:
                 pass
 

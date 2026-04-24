@@ -18,24 +18,9 @@ from app.models.studio_class import StudioClass
 from app.models.class_registration import ClassRegistration
 from app.routers.settings import get_setting, DEFAULT_SETTINGS
 from app.services.llm_gateway import chat_completion
+from app.services.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/storefront/assistant", tags=["public-assistant"])
-
-_rate_limit_store: dict = defaultdict(list)
-_RATE_LIMIT_WINDOW = 60
-_RATE_LIMIT_MAX = 15
-
-
-def _check_rate_limit(request: Request):
-    client_ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    window_start = now - _RATE_LIMIT_WINDOW
-    _rate_limit_store[client_ip] = [
-        t for t in _rate_limit_store[client_ip] if t > window_start
-    ]
-    if len(_rate_limit_store[client_ip]) >= _RATE_LIMIT_MAX:
-        raise HTTPException(status_code=429, detail="Too many requests. Please try again later.")
-    _rate_limit_store[client_ip].append(now)
 
 
 SYSTEM_PROMPT = """You are the Bowenstreet Market shopping assistant. Bowenstreet Market is a vendor mall at 2837 Bowen St, Oshkosh WI 54901 with 120+ vendors selling handcrafted, vintage, and antique goods.
@@ -433,7 +418,13 @@ async def public_chat(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ):
-    _check_rate_limit(request)
+    check_rate_limit(
+        request,
+        window_name="storefront_assistant",
+        max_requests=15,
+        window_seconds=60,
+        error_message="Too many requests. Please try again later.",
+    )
 
     if not data.message or not data.message.strip():
         raise HTTPException(status_code=400, detail="Message is required")

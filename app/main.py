@@ -445,20 +445,27 @@ async def security_headers(request: Request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     # Referrer policy
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    # Strict Transport Security (only in production / HTTPS)
-    if request.url.scheme == "https":
-        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+    # Strict Transport Security — Railway always serves HTTPS
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+    # Permissions Policy — restrict sensitive APIs
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=(), "
+        "payment=(self), fullscreen=(self)"
+    )
     # Content Security Policy
+    # Note: 'unsafe-inline' is needed for Square SDK and inline styles.
+    # Future improvement: generate nonce values per-request and tag all inline scripts/styles.
     csp = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://js.squareup.com https://cdn.jsdelivr.net https://unpkg.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: https://bowenstreet-media.nyc3.digitaloceanspaces.com https://*.digitaloceanspaces.com https://*.squarecdn.com; "
+        "img-src 'self' data: blob: https://bowenstreet-media.nyc3.digitaloceanspaces.com https://*.digitaloceanspaces.com https://*.squarecdn.com; "
         "connect-src 'self' https://*.squareup.com https://api.openrouter.ai https://*.digitaloceanspaces.com; "
         "frame-ancestors 'none'; "
         "base-uri 'self'; "
-        "form-action 'self';"
+        "form-action 'self'; "
+        "upgrade-insecure-requests;"
     )
     response.headers["Content-Security-Policy"] = csp
     return response

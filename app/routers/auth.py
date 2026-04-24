@@ -15,12 +15,9 @@ from sqlalchemy import select, func
 
 from app.database import get_db
 from app.models.vendor import Vendor
+from app.services.rate_limit import check_rate_limit
 
 logger = logging.getLogger("bmm-auth")
-
-_login_attempts = defaultdict(list)
-_LOGIN_WINDOW = 300
-_LOGIN_MAX = 10
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -129,17 +126,18 @@ require_cashier_or_admin = require_role("admin", "cashier")
 
 @router.post("/login")
 async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
-    client_ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    _login_attempts[client_ip] = [t for t in _login_attempts[client_ip] if now - t < _LOGIN_WINDOW]
-    if len(_login_attempts[client_ip]) >= _LOGIN_MAX:
-        raise HTTPException(status_code=429, detail="Too many login attempts. Please wait a few minutes.")
+    check_rate_limit(
+        request,
+        window_name="login",
+        max_requests=10,
+        window_seconds=300,
+        error_message="Too many login attempts. Please wait a few minutes.",
+    )
 
     result = await db.execute(select(Vendor).where(func.lower(Vendor.email) == form_data.username.lower()))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(form_data.password, user.password_hash):
-        _login_attempts[client_ip].append(now)
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not user.is_active:
         raise HTTPException(status_code=401, detail="Account is deactivated")
@@ -303,7 +301,15 @@ def _generate_reset_code() -> str:
 
 
 @router.post("/forgot-password")
-async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+async def forgot_password(request: Request, body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    check_rate_limit(
+        request,
+        window_name="forgot_password",
+        max_requests=5,
+        window_seconds=3600,
+        error_message="Too many password reset requests. Please wait an hour.",
+    )
+
     result = await db.execute(
         select(Vendor).where(func.lower(Vendor.email) == body.email.strip().lower())
     )

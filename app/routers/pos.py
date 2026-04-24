@@ -40,20 +40,10 @@ from app.services import poynt
 from app.services.llm_gateway import ai_runtime_mode, chat_completion
 from app.services.rent_payments import apply_rent_payment, stamp_rent_notes
 from app.services.audit import log_audit
-from app.config import settings
-from app.routers.notifications import bg_notify_product_sold, bg_notify_order_confirmation
-from app.routers.settings import get_tax_rate
-from app.timezone import STORE_TZ
-
-router = APIRouter(prefix="/pos", tags=["pos"])
-logger = logging.getLogger(__name__)
+from app.services.email import send_email_safe
+from app.services.rate_limit import check_rate_limit
 
 ONLINE_PAYMENT_METHODS = ("cash", "card", "split", "gift_card", "crypto_blackbox")
-
-# Gift card lookup rate limiter (per client IP)
-_gc_lookup_attempts: dict[str, list[float]] = {}
-_GC_LOOKUP_WINDOW = 60
-_GC_LOOKUP_MAX = 30
 
 
 def _offline_mode_enabled() -> bool:
@@ -1666,8 +1656,22 @@ async def image_search(
     )
     inventory_items = result.scalars().all()
 
+    # Build anonymized inventory list — avoid sending business-sensitive data
+    # (booth numbers, exact prices) to external AI service
+    def _price_range(price: float) -> str:
+        if price < 10:
+            return "Under $10"
+        elif price < 25:
+            return "$10-$25"
+        elif price < 50:
+            return "$25-$50"
+        elif price < 100:
+            return "$50-$100"
+        else:
+            return "$100+"
+
     inventory_text = "\n".join([
-        f"- ID:{it.id} | {it.name} | Category: {it.category or 'N/A'} | ${float(it.price):.2f} | Booth: {it.vendor.booth_number if it.vendor else 'N/A'}"
+        f"- ID:{it.id} | {it.name} | Category: {it.category or 'N/A'} | {_price_range(float(it.price))}"
         for it in inventory_items
     ])
 
@@ -1783,15 +1787,6 @@ async def activate_gift_card(
     return card
 
 
-def _check_gc_rate_limit(request: Request):
-    client_ip = request.client.host if request.client else "unknown"
-    now = datetime.now(timezone.utc).timestamp()
-    _gc_lookup_attempts[client_ip] = [t for t in _gc_lookup_attempts.get(client_ip, []) if now - t < _GC_LOOKUP_WINDOW]
-    if len(_gc_lookup_attempts[client_ip]) >= _GC_LOOKUP_MAX:
-        raise HTTPException(status_code=429, detail="Too many gift card lookups. Please slow down.")
-    _gc_lookup_attempts[client_ip].append(now)
-
-
 @router.get("/gift-cards/{barcode}/balance")
 async def get_gift_card_balance(
     request: Request,
@@ -1799,7 +1794,13 @@ async def get_gift_card_balance(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_manage_gift_cards")),
 ):
-    _check_gc_rate_limit(request)
+    check_rate_limit(
+        request,
+        window_name="gift_card_lookup",
+        max_requests=30,
+        window_seconds=60,
+        error_message="Too many gift card lookups. Please slow down.",
+    )
     result = await db.execute(
         select(GiftCard).where(GiftCard.barcode == barcode)
     )
@@ -1821,7 +1822,13 @@ async def check_gift_card_balance(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_manage_gift_cards")),
 ):
-    _check_gc_rate_limit(request)
+    check_rate_limit(
+        request,
+        window_name="gift_card_lookup",
+        max_requests=30,
+        window_seconds=60,
+        error_message="Too many gift card lookups. Please slow down.",
+    )
     result = await db.execute(
         select(GiftCard).where(GiftCard.barcode == barcode)
     )

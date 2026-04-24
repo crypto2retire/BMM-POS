@@ -17,11 +17,9 @@ from app.models.reservation import Reservation
 from app.routers.settings import get_tax_rate
 from app.services.audit import log_audit
 
-router = APIRouter(prefix="/storefront", tags=["shop"])
+from app.services.rate_limit import check_rate_limit
 
-_rate_limit_store: dict = defaultdict(list)
-_RATE_LIMIT_WINDOW = 60
-_RATE_LIMIT_MAX = 10
+router = APIRouter(prefix="/storefront", tags=["shop"])
 
 
 def _has_real_sale_price_expr():
@@ -31,17 +29,6 @@ def _has_real_sale_price_expr():
         Item.sale_price < Item.price,
     )
 
-
-def _check_rate_limit(request: Request, max_requests: int = _RATE_LIMIT_MAX):
-    client_ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    window_start = now - _RATE_LIMIT_WINDOW
-    _rate_limit_store[client_ip] = [
-        t for t in _rate_limit_store[client_ip] if t > window_start
-    ]
-    if len(_rate_limit_store[client_ip]) >= max_requests:
-        raise HTTPException(status_code=429, detail="Too many requests. Please try again later.")
-    _rate_limit_store[client_ip].append(now)
 
 class ShopItemResponse(BaseModel):
     id: int
@@ -505,7 +492,13 @@ async def create_cart_payment(
     req: CreateCartPaymentRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    _check_rate_limit(request)
+    check_rate_limit(
+        request,
+        window_name="storefront_reservation",
+        max_requests=10,
+        window_seconds=60,
+        error_message="Too many requests. Please try again later.",
+    )
 
     # Idempotency: return existing reservations if same key was used
     if req.idempotency_key:
@@ -625,7 +618,13 @@ async def payment_confirmed(
     req: ConfirmPaymentRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    _check_rate_limit(request)
+    check_rate_limit(
+        request,
+        window_name="storefront_payment",
+        max_requests=10,
+        window_seconds=60,
+        error_message="Too many requests. Please try again later.",
+    )
     reference_id = (req.reference_id or req.reservation_id or "").strip()
     if not reference_id:
         raise HTTPException(status_code=400, detail="Reservation reference is required")
