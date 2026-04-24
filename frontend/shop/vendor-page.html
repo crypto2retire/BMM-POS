@@ -287,14 +287,29 @@
   <!-- ABOUT -->
   <section id="about-section" class="about-section landing-about" data-section-key="about" style="display:none">
     <h2>About <span id="about-vendor-name"></span></h2>
-    <div id="about-text" class="about-text landing-about-text"></div>
-    <div id="social-links" class="social-links landing-social-links"></div>
-    <div id="contact-info" class="contact-info landing-contact-info"></div>
+    <div class="about-layout landing-about-layout">
+      <div class="about-column about-text-col">
+        <div id="about-text" class="about-text landing-about-text"></div>
+        <div id="social-links" class="social-links landing-social-links"></div>
+        <div id="contact-info" class="contact-info landing-contact-info"></div>
+      </div>
+      <div class="about-column about-image-col" id="about-image-col" style="display:none">
+        <img id="about-portrait" src="" alt="" class="about-portrait landing-about-portrait">
+      </div>
+    </div>
   </section>
 
   <!-- PHOTOS -->
   <div id="photo-gallery" class="photo-gallery landing-photo-gallery" data-section-key="gallery" style="display:none">
-    <div id="photo-scroll" class="photo-scroll landing-photo-scroll"></div>
+    <div id="photo-grid" class="photo-grid landing-photo-grid"></div>
+    <div id="photo-lightbox" class="photo-lightbox" style="display:none">
+      <div class="lightbox-backdrop" onclick="closeLightbox()"></div>
+      <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+      <button class="lightbox-nav lightbox-prev" onclick="lightboxPrev()">&#8249;</button>
+      <img id="lightbox-img" src="" alt="">
+      <button class="lightbox-nav lightbox-next" onclick="lightboxNext()">&#8250;</button>
+      <div id="lightbox-caption" class="lightbox-caption"></div>
+    </div>
   </div>
 
   <!-- ITEMS -->
@@ -330,8 +345,29 @@
   </div>
 </div>
 
-<!-- CHECKOUT MODAL -->
-<div id="checkout-modal" class="landing-modal-overlay">
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="mobile-bottom-nav" id="mobile-bottom-nav">
+    <a href="#" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;" class="mobile-nav-item">
+      <span class="mobile-nav-icon">&#127968;</span>
+      <span class="mobile-nav-label">Home</span>
+    </a>
+    <a href="#items-section" onclick="document.getElementById('items-section').scrollIntoView({behavior:'smooth'});return false;" class="mobile-nav-item">
+      <span class="mobile-nav-icon">&#128722;</span>
+      <span class="mobile-nav-label">Shop</span>
+    </a>
+    <a href="#about-section" onclick="document.getElementById('about-section').scrollIntoView({behavior:'smooth'});return false;" class="mobile-nav-item">
+      <span class="mobile-nav-icon">&#8505;</span>
+      <span class="mobile-nav-label">About</span>
+    </a>
+    <a href="#" onclick="document.getElementById('cart-toggle').click();return false;" class="mobile-nav-item">
+      <span class="mobile-nav-icon">&#128717;</span>
+      <span class="mobile-nav-label">Cart</span>
+      <span class="mobile-nav-badge" id="mobile-cart-badge"></span>
+    </a>
+  </nav>
+
+  <!-- CHECKOUT MODAL -->
+  <div id="checkout-modal" class="landing-modal-overlay">
   <div class="modal-box landing-modal-box">
     <h2>Complete Your Order</h2>
     <p>Enter your details to reserve these items for pickup.</p>
@@ -362,10 +398,10 @@
   <div id="specialties-chips" class="specialties-chips landing-specialties-chips"></div>
 </section>
 
-<!-- STORY BLOCKS -->
-<section id="story-section" class="story-section landing-story" data-section-key="story" style="display:none">
-  <div id="story-container"></div>
-</section>
+  <!-- STORY BLOCKS -->
+  <section id="story-section" class="story-section landing-story" data-section-key="story" style="display:none">
+    <div class="story-timeline landing-story-timeline" id="story-container"></div>
+  </section>
 
 <!-- FAQ -->
 <section id="faq-section" class="faq-section landing-faq" data-section-key="faq" style="display:none">
@@ -1085,21 +1121,44 @@
   }
 
   function renderAbout() {
-    var hasAbout = vendorData.landing_about || vendorData.description;
-    var hasSocials = vendorData.landing_facebook || vendorData.landing_instagram || vendorData.landing_tiktok || vendorData.landing_twitter || vendorData.landing_etsy || vendorData.landing_website;
-    var hasContact = vendorData.landing_contact_email || vendorData.landing_contact_phone;
+    var name = vendorData.vendor_name || 'Vendor';
+    document.getElementById('about-vendor-name').textContent = name;
 
-    if (!hasAbout && !hasSocials && !hasContact) return;
-
-    var section = document.getElementById('about-section');
-    section.style.display = 'block';
-    document.getElementById('about-vendor-name').textContent = vendorData.vendor_name || '';
-
-    if (vendorData.landing_about) {
-      document.getElementById('about-text').textContent = vendorData.landing_about;
-    } else if (vendorData.description) {
-      document.getElementById('about-text').textContent = vendorData.description;
+    var about = vendorData.landing_about || vendorData.description;
+    if (about) {
+      document.getElementById('about-text').textContent = about;
+      document.getElementById('about-section').style.display = 'block';
     }
+
+    // Portrait image (second photo if available)
+    var photos = vendorData.photo_urls || [];
+    if (photos.length >= 2) {
+      var portraitImg = document.getElementById('about-portrait');
+      portraitImg.src = photos[1];
+      portraitImg.alt = name + ' portrait';
+      document.getElementById('about-image-col').style.display = 'block';
+    }
+
+    var socials = [];
+    if (vendorData.landing_facebook) socials.push('<a href="' + escAttr(vendorData.landing_facebook) + '" target="_blank" rel="noopener">Facebook</a>');
+    if (vendorData.landing_instagram) socials.push('<a href="' + escAttr(vendorData.landing_instagram) + '" target="_blank" rel="noopener">Instagram</a>');
+    if (vendorData.landing_tiktok) socials.push('<a href="' + escAttr(vendorData.landing_tiktok) + '" target="_blank" rel="noopener">TikTok</a>');
+    if (vendorData.landing_twitter) socials.push('<a href="' + escAttr(vendorData.landing_twitter) + '" target="_blank" rel="noopener">Twitter</a>');
+    if (vendorData.landing_etsy) socials.push('<a href="' + escAttr(vendorData.landing_etsy) + '" target="_blank" rel="noopener">Etsy</a>');
+    document.getElementById('social-links').innerHTML = socials.join('');
+
+    var contact = document.getElementById('contact-info');
+    contact.innerHTML = '';
+    if (vendorData.landing_website) {
+      contact.innerHTML += '<div><a href="' + escAttr(vendorData.landing_website) + '" target="_blank" rel="noopener">' + escHtml(vendorData.landing_website) + '</a></div>';
+    }
+    if (vendorData.landing_contact_email) {
+      contact.innerHTML += '<div>&#9993; ' + escHtml(vendorData.landing_contact_email) + '</div>';
+    }
+    if (vendorData.landing_contact_phone) {
+      contact.innerHTML += '&#128222; ' + escHtml(vendorData.landing_contact_phone);
+    }
+  }
 
     var socials = document.getElementById('social-links');
     socials.innerHTML = '';
@@ -1127,16 +1186,58 @@
     }
   }
 
+  var currentLightboxIndex = 0;
+  var lightboxPhotos = [];
+
   function renderPhotos() {
     var photos = vendorData.photo_urls || [];
     if (photos.length <= 1) return;
+    lightboxPhotos = photos;
     var gallery = document.getElementById('photo-gallery');
     gallery.style.display = 'block';
-    var scroll = document.getElementById('photo-scroll');
-    scroll.innerHTML = photos.map(function (url) {
-      return '<img src="' + escAttr(url) + '" alt="Booth photo" loading="eager">';
+    var grid = document.getElementById('photo-grid');
+    grid.innerHTML = photos.map(function (url, i) {
+      return '<div class="photo-grid-item" onclick="openLightbox(' + i + ')" style="cursor:pointer">' +
+        '<img src="' + escAttr(url) + '" alt="Booth photo ' + (i + 1) + '" loading="lazy">' +
+        '</div>';
     }).join('');
   }
+
+  function openLightbox(index) {
+    currentLightboxIndex = index;
+    var lb = document.getElementById('photo-lightbox');
+    var img = document.getElementById('lightbox-img');
+    img.src = lightboxPhotos[index];
+    img.alt = 'Booth photo ' + (index + 1);
+    document.getElementById('lightbox-caption').textContent = (index + 1) + ' / ' + lightboxPhotos.length;
+    lb.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    document.getElementById('photo-lightbox').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  function lightboxPrev() {
+    if (lightboxPhotos.length <= 1) return;
+    currentLightboxIndex = (currentLightboxIndex - 1 + lightboxPhotos.length) % lightboxPhotos.length;
+    openLightbox(currentLightboxIndex);
+  }
+
+  function lightboxNext() {
+    if (lightboxPhotos.length <= 1) return;
+    currentLightboxIndex = (currentLightboxIndex + 1) % lightboxPhotos.length;
+    openLightbox(currentLightboxIndex);
+  }
+
+  document.addEventListener('keydown', function(e) {
+    var lb = document.getElementById('photo-lightbox');
+    if (lb.style.display !== 'flex') return;
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') lightboxPrev();
+    if (e.key === 'ArrowRight') lightboxNext();
+  });
 
   function renderSEO() {
     var title = vendorData.landing_meta_title || (vendorData.vendor_name + ' — Bowenstreet Market');
@@ -1295,6 +1396,11 @@
     var badge = document.getElementById('cart-badge');
     badge.textContent = keys.length;
     badge.setAttribute('data-count', keys.length);
+    
+    var mobileBadge = document.getElementById('mobile-cart-badge');
+    if (mobileBadge) {
+      mobileBadge.textContent = keys.length > 0 ? keys.length : '';
+    }
 
     var body = document.getElementById('cart-body');
     var totals = document.getElementById('cart-totals');
@@ -1577,13 +1683,19 @@
     if (!sec || !container) return;
     var html = '';
     var shown = 0;
-    PUB_STORY_ORDER.forEach(function(key) {
+    PUB_STORY_ORDER.forEach(function(key, index) {
       var text = (blocks[key] || '').toString().trim();
       if (!text) return;
       shown++;
-      html += '<div class="story-block-pub" data-story-block="'+escAttr(key)+'">' +
-                '<h2>'+escHtml(PUB_STORY_HEADINGS[key] || key)+'</h2>' +
-                '<p>'+escHtml(text)+'</p>' +
+      var stepNum = index + 1;
+      html += '<div class="story-timeline-item">' +
+                '<div class="story-timeline-marker">' +
+                  '<span class="story-timeline-number">' + stepNum + '</span>' +
+                '</div>' +
+                '<div class="story-timeline-content">' +
+                  '<h2>'+escHtml(PUB_STORY_HEADINGS[key] || key)+'</h2>' +
+                  '<p>'+escHtml(text)+'</p>' +
+                '</div>' +
               '</div>';
     });
     if (shown === 0) return;
