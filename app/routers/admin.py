@@ -651,12 +651,16 @@ def _calculate_payout_row(vendor: Vendor, bal: VendorBalance | None, rent_alread
     Shared month-end payout calculation used by both preview and processing.
 
     Flow:
-      1. If rent already paid this period (via Square/manual) → skip rent entirely
-      2. Calculate rent_due = monthly_rent + landing_page_fee
-      3. Apply prepaid rent_balance credit toward rent_due
-      4. If rent still owed, deduct remainder from sales_balance
-      5. Remaining sales → payout or carry forward
-      6. Any unpaid rent → negative rent_balance carries to next month
+      1. Calculate rent_due = monthly_rent + landing_page_fee
+      2. Deduct rent_due from rent_balance (consumes prepaid credit from
+         Square/cash/check payments made during the month via apply_rent_payment)
+      3. If rent_balance goes negative (unpaid rent), cover from sales_balance
+      4. Remaining sales → payout or carry forward
+      5. Any unpaid rent → negative rent_balance carries to next month
+
+    Note: rent_already_paid is for display only — it indicates a RentPayment
+    receipt exists. The deduction still runs because apply_rent_payment credits
+    rent_balance without deducting the monthly rent; that happens here.
     """
     sales = Decimal(str(bal.balance)) if bal and bal.balance else Decimal("0")
     rent_bal = Decimal(str(bal.rent_balance)) if bal and bal.rent_balance else Decimal("0")
@@ -666,26 +670,22 @@ def _calculate_payout_row(vendor: Vendor, bal: VendorBalance | None, rent_alread
     rent_from_sales = Decimal("0")
     shortfall = Decimal("0")
 
-    if not rent_already_paid and rent_due > 0:
-        # Apply prepaid rent credit
-        if rent_bal > 0:
-            rent_from_credit = min(rent_bal, rent_due)
-            rent_bal -= rent_from_credit
+    if rent_due > 0:
+        # Deduct rent from rent_balance (consumes prepaid credit)
+        rent_from_credit = min(max(rent_bal, Decimal("0")), rent_due)
+        rent_bal -= rent_due  # can go negative (vendor owes rent)
 
-        # Rent still owed after credit?
-        still_owed = rent_due - rent_from_credit
+        # If rent_balance is negative, cover shortfall from sales
+        still_owed = max(-rent_bal, Decimal("0"))
         if still_owed > 0 and sales > 0:
             rent_from_sales = min(sales, still_owed)
             sales -= rent_from_sales
+            rent_bal += rent_from_sales
             still_owed -= rent_from_sales
 
-        # Any remaining rent owed is shortfall → negative rent_balance
+        # Any remaining rent owed
         if still_owed > 0:
-            rent_bal -= still_owed
             shortfall = still_owed
-    elif rent_already_paid:
-        # Rent paid via Square/manual — credit already in rent_balance, nothing to deduct
-        pass
 
     # Remaining sales → payout or carry
     carry_balance = not bool(getattr(vendor, "auto_payout_enabled", True))
@@ -868,17 +868,18 @@ async def process_payouts(
         )
         db.add(payout)
 
-        # Record rent payment if any rent was deducted this period
+        # Record rent payment for this period's deduction
+        # Skip only if a paid record already exists for this period (from Square/cash payment)
         if total_rent_deducted > 0 and not rent_already_paid:
             rent_payment = RentPayment(
                 vendor_id=v.id,
                 amount=total_rent_deducted,
                 period_month=period,
-                method="credit" if rent_from_credit > 0 and rent_from_sales == 0 else ("balance" if rent_from_sales > 0 else "credit"),
+                method="balance",
                 status="paid",
-                notes=f"Deducted by {current_user.name}"
+                notes=f"Month-end deduction by {current_user.name}"
                 + (f" (credit: ${float(rent_from_credit):.2f}" if rent_from_credit > 0 else "")
-                + (f", from sales: ${float(rent_from_sales):.2f}" if rent_from_sales > 0 else "") + ")",
+                + (f", sales: ${float(rent_from_sales):.2f}" if rent_from_sales > 0 else ""),
             )
             db.add(rent_payment)
 
