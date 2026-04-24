@@ -1160,32 +1160,6 @@
     }
   }
 
-    var socials = document.getElementById('social-links');
-    socials.innerHTML = '';
-    var links = [
-      { url: vendorData.landing_website, label: 'Website', icon: '🔗' },
-      { url: vendorData.landing_facebook, label: 'Facebook', icon: '📘' },
-      { url: vendorData.landing_instagram, label: 'Instagram', icon: '📷' },
-      { url: vendorData.landing_tiktok, label: 'TikTok', icon: '🎵' },
-      { url: vendorData.landing_twitter, label: 'Twitter', icon: '🐦' },
-      { url: vendorData.landing_etsy, label: 'Etsy', icon: '🧶' },
-    ];
-    links.forEach(function (l) {
-      if (l.url) {
-        socials.innerHTML += '<a href="' + escAttr(l.url) + '" target="_blank" rel="noopener">' + l.icon + ' ' + escHtml(l.label) + '</a>';
-      }
-    });
-
-    var contact = document.getElementById('contact-info');
-    contact.innerHTML = '';
-    if (vendorData.landing_contact_email) {
-      contact.innerHTML += '📧 <a href="mailto:' + escAttr(vendorData.landing_contact_email) + '">' + escHtml(vendorData.landing_contact_email) + '</a><br>';
-    }
-    if (vendorData.landing_contact_phone) {
-      contact.innerHTML += '📞 ' + escHtml(vendorData.landing_contact_phone);
-    }
-  }
-
   var currentLightboxIndex = 0;
   var lightboxPhotos = [];
 
