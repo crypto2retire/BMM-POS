@@ -1416,15 +1416,18 @@ async def errors_summary(
     )
     top_endpoints = [{"endpoint": e or "(unknown)", "count": c} for e, c in top_endpoints_result.all()]
 
-    # Hourly trend (last 24h, grouped by hour)
-    hourly_result = await db.execute(
+    # Hourly trend (last 24h, grouped by hour) — use subquery to avoid strict GROUP BY issues
+    hourly_subq = (
         select(
             func.date_trunc("hour", ErrorLog.occurred_at).label("hour"),
             func.count().label("cnt"),
         )
         .where(ErrorLog.occurred_at >= day_ago)
         .group_by(func.date_trunc("hour", ErrorLog.occurred_at))
-        .order_by("hour")
+        .subquery()
+    )
+    hourly_result = await db.execute(
+        select(hourly_subq.c.hour, hourly_subq.c.cnt).order_by(hourly_subq.c.hour)
     )
     hourly = []
     for h, c in hourly_result.all():

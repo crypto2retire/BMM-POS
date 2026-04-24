@@ -20,7 +20,7 @@ from sqlalchemy import select, or_, and_, func, cast, Date, case
 from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models.store_setting import StoreSetting
-from app.routers.settings import require_staff_feature, role_feature_allowed
+from app.routers.settings import require_staff_feature, role_feature_allowed, get_tax_rate
 from app.models.vendor import Vendor, VendorBalance
 from app.models.item import Item
 from app.models.item_variable import ItemVariable
