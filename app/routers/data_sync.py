@@ -42,8 +42,9 @@ async def export_vendors(
 ):
     result = await db.execute(select(Vendor).order_by(Vendor.id))
     vendors = result.scalars().all()
+    excluded_columns = {"password_hash", "auth_version"}
     return {"vendors": [
-        {c.name: getattr(v, c.name) for c in v.__table__.columns}
+        {c.name: getattr(v, c.name) for c in v.__table__.columns if c.name not in excluded_columns}
         for v in vendors
     ]}
 

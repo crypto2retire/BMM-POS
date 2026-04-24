@@ -4228,7 +4228,7 @@ table { width: 100%; border-collapse: collapse; }
                 </div>`;
             }).join('');
         } catch (err) {
-            list.innerHTML = `<p class="text-danger-center">${err.message || 'Failed to load orders'}</p>`;
+            list.innerHTML = `<p class="text-danger-center">${escHtml(err.message || 'Failed to load orders')}</p>`;
         }
     }
 

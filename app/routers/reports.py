@@ -211,16 +211,25 @@ async def report_daily_sales(
     to_date: Optional[str] = Query(None, alias="to_date"),
     start: Optional[str] = Query(None),
     end: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     start_dt, end_dt = _parse_dates(from_date or start, to_date or end)
+    
+    # Cap date range to prevent excessive queries
+    max_range = timedelta(days=90)
+    if end_dt - start_dt > max_range:
+        end_dt = start_dt + max_range
 
     result = await db.execute(
         select(Sale)
         .options(selectinload(Sale.cashier), selectinload(Sale.items))
         .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
         .order_by(Sale.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     sales = result.scalars().all()
 
@@ -262,16 +271,25 @@ async def report_sales(
     to_date: Optional[str] = Query(None, alias="to_date"),
     start: Optional[str] = Query(None),
     end: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     start_dt, end_dt = _parse_dates(from_date or start, to_date or end)
+    
+    # Cap date range to prevent excessive queries
+    max_range = timedelta(days=90)
+    if end_dt - start_dt > max_range:
+        end_dt = start_dt + max_range
 
     result = await db.execute(
         select(Sale)
         .options(selectinload(Sale.cashier), selectinload(Sale.items))
         .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
         .order_by(Sale.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     sales = result.scalars().all()
 
@@ -309,10 +327,17 @@ async def report_vendor_performance(
     to_date: Optional[str] = Query(None, alias="to_date"),
     start: Optional[str] = Query(None),
     end: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
     start_dt, end_dt = _parse_dates(from_date or start, to_date or end)
+    
+    # Cap date range to prevent excessive queries
+    max_range = timedelta(days=90)
+    if end_dt - start_dt > max_range:
+        end_dt = start_dt + max_range
 
     result = await db.execute(
         select(
@@ -326,6 +351,8 @@ async def report_vendor_performance(
         .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
         .group_by(Vendor.name, Vendor.booth_number)
         .order_by(func.sum(SaleItem.line_total).desc())
+        .limit(limit)
+        .offset(offset)
     )
     rows = result.all()
 
@@ -673,6 +700,8 @@ async def report_rent(
 
 @router.get("/payouts")
 async def report_payouts(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
@@ -680,6 +709,8 @@ async def report_payouts(
         select(Payout)
         .options(selectinload(Payout.vendor))
         .order_by(Payout.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     payouts = result.scalars().all()
 
@@ -699,6 +730,8 @@ async def report_payouts(
 
 @router.get("/reservations")
 async def report_reservations(
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
 ):
@@ -706,6 +739,8 @@ async def report_reservations(
         select(Reservation)
         .options(selectinload(Reservation.item))
         .order_by(Reservation.created_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     reservations = result.scalars().all()
 

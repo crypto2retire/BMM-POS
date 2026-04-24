@@ -178,12 +178,34 @@ DEFAULT_SETTINGS = {
 SERVER_ONLY_SETTINGS = {"square_access_token"}
 
 
+# Simple in-memory TTL cache for settings
+import time
+_setting_cache: dict[str, tuple[str, float]] = {}
+_SETTING_CACHE_TTL = 60  # seconds
+
+
 async def get_setting(db: AsyncSession, key: str, default: Optional[str] = None) -> Optional[str]:
+    now = time.time()
+    cached = _setting_cache.get(key)
+    if cached and cached[1] > now:
+        return cached[0] if cached[0] is not None else default
+
     result = await db.execute(
         select(StoreSetting.value).where(StoreSetting.key == key)
     )
     row = result.scalar_one_or_none()
-    return row if row is not None else default
+    value = row if row is not None else default
+    _setting_cache[key] = (value, now + _SETTING_CACHE_TTL)
+    return value
+
+
+def invalidate_setting_cache(key: Optional[str] = None):
+    """Invalidate setting cache. If key is None, invalidate all."""
+    global _setting_cache
+    if key is None:
+        _setting_cache.clear()
+    else:
+        _setting_cache.pop(key, None)
 
 
 async def get_tax_rate(db: AsyncSession) -> float:
@@ -239,7 +261,50 @@ async def role_feature_allowed(db: AsyncSession, user: Vendor, feature_slug: str
 
 
 async def collect_role_permissions(db: AsyncSession, user: Vendor) -> dict[str, bool]:
-    return {slug: await role_feature_allowed(db, user, slug) for slug in ROLE_FEATURE_SLUGS}
+    """Batch fetch all role permissions in a single query for better performance."""
+    if user.role == "admin":
+        return {slug: True for slug in ROLE_FEATURE_SLUGS}
+    if user.role not in ("vendor", "cashier"):
+        return {slug: False for slug in ROLE_FEATURE_SLUGS}
+
+    # Build all keys at once
+    keys = [f"{slug}_{user.role}" for slug in ROLE_FEATURE_SLUGS]
+
+    # Check cache first
+    now = time.time()
+    missing_keys = []
+    cached_values = {}
+    for key in keys:
+        cached = _setting_cache.get(key)
+        if cached and cached[1] > now:
+            cached_values[key] = cached[0]
+        else:
+            missing_keys.append(key)
+
+    # Batch fetch missing keys
+    if missing_keys:
+        result = await db.execute(
+            select(StoreSetting.key, StoreSetting.value)
+            .where(StoreSetting.key.in_(missing_keys))
+        )
+        db_values = {row[0]: row[1] for row in result.all()}
+
+        # Update cache
+        for key in missing_keys:
+            value = db_values.get(key)
+            default = DEFAULT_SETTINGS.get(key, "false")
+            final_value = value if value is not None else default
+            _setting_cache[key] = (final_value, now + _SETTING_CACHE_TTL)
+            cached_values[key] = final_value
+
+    # Build permissions dict
+    permissions = {}
+    for slug in ROLE_FEATURE_SLUGS:
+        key = f"{slug}_{user.role}"
+        val = cached_values.get(key, DEFAULT_SETTINGS.get(key, "false"))
+        permissions[slug] = _truthy_setting(val)
+
+    return permissions
 
 
 def require_role_feature(feature_slug: str) -> Callable[..., Awaitable[Vendor]]:
@@ -339,4 +404,7 @@ async def save_settings(
         else:
             db.add(StoreSetting(key=key, value=str(value)))
     await db.commit()
+    # Invalidate cache for all updated keys
+    for key in payload.keys():
+        invalidate_setting_cache(key)
     return {"message": "Settings saved"}

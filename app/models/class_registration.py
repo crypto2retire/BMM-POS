@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Integer, TIMESTAMP, ForeignKey, Text
+from sqlalchemy import String, Integer, TIMESTAMP, ForeignKey, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 import uuid as _uuid
@@ -8,6 +8,12 @@ import uuid as _uuid
 
 class ClassRegistration(Base):
     __tablename__ = "class_registrations"
+    __table_args__ = (
+        Index("idx_class_reg_class_id", "class_id"),
+        Index("idx_class_reg_status", "status"),
+        Index("idx_class_reg_public_id", "public_id"),
+        Index("idx_class_reg_created_at", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     class_id: Mapped[int] = mapped_column(Integer, ForeignKey("studio_classes.id", ondelete="CASCADE"), nullable=False)

@@ -413,6 +413,22 @@ async def run():
                     submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
             """))
+            await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS password_reset_codes (
+                    id SERIAL PRIMARY KEY,
+                    email VARCHAR(200) NOT NULL,
+                    code VARCHAR(10) NOT NULL,
+                    expires_at TIMESTAMPTZ NOT NULL,
+                    used BOOLEAN NOT NULL DEFAULT FALSE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+            """))
+            await session.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_reset_codes_email ON password_reset_codes(email)
+            """))
+            await session.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_reset_codes_expires ON password_reset_codes(expires_at)
+            """))
 
             # ── Item variables and variants tables ────────────────────────────────
             await session.execute(text("""

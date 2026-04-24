@@ -1,7 +1,7 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List
-from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey, Text
+from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -25,6 +25,12 @@ class GiftCard(Base):
 
 class GiftCardTransaction(Base):
     __tablename__ = "gift_card_transactions"
+    __table_args__ = (
+        Index("idx_giftcard_tx_gift_card_id", "gift_card_id"),
+        Index("idx_giftcard_tx_sale_id", "sale_id"),
+        Index("idx_giftcard_tx_cashier_id", "cashier_id"),
+        Index("idx_giftcard_tx_created_at", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     gift_card_id: Mapped[int] = mapped_column(Integer, ForeignKey("gift_cards.id", ondelete="CASCADE"), nullable=False)

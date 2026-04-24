@@ -858,6 +858,8 @@
 
     var detailVendorId = null;
 
+    function escHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
     async function openVendorDetail(vendorId) {
         detailVendorId = vendorId;
         document.getElementById('detail-vendor-name').textContent = 'Loading…';
@@ -874,12 +876,12 @@
             document.getElementById('detail-rent-status').innerHTML = statusBadge(v.rent_status);
 
             document.getElementById('detail-info-grid').innerHTML = `
-                <div class="detail-info-item"><label>Booth</label><span>${v.booth_number}</span></div>
+                <div class="detail-info-item"><label>Booth</label><span>${escHtml(v.booth_number)}</span></div>
                 <div class="detail-info-item"><label>Monthly Rent</label><span>$${v.monthly_rent.toFixed(2)}</span></div>
-                <div class="detail-info-item"><label>Email</label><span>${v.email}</span></div>
-                <div class="detail-info-item"><label>Phone</label><span>${v.phone || '—'}</span></div>
-                <div class="detail-info-item"><label>Role</label><span style="text-transform:capitalize">${v.role}</span></div>
-                <div class="detail-info-item"><label>Account Status</label><span style="text-transform:capitalize">${v.status}</span></div>
+                <div class="detail-info-item"><label>Email</label><span>${escHtml(v.email)}</span></div>
+                <div class="detail-info-item"><label>Phone</label><span>${escHtml(v.phone) || '—'}</span></div>
+                <div class="detail-info-item"><label>Role</label><span style="text-transform:capitalize">${escHtml(v.role)}</span></div>
+                <div class="detail-info-item"><label>Account Status</label><span style="text-transform:capitalize">${escHtml(v.status)}</span></div>
             `;
 
             const payments = data.payments;
@@ -887,17 +889,17 @@
             if (payments.length === 0) {
                 document.getElementById('detail-payments').innerHTML = '<p class="no-payments">No rent payments recorded yet.</p>';
             } else {
-                document.getElementById('detail-payments').innerHTML = `<ul class="payment-list">${payments.map(p => {
-                    const d = p.processed_at ? window.bmmFormatDate(p.processed_at, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '—';
-                    const badgeCls = (p.status === 'paid' || p.status === 'received') ? 'paid' : 'pending';
-                    return `<li class="payment-item">
-                        <div>
-                            <div class="payment-period">${p.period_month}</div>
-                            <div class="payment-meta">${d} &middot; ${p.method}<span class="payment-badge ${badgeCls}">${p.status}</span></div>
-                        </div>
-                        <div class="payment-amount">$${p.amount.toFixed(2)}</div>
-                    </li>`;
-                }).join('')}</ul>`;
+                document.getElementById('detail-payments').innerHTML = '<ul class="payment-list">' + payments.map(function(p) {
+                    var d = p.processed_at ? window.bmmFormatDate(p.processed_at, { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Chicago' }) : '—';
+                    var badgeCls = (p.status === 'paid' || p.status === 'received') ? 'paid' : 'pending';
+                    return '<li class="payment-item">'
+                        + '<div>'
+                        + '<div class="payment-period">' + escHtml(p.period_month) + '</div>'
+                        + '<div class="payment-meta">' + escHtml(d) + ' &middot; ' + escHtml(p.method) + '<span class="payment-badge ' + badgeCls + '">' + escHtml(p.status) + '</span></div>'
+                        + '</div>'
+                        + '<div class="payment-amount">$' + Number(p.amount).toFixed(2) + '</div>'
+                        + '</li>';
+                }).join('') + '</ul>';
             }
             if (legacyEntries.length > 0) {
                 document.getElementById('detail-payments').innerHTML += '<div class="payment-history-title">Legacy Reference</div><ul class="payment-list">' + legacyEntries.map(function(entry) {
@@ -915,7 +917,7 @@
             }
         } catch (err) {
             document.getElementById('detail-vendor-name').textContent = 'Error';
-            document.getElementById('detail-payments').innerHTML = `<p class="no-payments">${err.message}</p>`;
+            document.getElementById('detail-payments').innerHTML = '<p class="no-payments">' + escHtml(err.message) + '</p>';
         }
     }
 

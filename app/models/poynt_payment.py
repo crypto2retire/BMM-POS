@@ -1,12 +1,17 @@
 from datetime import datetime
 from typing import Optional
-from sqlalchemy import String, Integer, TIMESTAMP
+from sqlalchemy import String, Integer, TIMESTAMP, Index
 from sqlalchemy.orm import Mapped, mapped_column
 from app.database import Base
 
 
 class PoyntPayment(Base):
     __tablename__ = "poynt_payments"
+    __table_args__ = (
+        Index("idx_poynt_status", "status"),
+        Index("idx_poynt_sale_id", "sale_id"),
+        Index("idx_poynt_created_at", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     reference_id: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)

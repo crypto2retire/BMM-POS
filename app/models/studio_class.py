@@ -1,13 +1,18 @@
 from datetime import datetime, date, time
 from decimal import Decimal
 from typing import Optional
-from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, Date, Time, Text, ForeignKey
+from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, Date, Time, Text, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
 class StudioClass(Base):
     __tablename__ = "studio_classes"
+    __table_args__ = (
+        Index("idx_studio_class_date", "class_date"),
+        Index("idx_studio_class_published", "is_published"),
+        Index("idx_studio_class_cancelled", "is_cancelled"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)

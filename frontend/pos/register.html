@@ -1180,7 +1180,7 @@
 
     function showRegAlert(msg, type) {
         const el = document.getElementById('alert-reg');
-        el.innerHTML = `<div class="alert alert-${type}" style="font-size:0.8rem;padding:0.4rem 0.7rem;margin-top:0.4rem;">${msg}</div>`;
+        el.innerHTML = `<div class="alert alert-${type}" style="font-size:0.8rem;padding:0.4rem 0.7rem;margin-top:0.4rem;">${escHtml(msg)}</div>`;
         setTimeout(() => { el.innerHTML = ''; }, 4000);
     }
 

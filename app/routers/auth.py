@@ -283,6 +283,7 @@ class ForgotPasswordRequest(BaseModel):
     email: str
 
 class ResetPasswordRequest(BaseModel):
+    email: str
     token: str
     new_password: str
 
@@ -290,25 +291,16 @@ class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
 
-def _create_reset_token(email: str, auth_version: int) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
-    return jwt.encode(
-        {"sub": email, "purpose": "password_reset", "av": int(auth_version or 0), "exp": expire},
-        SECRET_KEY,
-        algorithm=ALGORITHM,
-    )
+import random
+import string
 
-def _verify_reset_token(token: str) -> Optional[tuple[str, int]]:
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        if payload.get("purpose") != "password_reset":
-            return None
-        email = payload.get("sub")
-        if not email:
-            return None
-        return email, int(payload.get("av", 0) or 0)
-    except JWTError:
-        return None
+from app.models.password_reset_code import PasswordResetCode
+
+
+def _generate_reset_code() -> str:
+    """Generate a random 6-digit reset code."""
+    return ''.join(random.choices(string.digits, k=6))
+
 
 @router.post("/forgot-password")
 async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
@@ -318,20 +310,32 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
     user = result.scalar_one_or_none()
 
     if not user:
-        return {"detail": "If that email exists in our system, a reset link has been sent."}
+        return {"detail": "If that email exists in our system, a reset code has been sent."}
 
-    token = _create_reset_token(user.email, int(getattr(user, "auth_version", 0) or 0))
+    # Invalidate any existing unused codes for this email
+    await db.execute(
+        select(PasswordResetCode)
+        .where(PasswordResetCode.email == user.email, PasswordResetCode.used == False)
+    )
+    # Mark existing codes as used
+    from sqlalchemy import update
+    await db.execute(
+        update(PasswordResetCode)
+        .where(PasswordResetCode.email == user.email, PasswordResetCode.used == False)
+        .values(used=True)
+    )
 
-    import os
-    base_url = os.environ.get("BASE_URL", "")
-    if not base_url:
-        dev_domain = os.environ.get("REPLIT_DEV_DOMAIN", "")
-        if dev_domain:
-            base_url = f"https://{dev_domain}"
-        else:
-            base_url = "https://bowenstreetmarket.com"
+    code = _generate_reset_code()
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
 
-    reset_url = f"{base_url}/vendor/reset-password.html?token={token}"
+    reset_entry = PasswordResetCode(
+        email=user.email,
+        code=code,
+        expires_at=expires_at,
+        used=False,
+    )
+    db.add(reset_entry)
+    await db.commit()
 
     html_body = f"""
     <div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; color: #2A2825;">
@@ -342,14 +346,11 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
         <div style="padding: 32px 16px;">
             <p>Hi {user.name},</p>
             <p>We received a request to reset your password for your Bowenstreet Market account.</p>
-            <p style="text-align: center; margin: 28px 0;">
-                <a href="{reset_url}" style="display: inline-block; background: #C9A84C; color: #2A2825; padding: 12px 32px; text-decoration: none; font-weight: 600; font-size: 1rem;">
-                    Reset My Password
-                </a>
+            <p style="text-align: center; margin: 28px 0; font-size: 1.4rem; font-weight: 600; letter-spacing: 0.2em; background: #f5f5f0; padding: 16px; border: 2px solid #C9A84C; color: #2A2825;">
+                {code}
             </p>
-            <p style="font-size: 0.85rem; color: #5a554d;">This link will expire in 60 minutes. If you didn't request a password reset, you can safely ignore this email.</p>
-            <p style="font-size: 0.85rem; color: #5a554d;">If the button doesn't work, copy and paste this link into your browser:</p>
-            <p style="font-size: 0.75rem; color: #888; word-break: break-all;">{reset_url}</p>
+            <p style="font-size: 0.85rem; color: #5a554d; text-align: center;">Enter this code on the password reset page to create a new password.</p>
+            <p style="font-size: 0.85rem; color: #5a554d;">This code will expire in 60 minutes. If you didn't request a password reset, you can safely ignore this email.</p>
         </div>
         <div style="text-align: center; padding: 16px; border-top: 1px solid #eee; font-size: 0.75rem; color: #999;">
             Bowenstreet Market &middot; 2837 Bowen St, Oshkosh WI 54901
@@ -357,12 +358,12 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
     </div>
     """
 
-    plain_body = f"Hi {user.name},\n\nReset your Bowenstreet Market password here:\n{reset_url}\n\nThis link expires in 60 minutes.\n\nBowenstreet Market\n2837 Bowen St, Oshkosh WI 54901"
+    plain_body = f"Hi {user.name},\n\nYour password reset code is: {code}\n\nEnter this code on the password reset page to create a new password.\n\nThis code expires in 60 minutes.\n\nBowenstreet Market\n2837 Bowen St, Oshkosh WI 54901"
 
     from app.services.email import send_email_safe
     email_result = await send_email_safe(
         to_email=user.email,
-        subject="Reset Your Bowenstreet Market Password",
+        subject="Your Bowenstreet Market Password Reset Code",
         html_body=html_body,
         plain_body=plain_body,
     )
@@ -370,7 +371,7 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
     if not email_result.get("success"):
         logger.error(f"Failed to send reset email to {user.email}: {email_result.get('error')}")
 
-    return {"detail": "If that email exists in our system, a reset link has been sent."}
+    return {"detail": "If that email exists in our system, a reset code has been sent."}
 
 
 @router.post("/reset-password")
@@ -379,23 +380,34 @@ async def reset_password_with_token(body: ResetPasswordRequest, db: AsyncSession
     if pw_err:
         raise HTTPException(status_code=400, detail=pw_err)
 
-    verified = _verify_reset_token(body.token)
-    if not verified:
-        raise HTTPException(status_code=400, detail="Invalid or expired reset link. Please request a new one.")
-    email, token_auth_version = verified
+    # Verify the reset code
+    result = await db.execute(
+        select(PasswordResetCode)
+        .where(
+            PasswordResetCode.email == body.email.strip().lower(),
+            PasswordResetCode.code == body.token,
+            PasswordResetCode.used == False,
+            PasswordResetCode.expires_at > datetime.now(timezone.utc),
+        )
+    )
+    reset_code = result.scalar_one_or_none()
+
+    if not reset_code:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset code. Please request a new one.")
 
     result = await db.execute(
-        select(Vendor).where(func.lower(Vendor.email) == email.lower())
+        select(Vendor).where(func.lower(Vendor.email) == body.email.strip().lower())
     )
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=400, detail="Account not found")
-    if int(getattr(user, "auth_version", 0) or 0) != token_auth_version:
-        raise HTTPException(status_code=400, detail="Invalid or expired reset link. Please request a new one.")
 
     user.password_hash = get_password_hash(body.new_password)
     user.password_changed = True
     bump_auth_version(user)
+
+    # Mark code as used
+    reset_code.used = True
     await db.commit()
 
     logger.info(f"Password reset completed for {user.email}")

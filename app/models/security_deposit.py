@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Integer, String, Text, Numeric, ForeignKey, TIMESTAMP
+from sqlalchemy import Integer, String, Text, Numeric, ForeignKey, TIMESTAMP, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -10,6 +10,10 @@ from app.database import Base
 
 class SecurityDepositLog(Base):
     __tablename__ = "security_deposit_log"
+    __table_args__ = (
+        Index("idx_security_deposit_performed_by", "performed_by"),
+        Index("idx_security_deposit_created_at", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     vendor_id: Mapped[int] = mapped_column(

@@ -2,24 +2,21 @@ let _token = null;
 
 (function () {
     try {
-        _token = localStorage.getItem('bmm_token') || sessionStorage.getItem('bmm_token') || null;
-    } catch (e) {
         _token = sessionStorage.getItem('bmm_token') || null;
+    } catch (e) {
+        _token = null;
     }
 })();
 
 function _persistToken() {
     try {
         if (_token) {
-            localStorage.setItem('bmm_token', _token);
             sessionStorage.setItem('bmm_token', _token);
         } else {
-            localStorage.removeItem('bmm_token');
             sessionStorage.removeItem('bmm_token');
         }
     } catch (e) {
-        if (_token) sessionStorage.setItem('bmm_token', _token);
-        else sessionStorage.removeItem('bmm_token');
+        // Ignore storage errors
     }
 }
 
@@ -30,7 +27,6 @@ function getToken() {
 function clearToken() {
     _token = null;
     try {
-        localStorage.removeItem('bmm_token');
         sessionStorage.removeItem('bmm_token');
         sessionStorage.removeItem('bmm_booth_mode');
         sessionStorage.removeItem('bmm_user');

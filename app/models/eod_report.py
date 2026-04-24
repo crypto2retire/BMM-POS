@@ -8,7 +8,7 @@ class EodReport(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     report_date = Column(Date, nullable=False, index=True)
-    submitted_by = Column(Integer, ForeignKey("vendors.id"), nullable=False)
+    submitted_by = Column(Integer, ForeignKey("vendors.id"), nullable=False, index=True)
     submitted_by_name = Column(String(200), nullable=True)
 
     starting_balance = Column(Numeric(10, 2), nullable=False)
