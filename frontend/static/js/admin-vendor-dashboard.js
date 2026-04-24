@@ -903,7 +903,7 @@
         var newPassword = ((input || {}).value || '').trim();
         if (!newPassword || newPassword.length < 6) {
             if (status) {
-                status.textContent = 'Password must be at least 6 characters.';
+                status.textContent = 'Password must be at least 10 characters with uppercase, lowercase, digit, and special character.';
                 status.style.color = 'var(--danger)';
             }
             return;

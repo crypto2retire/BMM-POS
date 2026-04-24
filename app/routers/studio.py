@@ -330,15 +330,15 @@ async def upload_class_image(
         save_upload(STUDIO_UPLOAD_DIR, filename, jpeg_bytes)
         image_url = f"/static/images/studio/{filename}"
 
+    # Track image metadata in DB (binary data stored on disk/DO Spaces only)
     existing = await db.execute(
         select(StudioImage).where(StudioImage.class_id == class_id)
     )
     old_img = existing.scalar_one_or_none()
     if old_img:
-        old_img.image_data = jpeg_bytes
         old_img.content_type = "image/jpeg"
     else:
-        db.add(StudioImage(class_id=class_id, image_data=jpeg_bytes, content_type="image/jpeg"))
+        db.add(StudioImage(class_id=class_id, content_type="image/jpeg"))
 
     c.image_url = image_url
     await db.commit()
@@ -351,14 +351,26 @@ async def get_class_image(
     class_id: int,
     db: AsyncSession = Depends(get_db),
 ):
+    """Serve class image from disk. Images are stored on disk/DO Spaces, not in DB."""
+    # Check class for image_url first
     result = await db.execute(
-        select(StudioImage).where(StudioImage.class_id == class_id)
+        select(StudioClass).where(StudioClass.id == class_id)
     )
-    img = result.scalar_one_or_none()
-    if img:
-        return Response(content=img.image_data, media_type=img.content_type,
-                        headers={"Cache-Control": "public, max-age=86400"})
+    c = result.scalar_one_or_none()
+    if c and c.image_url:
+        # If it's a full URL (CDN), redirect to it
+        if c.image_url.startswith("http"):
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=c.image_url)
+        # Otherwise serve from disk
+        filepath = os.path.join("frontend", c.image_url.lstrip("/"))
+        if os.path.exists(filepath):
+            with open(filepath, "rb") as f:
+                data = f.read()
+            return Response(content=data, media_type="image/jpeg",
+                            headers={"Cache-Control": "public, max-age=86400"})
 
+    # Fallback to legacy paths
     for fname in os.listdir(STUDIO_UPLOAD_DIR) if os.path.isdir(STUDIO_UPLOAD_DIR) else []:
         if fname.startswith(f"class_{class_id}_"):
             fpath = os.path.join(STUDIO_UPLOAD_DIR, fname)

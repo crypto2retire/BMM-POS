@@ -739,15 +739,15 @@ async def upload_item_photo(
         filepath = save_upload(PHOTO_UPLOAD_DIR, filename, jpeg_bytes)
         photo_url = f"/static/images/items/{filename}"
 
+    # Track image metadata in DB (binary data stored on disk/DO Spaces only)
     existing = await db.execute(
         select(ItemImage).where(ItemImage.item_id == item_id)
     )
     old_img = existing.scalar_one_or_none()
     if old_img:
-        old_img.image_data = jpeg_bytes
         old_img.content_type = "image/jpeg"
     else:
-        db.add(ItemImage(item_id=item_id, image_data=jpeg_bytes, content_type="image/jpeg"))
+        db.add(ItemImage(item_id=item_id, content_type="image/jpeg"))
 
     existing_urls = item.photo_urls or []
     if len(existing_urls) >= MAX_ITEM_PHOTOS:
@@ -888,15 +888,15 @@ async def upload_item_image(
         save_upload(IMAGE_UPLOAD_DIR, filename, jpeg_bytes)
         image_path = f"/static/uploads/items/{filename}"
 
+    # Track image metadata in DB (binary data stored on disk/DO Spaces only)
     existing = await db.execute(
         select(ItemImage).where(ItemImage.item_id == item_id)
     )
     old_img = existing.scalar_one_or_none()
     if old_img:
-        old_img.image_data = jpeg_bytes
         old_img.content_type = "image/jpeg"
     else:
-        db.add(ItemImage(item_id=item_id, image_data=jpeg_bytes, content_type="image/jpeg"))
+        db.add(ItemImage(item_id=item_id, content_type="image/jpeg"))
 
     item.image_path = image_path
     await db.commit()
@@ -909,14 +909,26 @@ async def get_item_image(
     item_id: int,
     db: AsyncSession = Depends(get_db),
 ):
+    """Serve item image from disk. Images are stored on disk/DO Spaces, not in DB."""
+    # Check item for photo_url first
     result = await db.execute(
-        select(ItemImage).where(ItemImage.item_id == item_id)
+        select(Item).where(Item.id == item_id)
     )
-    img = result.scalar_one_or_none()
-    if img:
-        return Response(content=img.image_data, media_type=img.content_type,
-                        headers={"Cache-Control": "public, max-age=86400"})
+    item = result.scalar_one_or_none()
+    if item and item.image_path:
+        # If it's a full URL (CDN), redirect to it
+        if item.image_path.startswith("http"):
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=item.image_path)
+        # Otherwise serve from disk
+        filepath = os.path.join("frontend", item.image_path.lstrip("/"))
+        if os.path.exists(filepath):
+            with open(filepath, "rb") as f:
+                data = f.read()
+            return Response(content=data, media_type="image/jpeg",
+                            headers={"Cache-Control": "public, max-age=86400"})
 
+    # Fallback to legacy paths
     for path in [
         os.path.join(IMAGE_UPLOAD_DIR, f"{item_id}.jpg"),
         os.path.join(PHOTO_UPLOAD_DIR, f"{item_id}.jpg"),

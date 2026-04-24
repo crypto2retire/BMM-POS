@@ -34,6 +34,23 @@ class AssistantSettingsUpdate(BaseModel):
     assistant_enabled: Optional[bool] = None
 
 
+import re as _re
+
+_VENDOR_NAME_RE = _re.compile(r"^[a-zA-Z0-9 '&\-\.!]{1,120}$")
+
+
+def _validate_vendor_name(name: str) -> str:
+    """Validate and sanitize vendor name. Returns error message or empty string."""
+    if not name or not name.strip():
+        return "Vendor name is required"
+    name = name.strip()
+    if len(name) > 120:
+        return "Vendor name must be 120 characters or less"
+    if not _VENDOR_NAME_RE.match(name):
+        return "Vendor name can only contain letters, numbers, spaces, and basic punctuation (& ' - . !)"
+    return ""
+
+
 def _normalize_vendor_account_payload(data: dict) -> dict:
     role = data.get("role")
     if role == "vendor":
@@ -201,6 +218,10 @@ async def create_vendor(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_role("admin"))
 ):
+    name_error = _validate_vendor_name(vendor.name)
+    if name_error:
+        raise HTTPException(status_code=400, detail=name_error)
+
     existing = await db.execute(select(Vendor).where(Vendor.email == vendor.email))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -324,6 +345,13 @@ async def update_vendor(
         raise HTTPException(status_code=404, detail="Vendor not found")
 
     update_data = vendor_update.model_dump(exclude_unset=True)
+
+    # Validate name if being updated
+    if "name" in update_data:
+        name_error = _validate_vendor_name(update_data["name"])
+        if name_error:
+            raise HTTPException(status_code=400, detail=name_error)
+
     update_data = _normalize_vendor_account_payload(update_data)
     for key, value in update_data.items():
         setattr(vendor, key, value)

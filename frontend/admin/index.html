@@ -1826,7 +1826,7 @@
 
         if (!name) { errEl.textContent = 'Name is required'; return; }
         if (!email) { errEl.textContent = 'Email is required'; return; }
-        if (!password || password.length < 6) { errEl.textContent = 'Password must be at least 6 characters'; return; }
+        if (!password || password.length < 10) { errEl.textContent = 'Password must be at least 10 characters with uppercase, lowercase, digit, and special character'; return; }
 
         errEl.textContent = '';
         var btn = document.getElementById('emp-submit-btn');

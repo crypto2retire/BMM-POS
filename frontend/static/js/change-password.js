@@ -62,7 +62,7 @@ async function submitPasswordChange() {
     successEl.style.display = 'none';
 
     if (!current) { errEl.textContent = 'Enter your current password'; errEl.style.display = 'block'; return; }
-    if (newPw.length < 6) { errEl.textContent = 'New password must be at least 6 characters'; errEl.style.display = 'block'; return; }
+    if (newPw.length < 10) { errEl.textContent = 'Password must be at least 10 characters with uppercase, lowercase, digit, and special character'; errEl.style.display = 'block'; return; }
     if (newPw !== confirm) { errEl.textContent = 'New passwords do not match'; errEl.style.display = 'block'; return; }
 
     btn.disabled = true;

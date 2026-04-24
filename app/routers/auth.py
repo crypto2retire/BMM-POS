@@ -24,7 +24,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 from app.config import settings as _cfg
 SECRET_KEY = _cfg.secret_key
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 120
+ACCESS_TOKEN_EXPIRE_MINUTES = _cfg.access_token_expire_hours * 60
 RESET_TOKEN_EXPIRE_MINUTES = 60
 MIN_PASSWORD_LENGTH = 10
 
