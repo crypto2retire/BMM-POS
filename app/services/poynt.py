@@ -7,6 +7,8 @@ import httpx
 from typing import Optional
 from fastapi import HTTPException
 
+from app.services.circuit_breaker import circuit_breaker
+
 logger = logging.getLogger(__name__)
 
 POYNT_API_BASE = "https://services.poynt.net"
@@ -106,6 +108,7 @@ async def get_access_token() -> str:
         return token
 
 
+@circuit_breaker("poynt")
 async def send_payment_to_terminal(amount_cents: int, currency: str = "USD", order_ref: str = "") -> dict:
     app_id, private_key_pem, business_id, store_id, terminal_id = _get_config()
     token = await get_access_token()
@@ -157,6 +160,7 @@ async def send_payment_to_terminal(amount_cents: int, currency: str = "USD", ord
         return {"reference_id": reference_id}
 
 
+@circuit_breaker("poynt")
 async def check_terminal_payment(reference_id: str) -> dict:
     app_id, private_key_pem, business_id, store_id, terminal_id = _get_config()
     token = await get_access_token()
@@ -213,6 +217,7 @@ async def check_terminal_payment(reference_id: str) -> dict:
         return {"status": "PENDING", "transaction_id": None}
 
 
+@circuit_breaker("poynt")
 async def verify_transaction(transaction_id: str) -> dict:
     app_id, private_key_pem, business_id, store_id, terminal_id = _get_config()
     token = await get_access_token()

@@ -5,6 +5,7 @@ import logging
 import httpx
 
 from app.config import settings
+from app.services.circuit_breaker import circuit_breaker
 
 SQUARE_BASE = "https://connect.squareup.com"
 SQUARE_API_VERSION = "2024-02-15"
@@ -42,6 +43,7 @@ def _parse_square_error(body: str) -> str:
     return "Payment service returned an unexpected error. Please contact the store."
 
 
+@circuit_breaker("square")
 async def create_payment_link(name: str, price_cents: int, redirect_url: str) -> dict:
     token = _access_token()
     location = _location_id()

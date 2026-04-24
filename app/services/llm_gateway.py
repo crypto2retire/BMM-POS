@@ -5,6 +5,7 @@ import httpx
 from fastapi import HTTPException
 
 from app.config import settings
+from app.services.circuit_breaker import circuit_breaker
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -67,6 +68,7 @@ async def _post_json(url: str, *, headers: dict[str, str], payload: dict[str, An
         raise HTTPException(status_code=502, detail="AI service returned invalid JSON") from exc
 
 
+@circuit_breaker("openrouter")
 async def _call_openrouter(
     *,
     messages: list[dict[str, Any]],

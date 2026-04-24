@@ -3,6 +3,8 @@ import sys
 import json
 import traceback
 import logging
+import signal
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
@@ -42,6 +44,21 @@ def _startup_health_payload() -> dict:
         "startup_failure_count": len(failed),
         "startup_failed_tasks": failed,
     }
+
+
+# ── Graceful shutdown ──
+_shutdown_event = asyncio.Event()
+
+
+def _handle_shutdown_signal(sig: int, frame) -> None:
+    signame = signal.Signals(sig).name
+    print(f"BMM-POS: received {signame}, starting graceful shutdown...", file=sys.stderr, flush=True)
+    _shutdown_event.set()
+
+
+# Register signal handlers for graceful shutdown
+signal.signal(signal.SIGTERM, _handle_shutdown_signal)
+signal.signal(signal.SIGINT, _handle_shutdown_signal)
 
 
 try:
@@ -277,6 +294,30 @@ async def lifespan(app: FastAPI):
         print(f"BMM-POS: reservation expiration FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("expire_reservations", e)
 
+    # ── Backup age check ──
+    try:
+        async with AsyncSessionLocal() as session:
+            backup_result = await session.execute(
+                text("SELECT value FROM store_settings WHERE key = 'last_backup_at'")
+            )
+            backup_val = backup_result.scalar_one_or_none()
+            if backup_val:
+                from datetime import timezone
+                try:
+                    last_backup = datetime.fromisoformat(backup_val.replace("Z", "+00:00"))
+                    hours_since = (datetime.now(timezone.utc) - last_backup).total_seconds() / 3600
+                    if hours_since > 48:
+                        print(f"BMM-POS: WARNING — last backup was {hours_since:.1f} hours ago", file=sys.stderr, flush=True)
+                    else:
+                        print(f"BMM-POS: last backup {hours_since:.1f} hours ago — OK", file=sys.stderr, flush=True)
+                        _record_startup_ok("backup_check")
+                except Exception:
+                    print("BMM-POS: WARNING — backup timestamp unreadable", file=sys.stderr, flush=True)
+            else:
+                print("BMM-POS: WARNING — no backup record found (set 'last_backup_at' in store_settings)", file=sys.stderr, flush=True)
+    except Exception as e:
+        print(f"BMM-POS: backup check FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+
     startup_summary = _startup_health_payload()
     if startup_summary["startup_failure_count"]:
         print(
@@ -289,6 +330,21 @@ async def lifespan(app: FastAPI):
         print("BMM-POS: startup checks all passed", file=sys.stderr, flush=True)
 
     yield
+
+    # ── Graceful shutdown cleanup ──
+    print("BMM-POS: shutting down, waiting for in-flight requests...", file=sys.stderr, flush=True)
+    # Give in-flight requests up to 5 seconds to finish
+    try:
+        await asyncio.wait_for(_shutdown_event.wait(), timeout=5.0)
+    except asyncio.TimeoutError:
+        pass
+    # Dispose DB engine connections
+    try:
+        await engine.dispose()
+        print("BMM-POS: database engine disposed", file=sys.stderr, flush=True)
+    except Exception as e:
+        print(f"BMM-POS: engine dispose error: {e}", file=sys.stderr, flush=True)
+    print("BMM-POS: shutdown complete", file=sys.stderr, flush=True)
 
 
 app = FastAPI(
@@ -469,6 +525,13 @@ async def health_db():
             status_code=503,
             content={"status": "error", "database": "unreachable", "detail": str(e)},
         )
+
+
+@app.get("/health/circuit-breakers")
+async def health_circuit_breakers():
+    """Check circuit breaker status for external services."""
+    from app.services.circuit_breaker import get_breaker_status
+    return {"status": "ok", "circuit_breakers": get_breaker_status()}
 
 
 app.include_router(auth.router, prefix="/api/v1")

@@ -1208,3 +1208,62 @@ async def rent_payout_ledger(
         "vendor_cards": vendor_cards,
         "transactions": transactions,
     }
+
+
+@router.get("/health/backup")
+async def backup_health_check(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_rent")),
+):
+    """Check if a recent database backup exists (via store_settings marker)."""
+    from app.models.store_setting import StoreSetting
+
+    result = await db.execute(
+        select(StoreSetting.value).where(StoreSetting.key == "last_backup_at")
+    )
+    last_backup_str = result.scalar_one_or_none()
+
+    if not last_backup_str:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "error",
+                "backup": "unknown",
+                "message": "No backup record found. Set 'last_backup_at' in store_settings.",
+            },
+        )
+
+    try:
+        from datetime import datetime, timezone
+        last_backup = datetime.fromisoformat(last_backup_str.replace("Z", "+00:00"))
+        now = datetime.now(timezone.utc)
+        hours_since = (now - last_backup).total_seconds() / 3600
+
+        if hours_since > 48:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": "error",
+                    "backup": "stale",
+                    "last_backup": last_backup_str,
+                    "hours_since": round(hours_since, 1),
+                    "message": f"Last backup was {round(hours_since, 1)} hours ago. Expected within 48 hours.",
+                },
+            )
+
+        return {
+            "status": "ok",
+            "backup": "recent",
+            "last_backup": last_backup_str,
+            "hours_since": round(hours_since, 1),
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "error",
+                "backup": "invalid_timestamp",
+                "last_backup": last_backup_str,
+                "message": f"Could not parse backup timestamp: {e}",
+            },
+        )
