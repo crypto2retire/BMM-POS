@@ -451,7 +451,14 @@
 
         var c = theme.colors;
         var f = theme.fonts;
+        var s = theme.spacing || {};
+        var cards = theme.cards || {};
         var styleEl = document.getElementById('theme-vars');
+        
+        var sectionPadding = {compact: '1.5', comfortable: '2.5', spacious: '4'}[s.section_padding || 'comfortable'] || '2.5';
+        var contentWidth = {narrow: '800', medium: '1000', wide: '1200'}[s.content_width || 'medium'] || '1000';
+        var gridMinWidth = {compact: '160px', comfortable: '200px', spacious: '280px'}[cards.grid_density || 'comfortable'] || '200px';
+        
         styleEl.textContent = ':root {' +
           '--landing-primary: ' + c.primary + ';' +
           '--landing-secondary: ' + c.secondary + ';' +
@@ -464,10 +471,17 @@
           '--landing-heading-font: \'' + (f.heading || 'EB Garamond') + '\', serif;' +
           '--landing-heading-weight: ' + (f.heading_weight || '500') + ';' +
           '--landing-heading-style: ' + (f.heading_style || 'normal') + ';' +
+          '--landing-heading-letter-spacing: ' + (f.heading_letter_spacing || '0') + 'em;' +
           '--landing-body-font: \'' + (f.body || 'Roboto') + '\', sans-serif;' +
           '--landing-body-weight: ' + (f.body_weight || '300') + ';' +
+          '--landing-body-size: ' + (f.body_size || '16') + ';' +
           '--landing-accent-color: ' + (c.accent_color || c.primary) + ';' +
           '--landing-accent-font: ' + (f.accent_font ? "'" + f.accent_font + "', cursive" : 'inherit') + ';' +
+          '--landing-section-padding: ' + sectionPadding + ';' +
+          '--landing-content-width: ' + contentWidth + ';' +
+          '--landing-border-radius: ' + (s.border_radius || '0') + ';' +
+          '--landing-card-image-ratio: ' + (cards.image_ratio || '3/4') + ';' +
+          '--landing-grid-min-width: ' + gridMinWidth + ';' +
         '}';
 
         if (f.accent_font) {
@@ -1237,8 +1251,17 @@
         priceHtml = '$' + item.price.toFixed(2);
       }
       var vendorLine = currentMode === 'all' && item.vendor_name ? '<div class="item-card-vendor landing-item-card-vendor">' + escHtml(item.vendor_name) + (item.booth_number ? ' · Booth ' + escHtml(item.booth_number) : '') + '</div>' : '';
+      var badgeHtml = item.sale_price ? '<div class="item-badge">Sale</div>' : '';
       return '<div class="item-card landing-item-card" style="animation-delay:' + (i * 0.04) + 's">' +
-        '<img class="item-card-img landing-item-card-img" src="' + escAttr(imgUrl) + '" alt="' + escAttr(item.name) + '" loading="lazy" onerror="this.src=\'/static/images/placeholder-item.png\'">' +
+        '<div class="landing-item-card-img-wrap">' +
+          badgeHtml +
+          '<img class="item-card-img landing-item-card-img" src="' + escAttr(imgUrl) + '" alt="' + escAttr(item.name) + '" loading="lazy" onerror="this.src=\'/static/images/placeholder-item.png\'">' +
+          '<div class="quick-add-overlay">' +
+            '<button class="quick-add-btn" onclick="window.__toggleCart(' + item.id + ')">' +
+              (inCart ? '✓ Added' : '+ Quick Add') +
+            '</button>' +
+          '</div>' +
+        '</div>' +
         '<div class="item-card-body landing-item-card-body">' +
           '<div class="item-card-name landing-item-card-name" title="' + escAttr(item.name) + '">' + escHtml(item.name) + '</div>' +
           vendorLine +

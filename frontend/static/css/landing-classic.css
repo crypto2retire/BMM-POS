@@ -12,8 +12,18 @@ body.themed {
   color: var(--landing-text, #F5F5F0);
   font-family: var(--landing-body-font, 'Roboto'), sans-serif;
   font-weight: var(--landing-body-weight, 300);
+  font-size: calc(var(--landing-body-size, 16) * 1px);
   min-height: 100vh;
   line-height: 1.7;
+}
+
+/* Dynamic spacing variables */
+:root {
+  --section-padding: calc(var(--landing-section-padding, 2.5) * 1rem);
+  --content-max-width: calc(var(--landing-content-width, 900) * 1px);
+  --card-radius: calc(var(--landing-border-radius, 0) * 1px);
+  --card-img-ratio: var(--landing-card-image-ratio, 3/4);
+  --grid-min-width: var(--landing-grid-min-width, 200px);
 }
 
 /* ── Nav ── */
@@ -59,10 +69,13 @@ body.themed {
 /* ── Hero (classic full-width overlay) ── */
 .landing-hero {
   position: relative; width: 100%;
-  min-height: 420px; overflow: hidden;
+  min-height: clamp(420px, 60vh, 700px); overflow: hidden;
   background: var(--landing-background, #1A1A1C);
   display: flex; align-items: flex-end;
   animation: landing-fadeIn 0.6s ease;
+}
+.landing-hero-bg {
+  will-change: transform;
 }
 .landing-hero-bg {
   position: absolute; inset: 0;
@@ -277,28 +290,79 @@ body.themed {
   background: color-mix(in srgb, var(--landing-accent, #C9A96E) 10%, var(--landing-card-bg, #2A2A2E));
 }
 
-/* ── Item Cards (borderless, gold hover border) ── */
+/* ── Item Cards (premium boutique style) ── */
 .landing-items-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(var(--grid-min-width, 200px), 1fr));
+  gap: 1.5rem;
 }
 .landing-item-card {
   background: var(--landing-card-bg, #2A2A2E);
   border: 1px solid transparent;
-  border-radius: 0;
+  border-radius: var(--card-radius, 0);
   overflow: hidden;
-  transition: transform 0.2s, border-color 0.3s, box-shadow 0.3s;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), 
+              border-color 0.35s ease, 
+              box-shadow 0.35s ease;
   animation: landing-fadeUp 0.4s ease both;
+  position: relative;
 }
 .landing-item-card:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
   border-color: var(--landing-accent, #C9A96E);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+}
+.landing-item-card:hover .landing-item-card-img {
+  transform: scale(1.05);
+}
+.landing-item-card-img-wrap {
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: var(--card-img-ratio, 3/4);
 }
 .landing-item-card-img {
-  width: 100%; height: 180px; object-fit: cover; display: block;
+  width: 100%; height: 100%; object-fit: cover; display: block;
   background: color-mix(in srgb, var(--landing-card-bg, #2A2A2E) 80%, black);
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* Quick-add overlay on hover */
+.landing-item-card .quick-add-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.landing-item-card:hover .quick-add-overlay {
+  opacity: 1; pointer-events: auto;
+}
+.landing-item-card .quick-add-btn {
+  background: var(--landing-accent, #C9A96E);
+  color: var(--landing-background, #1A1A1C);
+  border: none; padding: 0.6rem 1.5rem;
+  border-radius: 2px; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transform: translateY(10px);
+  transition: transform 0.3s ease, background 0.2s;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.landing-item-card:hover .quick-add-btn {
+  transform: translateY(0);
+}
+.landing-item-card .quick-add-btn:hover {
+  background: color-mix(in srgb, var(--landing-accent, #C9A96E) 85%, white);
+}
+/* Sale badge */
+.landing-item-card .item-badge {
+  position: absolute; top: 0.75rem; left: 0.75rem;
+  background: var(--landing-accent, #C9A96E);
+  color: var(--landing-background, #1A1A1C);
+  padding: 0.25rem 0.6rem; font-size: 0.7rem;
+  font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; z-index: 2;
+}
+/* Sold out badge */
+.landing-item-card .item-badge.sold {
+  background: #666; color: #fff;
 }
 .landing-item-card-body { padding: 0.85rem; }
 .landing-item-card-name {

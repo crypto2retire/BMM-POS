@@ -1341,6 +1341,98 @@
                     </div>
                 </div>
 
+                <!-- ── Typography Controls ── -->
+                <div style="margin-bottom:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem">Typography</label>
+                    
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem">
+                        <div>
+                            <label style="display:block;font-size:0.7rem;color:var(--text-light);margin-bottom:0.3rem">Heading Weight</label>
+                            <select id="font-heading-weight" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem;font-size:0.8rem" onchange="updatePreviewTheme(); debouncedDesignAutoSave();">
+                                <option value="400">Light (400)</option>
+                                <option value="500" selected>Medium (500)</option>
+                                <option value="600">Semibold (600)</option>
+                                <option value="700">Bold (700)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:0.7rem;color:var(--text-light);margin-bottom:0.3rem">Body Text Size</label>
+                            <select id="font-body-size" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem;font-size:0.8rem" onchange="updatePreviewTheme(); debouncedDesignAutoSave();">
+                                <option value="14">Small (14px)</option>
+                                <option value="16" selected>Medium (16px)</option>
+                                <option value="18">Large (18px)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label style="display:block;font-size:0.7rem;color:var(--text-light);margin-bottom:0.3rem">Heading Letter Spacing</label>
+                        <input type="range" id="heading-letter-spacing" min="-2" max="10" value="0" style="width:100%;margin-bottom:0.25rem" oninput="document.getElementById('letter-spacing-val').textContent = (this.value / 100).toFixed(2) + 'em'; updatePreviewTheme(); debouncedDesignAutoSave();">
+                        <div style="display:flex;justify-content:space-between;font-size:0.65rem;color:var(--text-light)">
+                            <span>Tight</span>
+                            <span id="letter-spacing-val">0.00em</span>
+                            <span>Wide</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── Spacing & Layout Controls ── -->
+                <div style="margin-bottom:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem">Spacing & Layout</label>
+                    
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem">
+                        <div>
+                            <label style="display:block;font-size:0.7rem;color:var(--text-light);margin-bottom:0.3rem">Section Spacing</label>
+                            <select id="section-spacing" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem;font-size:0.8rem" onchange="updatePreviewTheme(); debouncedDesignAutoSave();">
+                                <option value="compact">Compact</option>
+                                <option value="comfortable" selected>Comfortable</option>
+                                <option value="spacious">Spacious</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:0.7rem;color:var(--text-light);margin-bottom:0.3rem">Content Width</label>
+                            <select id="content-width" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem;font-size:0.8rem" onchange="updatePreviewTheme(); debouncedDesignAutoSave();">
+                                <option value="narrow">Narrow (800px)</option>
+                                <option value="medium" selected>Medium (1000px)</option>
+                                <option value="wide">Wide (1200px)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label style="display:block;font-size:0.7rem;color:var(--text-light);margin-bottom:0.3rem">Corner Roundness</label>
+                        <select id="border-radius" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem;font-size:0.8rem" onchange="updatePreviewTheme(); debouncedDesignAutoSave();">
+                            <option value="0">Sharp (0px)</option>
+                            <option value="8" selected>Soft (8px)</option>
+                            <option value="16">Round (16px)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- ── Product Card Style ── -->
+                <div style="margin-bottom:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
+                    <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.75rem">Product Cards</label>
+                    
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+                        <div>
+                            <label style="display:block;font-size:0.7rem;color:var(--text-light);margin-bottom:0.3rem">Image Shape</label>
+                            <select id="card-image-ratio" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem;font-size:0.8rem" onchange="updatePreviewTheme(); debouncedDesignAutoSave();">
+                                <option value="1/1">Square (1:1)</option>
+                                <option value="3/4" selected>Portrait (3:4)</option>
+                                <option value="4/3">Landscape (4:3)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display:block;font-size:0.7rem;color:var(--text-light);margin-bottom:0.3rem">Grid Density</label>
+                            <select id="grid-density" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.4rem;font-size:0.8rem" onchange="updatePreviewTheme(); debouncedDesignAutoSave();">
+                                <option value="compact">Compact (4 cols)</option>
+                                <option value="comfortable" selected>Comfortable (3 cols)</option>
+                                <option value="spacious">Spacious (2 cols)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Logo (moved here from Media tab) -->
                 <div style="margin-bottom:1.5rem;padding-top:1rem;border-top:1px solid var(--border)">
                     <label style="display:block;font-size:0.75rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.5rem">Booth Logo (optional)</label>
@@ -1374,6 +1466,15 @@
                     <select id="font-heading"><option value="EB Garamond">EB Garamond</option><option value="Playfair Display">Playfair Display</option><option value="Cormorant Garamond">Cormorant Garamond</option><option value="Libre Baskerville">Libre Baskerville</option><option value="Poppins">Poppins</option><option value="Montserrat">Montserrat</option><option value="Outfit">Outfit</option><option value="Space Grotesk">Space Grotesk</option></select>
                     <select id="font-body"><option value="Roboto">Roboto</option><option value="Inter">Inter</option><option value="Source Sans Pro">Source Sans Pro</option><option value="Lato">Lato</option><option value="Open Sans">Open Sans</option><option value="Nunito">Nunito</option><option value="DM Sans">DM Sans</option><option value="Work Sans">Work Sans</option></select>
                     <select id="font-accent"><option value="">None</option></select>
+                    <!-- New typography/layout controls -->
+                    <select id="font-heading-weight-hidden"><option value="400">400</option><option value="500" selected>500</option><option value="600">600</option><option value="700">700</option></select>
+                    <select id="font-body-size-hidden"><option value="14">14</option><option value="16" selected>16</option><option value="18">18</option></select>
+                    <input type="hidden" id="heading-letter-spacing-hidden" value="0">
+                    <select id="section-spacing-hidden"><option value="compact">compact</option><option value="comfortable" selected>comfortable</option><option value="spacious">spacious</option></select>
+                    <select id="content-width-hidden"><option value="narrow">narrow</option><option value="medium" selected>medium</option><option value="wide">wide</option></select>
+                    <select id="border-radius-hidden"><option value="0">0</option><option value="8" selected>8</option><option value="16">16</option></select>
+                    <select id="card-image-ratio-hidden"><option value="1/1">1/1</option><option value="3/4" selected>3/4</option><option value="4/3">4/3</option></select>
+                    <select id="grid-density-hidden"><option value="compact">compact</option><option value="comfortable" selected>comfortable</option><option value="spacious">spacious</option></select>
                 </div>
 
                 <!-- Legacy in-card preview iframe — kept in DOM so existing JS refs still work,
@@ -3676,6 +3777,38 @@ function applyThemeToControls(theme) {
         if (theme.fonts.heading) document.getElementById('font-heading').value = theme.fonts.heading;
         if (theme.fonts.body) document.getElementById('font-body').value = theme.fonts.body;
         if (theme.fonts.accent_font !== undefined) document.getElementById('font-accent').value = theme.fonts.accent_font || '';
+        if (theme.fonts.heading_weight) {
+            document.getElementById('font-heading-weight').value = theme.fonts.heading_weight;
+            document.getElementById('font-heading-weight-hidden').value = theme.fonts.heading_weight;
+        }
+        if (theme.fonts.body_size) {
+            document.getElementById('font-body-size').value = theme.fonts.body_size;
+            document.getElementById('font-body-size-hidden').value = theme.fonts.body_size;
+        }
+    }
+    if (theme.spacing) {
+        if (theme.spacing.section_padding) {
+            document.getElementById('section-spacing').value = theme.spacing.section_padding;
+            document.getElementById('section-spacing-hidden').value = theme.spacing.section_padding;
+        }
+        if (theme.spacing.content_width) {
+            document.getElementById('content-width').value = theme.spacing.content_width;
+            document.getElementById('content-width-hidden').value = theme.spacing.content_width;
+        }
+        if (theme.spacing.border_radius !== undefined) {
+            document.getElementById('border-radius').value = theme.spacing.border_radius;
+            document.getElementById('border-radius-hidden').value = theme.spacing.border_radius;
+        }
+    }
+    if (theme.cards) {
+        if (theme.cards.image_ratio) {
+            document.getElementById('card-image-ratio').value = theme.cards.image_ratio;
+            document.getElementById('card-image-ratio-hidden').value = theme.cards.image_ratio;
+        }
+        if (theme.cards.grid_density) {
+            document.getElementById('grid-density').value = theme.cards.grid_density;
+            document.getElementById('grid-density-hidden').value = theme.cards.grid_density;
+        }
     }
 }
 
@@ -3778,11 +3911,21 @@ function getThemeFromUI() {
     };
     merged.fonts = {
         heading: document.getElementById('font-heading').value,
-        heading_weight: '500',
+        heading_weight: document.getElementById('font-heading-weight').value || '500',
         heading_style: ['Great Vibes', 'Dancing Script', 'Pacifico', 'EB Garamond'].indexOf(document.getElementById('font-heading').value) >= 0 ? 'normal' : 'normal',
         body: document.getElementById('font-body').value,
         body_weight: '300',
+        body_size: document.getElementById('font-body-size').value || '16',
         accent_font: document.getElementById('font-accent').value || null
+    };
+    merged.spacing = {
+        section_padding: document.getElementById('section-spacing').value || 'comfortable',
+        content_width: document.getElementById('content-width').value || 'medium',
+        border_radius: document.getElementById('border-radius').value || '8'
+    };
+    merged.cards = {
+        image_ratio: document.getElementById('card-image-ratio').value || '3/4',
+        grid_density: document.getElementById('grid-density').value || 'comfortable'
     };
     return merged;
 }

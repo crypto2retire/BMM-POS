@@ -1072,6 +1072,26 @@ async def vendor_landing_page(slug: str, request: Request):
 
                     border_c = _mix_hex(text_c, bg_c, 0.15)
 
+                    # New theme properties
+                    spacing = theme.get("spacing", {})
+                    cards = theme.get("cards", {})
+                    body_size = f.get("body_size", "16")
+                    heading_weight = f.get("heading_weight", "600")
+                    heading_letter_spacing = theme.get("fonts", {}).get("heading_letter_spacing", "0")
+                    
+                    section_padding = {"compact": "1.5", "comfortable": "2.5", "spacious": "4"}.get(
+                        spacing.get("section_padding", "comfortable"), "2.5"
+                    )
+                    content_width = {"narrow": "800", "medium": "1000", "wide": "1200"}.get(
+                        spacing.get("content_width", "medium"), "1000"
+                    )
+                    border_radius = spacing.get("border_radius", "0")
+                    card_image_ratio = cards.get("image_ratio", "3/4")
+                    grid_density = cards.get("grid_density", "comfortable")
+                    grid_min_width = {"compact": "160px", "comfortable": "200px", "spacious": "280px"}.get(
+                        grid_density, "200px"
+                    )
+                    
                     css_vars = (
                         f"--landing-primary: {primary};"
                         f"--landing-secondary: {secondary};"
@@ -1082,10 +1102,17 @@ async def vendor_landing_page(slug: str, request: Request):
                         f"--landing-bg-dark: {bg_c};"
                         f"--landing-border: {border_c};"
                         f"--landing-heading-font: '{f.get('heading', 'Inter')}', serif;"
-                        f"--landing-heading-weight: {f.get('heading_weight', '600')};"
+                        f"--landing-heading-weight: {heading_weight};"
                         f"--landing-heading-style: {f.get('heading_style', 'normal')};"
+                        f"--landing-heading-letter-spacing: {heading_letter_spacing}em;"
                         f"--landing-body-font: '{f.get('body', 'Inter')}', sans-serif;"
                         f"--landing-body-weight: {f.get('body_weight', '400')};"
+                        f"--landing-body-size: {body_size};"
+                        f"--landing-section-padding: {section_padding};"
+                        f"--landing-content-width: {content_width};"
+                        f"--landing-border-radius: {border_radius};"
+                        f"--landing-card-image-ratio: {card_image_ratio};"
+                        f"--landing-grid-min-width: {grid_min_width};"
                     )
 
                     html = html.replace('class="no-theme"', 'class="themed"')
