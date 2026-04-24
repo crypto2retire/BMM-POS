@@ -747,7 +747,7 @@ async def upload_item_photo(
     if old_img:
         old_img.content_type = "image/jpeg"
     else:
-        db.add(ItemImage(item_id=item_id, content_type="image/jpeg"))
+        db.add(ItemImage(item_id=item_id, content_type="image/jpeg", image_data=b""))
 
     existing_urls = item.photo_urls or []
     if len(existing_urls) >= MAX_ITEM_PHOTOS:
@@ -896,7 +896,7 @@ async def upload_item_image(
     if old_img:
         old_img.content_type = "image/jpeg"
     else:
-        db.add(ItemImage(item_id=item_id, content_type="image/jpeg"))
+        db.add(ItemImage(item_id=item_id, content_type="image/jpeg", image_data=b""))
 
     item.image_path = image_path
     await db.commit()

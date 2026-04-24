@@ -321,13 +321,13 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest, db: Asy
     # Invalidate any existing unused codes for this email
     await db.execute(
         select(PasswordResetCode)
-        .where(PasswordResetCode.email == user.email, PasswordResetCode.used == False)
+        .where(PasswordResetCode.email == user.email.lower(), PasswordResetCode.used == False)
     )
     # Mark existing codes as used
     from sqlalchemy import update
     await db.execute(
         update(PasswordResetCode)
-        .where(PasswordResetCode.email == user.email, PasswordResetCode.used == False)
+        .where(PasswordResetCode.email == user.email.lower(), PasswordResetCode.used == False)
         .values(used=True)
     )
 
@@ -335,13 +335,19 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest, db: Asy
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
 
     reset_entry = PasswordResetCode(
-        email=user.email,
+        email=user.email.lower(),
         code=code,
         expires_at=expires_at,
         used=False,
     )
     db.add(reset_entry)
     await db.commit()
+
+    # Build reset URL with email and code pre-filled
+    scheme = request.headers.get("x-forwarded-proto") or "https"
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+    base_url = f"{scheme}://{host}".rstrip("/")
+    reset_url = f"{base_url}/vendor/reset-password.html?email={user.email.lower()}&code={code}"
 
     html_body = f"""
     <div style="font-family: Georgia, serif; max-width: 520px; margin: 0 auto; color: #2A2825;">
@@ -352,10 +358,14 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest, db: Asy
         <div style="padding: 32px 16px;">
             <p>Hi {user.name},</p>
             <p>We received a request to reset your password for your Bowenstreet Market account.</p>
-            <p style="text-align: center; margin: 28px 0; font-size: 1.4rem; font-weight: 600; letter-spacing: 0.2em; background: #f5f5f0; padding: 16px; border: 2px solid #C9A84C; color: #2A2825;">
+            <p style="text-align: center; margin: 28px 0;">
+                <a href="{reset_url}" style="display: inline-block; background: #C9A84C; color: #2A2825; padding: 14px 28px; text-decoration: none; font-weight: 600; font-size: 1rem; border-radius: 4px;">Reset Your Password</a>
+            </p>
+            <p style="font-size: 0.85rem; color: #5a554d; text-align: center;">Click the button above or use this code on the <a href="{reset_url}">password reset page</a>:</p>
+            <p style="text-align: center; margin: 16px 0; font-size: 1.4rem; font-weight: 600; letter-spacing: 0.2em; background: #f5f5f0; padding: 16px; border: 2px solid #C9A84C; color: #2A2825;">
                 {code}
             </p>
-            <p style="font-size: 0.85rem; color: #5a554d; text-align: center;">Enter this code on the password reset page to create a new password.</p>
+            <p style="font-size: 0.85rem; color: #5a554d; text-align: center;">This code is NOT your new password. It is only used to verify your identity.</p>
             <p style="font-size: 0.85rem; color: #5a554d;">This code will expire in 60 minutes. If you didn't request a password reset, you can safely ignore this email.</p>
         </div>
         <div style="text-align: center; padding: 16px; border-top: 1px solid #eee; font-size: 0.75rem; color: #999;">
@@ -364,7 +374,20 @@ async def forgot_password(request: Request, body: ForgotPasswordRequest, db: Asy
     </div>
     """
 
-    plain_body = f"Hi {user.name},\n\nYour password reset code is: {code}\n\nEnter this code on the password reset page to create a new password.\n\nThis code expires in 60 minutes.\n\nBowenstreet Market\n2837 Bowen St, Oshkosh WI 54901"
+    plain_body = f"""Hi {user.name},
+
+We received a request to reset your password for your Bowenstreet Market account.
+
+Reset your password here:
+{reset_url}
+
+Or use this code on the password reset page: {code}
+
+This code is NOT your new password. It is only used to verify your identity.
+This code expires in 60 minutes.
+
+Bowenstreet Market
+2837 Bowen St, Oshkosh WI 54901"""
 
     from app.services.email import send_email_safe
     email_result = await send_email_safe(
@@ -386,11 +409,11 @@ async def reset_password_with_token(body: ResetPasswordRequest, db: AsyncSession
     if pw_err:
         raise HTTPException(status_code=400, detail=pw_err)
 
-    # Verify the reset code
+    # Verify the reset code (case-insensitive email match)
     result = await db.execute(
         select(PasswordResetCode)
         .where(
-            PasswordResetCode.email == body.email.strip().lower(),
+            func.lower(PasswordResetCode.email) == body.email.strip().lower(),
             PasswordResetCode.code == body.token,
             PasswordResetCode.used == False,
             PasswordResetCode.expires_at > datetime.now(timezone.utc),
