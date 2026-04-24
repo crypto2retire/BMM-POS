@@ -205,6 +205,13 @@ async def run():
                 "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS customer_email VARCHAR(200)",
                 "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS public_id VARCHAR(36)",
                 "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS checkout_group_id VARCHAR(36)",
+                "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ",
+                "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(64)",
+                "CREATE INDEX IF NOT EXISTS ix_reservations_idempotency_key ON reservations(idempotency_key) WHERE idempotency_key IS NOT NULL",
+                "CREATE INDEX IF NOT EXISTS ix_reservations_expires_at ON reservations(expires_at) WHERE status = 'pending'",
+                # rent_payments
+                "ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS reference_tag VARCHAR(32)",
+                "CREATE INDEX IF NOT EXISTS ix_rent_payments_reference_tag ON rent_payments(reference_tag) WHERE reference_tag IS NOT NULL",
                 # class_registrations
                 "ALTER TABLE class_registrations ADD COLUMN IF NOT EXISTS public_id VARCHAR(36)",
                 "ALTER TABLE class_registrations ADD COLUMN IF NOT EXISTS square_payment_id VARCHAR(200)",
@@ -382,6 +389,32 @@ async def run():
                 "CREATE INDEX IF NOT EXISTS ix_items_sku_trgm ON items USING gin (sku gin_trgm_ops)",
                 "CREATE INDEX IF NOT EXISTS ix_items_status ON items (status)",
                 "CREATE INDEX IF NOT EXISTS ix_items_vendor_status ON items (vendor_id, status)",
+                # Day 4 performance indexes (foreign keys + frequently filtered columns)
+                "CREATE INDEX IF NOT EXISTS idx_items_status_online ON items(status, is_online)",
+                "CREATE INDEX IF NOT EXISTS idx_items_category ON items(category)",
+                "CREATE INDEX IF NOT EXISTS idx_items_created_at ON items(created_at)",
+                "CREATE INDEX IF NOT EXISTS idx_sales_created_voided ON sales(created_at, is_voided)",
+                "CREATE INDEX IF NOT EXISTS idx_sales_cashier ON sales(cashier_id)",
+                "CREATE INDEX IF NOT EXISTS idx_saleitems_sale ON sale_items(sale_id)",
+                "CREATE INDEX IF NOT EXISTS idx_saleitems_item ON sale_items(item_id)",
+                "CREATE INDEX IF NOT EXISTS idx_saleitems_vendor ON sale_items(vendor_id)",
+                "CREATE INDEX IF NOT EXISTS idx_rentpayments_vendor_period ON rent_payments(vendor_id, period_month)",
+                "CREATE INDEX IF NOT EXISTS idx_rentpayments_status ON rent_payments(status)",
+                "CREATE INDEX IF NOT EXISTS idx_payouts_vendor_period ON payouts(vendor_id, period_month)",
+                "CREATE INDEX IF NOT EXISTS idx_payouts_status ON payouts(status)",
+                "CREATE INDEX IF NOT EXISTS idx_vb_vendor ON vendor_balances(vendor_id)",
+                "CREATE INDEX IF NOT EXISTS idx_ba_vendor ON balance_adjustments(vendor_id)",
+                "CREATE INDEX IF NOT EXISTS idx_ba_admin ON balance_adjustments(adjusted_by)",
+                "CREATE INDEX IF NOT EXISTS idx_vendors_status ON vendors(status)",
+                "CREATE INDEX IF NOT EXISTS idx_vendors_role ON vendors(role)",
+                "CREATE INDEX IF NOT EXISTS idx_vendors_booth ON vendors(booth_number)",
+                "CREATE INDEX IF NOT EXISTS idx_reservations_item ON reservations(item_id)",
+                "CREATE INDEX IF NOT EXISTS idx_reservations_status ON reservations(status)",
+                # Unique constraint to prevent duplicate rent payments at DB level
+                """DO $$ BEGIN
+                    CREATE UNIQUE INDEX IF NOT EXISTS ix_rent_payments_vendor_reference
+                        ON rent_payments(vendor_id, reference_tag) WHERE status IN ('paid', 'received');
+                EXCEPTION WHEN others THEN NULL; END $$""",
             ]
             # These two use DO blocks to swallow "already exists" errors safely
             index_statements_do = [

@@ -1,12 +1,12 @@
 import time
 import uuid
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 from sqlalchemy import select, func, or_, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -409,6 +409,7 @@ class CreateCartPaymentRequest(BaseModel):
     customer_name: str
     customer_phone: str
     customer_email: Optional[str] = None
+    idempotency_key: Optional[str] = Field(None, max_length=64)
 
     @field_validator("item_ids")
     @classmethod
@@ -504,10 +505,31 @@ async def create_cart_payment(
     db: AsyncSession = Depends(get_db),
 ):
     _check_rate_limit(request)
+
+    # Idempotency: return existing reservations if same key was used
+    if req.idempotency_key:
+        existing = await db.execute(
+            select(Reservation).where(
+                Reservation.idempotency_key == req.idempotency_key,
+                Reservation.status == "pending"
+            ).limit(1)
+        )
+        existing_res = existing.scalar_one_or_none()
+        if existing_res:
+            return {
+                "reference_id": existing_res.checkout_group_id,
+                "reservation_id": existing_res.public_id,
+                "reservation_count": 1,
+                "total": float(existing_res.amount_paid or 0),
+                "payment_url": None,
+                "message": "Existing reservation found. Complete payment to confirm.",
+            }
+
     db_tax_rate = await get_tax_rate(db)
     tax_rate = Decimal(str(db_tax_rate)).quantize(Decimal("0.0001"))
     items = await _load_checkout_items(db, req.item_ids)
     checkout_group_id = str(uuid.uuid4())
+    expires_at = datetime.utcnow() + timedelta(minutes=15)
 
     reservations: list[Reservation] = []
     total = Decimal("0.00")
@@ -526,6 +548,8 @@ async def create_cart_payment(
             customer_email=req.customer_email,
             amount_paid=line_total,
             status="pending",
+            expires_at=expires_at,
+            idempotency_key=req.idempotency_key,
         )
         db.add(reservation)
         reservations.append(reservation)

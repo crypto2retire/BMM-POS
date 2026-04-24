@@ -443,6 +443,7 @@ async def rent_confirmed(
         method="square",
         status="received",
         notes=stamp_rent_notes(receipt_notes, reference_tag),
+        reference_tag=reference_tag,
     ))
     await db.commit()
     if applied_periods and credit_remainder > 0:

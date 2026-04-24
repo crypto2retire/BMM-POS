@@ -1,13 +1,17 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional, List
-from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey, Text
+from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
 class Sale(Base):
     __tablename__ = "sales"
+    __table_args__ = (
+        Index("idx_sales_created_voided", "created_at", "is_voided"),
+        Index("idx_sales_cashier", "cashier_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     cashier_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("vendors.id"))
@@ -38,6 +42,11 @@ class Sale(Base):
 
 class SaleItem(Base):
     __tablename__ = "sale_items"
+    __table_args__ = (
+        Index("idx_saleitems_sale", "sale_id"),
+        Index("idx_saleitems_item", "item_id"),
+        Index("idx_saleitems_vendor", "vendor_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     sale_id: Mapped[int] = mapped_column(Integer, ForeignKey("sales.id", ondelete="CASCADE"), nullable=False)

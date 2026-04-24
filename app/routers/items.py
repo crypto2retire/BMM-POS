@@ -216,7 +216,7 @@ async def list_items(
     category: Optional[str] = Query(None),
     q: Optional[str] = Query(None, description="Search by name or barcode"),
     vendor_id: Optional[int] = Query(None, description="Filter by vendor (admin/cashier only)"),
-    limit: Optional[int] = Query(None, ge=1, le=500),
+    limit: int = Query(100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
@@ -240,9 +240,7 @@ async def list_items(
                 func.lower(Item.sku).like(term),
             )
         )
-    query = query.order_by(Item.created_at.desc())
-    if limit:
-        query = query.limit(limit)
+    query = query.order_by(Item.created_at.desc()).limit(limit)
 
     result = await db.execute(query)
     items = result.scalars().all()

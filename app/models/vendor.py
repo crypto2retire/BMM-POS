@@ -1,12 +1,17 @@
 from datetime import datetime
 from decimal import Decimal
 from typing import Optional
-from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey, Text, text
+from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey, Text, text, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 class Vendor(Base):
     __tablename__ = "vendors"
+    __table_args__ = (
+        Index("idx_vendors_status", "status"),
+        Index("idx_vendors_role", "role"),
+        Index("idx_vendors_booth", "booth_number"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -48,6 +53,9 @@ class Vendor(Base):
 
 class VendorBalance(Base):
     __tablename__ = "vendor_balances"
+    __table_args__ = (
+        Index("idx_vb_vendor", "vendor_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     vendor_id: Mapped[int] = mapped_column(Integer, ForeignKey("vendors.id"))
@@ -58,6 +66,10 @@ class VendorBalance(Base):
 
 class BalanceAdjustment(Base):
     __tablename__ = "balance_adjustments"
+    __table_args__ = (
+        Index("idx_ba_vendor", "vendor_id"),
+        Index("idx_ba_admin", "adjusted_by"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     vendor_id: Mapped[int] = mapped_column(Integer, ForeignKey("vendors.id"), nullable=False)

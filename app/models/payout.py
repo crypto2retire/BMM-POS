@@ -1,13 +1,17 @@
 from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional
-from sqlalchemy import String, Numeric, Integer, TIMESTAMP, ForeignKey, Date, Text
+from sqlalchemy import String, Numeric, Integer, TIMESTAMP, ForeignKey, Date, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 
 class Payout(Base):
     __tablename__ = "payouts"
+    __table_args__ = (
+        Index("idx_payouts_vendor_period", "vendor_id", "period_month"),
+        Index("idx_payouts_status", "status"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     vendor_id: Mapped[int] = mapped_column(Integer, ForeignKey("vendors.id"), nullable=False)

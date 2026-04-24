@@ -4,6 +4,7 @@ import json
 import traceback
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -234,6 +235,34 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"BMM-POS: fix hybrid accounts FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("fix_hybrid_accounts", e)
+
+    # ── Expire old pending reservations ──
+    try:
+        async with AsyncSessionLocal() as session:
+            from app.models.reservation import Reservation
+            from app.models.item import Item
+            from sqlalchemy.orm import selectinload
+            cutoff = datetime.utcnow() - timedelta(minutes=15)
+            result = await session.execute(
+                select(Reservation)
+                .where(Reservation.status == "pending")
+                .where(Reservation.expires_at < cutoff)
+                .options(selectinload(Reservation.item))
+            )
+            expired = result.scalars().all()
+            count = 0
+            for r in expired:
+                r.status = "expired"
+                if r.item:
+                    r.item.reserved_quantity = max(0, r.item.reserved_quantity - 1)
+                count += 1
+            if count > 0:
+                await session.commit()
+                print(f"BMM-POS: expired {count} abandoned reservations", file=sys.stderr, flush=True)
+        _record_startup_ok("expire_reservations")
+    except Exception as e:
+        print(f"BMM-POS: reservation expiration FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("expire_reservations", e)
 
     startup_summary = _startup_health_payload()
     if startup_summary["startup_failure_count"]:

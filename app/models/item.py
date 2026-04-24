@@ -1,12 +1,18 @@
 from datetime import datetime, date
 from decimal import Decimal
 from typing import Optional, List
-from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey, Date, ARRAY, Text
+from sqlalchemy import String, Numeric, Integer, Boolean, TIMESTAMP, ForeignKey, Date, ARRAY, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
 class Item(Base):
     __tablename__ = "items"
+    __table_args__ = (
+        Index("idx_items_vendor_status", "vendor_id", "status"),
+        Index("idx_items_status_online", "status", "is_online"),
+        Index("idx_items_category", "category"),
+        Index("idx_items_created_at", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     vendor_id: Mapped[int] = mapped_column(Integer, ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False)

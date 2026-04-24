@@ -63,6 +63,25 @@ async def apply_rent_payment(
     if monthly_rent <= 0:
         raise ValueError("No rent amount configured for this vendor.")
 
+    # Idempotency: skip if already processed with same reference_tag
+    if reference_tag:
+        existing = await db.execute(
+            select(RentPayment).where(
+                RentPayment.vendor_id == vendor.id,
+                RentPayment.reference_tag == reference_tag,
+                RentPayment.status.in_(["paid", "received"]),
+            )
+        )
+        if existing.scalar_one_or_none():
+            return {
+                "amount": amount,
+                "monthly_rent": monthly_rent,
+                "applied_periods": [],
+                "credit_remainder": amount,
+                "rent_balance_after": Decimal("0.00"),
+                "already_processed": True,
+            }
+
     paid_result = await db.execute(
         select(RentPayment.period_month).where(
             RentPayment.vendor_id == vendor.id,

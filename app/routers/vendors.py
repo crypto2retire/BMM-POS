@@ -105,13 +105,13 @@ def _hydrate_vendor_balance_fields(
 @router.get("/", response_model=List[VendorResponse])
 async def list_vendors(
     search: Optional[str] = Query(None),
-    limit: Optional[int] = Query(None, ge=1, le=500),
+    limit: int = Query(500, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
     if not await _can_access_vendor_directory(db, current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to list vendors")
-    query = select(Vendor).order_by(Vendor.name)
+    query = select(Vendor).order_by(Vendor.name).limit(limit)
     if search:
         term = f"%{search.lower()}%"
         query = query.where(
@@ -122,8 +122,6 @@ async def list_vendors(
                 func.lower(Vendor.booth_number).like(term),
             )
         )
-    if limit:
-        query = query.limit(limit)
     result = await db.execute(query)
     vendors = result.scalars().all()
 
