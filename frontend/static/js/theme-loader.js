@@ -66,4 +66,55 @@
             body: JSON.stringify({ font_size_preference: size }),
         });
     };
+
+    // ── 4. Client-side error reporter ──
+    (function() {
+        var ENDPOINT = '/api/v1/errors/report';
+        var lastReport = 0;
+        var DEBOUNCE_MS = 5000;
+
+        function sendReport(payload) {
+            try {
+                var now = Date.now();
+                if (now - lastReport < DEBOUNCE_MS) return;
+                lastReport = now;
+                var body = JSON.stringify(payload);
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon(ENDPOINT, new Blob([body], { type: 'application/json' }));
+                } else {
+                    fetch(ENDPOINT, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: body,
+                        keepalive: true
+                    }).catch(function(){});
+                }
+            } catch (e) {}
+        }
+
+        window.addEventListener('error', function(event) {
+            sendReport({
+                message: (event.message || 'Unknown error').substring(0, 500),
+                source: 'frontend',
+                error_type: 'JavaScriptError',
+                stack_trace: event.error && event.error.stack ? event.error.stack.substring(0, 4000) : null,
+                url: event.filename || window.location.href,
+                user_agent: navigator.userAgent
+            });
+        });
+
+        window.addEventListener('unhandledrejection', function(event) {
+            var reason = event.reason;
+            var message = typeof reason === 'string' ? reason : (reason && reason.message ? reason.message : 'Unhandled promise rejection');
+            var stack = reason && reason.stack ? reason.stack.substring(0, 4000) : null;
+            sendReport({
+                message: message.substring(0, 500),
+                source: 'frontend',
+                error_type: 'UnhandledPromiseRejection',
+                stack_trace: stack,
+                url: window.location.href,
+                user_agent: navigator.userAgent
+            });
+        });
+    })();
 })();

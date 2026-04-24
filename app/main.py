@@ -65,7 +65,7 @@ try:
     print("BMM-POS: importing database...", file=sys.stderr, flush=True)
     from app.database import AsyncSessionLocal, engine, Base
     print("BMM-POS: importing routers...", file=sys.stderr, flush=True)
-    from app.routers import auth, vendors, items, sales, pos, assistant, storefront, storefront_assistant, rent, admin, reports, settings, studio, bulk_import, notifications, booth_showcase, data_sync, ai_writer, security_deposits
+    from app.routers import auth, vendors, items, sales, pos, assistant, storefront, storefront_assistant, rent, admin, reports, settings, studio, bulk_import, notifications, booth_showcase, data_sync, ai_writer, security_deposits, errors
     from app.routers.diagnose import router as diagnose_router
     from app.routers.inventory_verify import router as inventory_verify_router
     print("BMM-POS: all imports OK", file=sys.stderr, flush=True)
@@ -489,11 +489,46 @@ async def subdomain_landing_redirect(request: Request, call_next):
 async def global_exception_handler(request: Request, exc: Exception):
     from fastapi.exceptions import HTTPException as FastAPIHTTPException
     from starlette.exceptions import HTTPException as StarletteHTTPException
+    from app.database import AsyncSessionLocal
+    from app.services.error_logger import log_error
+
     if isinstance(exc, (FastAPIHTTPException, StarletteHTTPException)):
+        # 4xx client errors — don't log, just return
+        if exc.status_code < 500:
+            return JSONResponse(
+                status_code=exc.status_code,
+                content={"detail": exc.detail},
+            )
+        # 5xx server errors — log to DB
+        try:
+            async with AsyncSessionLocal() as session:
+                await log_error(
+                    db=session,
+                    exc=exc,
+                    source="api",
+                    request=request,
+                    level="error",
+                )
+        except Exception:
+            pass
         return JSONResponse(
             status_code=exc.status_code,
             content={"detail": exc.detail},
         )
+
+    # Unhandled exceptions — log to DB
+    try:
+        async with AsyncSessionLocal() as session:
+            await log_error(
+                db=session,
+                exc=exc,
+                source="api",
+                request=request,
+                level="critical",
+            )
+    except Exception:
+        pass
+
     print(f"BMM-POS EXCEPTION on {request.method} {request.url.path}: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
     traceback.print_exc(file=sys.stderr)
     return JSONResponse(
@@ -555,6 +590,7 @@ app.include_router(security_deposits.router, prefix="/api/v1")
 app.include_router(data_sync.router, prefix="/api/v1")
 app.include_router(ai_writer.router, prefix="/api/v1")
 app.include_router(diagnose_router, prefix="/api/v1")
+app.include_router(errors.router, prefix="/api/v1")
 
 from app.routers import square_webhook
 app.include_router(square_webhook.router, prefix="/api/v1")

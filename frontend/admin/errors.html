@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Error Logs — BMM-POS</title>
+    <meta name="description" content="System error monitoring and diagnostics for Bowenstreet Market POS.">
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
+    <style>
+        .page-subtitle {
+            font-family: 'EB Garamond', Georgia, serif;
+            font-style: italic;
+            font-size: 0.95rem;
+            color: var(--text-light);
+            font-weight: 400;
+            margin-top: 0.25rem;
+            letter-spacing: 0.01em;
+        }
+
+        /* ── Stats cards ──────────────────────────────────── */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 1.25rem;
+        }
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            text-align: center;
+            transition: border-color 0.2s;
+        }
+        .stat-card:hover { border-color: var(--warm-border); }
+        .stat-value {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--gold);
+            line-height: 1.1;
+        }
+        .stat-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-light);
+            margin-top: 0.35rem;
+        }
+        .stat-card.critical .stat-value { color: var(--danger); }
+        .stat-card.new .stat-value { color: var(--warning); }
+
+        /* ── Trend chart ──────────────────────────────────── */
+        .trend-chart {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1rem;
+            margin-bottom: 1.25rem;
+        }
+        .trend-chart h3 {
+            font-family: 'EB Garamond', serif;
+            font-size: 1rem;
+            margin: 0 0 0.75rem;
+            color: var(--text);
+        }
+        .trend-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 120px;
+            padding-bottom: 1.5rem;
+            position: relative;
+        }
+        .trend-bar-wrap {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            height: 100%;
+            position: relative;
+        }
+        .trend-bar {
+            width: 100%;
+            background: var(--gold-dim);
+            transition: background 0.2s;
+            min-height: 2px;
+        }
+        .trend-bar:hover { background: var(--gold); }
+        .trend-bar-label {
+            position: absolute;
+            bottom: -1.4rem;
+            font-size: 0.6rem;
+            color: var(--text-light);
+            white-space: nowrap;
+            transform: rotate(-45deg);
+            transform-origin: top left;
+        }
+        .trend-empty {
+            color: var(--text-light);
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        /* ── Filter bar ───────────────────────────────────── */
+        .filter-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        .filter-bar select,
+        .filter-bar input {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.45rem 0.6rem;
+            font-size: 0.8rem;
+            font-family: 'Roboto', sans-serif;
+        }
+        .filter-bar select:focus,
+        .filter-bar input:focus {
+            outline: none;
+            border-color: var(--gold-dim);
+            box-shadow: 0 0 0 2px var(--gold-glow);
+        }
+        .filter-bar input[type="date"] { max-width: 130px; }
+        .filter-bar .search-input { min-width: 200px; flex: 1; max-width: 320px; }
+        .filter-bar button {
+            padding: 0.45rem 0.85rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            transition: background 0.15s, color 0.15s;
+        }
+        .filter-bar button:hover { background: var(--gold-dim); color: var(--gold); }
+        .filter-bar .btn-primary {
+            background: var(--gold);
+            color: #1a1a1c;
+            border-color: var(--gold);
+            font-weight: 500;
+        }
+        .filter-bar .btn-primary:hover { background: #b89a5e; }
+
+        /* ── Error table ──────────────────────────────────── */
+        .error-table th { white-space: nowrap; }
+        .error-level {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .level-error   { background: color-mix(in srgb, var(--danger) 15%, transparent); color: var(--danger); }
+        .level-warning { background: color-mix(in srgb, var(--warning) 15%, transparent); color: var(--warning); }
+        .level-critical{ background: color-mix(in srgb, var(--danger) 25%, transparent); color: var(--danger); border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent); }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .status-new           { background: color-mix(in srgb, var(--warning) 15%, transparent); color: var(--warning); }
+        .status-acknowledged  { background: color-mix(in srgb, var(--info) 15%, transparent); color: var(--info); }
+        .status-resolved      { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+        .status-ignored       { background: color-mix(in srgb, var(--text-light) 10%, transparent); color: var(--text-light); }
+
+        .error-row { cursor: pointer; }
+        .error-row:hover td { background: var(--surface-2); }
+        .error-row.expanded { border-left: 3px solid var(--gold); }
+        .error-detail {
+            display: none;
+            background: var(--surface-2);
+        }
+        .error-detail.active { display: table-row; }
+        .error-detail td { padding: 1rem; }
+        .detail-section { margin-bottom: 0.75rem; }
+        .detail-section:last-child { margin-bottom: 0; }
+        .detail-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-light);
+            margin-bottom: 0.25rem;
+        }
+        .detail-pre {
+            background: #2a2a2e;
+            border: 1px solid var(--border);
+            padding: 0.6rem;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.75rem;
+            color: var(--text);
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .detail-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+        .detail-actions button {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.78rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+            transition: background 0.15s;
+        }
+        .detail-actions button:hover { background: var(--gold-dim); color: var(--gold); }
+        .detail-actions .btn-resolve { background: var(--success); color: #1a1a1c; border-color: var(--success); }
+        .detail-actions .btn-resolve:hover { background: #6b9b6b; }
+        .detail-actions .btn-ignore { background: var(--text-light); color: #1a1a1c; border-color: var(--text-light); }
+        .detail-actions .btn-ignore:hover { background: #a0a0a0; }
+
+        /* ── Bulk actions ─────────────────────────────────── */
+        .bulk-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            padding: 0.5rem;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+        }
+        .bulk-bar button {
+            padding: 0.4rem 0.7rem;
+            font-size: 0.78rem;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text);
+        }
+        .bulk-bar button:hover { background: var(--gold-dim); color: var(--gold); }
+        .bulk-bar span { font-size: 0.8rem; color: var(--text-light); }
+
+        /* ── Checkbox ─────────────────────────────────────── */
+        .row-check {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--gold);
+            cursor: pointer;
+        }
+
+        /* ── Pagination ───────────────────────────────────── */
+        .pagination-bar { display:flex; align-items:center; justify-content:space-between; margin-top:1rem; font-size:0.78rem; color:var(--text-light); }
+        .pagination-bar button {
+            padding:0.45rem 0.8rem; background:var(--surface-2); border:1px solid var(--border);
+            color:var(--text-light); font-size:0.78rem; cursor:pointer; font-family:'Roboto',sans-serif;
+            transition:background 0.15s, color 0.15s; min-height:44px;
+        }
+        .pagination-bar button:hover:not(:disabled) { background:var(--gold-dim); color:var(--gold); }
+        .pagination-bar button:disabled { opacity:0.3; cursor:default; }
+
+        /* ── Mobile ───────────────────────────────────────── */
+        @media (max-width: 768px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .filter-bar .search-input { max-width: none; width: 100%; }
+            .trend-bar-label { display: none; }
+        }
+    </style>
+</head>
+<body>
+<script src="/static/js/theme-loader.js"></script>
+<nav class="navbar">
+    <a href="/admin/index.html" class="navbar-brand">
+        <img src="/static/images/logo.png" alt="Bowenstreet Market" class="navbar-logo">
+        <span class="store-name">Admin</span>
+    </a>
+    <div class="navbar-user">
+        <span id="user-name">Administrator</span>
+        <nav class="navbar-nav">
+            <a href="/admin/index.html">Dashboard</a>
+            <a href="/admin/vendors.html">Vendors</a>
+            <a href="/admin/rent.html">Rent</a>
+            <a href="/items.html">Items</a>
+            <a href="/admin/studio.html">Studio</a>
+            <a href="/admin/reports.html">Reports</a>
+            <a href="/admin/eod-reports.html">EOD Reports</a>
+            <a href="/admin/payouts.html">Payouts</a>
+            <a href="/admin/settings.html">Settings</a>
+            <a href="/admin/errors.html" class="active">Errors</a>
+            <a href="/pos/index.html">POS Terminal</a>
+            <button type="button" onclick="handleLogout()">Logout</button>
+        </nav>
+        <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
+    </div>
+</nav>
+
+<div class="mobile-nav-dropdown" id="mobile-nav">
+    <a href="/admin/index.html">Dashboard</a>
+    <a href="/admin/vendors.html">Vendors</a>
+    <a href="/admin/rent.html">Rent</a>
+    <a href="/items.html">Items</a>
+    <a href="/admin/studio.html">Studio</a>
+    <a href="/admin/reports.html">Reports</a>
+    <a href="/admin/eod-reports.html">EOD Reports</a>
+    <a href="/admin/payouts.html">Payouts</a>
+    <a href="/admin/settings.html">Settings</a>
+    <a href="/admin/errors.html" class="active">Errors</a>
+    <a href="/pos/index.html">POS Terminal</a>
+    <button type="button" onclick="handleLogout()">Logout</button>
+</div>
+
+<div class="main-content">
+    <div id="alert-container"></div>
+
+    <div class="page-header">
+        <h1 class="page-title">Error Logs</h1>
+        <p class="page-subtitle">Monitor system health and diagnose issues</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row" id="stats-row">
+        <div class="stat-card"><div class="stat-value" id="stat-total">—</div><div class="stat-label">Total Errors</div></div>
+        <div class="stat-card new"><div class="stat-value" id="stat-new">—</div><div class="stat-label">New</div></div>
+        <div class="stat-card critical"><div class="stat-value" id="stat-critical">—</div><div class="stat-label">Critical</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-24h">—</div><div class="stat-label">Last 24h</div></div>
+    </div>
+
+    <!-- Trend Chart -->
+    <div class="trend-chart">
+        <h3>Errors Over Last 24 Hours</h3>
+        <div class="trend-bars" id="trend-bars"><div class="trend-empty">Loading...</div></div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filter-bar">
+        <select id="filter-status"><option value="">All Status</option><option value="new">New</option><option value="acknowledged">Acknowledged</option><option value="resolved">Resolved</option><option value="ignored">Ignored</option></select>
+        <select id="filter-level"><option value="">All Levels</option><option value="error">Error</option><option value="warning">Warning</option><option value="critical">Critical</option></select>
+        <select id="filter-source"><option value="">All Sources</option><option value="api">API</option><option value="frontend">Frontend</option><option value="startup">Startup</option><option value="background">Background</option></select>
+        <input type="date" id="filter-from" title="From date">
+        <input type="date" id="filter-to" title="To date">
+        <input type="text" id="filter-search" class="search-input" placeholder="Search message, type, endpoint...">
+        <button class="btn-primary" onclick="applyFilters()">Filter</button>
+        <button onclick="resetFilters()">Reset</button>
+    </div>
+
+    <!-- Bulk actions -->
+    <div class="bulk-bar" id="bulk-bar" style="display:none;">
+        <span id="bulk-count">0 selected</span>
+        <button onclick="bulkAction('acknowledge')">Acknowledge</button>
+        <button class="btn-resolve" onclick="bulkAction('resolve')">Resolve</button>
+        <button class="btn-ignore" onclick="bulkAction('ignore')">Ignore</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-responsive">
+        <table class="data-table error-table">
+            <thead>
+                <tr>
+                    <th style="width:30px;"><input type="checkbox" class="row-check" id="select-all" onclick="toggleSelectAll()"></th>
+                    <th>Time</th>
+                    <th>Level</th>
+                    <th>Type</th>
+                    <th>Source</th>
+                    <th>Endpoint</th>
+                    <th>Status</th>
+                    <th>Message</th>
+                </tr>
+            </thead>
+            <tbody id="errors-tbody">
+                <tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light);">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination-bar" id="pagination-bar" style="display:none;">
+        <button id="btn-prev" onclick="changePage(-1)">Previous</button>
+        <span id="page-info">Page 1 of 1</span>
+        <button id="btn-next" onclick="changePage(1)">Next</button>
+    </div>
+</div>
+
+<script>
+const API_BASE = '/api/v1';
+let currentPage = 1;
+let currentFilters = {};
+let selectedIds = new Set();
+let allErrorIds = [];
+
+function getToken() { return sessionStorage.getItem('bmm_token'); }
+
+function handleLogout() {
+    sessionStorage.clear();
+    window.location.href = '/vendor/login.html';
+}
+
+function toggleMobileNav() {
+    document.getElementById('mobile-nav').classList.toggle('active');
+}
+
+function formatDateTime(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return d.toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function showAlert(msg, type='info') {
+    const el = document.getElementById('alert-container');
+    const div = document.createElement('div');
+    div.className = `alert alert-${type}`;
+    div.textContent = msg;
+    el.appendChild(div);
+    setTimeout(() => div.remove(), 4000);
+}
+
+/* ── Load summary ──────────────────────────────────────── */
+async function loadSummary() {
+    try {
+        const r = await fetch(`${API_BASE}/admin/errors/summary`, {
+            headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+        if (!r.ok) throw new Error('Failed to load summary');
+        const data = await r.json();
+        document.getElementById('stat-total').textContent = (
+            (data.status_counts.new || 0) +
+            (data.status_counts.acknowledged || 0) +
+            (data.status_counts.resolved || 0) +
+            (data.status_counts.ignored || 0)
+        );
+        document.getElementById('stat-new').textContent = data.total_new || 0;
+        document.getElementById('stat-critical').textContent = data.total_critical || 0;
+        const last24h = (data.hourly_trend_24h || []).reduce((s, h) => s + (h.count || 0), 0);
+        document.getElementById('stat-24h').textContent = last24h;
+        renderTrend(data.hourly_trend_24h || []);
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+function renderTrend(hourly) {
+    const container = document.getElementById('trend-bars');
+    if (!hourly.length) {
+        container.innerHTML = '<div class="trend-empty">No errors in the last 24 hours</div>';
+        return;
+    }
+    const max = Math.max(...hourly.map(h => h.count), 1);
+    container.innerHTML = hourly.map((h, i) => {
+        const pct = (h.count / max) * 100;
+        const label = h.hour ? new Date(h.hour).toLocaleTimeString('en-US', { hour:'numeric' }) : '';
+        return `<div class="trend-bar-wrap" title="${h.count} at ${label}">
+            <div class="trend-bar" style="height:${pct}%"></div>
+            <span class="trend-bar-label">${label}</span>
+        </div>`;
+    }).join('');
+}
+
+/* ── Load errors ───────────────────────────────────────── */
+async function loadErrors() {
+    const tbody = document.getElementById('errors-tbody');
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light);">Loading...</td></tr>';
+
+    const params = new URLSearchParams({ page: String(currentPage), limit: '50' });
+    if (currentFilters.status) params.set('status', currentFilters.status);
+    if (currentFilters.level) params.set('level', currentFilters.level);
+    if (currentFilters.source) params.set('source', currentFilters.source);
+    if (currentFilters.search) params.set('search', currentFilters.search);
+    if (currentFilters.from) params.set('date_from', currentFilters.from);
+    if (currentFilters.to) params.set('date_to', currentFilters.to);
+
+    try {
+        const r = await fetch(`${API_BASE}/admin/errors?${params}`, {
+            headers: { 'Authorization': 'Bearer ' + getToken() }
+        });
+        if (!r.ok) throw new Error('Failed to load errors');
+        const data = await r.json();
+        renderErrors(data.errors || []);
+        renderPagination(data.page, data.pages, data.total);
+        allErrorIds = (data.errors || []).map(e => e.id);
+        updateBulkBar();
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--danger);">Error loading logs</td></tr>`;
+        console.error(e);
+    }
+}
+
+function renderErrors(errors) {
+    const tbody = document.getElementById('errors-tbody');
+    if (!errors.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-light);">No errors found</td></tr>';
+        return;
+    }
+    tbody.innerHTML = errors.map(e => `
+        <tr class="error-row" data-id="${e.id}" onclick="toggleDetail(${e.id})">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" data-id="${e.id}" ${selectedIds.has(e.id) ? 'checked' : ''} onchange="toggleSelection(${e.id})"></td>
+            <td style="white-space:nowrap;font-size:0.78rem;color:var(--text-light);">${formatDateTime(e.occurred_at)}</td>
+            <td><span class="error-level level-${e.level}">${e.level}</span></td>
+            <td style="font-size:0.8rem;">${escapeHtml(e.error_type)}</td>
+            <td style="font-size:0.8rem;color:var(--text-light);">${e.source || '—'}</td>
+            <td style="font-size:0.78rem;color:var(--text-light);max-width:180px;overflow:hidden;text-overflow:ellipsis;">${e.endpoint || '—'}</td>
+            <td><span class="status-badge status-${e.status}">${e.status}</span></td>
+            <td style="font-size:0.8rem;max-width:300px;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(e.message)}</td>
+        </tr>
+        <tr class="error-detail" id="detail-${e.id}">
+            <td colspan="8">
+                <div class="detail-section">
+                    <div class="detail-label">Message</div>
+                    <div class="detail-pre">${escapeHtml(e.message)}</div>
+                </div>
+                ${e.stack_trace ? `<div class="detail-section"><div class="detail-label">Stack Trace</div><div class="detail-pre">${escapeHtml(e.stack_trace)}</div></div>` : ''}
+                ${e.request_body ? `<div class="detail-section"><div class="detail-label">Request Body</div><div class="detail-pre">${escapeHtml(e.request_body)}</div></div>` : ''}
+                <div class="detail-section">
+                    <div class="detail-label">Context</div>
+                    <div class="detail-pre">Method: ${e.method || '—'}\nEndpoint: ${e.endpoint || '—'}\nIP: ${e.ip_address || '—'}\nUser: ${e.user_email || (e.user_id ? 'ID ' + e.user_id : '—')}\nUser-Agent: ${e.user_agent || '—'}</div>
+                </div>
+                ${e.notes ? `<div class="detail-section"><div class="detail-label">Notes</div><div class="detail-pre">${escapeHtml(e.notes)}</div></div>` : ''}
+                <div class="detail-actions">
+                    <button onclick="singleAction(${e.id}, 'acknowledge')">Acknowledge</button>
+                    <button class="btn-resolve" onclick="singleAction(${e.id}, 'resolve')">Resolve</button>
+                    <button class="btn-ignore" onclick="singleAction(${e.id}, 'ignore')">Ignore</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toggleDetail(id) {
+    const row = document.querySelector(`.error-row[data-id="${id}"]`);
+    const detail = document.getElementById(`detail-${id}`);
+    if (!row || !detail) return;
+    const isOpen = detail.classList.contains('active');
+    document.querySelectorAll('.error-detail.active').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.error-row.expanded').forEach(el => el.classList.remove('expanded'));
+    if (!isOpen) {
+        detail.classList.add('active');
+        row.classList.add('expanded');
+    }
+}
+
+function renderPagination(page, pages, total) {
+    const bar = document.getElementById('pagination-bar');
+    if (pages <= 1) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    document.getElementById('page-info').textContent = `Page ${page} of ${pages} (${total} total)`;
+    document.getElementById('btn-prev').disabled = page <= 1;
+    document.getElementById('btn-next').disabled = page >= pages;
+}
+
+function changePage(delta) {
+    currentPage += delta;
+    if (currentPage < 1) currentPage = 1;
+    loadErrors();
+}
+
+/* ── Filters ───────────────────────────────────────────── */
+function applyFilters() {
+    currentFilters = {
+        status: document.getElementById('filter-status').value,
+        level: document.getElementById('filter-level').value,
+        source: document.getElementById('filter-source').value,
+        from: document.getElementById('filter-from').value,
+        to: document.getElementById('filter-to').value,
+        search: document.getElementById('filter-search').value.trim(),
+    };
+    currentPage = 1;
+    loadErrors();
+}
+
+function resetFilters() {
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-level').value = '';
+    document.getElementById('filter-source').value = '';
+    document.getElementById('filter-from').value = '';
+    document.getElementById('filter-to').value = '';
+    document.getElementById('filter-search').value = '';
+    currentFilters = {};
+    currentPage = 1;
+    loadErrors();
+}
+
+/* ── Selection & Bulk Actions ──────────────────────────── */
+function toggleSelection(id) {
+    if (selectedIds.has(id)) selectedIds.delete(id);
+    else selectedIds.add(id);
+    updateBulkBar();
+}
+
+function toggleSelectAll() {
+    const checked = document.getElementById('select-all').checked;
+    if (checked) {
+        allErrorIds.forEach(id => selectedIds.add(id));
+    } else {
+        allErrorIds.forEach(id => selectedIds.delete(id));
+    }
+    document.querySelectorAll('.row-check[data-id]').forEach(cb => {
+        cb.checked = checked;
+    });
+    updateBulkBar();
+}
+
+function updateBulkBar() {
+    const bar = document.getElementById('bulk-bar');
+    if (selectedIds.size) {
+        bar.style.display = 'flex';
+        document.getElementById('bulk-count').textContent = `${selectedIds.size} selected`;
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+async function singleAction(id, action) {
+    await bulkActionOnIds([id], action);
+}
+
+async function bulkAction(action) {
+    if (!selectedIds.size) return;
+    await bulkActionOnIds(Array.from(selectedIds), action);
+}
+
+async function bulkActionOnIds(ids, action) {
+    try {
+        const r = await fetch(`${API_BASE}/admin/errors/bulk-resolve`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + getToken(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ids, action })
+        });
+        if (!r.ok) throw new Error('Action failed');
+        showAlert(`${action.charAt(0).toUpperCase() + action.slice(1)}d ${ids.length} error(s)`, 'success');
+        selectedIds.clear();
+        document.getElementById('select-all').checked = false;
+        updateBulkBar();
+        await loadErrors();
+        await loadSummary();
+    } catch (e) {
+        showAlert('Action failed: ' + e.message, 'danger');
+    }
+}
+
+/* ── Auto refresh ──────────────────────────────────────── */
+let refreshInterval;
+function startAutoRefresh() {
+    refreshInterval = setInterval(() => {
+        loadSummary();
+        loadErrors();
+    }, 30000);
+}
+
+/* ── Init ──────────────────────────────────────────────── */
+(async function init() {
+    if (!getToken()) { window.location.href = '/vendor/login.html'; return; }
+    try {
+        const r = await fetch(`${API_BASE}/auth/me`, { headers: { 'Authorization': 'Bearer ' + getToken() } });
+        const user = await r.json();
+        document.getElementById('user-name').textContent = user.name || user.email || 'Admin';
+        if (!['admin','cashier'].includes(user.role)) {
+            window.location.href = '/vendor/dashboard.html';
+            return;
+        }
+    } catch { window.location.href = '/vendor/login.html'; return; }
+
+    await loadSummary();
+    await loadErrors();
+    startAutoRefresh();
+})();
+
+window.addEventListener('beforeunload', () => {
+    if (refreshInterval) clearInterval(refreshInterval);
+});
+</script>
+<script src="/static/js/admin-badge.js"></script>
+</body>
+</html>

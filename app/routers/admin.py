@@ -17,6 +17,7 @@ from app.models.sale import Sale, SaleItem
 from app.models.rent import RentPayment
 from app.models.payout import Payout
 from app.models.legacy_history import LegacyFinancialHistory
+from app.models.error_log import ErrorLog
 from app.routers.auth import get_current_user, require_admin, require_cashier_or_admin
 from app.services.email import send_email_safe
 from app.services.rent_payments import apply_rent_payment, display_rent_notes, extract_rent_reference
@@ -1267,3 +1268,244 @@ async def backup_health_check(
                 "message": f"Could not parse backup timestamp: {e}",
             },
         )
+
+
+# ── Error Dashboard Endpoints ──────────────────────────────────────────────────
+
+class BulkErrorAction(BaseModel):
+    ids: list[int]
+    action: str  # "resolve", "acknowledge", "ignore"
+
+
+@router.get("/errors")
+async def list_errors(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_settings")),
+    status: Optional[str] = None,
+    level: Optional[str] = None,
+    source: Optional[str] = None,
+    error_type: Optional[str] = None,
+    search: Optional[str] = None,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50,
+):
+    """List error logs with filtering and pagination."""
+    page = max(1, page)
+    limit = max(1, min(200, limit))
+    offset = (page - 1) * limit
+
+    stmt = select(ErrorLog).order_by(ErrorLog.occurred_at.desc())
+
+    if status:
+        stmt = stmt.where(ErrorLog.status == status)
+    if level:
+        stmt = stmt.where(ErrorLog.level == level)
+    if source:
+        stmt = stmt.where(ErrorLog.source == source)
+    if error_type:
+        stmt = stmt.where(ErrorLog.error_type == error_type)
+    if search:
+        pattern = f"%{search}%"
+        stmt = stmt.where(
+            (ErrorLog.message.ilike(pattern))
+            | (ErrorLog.error_type.ilike(pattern))
+            | (ErrorLog.endpoint.ilike(pattern))
+        )
+    if date_from:
+        try:
+            from datetime import datetime, timezone
+            dt = datetime.strptime(date_from, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            stmt = stmt.where(ErrorLog.occurred_at >= dt)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            from datetime import datetime, timezone
+            dt = datetime.strptime(date_to, "%Y-%m-%d").replace(tzinfo=timezone.utc, hour=23, minute=59, second=59)
+            stmt = stmt.where(ErrorLog.occurred_at <= dt)
+        except ValueError:
+            pass
+
+    total_result = await db.execute(select(func.count()).select_from(stmt.subquery()))
+    total = total_result.scalar_one()
+
+    stmt = stmt.offset(offset).limit(limit)
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+
+    def _serialize(e: ErrorLog) -> dict:
+        return {
+            "id": e.id,
+            "level": e.level,
+            "status": e.status,
+            "source": e.source,
+            "endpoint": e.endpoint,
+            "method": e.method,
+            "error_type": e.error_type,
+            "message": e.message,
+            "stack_trace": e.stack_trace,
+            "request_body": e.request_body,
+            "user_id": e.user_id,
+            "user_email": e.user_email,
+            "ip_address": e.ip_address,
+            "user_agent": e.user_agent,
+            "occurred_at": e.occurred_at.isoformat() if e.occurred_at else None,
+            "acknowledged_by": e.acknowledged_by,
+            "acknowledged_at": e.acknowledged_at.isoformat() if e.acknowledged_at else None,
+            "notes": e.notes,
+        }
+
+    return {
+        "errors": [_serialize(e) for e in rows],
+        "total": total,
+        "page": page,
+        "pages": (total + limit - 1) // limit,
+    }
+
+
+@router.get("/errors/summary")
+async def errors_summary(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_settings")),
+):
+    """Summary stats for the error dashboard."""
+    from datetime import datetime, timezone, timedelta
+
+    now = datetime.now(timezone.utc)
+    day_ago = now - timedelta(hours=24)
+
+    # Counts by status
+    status_counts = {}
+    for st in ["new", "acknowledged", "resolved", "ignored"]:
+        cnt = await db.execute(
+            select(func.count()).where(ErrorLog.status == st)
+        )
+        status_counts[st] = cnt.scalar_one()
+
+    # Counts by level
+    level_counts = {}
+    for lv in ["error", "warning", "critical"]:
+        cnt = await db.execute(
+            select(func.count()).where(ErrorLog.level == lv)
+        )
+        level_counts[lv] = cnt.scalar_one()
+
+    # Top error types (last 24h)
+    top_types_result = await db.execute(
+        select(ErrorLog.error_type, func.count().label("cnt"))
+        .where(ErrorLog.occurred_at >= day_ago)
+        .group_by(ErrorLog.error_type)
+        .order_by(func.count().desc())
+        .limit(10)
+    )
+    top_types = [{"type": t, "count": c} for t, c in top_types_result.all()]
+
+    # Top endpoints (last 24h)
+    top_endpoints_result = await db.execute(
+        select(ErrorLog.endpoint, func.count().label("cnt"))
+        .where(ErrorLog.occurred_at >= day_ago)
+        .group_by(ErrorLog.endpoint)
+        .order_by(func.count().desc())
+        .limit(10)
+    )
+    top_endpoints = [{"endpoint": e or "(unknown)", "count": c} for e, c in top_endpoints_result.all()]
+
+    # Hourly trend (last 24h, grouped by hour)
+    hourly_result = await db.execute(
+        select(
+            func.date_trunc("hour", ErrorLog.occurred_at).label("hour"),
+            func.count().label("cnt"),
+        )
+        .where(ErrorLog.occurred_at >= day_ago)
+        .group_by(func.date_trunc("hour", ErrorLog.occurred_at))
+        .order_by(func.date_trunc("hour", ErrorLog.occurred_at))
+    )
+    hourly = []
+    for h, c in hourly_result.all():
+        hourly.append({"hour": h.isoformat() if h else None, "count": c})
+
+    return {
+        "status_counts": status_counts,
+        "level_counts": level_counts,
+        "total_new": status_counts.get("new", 0),
+        "total_critical": level_counts.get("critical", 0),
+        "top_types_24h": top_types,
+        "top_endpoints_24h": top_endpoints,
+        "hourly_trend_24h": hourly,
+    }
+
+
+@router.post("/errors/{error_id}/acknowledge")
+async def acknowledge_error(
+    error_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_settings")),
+    notes: Optional[str] = None,
+):
+    """Acknowledge a single error log."""
+    result = await db.execute(select(ErrorLog).where(ErrorLog.id == error_id))
+    entry = result.scalar_one_or_none()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Error log not found")
+
+    entry.status = "acknowledged"
+    entry.acknowledged_by = current_user.id
+    entry.acknowledged_at = datetime.now()
+    if notes:
+        entry.notes = notes
+
+    await db.commit()
+    await log_audit(
+        db=db,
+        action="error_acknowledge",
+        entity_type="error_log",
+        entity_id=str(error_id),
+        details={"notes": notes},
+        vendor_id=current_user.id,
+    )
+    return {"status": "ok", "id": error_id}
+
+
+@router.post("/errors/bulk-resolve")
+async def bulk_resolve_errors(
+    payload: BulkErrorAction,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_settings")),
+):
+    """Bulk resolve/acknowledge/ignore error logs."""
+    if payload.action not in ("resolve", "acknowledged", "ignore"):
+        raise HTTPException(status_code=400, detail="Invalid action. Use resolve, acknowledged, or ignore.")
+
+    if not payload.ids:
+        return {"status": "ok", "updated": 0}
+
+    result = await db.execute(
+        select(ErrorLog).where(ErrorLog.id.in_(payload.ids))
+    )
+    entries = result.scalars().all()
+
+    status_map = {
+        "resolve": "resolved",
+        "acknowledged": "acknowledged",
+        "ignore": "ignored",
+    }
+    new_status = status_map[payload.action]
+    now = datetime.now()
+
+    for entry in entries:
+        entry.status = new_status
+        entry.acknowledged_by = current_user.id
+        entry.acknowledged_at = now
+
+    await db.commit()
+    await log_audit(
+        db=db,
+        action="error_bulk_action",
+        entity_type="error_log",
+        entity_id=",".join(str(i) for i in payload.ids[:20]),
+        details={"action": payload.action, "count": len(entries)},
+        vendor_id=current_user.id,
+    )
+    return {"status": "ok", "updated": len(entries)}

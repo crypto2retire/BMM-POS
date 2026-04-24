@@ -17,5 +17,6 @@ from app.models.eod_report import EodReport
 from app.models.legacy_history import LegacyFinancialHistory
 from app.models.security_deposit import SecurityDepositLog
 from app.models.audit_log import AuditLog
+from app.models.error_log import ErrorLog
 
-__all__ = ["Vendor", "VendorBalance", "Item", "ItemVariable", "ItemVariant", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting", "StudioClass", "ItemImage", "StudioImage", "ClassRegistration", "BoothShowcase", "PoyntPayment", "EodReport", "LegacyFinancialHistory", "SecurityDepositLog", "AuditLog"]
+__all__ = ["Vendor", "VendorBalance", "Item", "ItemVariable", "ItemVariant", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting", "StudioClass", "ItemImage", "StudioImage", "ClassRegistration", "BoothShowcase", "PoyntPayment", "EodReport", "LegacyFinancialHistory", "SecurityDepositLog", "AuditLog", "ErrorLog"]

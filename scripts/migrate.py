@@ -334,6 +334,46 @@ async def run():
                 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at)
             """))
             await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS error_logs (
+                    id SERIAL PRIMARY KEY,
+                    level VARCHAR(20) NOT NULL DEFAULT 'error',
+                    status VARCHAR(20) NOT NULL DEFAULT 'new',
+                    source VARCHAR(50) NOT NULL,
+                    endpoint VARCHAR(255),
+                    method VARCHAR(10),
+                    error_type VARCHAR(100) NOT NULL,
+                    message TEXT NOT NULL,
+                    stack_trace TEXT,
+                    request_body TEXT,
+                    user_id INTEGER,
+                    user_email VARCHAR(200),
+                    ip_address VARCHAR(45),
+                    user_agent VARCHAR(500),
+                    occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    acknowledged_by INTEGER REFERENCES vendors(id),
+                    acknowledged_at TIMESTAMPTZ,
+                    notes TEXT
+                )
+            """))
+            await session.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_error_logs_status ON error_logs(status)
+            """))
+            await session.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_error_logs_level ON error_logs(level)
+            """))
+            await session.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_error_logs_source ON error_logs(source)
+            """))
+            await session.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_error_logs_type ON error_logs(error_type)
+            """))
+            await session.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_error_logs_occurred ON error_logs(occurred_at)
+            """))
+            await session.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_error_logs_new ON error_logs(status, occurred_at) WHERE status = 'new'
+            """))
+            await session.execute(text("""
                 CREATE TABLE IF NOT EXISTS poynt_payments (
                     id SERIAL PRIMARY KEY,
                     reference_id VARCHAR(100) UNIQUE,
