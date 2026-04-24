@@ -541,7 +541,10 @@ async def pos_create_sale(
     # Lock all cart items first to prevent race conditions / overselling
     cart_barcodes = [cart_item.barcode for cart_item in data.items]
     locked_result = await db.execute(
-        select(Item).where(Item.barcode.in_(cart_barcodes)).with_for_update()
+        select(Item)
+        .options(selectinload(Item.vendor))
+        .where(Item.barcode.in_(cart_barcodes))
+        .with_for_update()
     )
     locked_items = {item.barcode: item for item in locked_result.scalars().all()}
 

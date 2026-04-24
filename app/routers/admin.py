@@ -1416,22 +1416,23 @@ async def errors_summary(
     )
     top_endpoints = [{"endpoint": e or "(unknown)", "count": c} for e, c in top_endpoints_result.all()]
 
-    # Hourly trend (last 24h, grouped by hour) — use subquery to avoid strict GROUP BY issues
-    hourly_subq = (
-        select(
-            func.date_trunc("hour", ErrorLog.occurred_at).label("hour"),
-            func.count().label("cnt"),
-        )
+    # Hourly trend (last 24h) — fetch raw rows and group in Python to avoid strict GROUP BY issues
+    hourly_raw = await db.execute(
+        select(ErrorLog.occurred_at)
         .where(ErrorLog.occurred_at >= day_ago)
-        .group_by(func.date_trunc("hour", ErrorLog.occurred_at))
-        .subquery()
+        .order_by(ErrorLog.occurred_at)
     )
-    hourly_result = await db.execute(
-        select(hourly_subq.c.hour, hourly_subq.c.cnt).order_by(hourly_subq.c.hour)
-    )
-    hourly = []
-    for h, c in hourly_result.all():
-        hourly.append({"hour": h.isoformat() if h else None, "count": c})
+    from collections import Counter
+    from datetime import datetime as _dt
+    hour_counts = Counter()
+    for (occurred_at,) in hourly_raw.all():
+        if occurred_at:
+            hour_key = occurred_at.replace(minute=0, second=0, microsecond=0)
+            hour_counts[hour_key] += 1
+    hourly = [
+        {"hour": h.isoformat(), "count": c}
+        for h, c in sorted(hour_counts.items())
+    ]
 
     return {
         "status_counts": status_counts,
