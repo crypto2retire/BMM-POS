@@ -15,6 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFil
 
 # Router defined before other module-level code
 router = APIRouter(prefix="/pos", tags=["pos"])
+logger = logging.getLogger(__name__)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, and_, func, cast, Date, case
 from sqlalchemy.orm import selectinload
