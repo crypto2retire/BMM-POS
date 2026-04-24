@@ -396,56 +396,6 @@ _allowed_origins = _build_allowed_origins()
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# Brotli compression middleware (better than gzip, 15-25% smaller)
-try:
-    import brotli
-    _BROTLI_AVAILABLE = True
-except ImportError:
-    _BROTLI_AVAILABLE = False
-
-@app.middleware("http")
-async def brotli_middleware(request: Request, call_next):
-    """Compress responses with Brotli if client supports it."""
-    if not _BROTLI_AVAILABLE:
-        return await call_next(request)
-
-    response = await call_next(request)
-
-    # Skip if already encoded or not a compressible content type
-    encoding = response.headers.get("content-encoding")
-    if encoding:
-        return response
-
-    content_type = response.headers.get("content-type", "")
-    compressible = any(
-        ct in content_type
-        for ct in ("text/", "application/json", "application/javascript", "application/xml")
-    )
-    if not compressible:
-        return response
-
-    # Check if client accepts Brotli
-    accept_encoding = request.headers.get("accept-encoding", "")
-    if "br" not in accept_encoding.lower():
-        return response
-
-    # Read body and compress
-    body = b""
-    async for chunk in response.body_iterator:
-        if isinstance(chunk, str):
-            chunk = chunk.encode("utf-8")
-        body += chunk
-
-    # Only compress if worth it (>500 bytes)
-    if len(body) > 500:
-        compressed = brotli.compress(body, quality=4)
-        if len(compressed) < len(body):
-            response.headers["content-encoding"] = "br"
-            response.headers["content-length"] = str(len(compressed))
-            response.body_iterator = iter([compressed])
-
-    return response
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_allowed_origins,
