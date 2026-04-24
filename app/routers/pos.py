@@ -1,5 +1,7 @@
 import asyncio
+import hmac
 import math
+import os
 import secrets
 import uuid
 import base64
@@ -1089,6 +1091,14 @@ async def poynt_callback(
     db: AsyncSession = Depends(get_db),
 ):
     """Callback from Poynt terminal — updates payment status."""
+    # Verify webhook secret to reject unauthorized callers
+    webhook_secret = os.environ.get("POYNT_WEBHOOK_SECRET", "")
+    if webhook_secret:
+        provided = request.headers.get("X-Poynt-Webhook-Secret") or request.query_params.get("secret") or ""
+        if not hmac.compare_digest(provided, webhook_secret):
+            logger.warning("Poynt callback rejected: invalid webhook secret")
+            raise HTTPException(status_code=401, detail="Unauthorized")
+
     try:
         payload = await request.json()
     except Exception:

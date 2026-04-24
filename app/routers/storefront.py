@@ -598,32 +598,42 @@ async def payment_confirmed(
         select(Reservation).where(Reservation.checkout_group_id == reference_id)
     )
     reservations = group_result.scalars().all()
-    if reservations:
-        pending_count = 0
-        for reservation in reservations:
-            if reservation.status != "completed":
-                reservation.status = "completed"
-                pending_count += 1
-        await db.commit()
-        if pending_count == 0:
-            return {"message": "Payment already confirmed."}
-        item_word = "item" if pending_count == 1 else "items"
-        return {"message": f"Payment confirmed! {pending_count} {item_word} reserved."}
 
-    result = await db.execute(
-        select(Reservation).where(Reservation.public_id == reference_id)
-    )
-    reservation = result.scalar_one_or_none()
-    if not reservation:
-        raise HTTPException(status_code=404, detail="Reservation not found")
+    if not reservations:
+        result = await db.execute(
+            select(Reservation).where(Reservation.public_id == reference_id)
+        )
+        reservation = result.scalar_one_or_none()
+        if not reservation:
+            raise HTTPException(status_code=404, detail="Reservation not found")
+        reservations = [reservation]
 
-    if reservation.status == "completed":
+    # Check if already completed
+    already_done = all(r.status == "completed" for r in reservations)
+    if already_done:
         return {"message": "Payment already confirmed."}
 
-    reservation.status = "completed"
-    await db.commit()
+    # Lock items and finalize
+    item_ids = [r.item_id for r in reservations if r.item_id]
+    if item_ids:
+        await db.execute(select(Item).where(Item.id.in_(item_ids)).with_for_update())
 
-    return {"message": "Payment confirmed! Your item has been reserved."}
+    pending_count = 0
+    for reservation in reservations:
+        if reservation.status == "completed":
+            continue
+        reservation.status = "completed"
+        if reservation.item:
+            # Deduct actual inventory and release reservation hold
+            reservation.item.quantity = max(0, reservation.item.quantity - 1)
+            reservation.item.reserved_quantity = max(0, reservation.item.reserved_quantity - 1)
+            if reservation.item.quantity <= 0:
+                reservation.item.status = "sold"
+        pending_count += 1
+
+    await db.commit()
+    item_word = "item" if pending_count == 1 else "items"
+    return {"message": f"Payment confirmed! {pending_count} {item_word} reserved."}
 
 
 # ── Phase 3 SEO endpoints ──────────────────────────────────────────────
