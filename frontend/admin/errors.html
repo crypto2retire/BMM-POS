@@ -348,6 +348,7 @@
         <input type="text" id="filter-search" class="search-input" placeholder="Search message, type, endpoint...">
         <button class="btn-primary" onclick="applyFilters()">Filter</button>
         <button onclick="resetFilters()">Reset</button>
+        <button id="clear-all-btn" style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--text-light);padding:0.45rem 0.9rem;font-size:0.78rem;cursor:pointer;display:none;" onclick="clearAllNew()">Resolve All New</button>
     </div>
 
     <!-- Bulk actions -->
@@ -436,6 +437,8 @@ async function loadSummary() {
         );
         document.getElementById('stat-new').textContent = data.total_new || 0;
         document.getElementById('stat-critical').textContent = data.total_critical || 0;
+        const clearBtn = document.getElementById('clear-all-btn');
+        if (clearBtn) clearBtn.style.display = (data.total_new || 0) > 0 ? 'inline-block' : 'none';
         const last24h = (data.hourly_trend_24h || []).reduce((s, h) => s + (h.count || 0), 0);
         document.getElementById('stat-24h').textContent = last24h;
         renderTrend(data.hourly_trend_24h || []);
@@ -647,6 +650,29 @@ async function bulkActionOnIds(ids, action) {
         await loadSummary();
     } catch (e) {
         showAlert('Action failed: ' + e.message, 'danger');
+    }
+}
+
+async function clearAllNew() {
+    try {
+        const r = await fetch(`${API_BASE}/admin/errors/clear-all`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + getToken(),
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ status: 'new', target_status: 'resolved' })
+        });
+        if (!r.ok) throw new Error('Clear failed');
+        const data = await r.json();
+        showAlert(`Resolved ${data.updated} error(s)`, 'success');
+        selectedIds.clear();
+        document.getElementById('select-all').checked = false;
+        updateBulkBar();
+        await loadErrors();
+        await loadSummary();
+    } catch (e) {
+        showAlert('Clear failed: ' + e.message, 'danger');
     }
 }
 

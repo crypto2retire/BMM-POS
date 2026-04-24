@@ -1537,8 +1537,8 @@ async def bulk_resolve_errors(
     current_user: Vendor = Depends(require_staff_feature("role_manage_settings")),
 ):
     """Bulk resolve/acknowledge/ignore error logs."""
-    if payload.action not in ("resolve", "acknowledged", "ignore"):
-        raise HTTPException(status_code=400, detail="Invalid action. Use resolve, acknowledged, or ignore.")
+    if payload.action not in ("resolve", "acknowledge", "acknowledged", "ignore"):
+        raise HTTPException(status_code=400, detail="Invalid action. Use resolve, acknowledge, or ignore.")
 
     if not payload.ids:
         return {"status": "ok", "updated": 0}
@@ -1550,6 +1550,7 @@ async def bulk_resolve_errors(
 
     status_map = {
         "resolve": "resolved",
+        "acknowledge": "acknowledged",
         "acknowledged": "acknowledged",
         "ignore": "ignored",
     }
@@ -1568,6 +1569,51 @@ async def bulk_resolve_errors(
         entity_type="error_log",
         entity_id=",".join(str(i) for i in payload.ids[:20]),
         details={"action": payload.action, "count": len(entries)},
+        vendor_id=current_user.id,
+    )
+    return {"status": "ok", "updated": len(entries)}
+
+
+@router.post("/errors/clear-all")
+async def clear_all_errors(
+    payload: dict = Body(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_manage_settings")),
+):
+    """Resolve all errors matching a filter (default: all new errors)."""
+    filter_status = payload.get("status", "new")
+    filter_level = payload.get("level")
+    target_status = payload.get("target_status", "resolved")
+
+    if filter_status not in ("new", "acknowledged", "error", "warning", "critical"):
+        raise HTTPException(status_code=400, detail="Invalid filter status.")
+    if target_status not in ("resolved", "ignored"):
+        raise HTTPException(status_code=400, detail="Invalid target status. Use resolved or ignored.")
+
+    stmt = select(ErrorLog)
+    if filter_status in ("new", "acknowledged"):
+        stmt = stmt.where(ErrorLog.status == filter_status)
+    else:
+        stmt = stmt.where(ErrorLog.level == filter_status, ErrorLog.status == "new")
+
+    if filter_level:
+        stmt = stmt.where(ErrorLog.level == filter_level)
+
+    result = await db.execute(stmt)
+    entries = result.scalars().all()
+
+    now = datetime.now()
+    for entry in entries:
+        entry.status = target_status
+        entry.acknowledged_by = current_user.id
+        entry.acknowledged_at = now
+
+    await db.commit()
+    await log_audit(
+        db=db,
+        action="error_clear_all",
+        entity_type="error_log",
+        details={"filter_status": filter_status, "target_status": target_status, "count": len(entries)},
         vendor_id=current_user.id,
     )
     return {"status": "ok", "updated": len(entries)}
