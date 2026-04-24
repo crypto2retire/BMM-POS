@@ -770,6 +770,80 @@ async def run():
                 await _set_marker(session, marker, "Zero commission_rate for all vendors")
                 print(f"BMM-POS migrate: zero commission_rate — {r.rowcount} vendors", flush=True)
 
+            # ── Recalculate vendor balances from source transactions ──────
+            marker = "startup_task_recalc_vendor_balances_v1"
+            if not await _has_marker(session, marker):
+                print("BMM-POS migrate: recalculating vendor balances from transactions...", flush=True)
+                r = await session.execute(text("""
+                    WITH vendor_credits AS (
+                        SELECT si.vendor_id,
+                            COALESCE(SUM(si.line_total - COALESCE(si.consignment_amount, 0)), 0) AS total_credit
+                        FROM sale_items si
+                        JOIN sales s ON s.id = si.sale_id AND s.is_voided = false
+                        GROUP BY si.vendor_id
+                    ),
+                    vendor_debits AS (
+                        SELECT si.vendor_id,
+                            COALESCE(SUM(si.line_total - COALESCE(si.consignment_amount, 0)), 0) AS total_debit
+                        FROM sale_items si
+                        JOIN sales s ON s.id = si.sale_id AND s.is_voided = true
+                        GROUP BY si.vendor_id
+                    ),
+                    payout_totals AS (
+                        SELECT vendor_id, COALESCE(SUM(net_payout), 0) AS total_payout
+                        FROM payouts WHERE status != 'cancelled'
+                        GROUP BY vendor_id
+                    ),
+                    adjustment_totals AS (
+                        SELECT vendor_id,
+                            COALESCE(SUM(CASE WHEN adjustment_type='credit' THEN amount ELSE -amount END), 0) AS net_adj
+                        FROM balance_adjustments
+                        GROUP BY vendor_id
+                    ),
+                    expected AS (
+                        SELECT v.id AS vendor_id,
+                            COALESCE(vc.total_credit, 0)
+                            - COALESCE(vd.total_debit, 0)
+                            - COALESCE(pt.total_payout, 0)
+                            + COALESCE(at.net_adj, 0) AS expected_balance
+                        FROM vendors v
+                        LEFT JOIN vendor_credits vc ON vc.vendor_id = v.id
+                        LEFT JOIN vendor_debits vd ON vd.vendor_id = v.id
+                        LEFT JOIN payout_totals pt ON pt.vendor_id = v.id
+                        LEFT JOIN adjustment_totals at ON at.vendor_id = v.id
+                        WHERE v.role = 'vendor'
+                    )
+                    UPDATE vendor_balances vb
+                    SET balance = e.expected_balance,
+                        last_updated = NOW()
+                    FROM expected e
+                    WHERE vb.vendor_id = e.vendor_id
+                      AND vb.id = (
+                          SELECT MIN(vb2.id) FROM vendor_balances vb2 WHERE vb2.vendor_id = e.vendor_id
+                      )
+                """))
+                print(f"BMM-POS migrate: recalculated {r.rowcount} vendor balances", flush=True)
+                await _set_marker(session, marker, "Recalculate vendor balances from source transactions")
+
+            # ── Deduplicate vendor_balances and add UNIQUE constraint ─────
+            marker = "startup_task_vb_unique_constraint_v1"
+            if not await _has_marker(session, marker):
+                r = await session.execute(text("""
+                    DELETE FROM vendor_balances
+                    WHERE id NOT IN (
+                        SELECT MIN(id) FROM vendor_balances GROUP BY vendor_id
+                    )
+                """))
+                dupe_count = r.rowcount or 0
+                print(f"BMM-POS migrate: removed {dupe_count} duplicate vendor_balances rows", flush=True)
+
+                await session.execute(text("""
+                    CREATE UNIQUE INDEX IF NOT EXISTS vendor_balances_vendor_id_unique
+                    ON vendor_balances (vendor_id)
+                """))
+                print("BMM-POS migrate: added UNIQUE constraint on vendor_balances.vendor_id", flush=True)
+                await _set_marker(session, marker, "Deduplicate vendor_balances and add UNIQUE constraint on vendor_id")
+
             await session.commit()
 
         print("BMM-POS migrate: all migrations complete", flush=True)
