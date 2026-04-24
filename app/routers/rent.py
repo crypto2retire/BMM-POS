@@ -120,7 +120,7 @@ async def rent_status(
     legacy_history = legacy_result.scalars().all()
 
     balance_result = await db.execute(
-        select(VendorBalance).where(VendorBalance.vendor_id == vendor.id)
+        select(VendorBalance).where(VendorBalance.vendor_id == vendor.id).limit(1)
     )
     balance = balance_result.scalar_one_or_none()
     rent_credit = float(balance.rent_balance or 0) if balance and balance.rent_balance is not None else 0.0
@@ -192,7 +192,7 @@ async def monthly_report(
     start_local, end_local, start_utc, end_utc = _month_window(month)
 
     balance_result = await db.execute(
-        select(VendorBalance).where(VendorBalance.vendor_id == vendor.id)
+        select(VendorBalance).where(VendorBalance.vendor_id == vendor.id).limit(1)
     )
     balance = balance_result.scalar_one_or_none()
     total_sales = float(balance.balance or 0) if balance and balance.balance is not None else 0.0

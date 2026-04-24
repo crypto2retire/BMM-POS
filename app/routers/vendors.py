@@ -276,7 +276,7 @@ async def get_vendor(
         raise HTTPException(status_code=404, detail="Vendor not found")
 
     bal_result = await db.execute(
-        select(VendorBalance).where(VendorBalance.vendor_id == vendor_id)
+        select(VendorBalance).where(VendorBalance.vendor_id == vendor_id).limit(1)
     )
     bal_row = bal_result.scalar_one_or_none()
     sb = (
@@ -574,7 +574,7 @@ async def get_vendor_balance(
     else:
         raise HTTPException(status_code=403, detail="Not authorized")
 
-    result = await db.execute(select(VendorBalance).where(VendorBalance.vendor_id == vendor_id))
+    result = await db.execute(select(VendorBalance).where(VendorBalance.vendor_id == vendor_id).limit(1))
     balance = result.scalar_one_or_none()
     if not balance:
         balance = VendorBalance(vendor_id=vendor_id)

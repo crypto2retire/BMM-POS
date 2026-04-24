@@ -668,7 +668,7 @@ async def payout_preview(
     rows = []
     for v in vendors:
         bal_result = await db.execute(
-            select(VendorBalance).where(VendorBalance.vendor_id == v.id)
+            select(VendorBalance).where(VendorBalance.vendor_id == v.id).limit(1)
         )
         bal = bal_result.scalar_one_or_none()
         gross = float(bal.balance) if bal else 0.0
@@ -772,7 +772,7 @@ async def process_payouts(
 
     for v in vendors:
         bal_result = await db.execute(
-            select(VendorBalance).where(VendorBalance.vendor_id == v.id).with_for_update()
+            select(VendorBalance).where(VendorBalance.vendor_id == v.id).limit(1).with_for_update()
         )
         bal = bal_result.scalar_one_or_none()
         sales = Decimal(str(bal.balance)) if bal and bal.balance else Decimal("0")

@@ -151,6 +151,20 @@ async def lifespan(app: FastAPI):
     # ── Vendor balances backfill ──
     try:
         async with AsyncSessionLocal() as session:
+            await session.execute(text("""
+                DELETE FROM vendor_balances
+                WHERE id NOT IN (
+                    SELECT MIN(id) FROM vendor_balances GROUP BY vendor_id
+                )
+            """))
+            await session.commit()
+        _record_startup_ok("vendor_balances_dedup")
+    except Exception as e:
+        print(f"BMM-POS: vendor_balances dedup FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("vendor_balances_dedup", e)
+
+    try:
+        async with AsyncSessionLocal() as session:
             result = await session.execute(text("""
                 INSERT INTO vendor_balances (vendor_id, balance, rent_balance)
                 SELECT v.id, 0.00, 0.00

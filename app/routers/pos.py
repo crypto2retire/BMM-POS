@@ -728,7 +728,7 @@ async def pos_create_sale(
 
     for vendor_id, amount in vendor_totals.items():
         result = await db.execute(
-            select(VendorBalance).where(VendorBalance.vendor_id == vendor_id)
+            select(VendorBalance).where(VendorBalance.vendor_id == vendor_id).limit(1)
         )
         balance_row = result.scalar_one_or_none()
         if balance_row:
@@ -939,7 +939,7 @@ async def void_sale(
 
     for vendor_id, amount in vendor_credits.items():
         vb_result = await db.execute(
-            select(VendorBalance).where(VendorBalance.vendor_id == vendor_id)
+            select(VendorBalance).where(VendorBalance.vendor_id == vendor_id).limit(1)
         )
         balance_row = vb_result.scalar_one_or_none()
         if balance_row:
