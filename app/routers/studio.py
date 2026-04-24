@@ -291,6 +291,20 @@ async def upload_class_image(
     if len(contents) > MAX_IMAGE_SIZE:
         raise HTTPException(status_code=400, detail="File size must be under 5MB")
 
+    # Validate actual file content matches declared image type
+    ext = os.path.splitext(file.filename or "photo.jpg")[1].lower()
+    declared_type = file.content_type or "application/octet-stream"
+    from app.services.upload_security import _validate_image_content
+    try:
+        _validate_image_content(contents, declared_type)
+    except HTTPException:
+        ext_to_mime = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp"}
+        detected_mime = ext_to_mime.get(ext)
+        if detected_mime:
+            _validate_image_content(contents, detected_mime)
+        else:
+            raise
+
     try:
         from PIL import ImageOps
         img = PILImage.open(io.BytesIO(contents))

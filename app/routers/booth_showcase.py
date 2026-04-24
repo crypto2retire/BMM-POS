@@ -767,6 +767,19 @@ async def upload_showcase_photo(
     if len(contents) > MAX_IMAGE_SIZE:
         raise HTTPException(status_code=400, detail="File size must be under 5MB")
 
+    # Validate actual file content matches declared image type
+    declared_type = file.content_type or "application/octet-stream"
+    from app.services.upload_security import _validate_image_content
+    try:
+        _validate_image_content(contents, declared_type)
+    except HTTPException:
+        ext_to_mime = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp"}
+        detected_mime = ext_to_mime.get(ext)
+        if detected_mime:
+            _validate_image_content(contents, detected_mime)
+        else:
+            raise
+
     try:
         img = Image.open(io.BytesIO(contents))
         img = img.convert("RGB")
@@ -831,6 +844,19 @@ async def upload_showcase_logo(
     contents = await file.read()
     if len(contents) > 2_000_000:
         raise HTTPException(status_code=400, detail="Logo must be under 2MB")
+
+    # Validate actual file content matches declared image type
+    declared_type = file.content_type or "application/octet-stream"
+    from app.services.upload_security import _validate_image_content
+    try:
+        _validate_image_content(contents, declared_type)
+    except HTTPException:
+        ext_to_mime = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp"}
+        detected_mime = ext_to_mime.get(ext)
+        if detected_mime:
+            _validate_image_content(contents, detected_mime)
+        else:
+            raise
 
     preserve_png = ext == ".png"
     out_ext = ".png" if preserve_png else ".jpg"

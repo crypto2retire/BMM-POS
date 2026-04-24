@@ -242,24 +242,37 @@ async def lifespan(app: FastAPI):
             from app.models.reservation import Reservation
             from app.models.item import Item
             from sqlalchemy.orm import selectinload
-            cutoff = datetime.utcnow() - timedelta(minutes=15)
-            result = await session.execute(
-                select(Reservation)
-                .where(Reservation.status == "pending")
-                .where(Reservation.expires_at < cutoff)
-                .options(selectinload(Reservation.item))
+            from sqlalchemy import text as sa_text
+            # Gracefully handle missing column by checking information_schema first
+            col_check = await session.execute(
+                sa_text("""
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'reservations' AND column_name = 'expires_at'
+                """)
             )
-            expired = result.scalars().all()
-            count = 0
-            for r in expired:
-                r.status = "expired"
-                if r.item:
-                    r.item.reserved_quantity = max(0, r.item.reserved_quantity - 1)
-                count += 1
-            if count > 0:
-                await session.commit()
-                print(f"BMM-POS: expired {count} abandoned reservations", file=sys.stderr, flush=True)
-        _record_startup_ok("expire_reservations")
+            if not col_check.scalar_one_or_none():
+                print("BMM-POS: expires_at column not present yet, skipping reservation expiration", file=sys.stderr, flush=True)
+                _record_startup_ok("expire_reservations")
+            else:
+                cutoff = datetime.utcnow() - timedelta(minutes=15)
+                result = await session.execute(
+                    select(Reservation)
+                    .where(Reservation.status == "pending")
+                    .where(Reservation.expires_at.isnot(None))
+                    .where(Reservation.expires_at < cutoff)
+                    .options(selectinload(Reservation.item))
+                )
+                expired = result.scalars().all()
+                count = 0
+                for r in expired:
+                    r.status = "expired"
+                    if r.item:
+                        r.item.reserved_quantity = max(0, r.item.reserved_quantity - 1)
+                    count += 1
+                if count > 0:
+                    await session.commit()
+                    print(f"BMM-POS: expired {count} abandoned reservations", file=sys.stderr, flush=True)
+                _record_startup_ok("expire_reservations")
     except Exception as e:
         print(f"BMM-POS: reservation expiration FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("expire_reservations", e)
@@ -348,6 +361,23 @@ async def static_cache_headers(request: Request, call_next):
 
 
 @app.middleware("http")
+async def request_size_limit(request: Request, call_next):
+    """Enforce max request body size for non-upload endpoints."""
+    if request.method in ("POST", "PUT", "PATCH"):
+        path = request.url.path.lower()
+        is_upload = any(seg in path for seg in ("/photo", "/image", "/upload", "/logo", "/video", "/import", "/bulk"))
+        max_size = 50 * 1024 * 1024 if is_upload else 1 * 1024 * 1024  # 50MB uploads, 1MB JSON
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > max_size:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(
+                status_code=413,
+                content={"detail": f"Request body too large (max {max_size // 1024 // 1024}MB)"},
+            )
+    return await call_next(request)
+
+
+@app.middleware("http")
 async def security_headers(request: Request, call_next):
     """Add security headers to every response."""
     response = await call_next(request)
@@ -416,7 +446,27 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 @app.get("/health")
 async def health():
-    return _startup_health_payload()
+    """Railway health check — returns 200 as long as the app is running."""
+    payload = _startup_health_payload()
+    # Railway needs 200 even if some startup tasks had warnings
+    status_code = 200 if payload["status"] in ("ok", "degraded") else 503
+    return JSONResponse(status_code=status_code, content=payload)
+
+
+@app.get("/health/db")
+async def health_db():
+    """Deep health check — verifies database connectivity."""
+    try:
+        from sqlalchemy import text
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(text("SELECT 1"))
+            result.scalar()
+        return {"status": "ok", "database": "connected"}
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "database": "unreachable", "detail": str(e)},
+        )
 
 
 app.include_router(auth.router, prefix="/api/v1")

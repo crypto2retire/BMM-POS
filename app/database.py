@@ -39,7 +39,7 @@ def get_async_url(url: str):
     ssl_value = sslmode or ssl_param
     needs_ssl = ssl_value in ("require", "verify-ca", "verify-full", "true", "True", "1")
 
-    connect_args = {"ssl": needs_ssl}
+    connect_args = {"ssl": needs_ssl, "command_timeout": 30}
 
     # Rebuild URL without SSL params
     new_query = "&".join(f"{k}={v}" for k, v in params.items())

@@ -688,6 +688,20 @@ async def upload_item_photo(
     if len(contents) > MAX_IMAGE_SIZE:
         raise HTTPException(status_code=400, detail="File size must be under 5MB")
 
+    # Validate actual file content matches declared image type
+    declared_type = file.content_type or "application/octet-stream"
+    from app.services.upload_security import _validate_image_content
+    try:
+        _validate_image_content(contents, declared_type)
+    except HTTPException:
+        # Fallback: try detecting from file extension if content_type is missing/wrong
+        ext_to_mime = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif", ".webp": "image/webp"}
+        detected_mime = ext_to_mime.get(ext)
+        if detected_mime:
+            _validate_image_content(contents, detected_mime)
+        else:
+            raise
+
     filename = f"{item_id}_{uuid.uuid4().hex[:10]}.jpg"
 
     try:
@@ -805,6 +819,19 @@ async def upload_item_image(
     contents = await file.read()
     if len(contents) > MAX_IMAGE_SIZE:
         raise HTTPException(status_code=400, detail="File size must be under 5MB")
+
+    # Validate actual file content matches declared image type
+    declared_type = file.content_type or "application/octet-stream"
+    from app.services.upload_security import _validate_image_content
+    try:
+        _validate_image_content(contents, declared_type)
+    except HTTPException:
+        ext_to_mime = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
+        detected_mime = ext_to_mime.get(ext)
+        if detected_mime:
+            _validate_image_content(contents, detected_mime)
+        else:
+            raise
 
     img = Image.open(io.BytesIO(contents))
     from PIL import ImageOps

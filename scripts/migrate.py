@@ -281,6 +281,22 @@ async def run():
                     flush=True,
                 )
 
+            # ── Step 2b: v7 column additions (post-v6 new columns) ─────────────
+            v7_marker = "startup_task_column_alters_v7"
+            v7_alters = [
+                "ALTER TABLE items ADD COLUMN IF NOT EXISTS reserved_quantity INTEGER NOT NULL DEFAULT 0",
+                "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ",
+                "ALTER TABLE reservations ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(64)",
+                "ALTER TABLE rent_payments ADD COLUMN IF NOT EXISTS reference_tag VARCHAR(32)",
+            ]
+            if not await _has_marker(session, v7_marker):
+                for sql in v7_alters:
+                    await session.execute(text(sql))
+                await _set_marker(session, v7_marker, "Column alterations applied (v7)")
+                print(f"BMM-POS migrate: {len(v7_alters)} v7 column alterations applied", flush=True)
+            else:
+                print("BMM-POS migrate: v7 column alterations already applied", flush=True)
+
             # ── Step 3: CREATE TABLE IF NOT EXISTS ─────────────────────────────
             await session.execute(text("""
                 CREATE TABLE IF NOT EXISTS balance_adjustments (
