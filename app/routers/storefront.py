@@ -1,7 +1,7 @@
 import time
 import uuid
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
@@ -529,7 +529,7 @@ async def create_cart_payment(
     tax_rate = Decimal(str(db_tax_rate)).quantize(Decimal("0.0001"))
     items = await _load_checkout_items(db, req.item_ids)
     checkout_group_id = str(uuid.uuid4())
-    expires_at = datetime.utcnow() + timedelta(minutes=15)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
 
     reservations: list[Reservation] = []
     total = Decimal("0.00")

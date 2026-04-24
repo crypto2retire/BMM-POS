@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Body, Request
@@ -17,6 +17,7 @@ from app.schemas.vendor import (
 )
 from app.routers.auth import (
     MIN_PASSWORD_LENGTH,
+    _validate_password_strength,
     bump_auth_version,
     get_current_user,
     require_role,
@@ -377,8 +378,11 @@ async def reset_vendor_password(
     current_user: Vendor = Depends(require_staff_feature("role_manage_vendors"))
 ):
     new_password = body.get("new_password")
-    if not new_password or len(new_password) < MIN_PASSWORD_LENGTH:
-        raise HTTPException(status_code=400, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
+    if not new_password:
+        raise HTTPException(status_code=400, detail="Password is required")
+    pw_err = _validate_password_strength(new_password)
+    if pw_err:
+        raise HTTPException(status_code=400, detail=pw_err)
 
     result = await db.execute(select(Vendor).where(Vendor.id == vendor_id))
     vendor = result.scalar_one_or_none()
@@ -415,8 +419,11 @@ async def change_own_password(
     import bcrypt
     current_password = body.get("current_password", "")
     new_password = body.get("new_password", "")
-    if not new_password or len(new_password) < MIN_PASSWORD_LENGTH:
-        raise HTTPException(status_code=400, detail=f"New password must be at least {MIN_PASSWORD_LENGTH} characters")
+    if not new_password:
+        raise HTTPException(status_code=400, detail="New password is required")
+    pw_err = _validate_password_strength(new_password)
+    if pw_err:
+        raise HTTPException(status_code=400, detail=pw_err)
     if not bcrypt.checkpw(current_password.encode('utf-8'), current_user.password_hash.encode('utf-8')):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     current_user.password_hash = get_password_hash(new_password)
@@ -588,7 +595,7 @@ async def adjust_vendor_balance(
         balance_after = (balance_before - adj_amount).quantize(Decimal("0.01"), ROUND_HALF_UP)
 
     balance_row.balance = balance_after
-    balance_row.last_updated = datetime.utcnow()
+    balance_row.last_updated = datetime.now(timezone.utc)
 
     adjustment = BalanceAdjustment(
         vendor_id=vendor_id,

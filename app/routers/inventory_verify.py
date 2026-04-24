@@ -1,7 +1,7 @@
 import csv
 import io
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, UploadFile, File, Query
@@ -188,7 +188,7 @@ async def verify_vendor_inventory(
                 return sku
             sku_seq += 1
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     verified_count = 0
     added_count = 0
     skipped = []
@@ -400,7 +400,7 @@ async def verify_bulk_inventory(
                 return sku
             sku_seqs[vid] += 1
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     verified_count = 0
     added_count = 0
     skipped = []
@@ -705,7 +705,7 @@ async def archive_vendor_unverified(
     current_user: Vendor = Depends(require_role("admin")),
 ):
     """Archive unverified Ricochet items for a single vendor. 30-day hold."""
-    expires = datetime.utcnow() + timedelta(days=30)
+    expires = datetime.now(timezone.utc) + timedelta(days=30)
 
     count_result = await db.execute(
         select(func.count(Item.id)).where(
@@ -754,7 +754,7 @@ async def manually_verify_item(
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    item.verified_at = datetime.utcnow()
+    item.verified_at = datetime.now(timezone.utc)
     await db.commit()
 
     return {"detail": f"Item '{item.name}' marked as verified."}
@@ -771,7 +771,7 @@ async def archive_unverified_items(
     Archive all RICOCHET-IMPORTED active items that have NOT been verified.
     Sets 30-day expiration. BMM-POS native items are never touched.
     """
-    expires = datetime.utcnow() + timedelta(days=30)
+    expires = datetime.now(timezone.utc) + timedelta(days=30)
 
     # Only archive Ricochet items that are active and unverified
     await db.execute(

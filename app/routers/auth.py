@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from collections import defaultdict
 import logging
@@ -27,7 +27,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 from app.config import settings as _cfg
 SECRET_KEY = _cfg.secret_key
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 480
+ACCESS_TOKEN_EXPIRE_MINUTES = 120
 RESET_TOKEN_EXPIRE_MINUTES = 60
 MIN_PASSWORD_LENGTH = 10
 
@@ -42,6 +42,21 @@ def verify_password(plain_password, hashed_password):
         logger.error(f"Password verification error: {e}")
         return False
 
+def _validate_password_strength(password: str) -> str:
+    """Return error message if password is too weak, otherwise empty string."""
+    if len(password) < MIN_PASSWORD_LENGTH:
+        return f"Password must be at least {MIN_PASSWORD_LENGTH} characters"
+    if not any(c.isupper() for c in password):
+        return "Password must contain at least one uppercase letter"
+    if not any(c.islower() for c in password):
+        return "Password must contain at least one lowercase letter"
+    if not any(c.isdigit() for c in password):
+        return "Password must contain at least one digit"
+    if not any(c in "!@#$%^&*()-_=+[]{}|;:'\",.<>?/~`" for c in password):
+        return "Password must contain at least one special character"
+    return ""
+
+
 def get_password_hash(password):
     password_bytes = password.encode('utf-8')
     salt = bcrypt.gensalt(rounds=12)
@@ -49,7 +64,7 @@ def get_password_hash(password):
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -276,7 +291,7 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 def _create_reset_token(email: str, auth_version: int) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES)
     return jwt.encode(
         {"sub": email, "purpose": "password_reset", "av": int(auth_version or 0), "exp": expire},
         SECRET_KEY,
@@ -360,8 +375,9 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
 
 @router.post("/reset-password")
 async def reset_password_with_token(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
-    if len(body.new_password) < MIN_PASSWORD_LENGTH:
-        raise HTTPException(status_code=400, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
+    pw_err = _validate_password_strength(body.new_password)
+    if pw_err:
+        raise HTTPException(status_code=400, detail=pw_err)
 
     verified = _verify_reset_token(body.token)
     if not verified:
@@ -392,8 +408,9 @@ async def change_password(
     current_user: Vendor = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if len(body.new_password) < MIN_PASSWORD_LENGTH:
-        raise HTTPException(status_code=400, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
+    pw_err = _validate_password_strength(body.new_password)
+    if pw_err:
+        raise HTTPException(status_code=400, detail=pw_err)
 
     if not verify_password(body.current_password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")

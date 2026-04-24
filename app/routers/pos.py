@@ -49,6 +49,11 @@ logger = logging.getLogger(__name__)
 
 ONLINE_PAYMENT_METHODS = ("cash", "card", "split", "gift_card", "crypto_blackbox")
 
+# Gift card lookup rate limiter (per client IP)
+_gc_lookup_attempts: dict[str, list[float]] = {}
+_GC_LOOKUP_WINDOW = 60
+_GC_LOOKUP_MAX = 30
+
 
 def _offline_mode_enabled() -> bool:
     return bool(settings.offline_mode)
@@ -753,7 +758,7 @@ async def pos_create_sale(
             deduct_amount = min(gc_amount_applied or total, gc_balance)
         new_gc_balance = (gc_balance - deduct_amount).quantize(Decimal("0.01"), ROUND_HALF_UP)
         gc.balance = new_gc_balance
-        gc.last_used_at = datetime.utcnow()
+        gc.last_used_at = datetime.now(timezone.utc)
         db.add(GiftCardTransaction(
             gift_card_id=gc.id,
             amount=deduct_amount,
@@ -895,7 +900,7 @@ async def void_sale(
     sale = result.scalar_one()
 
     sale.is_voided = True
-    sale.voided_at = datetime.utcnow()
+    sale.voided_at = datetime.now(timezone.utc)
     sale.voided_by = current_user.id
     sale.void_reason = data.reason
 
@@ -1749,12 +1754,23 @@ async def activate_gift_card(
     return card
 
 
+def _check_gc_rate_limit(request: Request):
+    client_ip = request.client.host if request.client else "unknown"
+    now = datetime.now(timezone.utc).timestamp()
+    _gc_lookup_attempts[client_ip] = [t for t in _gc_lookup_attempts.get(client_ip, []) if now - t < _GC_LOOKUP_WINDOW]
+    if len(_gc_lookup_attempts[client_ip]) >= _GC_LOOKUP_MAX:
+        raise HTTPException(status_code=429, detail="Too many gift card lookups. Please slow down.")
+    _gc_lookup_attempts[client_ip].append(now)
+
+
 @router.get("/gift-cards/{barcode}/balance")
 async def get_gift_card_balance(
+    request: Request,
     barcode: str,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_manage_gift_cards")),
 ):
+    _check_gc_rate_limit(request)
     result = await db.execute(
         select(GiftCard).where(GiftCard.barcode == barcode)
     )
@@ -1771,10 +1787,12 @@ async def get_gift_card_balance(
 
 @router.get("/gift-cards/{barcode}", response_model=GiftCardResponse)
 async def check_gift_card_balance(
+    request: Request,
     barcode: str,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_manage_gift_cards")),
 ):
+    _check_gc_rate_limit(request)
     result = await db.execute(
         select(GiftCard).where(GiftCard.barcode == barcode)
     )
@@ -1806,7 +1824,7 @@ async def load_gift_card(
     load_amount = Decimal(str(data.amount)).quantize(Decimal("0.01"), ROUND_HALF_UP)
     new_balance = (Decimal(str(card.balance)) + load_amount).quantize(Decimal("0.01"), ROUND_HALF_UP)
     card.balance = new_balance
-    card.last_used_at = datetime.utcnow()
+    card.last_used_at = datetime.now(timezone.utc)
 
     txn = GiftCardTransaction(
         gift_card_id=card.id,
@@ -1851,7 +1869,7 @@ async def redeem_gift_card(
 
     new_balance = (current_balance - redeem_amount).quantize(Decimal("0.01"), ROUND_HALF_UP)
     card.balance = new_balance
-    card.last_used_at = datetime.utcnow()
+    card.last_used_at = datetime.now(timezone.utc)
 
     txn = GiftCardTransaction(
         gift_card_id=card.id,

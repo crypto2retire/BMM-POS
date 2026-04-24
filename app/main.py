@@ -254,7 +254,7 @@ async def lifespan(app: FastAPI):
                 print("BMM-POS: expires_at column not present yet, skipping reservation expiration", file=sys.stderr, flush=True)
                 _record_startup_ok("expire_reservations")
             else:
-                cutoff = datetime.utcnow() - timedelta(minutes=15)
+                cutoff = datetime.now(timezone.utc) - timedelta(minutes=15)
                 result = await session.execute(
                     select(Reservation)
                     .where(Reservation.status == "pending")
@@ -322,14 +322,16 @@ def _build_allowed_origins() -> list[str]:
             origins.append(origin)
 
     # Same-origin requests do not need CORS, but localhost dev often does.
-    for localhost_origin in (
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5000",
-        "http://127.0.0.1:5000",
-    ):
-        if localhost_origin not in origins:
-            origins.append(localhost_origin)
+    # Only allow localhost in explicit dev mode to prevent CORS abuse in production.
+    if os.environ.get("BMM_DEV_MODE") == "1" or os.environ.get("RAILWAY_ENVIRONMENT") != "production":
+        for localhost_origin in (
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:5000",
+            "http://127.0.0.1:5000",
+        ):
+            if localhost_origin not in origins:
+                origins.append(localhost_origin)
 
     return origins
 
