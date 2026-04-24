@@ -1085,3 +1085,22 @@ body.themed::before { content: none; }
   .editorial-injected-heading { padding: 0 1.5rem; font-size: clamp(1.6rem, 7vw, 2.4rem); }
   #photo-gallery .editorial-injected-heading { padding: 0; }
 }
+
+/* ── Related vendors ── */
+.related-section { border-top: 1px solid var(--landing-border, #2A2A2E); padding: var(--landing-section-padding, 3rem) 0; }
+.related-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+.related-header h2 { font-family: var(--landing-heading-font, 'Inter'), sans-serif; font-size: 1.4rem; font-weight: 300; letter-spacing: 0.06em; text-transform: uppercase; color: var(--landing-text, #F5F5F0); }
+.related-sub { font-size: 0.88rem; color: color-mix(in srgb, var(--landing-text, #F5F5F0) 50%, transparent); margin-top: 0.25rem; }
+.related-seeall { font-size: 0.78rem; color: var(--landing-accent, #C9A96E); text-decoration: none; text-transform: uppercase; letter-spacing: 0.06em; }
+.related-seeall:hover { text-decoration: underline; }
+.related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.25rem; }
+.related-card { display: block; text-decoration: none; background: var(--landing-card-bg, #1E1E22); border: 1px solid var(--landing-border, #2A2A2E); overflow: hidden; transition: border-color 0.3s ease; }
+.related-card:hover { border-color: var(--landing-accent, #C9A96E); }
+.related-card-media { position: relative; overflow: hidden; aspect-ratio: 4/5; background: #141418; }
+.related-card-photo { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.8s ease; filter: grayscale(20%); }
+.related-card-photo--empty { background: #141418; }
+.related-card:hover .related-card-photo { transform: scale(1.05); filter: grayscale(0); }
+.related-card-body { padding: 0.75rem 1rem; }
+.related-card-booth { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--landing-accent, #C9A96E); margin-bottom: 0.25rem; }
+.related-card-body h3 { font-size: 0.9rem; font-weight: 400; letter-spacing: 0.02em; color: var(--landing-text, #F5F5F0); margin: 0; }
+@media (max-width: 640px) { .related-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; } }

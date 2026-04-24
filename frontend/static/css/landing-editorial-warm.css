@@ -1068,3 +1068,22 @@ body.themed::before {
   .editorial-ornament::before,
   .editorial-ornament::after { max-width: 40px; }
 }
+
+/* ── Related vendors ── */
+.related-section { border-top: 1px solid var(--landing-border, #e0d5c5); padding: var(--landing-section-padding, 3rem) 0; }
+.related-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
+.related-header h2 { font-family: var(--landing-heading-font, 'Playfair Display'), serif; font-size: 1.6rem; color: var(--landing-text, #2C1810); }
+.related-sub { font-size: 0.88rem; color: color-mix(in srgb, var(--landing-text, #2C1810) 60%, transparent); font-style: italic; margin-top: 0.25rem; }
+.related-seeall { font-size: 0.82rem; color: var(--landing-accent, #8B4513); text-decoration: none; }
+.related-seeall:hover { text-decoration: underline; }
+.related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.25rem; }
+.related-card { display: block; text-decoration: none; background: var(--landing-card-bg, #FFFBF5); border: 1px solid var(--landing-border, #e0d5c5); overflow: hidden; transition: transform 0.3s ease; }
+.related-card:hover { transform: translateY(-3px); }
+.related-card-media { position: relative; overflow: hidden; aspect-ratio: 4/5; background: #f5efe6; }
+.related-card-photo { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.8s ease; }
+.related-card-photo--empty { background: #f5efe6; }
+.related-card:hover .related-card-photo { transform: scale(1.05); }
+.related-card-body { padding: 0.75rem 1rem; }
+.related-card-booth { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--landing-accent, #8B4513); margin-bottom: 0.25rem; }
+.related-card-body h3 { font-family: var(--landing-heading-font, 'Playfair Display'), serif; font-size: 0.95rem; font-weight: 400; color: var(--landing-text, #2C1810); margin: 0; }
+@media (max-width: 640px) { .related-grid { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; } }

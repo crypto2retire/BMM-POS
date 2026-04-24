@@ -1559,6 +1559,7 @@ async def get_landing_page(
                 "id": item.id,
                 "name": item.name,
                 "price": float(item.price) if item.price else 0,
+                "sale_price": float(item.sale_price) if item.sale_price and item.sale_price < (item.price or 0) else None,
                 "image_url": img,
                 "category": item.category,
             })
@@ -1594,6 +1595,7 @@ async def get_landing_page(
             "vendor_id": sc.vendor_id,
             "vendor_name": sc.vendor.name if sc.vendor else "",
             "booth_number": sc.vendor.booth_number if sc.vendor else None,
+            "landing_slug": sc.landing_slug,
             "title": sc.title,
             "description": sc.description,
             "landing_about": sc.landing_about,

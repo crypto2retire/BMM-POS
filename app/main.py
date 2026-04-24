@@ -1017,47 +1017,6 @@ async def vendor_landing_page(slug: str, request: Request):
                 f'href="/static/css/landing-{template}.css"',
             )
 
-            if sc and sc.landing_theme:
-                theme = sc.landing_theme
-                c = theme.get("colors", {})
-                f = theme.get("fonts", {})
-                text_c = c.get("text", "#111827")
-                bg_c = c.get("background", "#F9FAFB")
-                primary = c.get("primary", "#2563EB")
-                secondary = c.get("secondary", "#64748B")
-                card_bg = c.get("card_background", "#FFFFFF")
-                accent = c.get("accent", primary)
-
-                border_c = _mix_hex(text_c, bg_c, 0.15)
-
-                css_vars = (
-                    f"--landing-primary: {primary};"
-                    f"--landing-secondary: {secondary};"
-                    f"--landing-background: {bg_c};"
-                    f"--landing-text: {text_c};"
-                    f"--landing-accent: {accent};"
-                    f"--landing-card-bg: {card_bg};"
-                    f"--landing-bg-dark: {bg_c};"
-                    f"--landing-border: {border_c};"
-                    f"--landing-heading-font: '{f.get('heading', 'Inter')}', serif;"
-                    f"--landing-heading-weight: {f.get('heading_weight', '600')};"
-                    f"--landing-heading-style: {f.get('heading_style', 'normal')};"
-                    f"--landing-body-font: '{f.get('body', 'Inter')}', sans-serif;"
-                    f"--landing-body-weight: {f.get('body_weight', '400')};"
-                )
-
-                # 2. Swap body class
-                html = html.replace('class="no-theme"', 'class="themed"')
-
-                # 3. Inject CSS variables
-                html = html.replace(
-                    '<style id="theme-vars"></style>',
-                    f'<style id="theme-vars">:root {{ {css_vars} }}'
-                    'body.themed { background-image: none !important; background-attachment: scroll !important; }'
-                    'body.themed *:not(.hero-bg):not(.hero-photo):not(.hero-tile):not(.hero-slide):not(.hero-portrait):not(.landing-hero-bg) { background-image: none !important; background-attachment: scroll !important; }'
-                    '</style>',
-                )
-
             if sc:
                 theme = sc.landing_theme
                 if theme:
@@ -1115,22 +1074,7 @@ async def vendor_landing_page(slug: str, request: Request):
                         f"--landing-grid-min-width: {grid_min_width};"
                     )
 
-                    html = html.replace('class="no-theme"', 'class="themed"')
-
-                    html = html.replace(
-                        '<style id="theme-vars"></style>',
-                        f'<style id="theme-vars">:root {{ {css_vars} }}'
-                        'body.themed { background-image: none !important; background-attachment: scroll !important; }'
-                    'body.themed *:not(.hero-bg):not(.hero-photo):not(.hero-tile):not(.hero-slide):not(.hero-portrait):not(.landing-hero-bg) { background-image: none !important; background-attachment: scroll !important; }'
-                        '</style>',
-                    )
-
-                    html = html.replace(
-                        '<body class="themed">',
-                        f'<body class="themed" data-ssr-theme="true" style="background:{bg_c};color:{text_c}">',
-                    )
-
-                    # 4b. Inline critical template CSS to eliminate FOUC entirely
+                    critical_css = ""
                     try:
                         css_path = Path(f"frontend/static/css/landing-{template}.css")
                         if css_path.exists():
@@ -1149,12 +1093,24 @@ async def vendor_landing_page(slug: str, request: Request):
                                         in_block = False
                                         brace_depth = 0
                             critical_css = "\n".join(critical_lines)
-                            html = html.replace(
-                                f'<style id="theme-vars">:root {{ {css_vars} }}</style>',
-                                f'<style id="theme-vars">:root {{ {css_vars} }}{critical_css}</style>',
-                            )
                     except Exception:
                         pass
+
+                    html = html.replace('class="no-theme"', 'class="themed"')
+
+                    html = html.replace(
+                        '<style id="theme-vars"></style>',
+                        f'<style id="theme-vars">:root {{ {css_vars} }}'
+                        'body.themed { background-image: none !important; background-attachment: scroll !important; }'
+                        'body.themed *:not(.hero-bg):not(.hero-photo):not(.hero-tile):not(.hero-slide):not(.hero-portrait):not(.landing-hero-bg) { background-image: none !important; background-attachment: scroll !important; }'
+                        f'{critical_css}'
+                        '</style>',
+                    )
+
+                    html = html.replace(
+                        '<body class="themed">',
+                        f'<body class="themed" data-ssr-theme="true" style="background:{bg_c};color:{text_c}">',
+                    )
 
             # 5. Pre-render SEO meta tags (always, even without a saved theme)
             vendor_name = sc.vendor.name if sc and sc.vendor else "Vendor"
@@ -1265,7 +1221,7 @@ async def vendor_landing_page(slug: str, request: Request):
                     },
                     "address": {
                         "@type": "PostalAddress",
-                        "streetAddress": "437 Bowen St",
+                        "streetAddress": "2837 Bowen St",
                         "addressLocality": "Oshkosh",
                         "addressRegion": "WI",
                         "postalCode": "54901",
