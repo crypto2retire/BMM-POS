@@ -43,6 +43,8 @@ from app.services.audit import log_audit
 from app.services.email import send_email_safe
 from app.services.rate_limit import check_rate_limit
 
+router = APIRouter(prefix="/pos", tags=["pos"])
+
 ONLINE_PAYMENT_METHODS = ("cash", "card", "split", "gift_card", "crypto_blackbox")
 
 
