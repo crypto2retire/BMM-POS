@@ -164,12 +164,16 @@ async def create_sale(
             detail="Offline split payments cannot include a card leg.",
         )
 
+    # Lock all cart items first to prevent race conditions / overselling
+    cart_barcodes = [cart_item.barcode for cart_item in data.items]
+    locked_result = await db.execute(
+        select(Item).where(Item.barcode.in_(cart_barcodes)).with_for_update()
+    )
+    locked_items = {item.barcode: item for item in locked_result.scalars().all()}
+
     resolved_lines = []
     for cart_item in data.items:
-        result = await db.execute(
-            select(Item).options(selectinload(Item.vendor)).where(Item.barcode == cart_item.barcode)
-        )
-        item = result.scalar_one_or_none()
+        item = locked_items.get(cart_item.barcode)
         if not item:
             raise HTTPException(status_code=404, detail=f"Item with barcode {cart_item.barcode!r} not found")
         if item.status != "active":

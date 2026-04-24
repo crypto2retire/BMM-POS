@@ -535,12 +535,16 @@ async def pos_create_sale(
                 detail="Gift card payments are disabled for your role in Settings → User Roles.",
             )
 
+    # Lock all cart items first to prevent race conditions / overselling
+    cart_barcodes = [cart_item.barcode for cart_item in data.items]
+    locked_result = await db.execute(
+        select(Item).where(Item.barcode.in_(cart_barcodes)).with_for_update()
+    )
+    locked_items = {item.barcode: item for item in locked_result.scalars().all()}
+
     resolved_lines = []
     for cart_item in data.items:
-        result = await db.execute(
-            select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.barcode == cart_item.barcode)
-        )
-        item = result.scalar_one_or_none()
+        item = locked_items.get(cart_item.barcode)
         if not item:
             raise HTTPException(status_code=404, detail=f"Item with barcode {cart_item.barcode!r} not found")
         if item.status != "active":
@@ -892,6 +896,11 @@ async def void_sale(
     sale.voided_at = datetime.utcnow()
     sale.voided_by = current_user.id
     sale.void_reason = data.reason
+
+    # Lock all related items before restoring quantities
+    item_ids_to_restore = [si.item_id for si in sale.items if si.item_id]
+    if item_ids_to_restore:
+        await db.execute(select(Item).where(Item.id.in_(item_ids_to_restore)).with_for_update())
 
     vendor_credits = {}
     for si in sale.items:

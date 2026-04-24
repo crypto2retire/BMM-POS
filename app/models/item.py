@@ -17,6 +17,7 @@ class Item(Base):
     category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
+    reserved_quantity: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     photo_urls: Mapped[Optional[List[str]]] = mapped_column(ARRAY(Text), nullable=True)
     is_online: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_tax_exempt: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

@@ -759,12 +759,12 @@ async def process_payouts(
 
     for v in vendors:
         bal_result = await db.execute(
-            select(VendorBalance).where(VendorBalance.vendor_id == v.id)
+            select(VendorBalance).where(VendorBalance.vendor_id == v.id).with_for_update()
         )
         bal = bal_result.scalar_one_or_none()
         sales = Decimal(str(bal.balance)) if bal and bal.balance else Decimal("0")
         rent_bal = Decimal(str(bal.rent_balance)) if bal and bal.rent_balance else Decimal("0")
-        rent = Decimal(str(v.monthly_rent or 0)) + Decimal(str(vendor.landing_page_fee or 0))
+        rent = Decimal(str(v.monthly_rent or 0)) + Decimal(str(v.landing_page_fee or 0))
 
         # ── Step 1: Deduct this month's rent from rent_balance ──
         rent_bal -= rent  # can go negative
@@ -930,7 +930,7 @@ async def send_rent_reminders(
         else:
             days_overdue = 999
 
-        rent_amount = float(v.monthly_rent or 0) + float(vendor.landing_page_fee or 0)
+        rent_amount = float(v.monthly_rent or 0) + float(v.landing_page_fee or 0)
         booth = v.booth_number or "—"
         period_label = current_period.strftime("%B %Y")
 

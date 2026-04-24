@@ -185,6 +185,7 @@ async def run():
                 "ALTER TABLE items ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ",
                 "ALTER TABLE items ADD COLUMN IF NOT EXISTS archive_expires_at TIMESTAMPTZ",
                 "ALTER TABLE items ADD COLUMN IF NOT EXISTS import_source VARCHAR(50)",
+                "ALTER TABLE items ADD COLUMN IF NOT EXISTS reserved_quantity INTEGER NOT NULL DEFAULT 0",
                 # sale_items
                 "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS is_consignment BOOLEAN NOT NULL DEFAULT false",
                 "ALTER TABLE sale_items ADD COLUMN IF NOT EXISTS consignment_rate NUMERIC(5,4)",

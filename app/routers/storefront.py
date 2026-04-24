@@ -463,8 +463,9 @@ def _reservation_total_for_item(item: Item, tax_rate: Decimal) -> Decimal:
 
 
 async def _load_checkout_items(db: AsyncSession, item_ids: list[int]) -> list[Item]:
+    # Lock items to prevent concurrent online checkouts from overselling
     item_result = await db.execute(
-        select(Item).where(Item.id.in_(item_ids), Item.status == "active")
+        select(Item).where(Item.id.in_(item_ids), Item.status == "active").with_for_update()
     )
     found_items = item_result.scalars().all()
     found_map = {item.id: item for item in found_items}
@@ -474,7 +475,8 @@ async def _load_checkout_items(db: AsyncSession, item_ids: list[int]) -> list[It
         item = found_map.get(item_id)
         if not item:
             raise HTTPException(status_code=404, detail="One or more items are no longer available")
-        if item.quantity < 1:
+        effective_qty = item.quantity - item.reserved_quantity
+        if effective_qty < 1:
             raise HTTPException(status_code=400, detail=f"{item.name} is out of stock")
         ordered_items.append(item)
     return ordered_items
@@ -512,6 +514,10 @@ async def create_cart_payment(
     for item in items:
         line_total = _reservation_total_for_item(item, tax_rate)
         total += line_total
+
+        # Reserve inventory so POS can't sell it while payment is pending
+        item.reserved_quantity += 1
+
         reservation = Reservation(
             item_id=item.id,
             checkout_group_id=checkout_group_id,
