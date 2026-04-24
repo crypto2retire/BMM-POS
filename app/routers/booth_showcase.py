@@ -787,10 +787,8 @@ async def upload_showcase_photo(
     if cdn_url:
         photo_url = cdn_url
     else:
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        with open(filepath, "wb") as f:
-            f.write(contents)
+        from app.services.upload_security import save_upload
+        save_upload(UPLOAD_DIR, filename, contents)
         photo_url = f"/static/uploads/booths/{filename}"
     sc.photo_urls = current_photos + [photo_url]
     sc.last_photo_update = datetime.now(timezone.utc)
@@ -865,11 +863,9 @@ async def upload_showcase_logo(
     if cdn_url:
         logo_url = cdn_url
     else:
+        from app.services.upload_security import save_upload
         logo_dir = os.path.join(UPLOAD_DIR, "logos")
-        os.makedirs(logo_dir, exist_ok=True)
-        filepath = os.path.join(logo_dir, filename)
-        with open(filepath, "wb") as f:
-            f.write(contents)
+        save_upload(logo_dir, filename, contents)
         logo_url = f"/static/uploads/booths/logos/{filename}"
 
     theme = sc.landing_theme or {}
@@ -1008,10 +1004,8 @@ async def upload_showcase_video(
     if cdn_url:
         sc.video_url = cdn_url
     else:
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        with open(filepath, "wb") as f:
-            f.write(contents)
+        from app.services.upload_security import save_upload
+        save_upload(UPLOAD_DIR, filename, contents)
         sc.video_url = f"/static/uploads/booths/{filename}"
     sc.updated_at = datetime.now(timezone.utc)
     await db.commit()

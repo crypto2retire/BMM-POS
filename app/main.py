@@ -348,6 +348,35 @@ async def static_cache_headers(request: Request, call_next):
 
 
 @app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Add security headers to every response."""
+    response = await call_next(request)
+    # Prevent clickjacking
+    response.headers["X-Frame-Options"] = "DENY"
+    # Prevent MIME-type sniffing
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # Referrer policy
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Strict Transport Security (only in production / HTTPS)
+    if request.url.scheme == "https":
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains; preload"
+    # Content Security Policy
+    csp = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://js.squareup.com https://cdn.jsdelivr.net https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: https://bowenstreet-media.nyc3.digitaloceanspaces.com https://*.digitaloceanspaces.com https://*.squarecdn.com; "
+        "connect-src 'self' https://*.squareup.com https://api.openrouter.ai https://*.digitaloceanspaces.com; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self';"
+    )
+    response.headers["Content-Security-Policy"] = csp
+    return response
+
+
+@app.middleware("http")
 async def subdomain_landing_redirect(request: Request, call_next):
     """Route *.bowenstreetmarket.com subdomains to /{slug}."""
     host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
@@ -411,6 +440,9 @@ app.include_router(security_deposits.router, prefix="/api/v1")
 app.include_router(data_sync.router, prefix="/api/v1")
 app.include_router(ai_writer.router, prefix="/api/v1")
 app.include_router(diagnose_router, prefix="/api/v1")
+
+from app.routers import square_webhook
+app.include_router(square_webhook.router, prefix="/api/v1")
 
 @app.get("/llms.txt", response_class=PlainTextResponse)
 async def llms_txt():

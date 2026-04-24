@@ -1,7 +1,7 @@
 from datetime import datetime, date
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Body, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
@@ -23,6 +23,7 @@ from app.routers.auth import (
     get_password_hash,
 )
 from app.routers.settings import role_allows_manage_vendors, role_feature_allowed, require_staff_feature
+from app.services.audit import log_audit
 
 router = APIRouter(prefix="/vendors", tags=["vendors"])
 
@@ -369,6 +370,7 @@ async def update_assistant_settings(
 
 @router.post("/{vendor_id}/reset-password")
 async def reset_vendor_password(
+    request: Request,
     vendor_id: int,
     body: dict = Body(...),
     db: AsyncSession = Depends(get_db),
@@ -393,6 +395,15 @@ async def reset_vendor_password(
     vendor.password_changed = True
     bump_auth_version(vendor)
     await db.commit()
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="reset_password",
+        entity_type="vendor",
+        entity_id=str(vendor_id),
+        details=f"Password reset for vendor {vendor.email}",
+        request=request,
+    )
     return {"detail": "Password reset successfully"}
 
 @router.post("/me/change-password")
@@ -416,6 +427,7 @@ async def change_own_password(
 
 @router.delete("/{vendor_id}")
 async def delete_vendor(
+    request: Request,
     vendor_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_role("admin"))
@@ -426,6 +438,15 @@ async def delete_vendor(
         raise HTTPException(status_code=404, detail="Vendor not found")
     vendor.is_active = False
     await db.commit()
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="deactivate_vendor",
+        entity_type="vendor",
+        entity_id=str(vendor_id),
+        details=f"Deactivated vendor {vendor.email}",
+        request=request,
+    )
     return {"detail": "Vendor deactivated"}
 
 
@@ -519,6 +540,7 @@ async def get_vendor_balance(
 
 @router.post("/{vendor_id}/balance/adjust", response_model=BalanceAdjustmentResponse)
 async def adjust_vendor_balance(
+    request: Request,
     vendor_id: int,
     data: BalanceAdjustRequest,
     db: AsyncSession = Depends(get_db),
@@ -580,6 +602,16 @@ async def adjust_vendor_balance(
     db.add(adjustment)
     await db.commit()
     await db.refresh(adjustment)
+
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="balance_adjustment",
+        entity_type="vendor_balance",
+        entity_id=str(vendor_id),
+        details=f"{data.adjustment_type} ${float(adj_amount):.2f} — reason: {data.reason} — balance {float(balance_before):.2f} → {float(balance_after):.2f}",
+        request=request,
+    )
 
     return BalanceAdjustmentResponse(
         id=adjustment.id,

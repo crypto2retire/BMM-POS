@@ -708,10 +708,8 @@ async def upload_item_photo(
     if cdn_url:
         photo_url = cdn_url
     else:
-        os.makedirs(PHOTO_UPLOAD_DIR, exist_ok=True)
-        filepath = os.path.join(PHOTO_UPLOAD_DIR, filename)
-        with open(filepath, "wb") as f:
-            f.write(jpeg_bytes)
+        from app.services.upload_security import save_upload
+        filepath = save_upload(PHOTO_UPLOAD_DIR, filename, jpeg_bytes)
         photo_url = f"/static/images/items/{filename}"
 
     existing = await db.execute(
@@ -827,10 +825,8 @@ async def upload_item_image(
     if cdn_url:
         image_path = cdn_url
     else:
-        os.makedirs(IMAGE_UPLOAD_DIR, exist_ok=True)
-        save_path = os.path.join(IMAGE_UPLOAD_DIR, filename)
-        with open(save_path, "wb") as f:
-            f.write(jpeg_bytes)
+        from app.services.upload_security import save_upload
+        save_upload(IMAGE_UPLOAD_DIR, filename, jpeg_bytes)
         image_path = f"/static/uploads/items/{filename}"
 
     existing = await db.execute(

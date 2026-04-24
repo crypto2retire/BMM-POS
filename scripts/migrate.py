@@ -296,6 +296,28 @@ async def run():
                 )
             """))
             await session.execute(text("""
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    id SERIAL PRIMARY KEY,
+                    vendor_id INTEGER,
+                    action VARCHAR(50) NOT NULL,
+                    entity_type VARCHAR(50) NOT NULL,
+                    entity_id VARCHAR(100),
+                    details TEXT,
+                    ip_address VARCHAR(45),
+                    user_agent VARCHAR(500),
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                )
+            """))
+            await session.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_audit_vendor ON audit_logs(vendor_id)
+            """))
+            await session.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action)
+            """))
+            await session.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at)
+            """))
+            await session.execute(text("""
                 CREATE TABLE IF NOT EXISTS poynt_payments (
                     id SERIAL PRIMARY KEY,
                     reference_id VARCHAR(100) UNIQUE,

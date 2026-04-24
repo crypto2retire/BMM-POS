@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     square_access_token: Optional[str] = None
     square_location_id: Optional[str] = None
     square_application_id: Optional[str] = None
+    square_signature_key: Optional[str] = None
     poynt_app_id: str = ""
     poynt_business_id: str = ""
     poynt_store_id: str = ""

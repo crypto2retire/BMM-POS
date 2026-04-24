@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,6 +20,7 @@ from app.models.legacy_history import LegacyFinancialHistory
 from app.routers.auth import get_current_user, require_admin, require_cashier_or_admin
 from app.services.email import send_email_safe
 from app.services.rent_payments import apply_rent_payment, display_rent_notes, extract_rent_reference
+from app.services.audit import log_audit
 from app.services.email_templates import (
     payout_processed_email,
     payout_with_rent_email,
@@ -732,6 +733,7 @@ async def payout_preview(
 
 @router.post("/process-payouts")
 async def process_payouts(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_manage_rent")),
 ):
@@ -744,6 +746,16 @@ async def process_payouts(
     )
     if existing_payout.scalar_one_or_none():
         raise HTTPException(status_code=409, detail=f"Payouts for {period_label} have already been processed.")
+
+    await log_audit(
+        db=db,
+        vendor_id=current_user.id,
+        action="process_payouts",
+        entity_type="payout",
+        entity_id=str(period),
+        details=f"Started payout processing for {period_label}",
+        request=request,
+    )
 
     vendors_result = await db.execute(
         select(Vendor).where(Vendor.status == "active", Vendor.role == "vendor").order_by(Vendor.name)

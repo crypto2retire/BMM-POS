@@ -312,10 +312,8 @@ async def upload_class_image(
     if cdn_url:
         image_url = cdn_url
     else:
-        os.makedirs(STUDIO_UPLOAD_DIR, exist_ok=True)
-        filepath = os.path.join(STUDIO_UPLOAD_DIR, filename)
-        with open(filepath, "wb") as f:
-            f.write(jpeg_bytes)
+        from app.services.upload_security import save_upload
+        save_upload(STUDIO_UPLOAD_DIR, filename, jpeg_bytes)
         image_url = f"/static/images/studio/{filename}"
 
     existing = await db.execute(
