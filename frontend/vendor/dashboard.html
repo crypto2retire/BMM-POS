@@ -580,7 +580,7 @@
         return items.slice(0, 10).map(item => {
             const ap = activePrice(item);
             const photoHtml = (item.photo_urls && item.photo_urls.length)
-                ? `<img src="${item.photo_urls[0]}" alt="">`
+                ? `<img src="${item.photo_urls[0]}" alt="" loading="lazy">`
                 : `🏷️`;
             return `<div class="item-card">
                 <div class="item-card-top">

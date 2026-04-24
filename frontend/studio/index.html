@@ -342,7 +342,7 @@
         const isFull = c.spots_left <= 0;
 
         const detailImg = c.image_url
-            ? `<img src="${c.image_url}" alt="${c.title}" style="width:100%;max-height:220px;object-fit:cover;margin-bottom:1rem;border:1px solid var(--border)">`
+            ? `<img src="${c.image_url}" alt="${c.title}" loading="lazy" style="width:100%;max-height:220px;object-fit:cover;margin-bottom:1rem;border:1px solid var(--border)">`
             : '';
         document.getElementById('detail-panel').innerHTML = `
             <button class="detail-close" onclick="closeDetail()">&times;</button>

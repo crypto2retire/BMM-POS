@@ -1336,6 +1336,10 @@ async def list_errors(
     rows = result.scalars().all()
 
     def _serialize(e: ErrorLog) -> dict:
+        # Truncate request body to prevent exposing sensitive data in dashboard
+        req_body = e.request_body
+        if req_body and len(req_body) > 500:
+            req_body = req_body[:500] + "\n... [truncated]"
         return {
             "id": e.id,
             "level": e.level,
@@ -1346,7 +1350,7 @@ async def list_errors(
             "error_type": e.error_type,
             "message": e.message,
             "stack_trace": e.stack_trace,
-            "request_body": e.request_body,
+            "request_body": req_body,
             "user_id": e.user_id,
             "user_email": e.user_email,
             "ip_address": e.ip_address,

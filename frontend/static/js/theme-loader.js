@@ -12,9 +12,13 @@
     document.documentElement.setAttribute('data-theme', cachedTheme);
     document.documentElement.setAttribute('data-font-size', cachedFontSize);
 
-    // ── 2. Once DOM is ready, fetch real preferences from API ──
+    // ── 2. Refresh cached preferences from API (max once per 5 minutes) ──
     var token = sessionStorage.getItem('bmm_token');
-    if (token) {
+    var lastSync = parseInt(localStorage.getItem('bmm_theme_synced_at') || '0', 10);
+    var now = Date.now();
+    var SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
+    if (token && (now - lastSync > SYNC_INTERVAL)) {
         fetch('/api/v1/auth/me', {
             headers: { 'Authorization': 'Bearer ' + token }
         })
@@ -34,6 +38,7 @@
             // Update cache for next page load (prevents flash)
             localStorage.setItem('bmm_theme', theme);
             localStorage.setItem('bmm_font_size', fontSize);
+            localStorage.setItem('bmm_theme_synced_at', String(Date.now()));
         })
         .catch(function() {
             // Silently fail — cached values are already applied
