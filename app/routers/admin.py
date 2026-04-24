@@ -1527,51 +1527,31 @@ async def acknowledge_error(
         details={"notes": notes},
         vendor_id=current_user.id,
     )
-    return {"status": "ok", "id": error_id}
+    return {"status": "ok", "updated": len(entries)}
 
 
-@router.post("/errors/bulk-resolve")
-async def bulk_resolve_errors(
-    payload: BulkErrorAction,
+@router.post("/errors/delete-old")
+async def delete_old_errors(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_manage_settings")),
 ):
-    """Bulk resolve/acknowledge/ignore error logs."""
-    if payload.action not in ("resolve", "acknowledge", "acknowledged", "ignore"):
-        raise HTTPException(status_code=400, detail="Invalid action. Use resolve, acknowledge, or ignore.")
-
-    if not payload.ids:
-        return {"status": "ok", "updated": 0}
-
+    """Permanently delete all resolved and ignored errors."""
     result = await db.execute(
-        select(ErrorLog).where(ErrorLog.id.in_(payload.ids))
+        select(ErrorLog).where(ErrorLog.status.in_(["resolved", "ignored"]))
     )
     entries = result.scalars().all()
-
-    status_map = {
-        "resolve": "resolved",
-        "acknowledge": "acknowledged",
-        "acknowledged": "acknowledged",
-        "ignore": "ignored",
-    }
-    new_status = status_map[payload.action]
-    now = datetime.now()
-
+    count = len(entries)
     for entry in entries:
-        entry.status = new_status
-        entry.acknowledged_by = current_user.id
-        entry.acknowledged_at = now
-
+        await db.delete(entry)
     await db.commit()
     await log_audit(
         db=db,
-        action="error_bulk_action",
+        action="error_delete_old",
         entity_type="error_log",
-        entity_id=",".join(str(i) for i in payload.ids[:20]),
-        details={"action": payload.action, "count": len(entries)},
+        details={"deleted": count},
         vendor_id=current_user.id,
     )
-    return {"status": "ok", "updated": len(entries)}
+    return {"status": "ok", "deleted": count}
 
 
 @router.post("/errors/clear-all")

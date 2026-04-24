@@ -340,7 +340,7 @@
 
     <!-- Filters -->
     <div class="filter-bar">
-        <select id="filter-status"><option value="">All Status</option><option value="new">New</option><option value="acknowledged">Acknowledged</option><option value="resolved">Resolved</option><option value="ignored">Ignored</option></select>
+        <select id="filter-status"><option value="">All Status</option><option value="new" selected>New</option><option value="acknowledged">Acknowledged</option><option value="resolved">Resolved</option><option value="ignored">Ignored</option></select>
         <select id="filter-level"><option value="">All Levels</option><option value="error">Error</option><option value="warning">Warning</option><option value="critical">Critical</option></select>
         <select id="filter-source"><option value="">All Sources</option><option value="api">API</option><option value="frontend">Frontend</option><option value="startup">Startup</option><option value="background">Background</option></select>
         <input type="date" id="filter-from" title="From date">
@@ -349,6 +349,7 @@
         <button class="btn-primary" onclick="applyFilters()">Filter</button>
         <button onclick="resetFilters()">Reset</button>
         <button id="clear-all-btn" style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--text-light);padding:0.45rem 0.9rem;font-size:0.78rem;cursor:pointer;display:none;" onclick="clearAllNew()">Resolve All New</button>
+        <button id="delete-old-btn" style="background:transparent;border:1px solid var(--border);color:var(--text-light);padding:0.45rem 0.9rem;font-size:0.78rem;cursor:pointer;display:none;" onclick="deleteOldErrors()">Delete Resolved &amp; Ignored</button>
     </div>
 
     <!-- Bulk actions -->
@@ -391,7 +392,7 @@
 <script>
 const API_BASE = '/api/v1';
 let currentPage = 1;
-let currentFilters = {};
+let currentFilters = { status: 'new' };
 let selectedIds = new Set();
 let allErrorIds = [];
 
@@ -439,6 +440,8 @@ async function loadSummary() {
         document.getElementById('stat-critical').textContent = data.total_critical || 0;
         const clearBtn = document.getElementById('clear-all-btn');
         if (clearBtn) clearBtn.style.display = (data.total_new || 0) > 0 ? 'inline-block' : 'none';
+        const deleteBtn = document.getElementById('delete-old-btn');
+        if (deleteBtn) deleteBtn.style.display = ((data.status_counts.resolved || 0) + (data.status_counts.ignored || 0)) > 0 ? 'inline-block' : 'none';
         const last24h = (data.hourly_trend_24h || []).reduce((s, h) => s + (h.count || 0), 0);
         document.getElementById('stat-24h').textContent = last24h;
         renderTrend(data.hourly_trend_24h || []);
@@ -648,6 +651,7 @@ async function bulkActionOnIds(ids, action) {
         updateBulkBar();
         await loadErrors();
         await loadSummary();
+        refreshBadge();
     } catch (e) {
         showAlert('Action failed: ' + e.message, 'danger');
     }
@@ -671,8 +675,29 @@ async function clearAllNew() {
         updateBulkBar();
         await loadErrors();
         await loadSummary();
+        refreshBadge();
     } catch (e) {
         showAlert('Clear failed: ' + e.message, 'danger');
+    }
+}
+
+async function deleteOldErrors() {
+    if (!confirm('Permanently delete all resolved and ignored errors?')) return;
+    try {
+        const r = await fetch(`${API_BASE}/admin/errors/delete-old`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + getToken(),
+                'Content-Type': 'application/json'
+            }
+        });
+        if (!r.ok) throw new Error('Delete failed');
+        const data = await r.json();
+        showAlert(`Deleted ${data.deleted} old error(s)`, 'success');
+        await loadErrors();
+        await loadSummary();
+    } catch (e) {
+        showAlert('Delete failed: ' + e.message, 'danger');
     }
 }
 
@@ -683,6 +708,28 @@ function startAutoRefresh() {
         loadSummary();
         loadErrors();
     }, 30000);
+}
+
+function refreshBadge() {
+    fetch(`${API_BASE}/admin/errors/summary`, {
+        headers: { 'Authorization': 'Bearer ' + getToken() }
+    }).then(r => r.json()).then(data => {
+        const count = data.total_new || 0;
+        document.querySelectorAll('a[href="/admin/errors.html"]').forEach(link => {
+            let badge = link.querySelector('.nav-badge');
+            if (count > 0) {
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'nav-badge';
+                    badge.style.cssText = 'background:#e74c3c;color:#fff;font-size:0.65rem;padding:0.1em 0.45em;border-radius:9px;margin-left:0.35rem;vertical-align:middle;font-weight:600;';
+                    link.appendChild(badge);
+                }
+                badge.textContent = count > 99 ? '99+' : count;
+            } else if (badge) {
+                badge.remove();
+            }
+        });
+    }).catch(() => {});
 }
 
 /* ── Init ──────────────────────────────────────────────── */
