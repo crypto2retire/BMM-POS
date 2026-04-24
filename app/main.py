@@ -8,14 +8,13 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, PlainTextResponse, Response, FileResponse, HTMLResponse
 from pathlib import Path
 from sqlalchemy import text, select, func
-from fastapi import Depends
 
 logger = logging.getLogger("bmm-startup")
 _startup_checks: list[dict] = []

@@ -1424,7 +1424,7 @@ async def errors_summary(
         )
         .where(ErrorLog.occurred_at >= day_ago)
         .group_by(func.date_trunc("hour", ErrorLog.occurred_at))
-        .order_by(func.date_trunc("hour", ErrorLog.occurred_at))
+        .order_by("hour")
     )
     hourly = []
     for h, c in hourly_result.all():
