@@ -258,6 +258,15 @@ async def lifespan(app: FastAPI):
         _record_startup_failure("booth_showcases_dedup", e)
 
     try:
+        if os.environ.get("SEED_DEMO_ACCOUNTS", "").lower() not in ("true", "1", "yes"):
+            print(
+                "BMM-POS: auto-seed skipped — set SEED_DEMO_ACCOUNTS=true to seed demo accounts",
+                file=sys.stderr,
+                flush=True,
+            )
+            _record_startup_ok("auto_seed_accounts")
+            # Skip seeding without exiting
+
         from app.models.vendor import Vendor
         import bcrypt
         import secrets as _secrets

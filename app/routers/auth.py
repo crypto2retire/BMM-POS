@@ -289,15 +289,15 @@ class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str
 
-import random
+import secrets
 import string
 
 from app.models.password_reset_code import PasswordResetCode
 
 
 def _generate_reset_code() -> str:
-    """Generate a random 6-digit reset code."""
-    return ''.join(random.choices(string.digits, k=6))
+    """Generate a random 6-digit reset code using cryptographically secure randomness."""
+    return ''.join(secrets.choice(string.digits) for _ in range(6))
 
 
 @router.post("/forgot-password")

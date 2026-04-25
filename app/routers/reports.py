@@ -27,6 +27,17 @@ def _local_today():
     return datetime.now(STORE_TZ).date()
 
 
+def _mask_payment_field(value: Optional[str], is_admin: bool) -> str:
+    """Mask sensitive payment data for non-admin users."""
+    if not value:
+        return ""
+    if is_admin:
+        return value
+    if len(value) <= 4:
+        return "****"
+    return "****" + value[-4:]
+
+
 def _local_date_to_utc_range(d: date) -> tuple[datetime, datetime]:
     start_local = datetime(d.year, d.month, d.day, tzinfo=STORE_TZ)
     end_local = start_local + timedelta(days=1)
@@ -318,6 +329,7 @@ async def report_daily_sales(
     total_items_sold = sum(sum(si.quantity for si in s.items) if s.items else 0 for s in sales)
     avg_transaction = round(total_revenue / total_transactions, 2) if total_transactions > 0 else 0
 
+    is_admin = current_user.role == "admin"
     rows = []
     for s in sales:
         item_count = sum(si.quantity for si in s.items) if s.items else 0
@@ -330,11 +342,11 @@ async def report_daily_sales(
             "total": round(float(s.total), 2),
             "payment": s.payment_method or "unknown",
             "payment_method": s.payment_method or "unknown",
-            "card_transaction_id": s.card_transaction_id or "",
+            "card_transaction_id": _mask_payment_field(s.card_transaction_id, is_admin),
             "cash_tendered": float(s.cash_tendered) if s.cash_tendered else None,
             "change_given": float(s.change_given) if s.change_given else None,
             "gift_card_amount": float(s.gift_card_amount) if s.gift_card_amount else None,
-            "gift_card_barcode": s.gift_card_barcode or "",
+            "gift_card_barcode": _mask_payment_field(s.gift_card_barcode, is_admin),
         })
 
     return {
@@ -382,6 +394,7 @@ async def report_sales(
     total_revenue = sum(float(s.total) for s in sales)
     total_tax = sum(float(s.tax_amount) for s in sales)
 
+    is_admin = current_user.role == "admin"
     sales_list = []
     for s in sales:
         item_count = sum(si.quantity for si in s.items) if s.items else 0
@@ -394,11 +407,11 @@ async def report_sales(
             "tax_amount": float(s.tax_amount),
             "total": float(s.total),
             "payment_method": s.payment_method,
-            "card_transaction_id": s.card_transaction_id or "",
+            "card_transaction_id": _mask_payment_field(s.card_transaction_id, is_admin),
             "cash_tendered": float(s.cash_tendered) if s.cash_tendered else None,
             "change_given": float(s.change_given) if s.change_given else None,
             "gift_card_amount": float(s.gift_card_amount) if s.gift_card_amount else None,
-            "gift_card_barcode": s.gift_card_barcode or "",
+            "gift_card_barcode": _mask_payment_field(s.gift_card_barcode, is_admin),
         })
 
     return {
@@ -415,7 +428,7 @@ async def report_sales(
 async def sale_payment_details(
     sale_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
+    current_user: Vendor = Depends(require_admin),
 ):
     """
     Returns full payment details for a specific sale.

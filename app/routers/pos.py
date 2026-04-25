@@ -492,10 +492,15 @@ async def pos_class_fee_item(
 
 @router.post("/sale", response_model=SaleResponse, status_code=status.HTTP_201_CREATED)
 async def pos_create_sale(
+    request: Request,
     data: SaleCreate,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_process_sales")),
 ):
+    check_rate_limit(
+        request, "pos_sale", max_requests=60, window_seconds=60,
+        error_message="Too many sales. Please slow down."
+    )
     if not data.items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
@@ -889,6 +894,10 @@ async def void_sale(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_void_sales")),
 ):
+    check_rate_limit(
+        request, "pos_void", max_requests=20, window_seconds=60,
+        error_message="Too many voids. Please slow down."
+    )
     lock_result = await db.execute(
         select(Sale).where(Sale.id == sale_id).with_for_update()
     )
@@ -1751,10 +1760,15 @@ Respond with ONLY valid JSON, no markdown.
 
 @router.post("/gift-cards/activate", response_model=GiftCardResponse)
 async def activate_gift_card(
+    request: Request,
     data: GiftCardActivate,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_manage_gift_cards")),
 ):
+    check_rate_limit(
+        request, "gc_activate", max_requests=30, window_seconds=60,
+        error_message="Too many gift card activations. Please slow down."
+    )
     if data.initial_balance < Decimal("0"):
         raise HTTPException(status_code=400, detail="Balance cannot be negative")
 
@@ -1850,11 +1864,16 @@ async def check_gift_card_balance(
 
 @router.post("/gift-cards/{barcode}/load", response_model=GiftCardResponse)
 async def load_gift_card(
+    request: Request,
     barcode: str,
     data: GiftCardLoad,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_manage_gift_cards")),
 ):
+    check_rate_limit(
+        request, "gc_load", max_requests=30, window_seconds=60,
+        error_message="Too many gift card loads. Please slow down."
+    )
     if data.amount <= 0:
         raise HTTPException(status_code=400, detail="Load amount must be positive")
 
@@ -1896,11 +1915,16 @@ async def load_gift_card(
 
 @router.post("/gift-cards/{barcode}/redeem", response_model=GiftCardResponse)
 async def redeem_gift_card(
+    request: Request,
     barcode: str,
     data: GiftCardRedeem,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_staff_feature("role_manage_gift_cards")),
 ):
+    check_rate_limit(
+        request, "gc_redeem", max_requests=30, window_seconds=60,
+        error_message="Too many gift card redemptions. Please slow down."
+    )
     if data.amount <= 0:
         raise HTTPException(status_code=400, detail="Redeem amount must be positive")
 

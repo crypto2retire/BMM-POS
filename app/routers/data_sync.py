@@ -27,7 +27,7 @@ async def require_data_sync_access(
     source_url: str = Query(""),
     token: str = Query(""),
 ):
-    if not SYNC_TOKEN:
+    if not SYNC_TOKEN or not token:
         raise HTTPException(status_code=403, detail="Data sync is not configured.")
     if token != SYNC_TOKEN:
         raise HTTPException(status_code=403, detail="Invalid sync token.")
