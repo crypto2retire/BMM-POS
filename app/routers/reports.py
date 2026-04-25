@@ -150,7 +150,7 @@ async def dashboard_stats(
     result = await db.execute(
         select(Sale)
         .options(selectinload(Sale.items))
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .order_by(Sale.created_at.desc())
     )
     sales = result.scalars().all()
@@ -184,7 +184,7 @@ async def dashboard_stats(
         )
         .join(Sale, Sale.id == SaleItem.sale_id)
         .join(Vendor, Vendor.id == SaleItem.vendor_id)
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .group_by(Vendor.name, Vendor.booth_number)
         .order_by(func.sum(SaleItem.line_total).desc())
         .limit(10)
@@ -203,7 +203,7 @@ async def dashboard_stats(
     thirty_start_utc, _ = _local_date_to_utc_range(thirty_ago)
     daily_result = await db.execute(
         select(Sale)
-        .where(Sale.created_at >= thirty_start_utc)
+        .where(Sale.created_at >= thirty_start_utc, Sale.is_voided == False)
         .order_by(Sale.created_at)
     )
     daily_sales_raw = daily_result.scalars().all()
@@ -234,7 +234,7 @@ async def dashboard_stats(
             func.count(Sale.id).label("count"),
             func.coalesce(func.sum(Sale.total), 0).label("total"),
         )
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .group_by(Sale.payment_method)
     )
     payment_methods = [
@@ -305,7 +305,7 @@ async def report_daily_sales(
     result = await db.execute(
         select(Sale)
         .options(selectinload(Sale.cashier), selectinload(Sale.items))
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .order_by(Sale.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -365,7 +365,7 @@ async def report_sales(
     result = await db.execute(
         select(Sale)
         .options(selectinload(Sale.cashier), selectinload(Sale.items))
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .order_by(Sale.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -427,7 +427,7 @@ async def report_vendor_performance(
         )
         .join(Sale, Sale.id == SaleItem.sale_id)
         .join(Vendor, Vendor.id == SaleItem.vendor_id)
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .group_by(Vendor.name, Vendor.booth_number)
         .order_by(func.sum(SaleItem.line_total).desc())
         .limit(limit)
@@ -480,7 +480,7 @@ async def report_vendors(
         )
         .join(Sale, Sale.id == SaleItem.sale_id)
         .join(Vendor, Vendor.id == SaleItem.vendor_id)
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .group_by(SaleItem.vendor_id, Vendor.name, Vendor.booth_number)
         .order_by(func.sum(SaleItem.line_total).desc())
     )
@@ -521,7 +521,7 @@ async def report_top_items(
         .join(Sale, Sale.id == SaleItem.sale_id)
         .join(Item, Item.id == SaleItem.item_id)
         .outerjoin(Vendor, Vendor.id == SaleItem.vendor_id)
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .group_by(Item.name, Vendor.name)
         .order_by(func.sum(SaleItem.quantity).desc())
         .limit(50)
@@ -562,7 +562,7 @@ async def report_hourly_sales(
 
     result = await db.execute(
         select(Sale)
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
     )
     sales = result.scalars().all()
 
@@ -609,7 +609,7 @@ async def report_payment_methods(
             func.count(Sale.id).label("count"),
             func.coalesce(func.sum(Sale.total), 0).label("total"),
         )
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .group_by(Sale.payment_method)
         .order_by(func.sum(Sale.total).desc())
     )
