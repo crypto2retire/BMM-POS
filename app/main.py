@@ -171,6 +171,72 @@ async def lifespan(app: FastAPI):
         print(f"BMM-POS: vendor_balances backfill FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("vendor_balances_backfill", e)
 
+    # ── Deduplicate vendor_balances rows ──
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(text("""
+                DELETE FROM vendor_balances
+                WHERE id NOT IN (
+                    SELECT MIN(id) FROM vendor_balances GROUP BY vendor_id
+                )
+            """))
+            await session.commit()
+            count = result.rowcount or 0
+            if count > 0:
+                print(
+                    f"BMM-POS: deduplicated vendor_balances — removed {count} duplicate rows",
+                    file=sys.stderr,
+                    flush=True,
+                )
+        _record_startup_ok("vendor_balances_dedup")
+    except Exception as e:
+        print(f"BMM-POS: vendor_balances dedup FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("vendor_balances_dedup", e)
+
+    # ── Deduplicate rent_payments rows ──
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(text("""
+                DELETE FROM rent_payments
+                WHERE id NOT IN (
+                    SELECT MAX(id) FROM rent_payments GROUP BY vendor_id, period_month, status
+                )
+            """))
+            await session.commit()
+            count = result.rowcount or 0
+            if count > 0:
+                print(
+                    f"BMM-POS: deduplicated rent_payments — removed {count} duplicate rows",
+                    file=sys.stderr,
+                    flush=True,
+                )
+        _record_startup_ok("rent_payments_dedup")
+    except Exception as e:
+        print(f"BMM-POS: rent_payments dedup FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("rent_payments_dedup", e)
+
+    # ── Deduplicate booth_showcases rows ──
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(text("""
+                DELETE FROM booth_showcases
+                WHERE id NOT IN (
+                    SELECT MAX(id) FROM booth_showcases GROUP BY vendor_id
+                )
+            """))
+            await session.commit()
+            count = result.rowcount or 0
+            if count > 0:
+                print(
+                    f"BMM-POS: deduplicated booth_showcases — removed {count} duplicate rows",
+                    file=sys.stderr,
+                    flush=True,
+                )
+        _record_startup_ok("booth_showcases_dedup")
+    except Exception as e:
+        print(f"BMM-POS: booth_showcases dedup FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("booth_showcases_dedup", e)
+
     try:
         from app.models.vendor import Vendor
         import bcrypt

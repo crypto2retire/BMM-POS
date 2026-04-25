@@ -324,7 +324,7 @@ async def get_vendor(
     # Attach landing page data
     from app.models.booth_showcase import BoothShowcase
     lp_result = await db.execute(
-        select(BoothShowcase).where(BoothShowcase.vendor_id == vendor_id)
+        select(BoothShowcase).where(BoothShowcase.vendor_id == vendor_id).limit(1)
     )
     lp = lp_result.scalar_one_or_none()
     vendor.landing_page_enabled = lp.landing_page_enabled if lp else False
@@ -618,6 +618,7 @@ async def adjust_vendor_balance(
     result = await db.execute(
         select(VendorBalance)
         .where(VendorBalance.vendor_id == vendor_id)
+        .limit(1)
         .with_for_update()
     )
     balance_row = result.scalar_one_or_none()
@@ -628,6 +629,7 @@ async def adjust_vendor_balance(
         await db.execute(
             select(VendorBalance)
             .where(VendorBalance.vendor_id == vendor_id)
+            .limit(1)
             .with_for_update()
         )
 

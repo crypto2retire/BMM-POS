@@ -93,7 +93,7 @@ async def rent_status(
         select(RentPayment).where(
             RentPayment.vendor_id == vendor.id,
             RentPayment.period_month == period,
-        )
+        ).limit(1)
     )
     current_payment = existing.scalar_one_or_none()
 
@@ -207,7 +207,7 @@ async def monthly_report(
             RentPayment.vendor_id == vendor.id,
             RentPayment.period_month == current_period_check,
             RentPayment.status == "paid",
-        )
+        ).limit(1)
     )
     rent_paid_this_month = rp_check.scalar_one_or_none() is not None
 

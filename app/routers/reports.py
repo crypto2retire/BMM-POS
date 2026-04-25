@@ -1089,7 +1089,7 @@ async def reassign_sale_item_vendor(
 
     # 4. Debit old vendor balance
     old_bal_result = await db.execute(
-        select(VendorBalance).where(VendorBalance.vendor_id == old_vendor_id)
+        select(VendorBalance).where(VendorBalance.vendor_id == old_vendor_id).limit(1)
     )
     old_balance_row = old_bal_result.scalar_one_or_none()
     if not old_balance_row:
@@ -1105,7 +1105,7 @@ async def reassign_sale_item_vendor(
 
     # 5. Credit new vendor balance
     new_bal_result = await db.execute(
-        select(VendorBalance).where(VendorBalance.vendor_id == new_vendor_id)
+        select(VendorBalance).where(VendorBalance.vendor_id == new_vendor_id).limit(1)
     )
     new_balance_row = new_bal_result.scalar_one_or_none()
     if new_balance_row:

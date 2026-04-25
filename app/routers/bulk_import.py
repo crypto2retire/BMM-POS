@@ -137,7 +137,7 @@ async def bulk_import_vendors(
                 await db.flush()
 
                 balance_check = await db.execute(
-                    select(VendorBalance).where(VendorBalance.vendor_id == vendor.id)
+                    select(VendorBalance).where(VendorBalance.vendor_id == vendor.id).limit(1)
                 )
                 if not balance_check.scalar_one_or_none():
                     db.add(VendorBalance(vendor_id=vendor.id, balance=Decimal("0.00")))

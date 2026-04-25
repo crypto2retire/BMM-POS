@@ -1076,6 +1076,7 @@ async def send_weekly_reports(
         bal_result = await db.execute(
             select(VendorBalance.balance, VendorBalance.rent_balance)
             .where(VendorBalance.vendor_id == v.id)
+            .limit(1)
         )
         bal_row = bal_result.one_or_none()
         sb = float(bal_row[0] or 0) if bal_row else 0.0
