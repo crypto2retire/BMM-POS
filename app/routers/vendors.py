@@ -290,14 +290,15 @@ async def get_vendor(
 
     today = date.today()
     current_period = date(today.year, today.month, 1)
-    rp_one = await db.execute(
+    rp_result = await db.execute(
         select(RentPayment).where(
             RentPayment.vendor_id == vendor_id,
             RentPayment.period_month == current_period,
-        )
+            RentPayment.status == "paid",
+        ).limit(1)
     )
-    rp_row = rp_one.scalar_one_or_none()
-    rent_paid = rp_row is not None and rp_row.status == "paid"
+    rp_row = rp_result.first()
+    rent_paid = rp_row is not None
 
     # Current month sales for display
     next_month = date(today.year, today.month + 1, 1) if today.month < 12 else date(today.year + 1, 1, 1)

@@ -50,6 +50,54 @@ def _parse_dates(from_date, to_date):
     return start_utc, end_utc
 
 
+@router.get("/sales_tax")
+async def report_sales_tax(
+    from_date: Optional[str] = Query(None, alias="from_date"),
+    to_date: Optional[str] = Query(None, alias="to_date"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
+):
+    start_dt, end_dt = _parse_dates(from_date, to_date)
+
+    # All non-voided sales in range
+    result = await db.execute(
+        select(Sale.subtotal, Sale.tax_amount, Sale.total)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
+    )
+    rows = result.all()
+
+    gross_receipts = Decimal("0.00")
+    exempt_sales = Decimal("0.00")
+    taxable_sales = Decimal("0.00")
+    tax_collected = Decimal("0.00")
+
+    for r in rows:
+        subtotal = r.subtotal or Decimal("0.00")
+        tax = r.tax_amount or Decimal("0.00")
+        gross_receipts += subtotal
+        tax_collected += tax
+        if tax == 0:
+            exempt_sales += subtotal
+        else:
+            taxable_sales += subtotal
+
+    tax_rate = Decimal("0.05")
+    tax_due = (taxable_sales * tax_rate).quantize(Decimal("0.01"))
+    difference = (tax_due - tax_collected).quantize(Decimal("0.01"))
+
+    return {
+        "summary": {
+            "gross_receipts": float(gross_receipts),
+            "exempt_sales": float(exempt_sales),
+            "taxable_amount": float(taxable_sales),
+            "tax_due": float(tax_due),
+            "tax_collected": float(tax_collected),
+            "difference": float(difference),
+            "transaction_count": len(rows),
+        }
+    }
+
+
 @router.get("/dashboard")
 async def dashboard_stats(
     period: Optional[str] = Query("today"),
