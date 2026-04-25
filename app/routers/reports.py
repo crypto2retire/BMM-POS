@@ -681,10 +681,10 @@ async def report_vendor_balances(
         rb = rb_map.get(v.id, 0.0)
         rent = float(v.monthly_rent or 0)
         rent_paid = v.id in paid_ids
-        if rent > 0 and not rent_paid:
-            net_payout = round(sb - rent + rb, 2)
+        if rent > 0 and not rent_paid and rb <= 0:
+            net_payout = round(max(0.0, sb - rent), 2)
         else:
-            net_payout = round(sb + rb, 2)
+            net_payout = round(sb, 2)
         total_net += net_payout
         rows.append({
             "vendor_name": v.name,

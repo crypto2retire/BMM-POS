@@ -211,10 +211,10 @@ async def monthly_report(
     )
     rent_paid_this_month = rp_check.scalar_one_or_none() is not None
 
-    if rent_due_amt > 0 and not rent_paid_this_month:
-        net_payout = round(total_sales - rent_due_amt + carry_over, 2)
+    if rent_due_amt > 0 and not rent_paid_this_month and carry_over <= 0:
+        net_payout = round(max(0.0, total_sales - rent_due_amt), 2)
     else:
-        net_payout = round(total_sales + carry_over, 2)
+        net_payout = round(total_sales, 2)
 
     sales_summary = await db.execute(
         select(

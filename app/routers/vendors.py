@@ -94,10 +94,12 @@ def _hydrate_vendor_balance_fields(
 
     Business rules:
     - total_sales = current month sales from sale_items (what vendor earned this month)
-    - rent_due = Vendor.monthly_rent
-    - net_payout = sales_balance - rent_due + carry_over
-      (if rent already paid this month, don't subtract rent again)
-    - carry_over = VendorBalance.rent_balance (positive = prepaid credit, negative = owes)
+    - rent_due = Vendor.monthly_rent + landing_page_fee
+    - net_payout = what the vendor will actually receive:
+      * If rent already paid this month: full sales_balance
+      * If vendor has prepaid rent credit (rent_ledger > 0): full sales_balance
+      * Otherwise: sales_balance - rent_due (capped at $0)
+    - carry_over = VendorBalance.rent_balance (positive = prepaid credit)
     - sales_balance is the running VendorBalance.balance (used for net_payout calc)
     """
     monthly = vendor.monthly_rent or Decimal("0.00")
@@ -115,10 +117,12 @@ def _hydrate_vendor_balance_fields(
     vendor.carry_over = rl.quantize(Decimal("0.01"), ROUND_HALF_UP)
     vendor.rent_paid_this_month = current_month_rent_paid
 
-    if effective_rent > 0 and not current_month_rent_paid:
-        vendor.net_payout = (sb - effective_rent + rl).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    if effective_rent > 0 and not current_month_rent_paid and rl <= 0:
+        # Rent is due and no prepaid credit — deduct rent from payout
+        vendor.net_payout = max(Decimal("0.00"), sb - effective_rent).quantize(Decimal("0.01"), ROUND_HALF_UP)
     else:
-        vendor.net_payout = (sb + rl).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        # Rent already paid or vendor has prepaid credit — full payout
+        vendor.net_payout = sb.quantize(Decimal("0.01"), ROUND_HALF_UP)
 
 
 @router.get("/", response_model=List[VendorResponse])

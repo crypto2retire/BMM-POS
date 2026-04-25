@@ -224,15 +224,15 @@ async def vendor_overview(
             else:
                 rent_status = "due"
 
-        rent_to_deduct = 0.0 if rent_paid else rent
-        if rent_paid or rent <= 0:
-            net_payout = round(sales_balance + rent_bal, 2)
-        elif sales_balance >= rent_to_deduct:
-            net_payout = round(sales_balance - rent_to_deduct + rent_bal, 2)
+        if rent_paid or rent <= 0 or rent_bal > 0:
+            net_payout = round(sales_balance, 2)
+            shortfall = 0.0
+        elif sales_balance >= rent:
+            net_payout = round(sales_balance - rent, 2)
             shortfall = 0.0
         else:
             net_payout = 0.0
-            shortfall = round(rent_to_deduct - sales_balance, 2)
+            shortfall = round(rent - sales_balance, 2)
 
         totals["gross"] += sales_balance
         totals["rent_due"] += rent if not rent_paid else 0.0
@@ -1085,7 +1085,10 @@ async def send_weekly_reports(
         rb = float(bal_row[1] or 0) if bal_row else 0.0
         rent = float(v.monthly_rent or 0) + float(v.landing_page_fee or 0)
         # Compute net payout for the email
-        net_payout = round(sb - rent + rb, 2) if rent > 0 else round(sb + rb, 2)
+        if rent > 0 and rb <= 0:
+            net_payout = round(max(0.0, sb - rent), 2)
+        else:
+            net_payout = round(sb, 2)
 
         active_result = await db.execute(
             select(func.count(Item.id)).where(Item.vendor_id == v.id, Item.status == "active")
