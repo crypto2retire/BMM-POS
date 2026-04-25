@@ -4933,7 +4933,8 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
             msgEl.style.display = 'block';
             msgEl.style.background = 'var(--success)';
             msgEl.style.color = 'var(--success-light)';
-            msgEl.textContent = resp.message || 'Payment recorded';
+            msgEl.innerHTML = (resp.message || 'Payment recorded') +
+                (resp.payment_id ? '<br><button class="btn btn-sm" style="margin-top:8px;background:transparent;border:1px solid var(--success-light);color:var(--success-light)" onclick="printRentReceipt(' + resp.payment_id + ')">Print Receipt</button>' : '');
 
             if (resp.payment_url) {
                 window.open(resp.payment_url, '_blank');
@@ -4956,6 +4957,44 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
     function closeRentModal() {
         document.getElementById('rent-modal').classList.add('hidden');
         _selectedRentVendor = null;
+    }
+
+    async function printRentReceipt(paymentId) {
+        try {
+            var data = await apiGet('/api/v1/admin/rent-payments/' + paymentId + '/receipt');
+            var r = data.receipt;
+            var printWindow = window.open('', '_blank', 'width=400,height=600');
+            var html = '<html><head><title>Rent Receipt</title>' +
+                '<style>body{font-family:monospace;font-size:13px;padding:20px;max-width:360px;margin:0 auto}' +
+                '.center{text-align:center}.bold{font-weight:bold}.line{border-top:1px dashed #000;margin:8px 0}' +
+                '.right{text-align:right}.mt{margin-top:12px}</style></head><body>' +
+                '<div class="center bold">' + r.store_name + '</div>' +
+                '<div class="center">' + r.store_address + '</div>' +
+                '<div class="line"></div>' +
+                '<div class="center bold">' + r.receipt_type + '</div>' +
+                '<div class="line"></div>' +
+                '<div>Date: ' + r.date + '</div>' +
+                '<div>Ref: ' + r.reference_number + '</div>' +
+                '<div class="line"></div>' +
+                '<div>Vendor: ' + r.vendor_name + '</div>' +
+                '<div>Booth: ' + r.booth_number + '</div>' +
+                '<div>Period: ' + r.period + '</div>' +
+                '<div class="line"></div>' +
+                '<div class="bold">Amount: $' + r.amount.toFixed(2) + '</div>' +
+                '<div>Method: ' + r.method + '</div>' +
+                '<div>Status: ' + r.status + '</div>' +
+                (r.notes ? '<div class="mt">Notes: ' + r.notes + '</div>' : '') +
+                '<div class="line"></div>' +
+                '<div class="center mt">Thank you!</div>' +
+                '<div class="center" style="font-size:11px;margin-top:8px">Processed by: ' + r.processed_by + '</div>' +
+                '</body></html>';
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(function() { printWindow.print(); }, 250);
+        } catch (err) {
+            showToast(err.message || 'Failed to load receipt', 'error');
+        }
     }
 
     async function openClassSignupModal() {

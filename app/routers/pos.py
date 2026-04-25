@@ -2113,19 +2113,22 @@ async def pos_rent_payment(
     if credit_remainder > 0:
         receipt_notes = f"{receipt_notes} Remaining rent credit ${float(credit_remainder):.2f}."
 
-    db.add(RentPayment(
+    rent_payment = RentPayment(
         vendor_id=vendor.id,
         amount=amount,
         period_month=period,
         method=method,
         status="received",
         notes=stamp_rent_notes(receipt_notes, reference_tag),
-    ))
+    )
+    db.add(rent_payment)
     await db.commit()
+    await db.refresh(rent_payment)
 
     return {
         "success": True,
         "method": method,
+        "payment_id": rent_payment.id,
         "message": (
             f"{method.capitalize()} rent payment of ${amount:.2f} recorded for {vendor.name}. "
             f"Applied to {period_summary}."
