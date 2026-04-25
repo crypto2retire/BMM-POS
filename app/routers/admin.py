@@ -224,6 +224,7 @@ async def vendor_overview(
             else:
                 rent_status = "due"
 
+        rent_to_deduct = rent if not rent_paid else 0.0
         if rent_paid or rent <= 0 or rent_bal > 0:
             net_payout = round(sales_balance, 2)
             shortfall = 0.0
