@@ -152,7 +152,7 @@ async def rent_status(
 
 
 class RentConfirmRequest(BaseModel):
-    square_payment_id: Optional[str] = None
+    square_payment_id: str
     amount: Optional[Decimal] = None
     period: Optional[str] = None
 
@@ -402,28 +402,44 @@ async def rent_confirmed(
         today = date.today()
         period = date(today.year, today.month, 1)
 
+    # Idempotency: skip if this Square payment was already processed
+    existing_rp = await db.execute(
+        select(RentPayment).where(
+            RentPayment.vendor_id == vendor.id,
+            RentPayment.square_payment_id == body.square_payment_id,
+        ).limit(1)
+    )
+    if existing_rp.scalar_one_or_none():
+        return {
+            "success": True,
+            "message": "Rent payment already recorded.",
+            "applied_periods": [],
+            "credit_remainder": 0.0,
+        }
+
     # Verify Square payment before crediting rent
-    if body.square_payment_id:
-        from app.services.square import _access_token
-        from app.services.circuit_breaker import _square_breaker
-        import httpx
-        token = _access_token()
-        if token:
-            async def _verify():
-                async with httpx.AsyncClient() as client:
-                    return await client.get(
-                        f"https://connect.squareup.com/v2/payments/{body.square_payment_id}",
-                        headers={"Authorization": f"Bearer {token}"}
-                    )
-            resp = await _square_breaker.call_async(_verify)
-            if resp.status_code != 200:
-                raise HTTPException(status_code=400, detail="Payment not found with Square")
-            payment_data = resp.json().get("payment", {})
-            if payment_data.get("status") != "COMPLETED":
-                raise HTTPException(status_code=400, detail="Payment not completed")
+    from app.services.square import _access_token
+    from app.services.circuit_breaker import _square_breaker
+    import httpx
+    token = _access_token()
+    if not token:
+        raise HTTPException(status_code=503, detail="Payment verification unavailable. Please try again later.")
+
+    async def _verify():
+        async with httpx.AsyncClient() as client:
+            return await client.get(
+                f"https://connect.squareup.com/v2/payments/{body.square_payment_id}",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+    resp = await _square_breaker.call_async(_verify)
+    if resp.status_code != 200:
+        raise HTTPException(status_code=400, detail="Payment not found with Square")
+    payment_data = resp.json().get("payment", {})
+    if payment_data.get("status") != "COMPLETED":
+        raise HTTPException(status_code=400, detail="Payment not completed")
 
     reference_tag = secrets.token_hex(4)
-    base_notes = body.square_payment_id or "Square online payment"
+    base_notes = f"Square payment: {body.square_payment_id}"
     allocation = await apply_rent_payment(
         db=db,
         vendor=vendor,
@@ -449,6 +465,7 @@ async def rent_confirmed(
         status="received",
         notes=stamp_rent_notes(receipt_notes, reference_tag),
         reference_tag=reference_tag,
+        square_payment_id=body.square_payment_id,
     ))
     await db.commit()
 

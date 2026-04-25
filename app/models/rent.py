@@ -21,6 +21,7 @@ class RentPayment(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="paid")
     notes: Mapped[Optional[str]] = mapped_column(Text)
     reference_tag: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, index=True)
+    square_payment_id: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, index=True)
     processed_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False, default=datetime.utcnow
     )

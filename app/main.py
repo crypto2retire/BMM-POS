@@ -124,6 +124,26 @@ async def lifespan(app: FastAPI):
         print(f"BMM-POS: sale_items unit_cost column check FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("sale_items_unit_cost_column", e)
 
+    # ── Ensure 'square_payment_id' column exists on rent_payments table ──
+    try:
+        async with engine.begin() as conn:
+            result = await conn.execute(text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_name = 'rent_payments' AND column_name = 'square_payment_id'"
+            ))
+            if not result.scalar_one_or_none():
+                await conn.execute(text(
+                    "ALTER TABLE rent_payments ADD COLUMN square_payment_id VARCHAR(200) DEFAULT NULL"
+                ))
+                await conn.execute(text(
+                    "CREATE INDEX idx_rentpayments_square_id ON rent_payments(square_payment_id)"
+                ))
+                print("BMM-POS: added 'square_payment_id' column to rent_payments table", file=sys.stderr, flush=True)
+        _record_startup_ok("rent_payments_square_payment_id_column")
+    except Exception as e:
+        print(f"BMM-POS: rent_payments square_payment_id column check FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("rent_payments_square_payment_id_column", e)
+
     # ── Fix NULL item statuses ──
     try:
         async with engine.begin() as conn:
