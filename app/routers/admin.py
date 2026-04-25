@@ -207,7 +207,7 @@ async def vendor_overview(
     for v in vendors:
         sales_balance = balance_map.get(v.id, 0.0)
         rent_bal = rent_balance_map.get(v.id, 0.0)
-        rent = float(v.monthly_rent or 0) + float(v.landing_page_fee or 0) + float(v.landing_page_fee or 0)
+        rent = float(v.monthly_rent or 0) + float(v.landing_page_fee or 0)
         rent_info = rent_map.get(v.id)
         rent_paid = rent_info is not None and rent_info["paid"]
         rent_display = _admin_display_rent_balance(rent_bal, rent, rent_paid)
@@ -225,8 +225,10 @@ async def vendor_overview(
                 rent_status = "due"
 
         rent_to_deduct = 0.0 if rent_paid else rent
-        if sales_balance >= rent_to_deduct:
-            net_payout = round(sales_balance - rent_to_deduct, 2)
+        if rent_paid or rent <= 0:
+            net_payout = round(sales_balance + rent_bal, 2)
+        elif sales_balance >= rent_to_deduct:
+            net_payout = round(sales_balance - rent_to_deduct + rent_bal, 2)
             shortfall = 0.0
         else:
             net_payout = 0.0
