@@ -59,19 +59,26 @@ async def report_sales_tax(
 ):
     start_dt, end_dt = _parse_dates(from_date, to_date)
 
-    # All non-voided sales in range
-    result = await db.execute(
+    # Positive sales — non-voided sales created in range
+    sales_result = await db.execute(
         select(Sale.subtotal, Sale.tax_amount, Sale.total)
         .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
     )
-    rows = result.all()
+    sales_rows = sales_result.all()
+
+    # Refunds/returns — voided sales where void happened in range
+    voids_result = await db.execute(
+        select(Sale.subtotal, Sale.tax_amount, Sale.total)
+        .where(Sale.voided_at >= start_dt, Sale.voided_at < end_dt, Sale.is_voided == True)
+    )
+    voids_rows = voids_result.all()
 
     gross_receipts = Decimal("0.00")
     exempt_sales = Decimal("0.00")
     taxable_sales = Decimal("0.00")
     tax_collected = Decimal("0.00")
 
-    for r in rows:
+    for r in sales_rows:
         subtotal = r.subtotal or Decimal("0.00")
         tax = r.tax_amount or Decimal("0.00")
         gross_receipts += subtotal
@@ -81,19 +88,43 @@ async def report_sales_tax(
         else:
             taxable_sales += subtotal
 
+    refunds_gross = Decimal("0.00")
+    refunds_exempt = Decimal("0.00")
+    refunds_taxable = Decimal("0.00")
+    refunds_tax = Decimal("0.00")
+
+    for r in voids_rows:
+        subtotal = r.subtotal or Decimal("0.00")
+        tax = r.tax_amount or Decimal("0.00")
+        refunds_gross += subtotal
+        refunds_tax += tax
+        if tax == 0:
+            refunds_exempt += subtotal
+        else:
+            refunds_taxable += subtotal
+
+    # Net amounts after refunds
+    net_gross = gross_receipts - refunds_gross
+    net_exempt = exempt_sales - refunds_exempt
+    net_taxable = taxable_sales - refunds_taxable
+    net_tax_collected = tax_collected - refunds_tax
+
     tax_rate = Decimal("0.05")
-    tax_due = (taxable_sales * tax_rate).quantize(Decimal("0.01"))
-    difference = (tax_due - tax_collected).quantize(Decimal("0.01"))
+    tax_due = (net_taxable * tax_rate).quantize(Decimal("0.01"))
+    difference = (tax_due - net_tax_collected).quantize(Decimal("0.01"))
 
     return {
         "summary": {
-            "gross_receipts": float(gross_receipts),
-            "exempt_sales": float(exempt_sales),
-            "taxable_amount": float(taxable_sales),
+            "gross_receipts": float(net_gross),
+            "exempt_sales": float(net_exempt),
+            "taxable_amount": float(net_taxable),
             "tax_due": float(tax_due),
-            "tax_collected": float(tax_collected),
+            "tax_collected": float(net_tax_collected),
             "difference": float(difference),
-            "transaction_count": len(rows),
+            "transaction_count": len(sales_rows),
+            "refund_count": len(voids_rows),
+            "refund_amount": float(refunds_gross),
+            "refund_tax": float(refunds_tax),
         }
     }
 

@@ -685,10 +685,13 @@
 
         // Top summary cards
         var cards = [
-            { val: fmtMoney(s.gross_receipts), lbl: 'Gross Receipts' },
-            { val: fmtMoney(s.tax_collected), lbl: 'Tax Collected' },
+            { val: fmtMoney(s.gross_receipts), lbl: 'Net Gross Receipts' },
+            { val: fmtMoney(s.tax_collected), lbl: 'Net Tax Collected' },
             { val: s.transaction_count, lbl: 'Transactions' },
         ];
+        if (s.refund_count) {
+            cards.push({ val: s.refund_count, lbl: 'Refunds' });
+        }
         summary.innerHTML = cards.map(function(c) {
             return '<div class="summary-card"><div class="val">' + c.val + '</div><div class="lbl">' + c.lbl + '</div></div>';
         }).join('');
@@ -703,17 +706,31 @@
                 '<div style="font-family:\'EB Garamond\',serif;font-size:1.35rem;color:var(--gold);white-space:nowrap">' + fmtMoney(value) + '</div></div>';
         }
 
-        html += row('Line 1 — Gross receipts', s.gross_receipts, 'Total sales before tax');
+        function negRow(label, value, note) {
+            var valStr = (value > 0 ? '-' : '') + fmtMoney(Math.abs(value));
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem 0;border-bottom:1px solid var(--border)">' +
+                '<div><div style="font-size:0.95rem;color:var(--text)">' + label + '</div>' +
+                (note ? '<div style="font-size:0.75rem;color:var(--text-light);margin-top:0.15rem">' + note + '</div>' : '') + '</div>' +
+                '<div style="font-family:\'EB Garamond\',serif;font-size:1.35rem;color:#e74c3c;white-space:nowrap">' + valStr + '</div></div>';
+        }
+
+        html += row('Line 1 — Gross receipts', s.gross_receipts, 'Total sales before tax (less refunds)');
         html += row('Line 2 — Exempt sales', s.exempt_sales, 'Transactions with $0 tax collected');
         html += row('Line 3 — Taxable amount', s.taxable_amount, 'Line 1 minus Line 2');
         html += row('Line 4 — Tax due (5%)', s.tax_due, 'Line 3 × 0.05');
-        html += row('Line 5 — Tax collected', s.tax_collected, 'Actual tax collected from POS');
+        html += row('Line 5 — Tax collected', s.tax_collected, 'Actual tax collected from POS (less refunded tax)');
 
         var diffClass = s.difference === 0 ? 'color:#2ecc71' : (s.difference > 0 ? 'color:#e74c3c' : 'color:#f39c12');
         html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:0.75rem 0;border-bottom:1px solid var(--border)">' +
             '<div><div style="font-size:0.95rem;color:var(--text)">Difference</div>' +
             '<div style="font-size:0.75rem;color:var(--text-light);margin-top:0.15rem">Line 4 minus Line 5 (should be $0.00)</div></div>' +
             '<div style="font-family:\'EB Garamond\',serif;font-size:1.35rem;white-space:nowrap;' + diffClass + '">' + (s.difference >= 0 ? '+' : '') + fmtMoney(s.difference) + '</div></div>';
+
+        if (s.refund_count) {
+            html += '<h3 style="font-family:\'EB Garamond\',serif;font-style:italic;color:var(--gold);margin:1.5rem 0 0.75rem 0;font-size:1.1rem">Refund Detail</h3>';
+            html += negRow('Refunded gross amount', s.refund_amount, s.refund_count + ' voided/returned sale' + (s.refund_count === 1 ? '' : 's'));
+            html += negRow('Refunded tax amount', s.refund_tax, 'Tax credited back to customers');
+        }
 
         html += '</div>';
         el.innerHTML = html;
