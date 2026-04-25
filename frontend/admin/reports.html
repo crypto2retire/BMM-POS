@@ -744,6 +744,12 @@
             return;
         }
 
+        // Special rendering for daily_sales to show payment details
+        if (type === 'daily_sales') {
+            renderDailySalesWithPayments(rows);
+            return;
+        }
+
         var cols = data.columns || Object.keys(rows[0]);
         var html = '<div style="overflow-x:auto"><table class="report-table"><thead><tr>';
         cols.forEach(function(c) {
@@ -763,6 +769,116 @@
         });
         html += '</tbody></table></div>';
         el.innerHTML = html;
+    }
+
+    function renderDailySalesWithPayments(rows) {
+        var el = document.getElementById('reportContent');
+        var html = '<div style="overflow-x:auto"><table class="report-table"><thead><tr>' +
+            '<th>Date</th><th>Cashier</th><th>Items</th><th>Subtotal</th><th>Tax</th><th>Total</th>' +
+            '<th>Payment Method</th><th>Payment Details</th><th>Action</th></tr></thead><tbody>';
+        
+        rows.forEach(function(row, idx) {
+            var paymentDetail = '';
+            if (row.payment_method === 'cash' && row.cash_tendered) {
+                paymentDetail = 'Tendered: $' + row.cash_tendered.toFixed(2) + ' | Change: $' + (row.change_given || 0).toFixed(2);
+            } else if (row.payment_method === 'card' && row.card_transaction_id) {
+                paymentDetail = 'TXN: ' + row.card_transaction_id;
+            } else if (row.payment_method === 'split' && row.gift_card_amount) {
+                paymentDetail = 'Gift Card: $' + row.gift_card_amount.toFixed(2);
+            } else if (row.payment_method === 'gift_card' && row.gift_card_barcode) {
+                paymentDetail = 'GC: ' + row.gift_card_barcode;
+            }
+            
+            html += '<tr>';
+            html += '<td>' + escHtml(row.date) + '</td>';
+            html += '<td>' + escHtml(row.cashier) + '</td>';
+            html += '<td>' + row.items + '</td>';
+            html += '<td>$' + row.subtotal.toFixed(2) + '</td>';
+            html += '<td>$' + row.tax.toFixed(2) + '</td>';
+            html += '<td>$' + row.total.toFixed(2) + '</td>';
+            html += '<td>' + escHtml(row.payment_method || 'unknown') + '</td>';
+            html += '<td style="font-size:0.8rem;color:var(--text-light)">' + escHtml(paymentDetail) + '</td>';
+            html += '<td><button class="btn btn-sm" onclick="viewSalePaymentDetails(' + idx + ')" style="background:transparent;border:1px solid var(--gold);color:var(--gold);font-size:0.75rem;padding:0.25rem 0.5rem">Details</button></td>';
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table></div>';
+        el.innerHTML = html;
+    }
+
+    function escHtml(s) {
+        if (!s) return '';
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    async function viewSalePaymentDetails(rowIdx) {
+        var row = currentReportData[rowIdx];
+        if (!row || !row.id) {
+            showToast('Sale ID not available', 'error');
+            return;
+        }
+        try {
+            var data = await apiGet('/api/v1/admin/reports/sales/' + row.id + '/payment-details');
+            var s = data;
+            var html = '<div style="max-width:500px;margin:0 auto;padding:1rem">' +
+                '<h2 style="font-family:\'EB Garamond\',serif;font-style:italic;color:var(--gold);margin:0 0 1rem 0;font-size:1.3rem">Sale #' + s.sale_id + '</h2>' +
+                '<div style="background:var(--surface);border:1px solid var(--border);padding:1rem;margin-bottom:1rem">' +
+                '<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem"><span>Date:</span><span>' + escHtml(s.date_display) + '</span></div>' +
+                '<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem"><span>Cashier:</span><span>' + escHtml(s.cashier) + '</span></div>' +
+                '<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem"><span>Method:</span><span>' + escHtml(s.payment_method) + '</span></div>' +
+                '<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem"><span>Subtotal:</span><span>$' + s.subtotal.toFixed(2) + '</span></div>' +
+                '<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem"><span>Tax:</span><span>$' + s.tax_amount.toFixed(2) + '</span></div>' +
+                '<div style="display:flex;justify-content:space-between;margin-bottom:0.5rem"><span style="font-weight:600">Total:</span><span style="font-weight:600;color:var(--gold)">$' + s.total.toFixed(2) + '</span></div>' +
+                '</div>';
+            
+            if (s.payment_method === 'cash') {
+                html += '<div style="background:var(--surface);border:1px solid var(--border);padding:1rem;margin-bottom:1rem">' +
+                    '<div style="font-weight:600;margin-bottom:0.5rem">Cash Payment</div>' +
+                    '<div style="display:flex;justify-content:space-between"><span>Tendered:</span><span>$' + (s.cash_tendered || 0).toFixed(2) + '</span></div>' +
+                    '<div style="display:flex;justify-content:space-between"><span>Change:</span><span>$' + (s.change_given || 0).toFixed(2) + '</span></div>' +
+                    '</div>';
+            } else if (s.payment_method === 'card') {
+                html += '<div style="background:var(--surface);border:1px solid var(--border);padding:1rem;margin-bottom:1rem">' +
+                    '<div style="font-weight:600;margin-bottom:0.5rem">Card Payment</div>' +
+                    '<div style="display:flex;justify-content:space-between"><span>Transaction ID:</span><span style="font-family:monospace;font-size:0.85rem">' + escHtml(s.card_transaction_id || 'N/A') + '</span></div>' +
+                    '<div style="font-size:0.8rem;color:var(--text-light);margin-top:0.5rem">Match this with Poynt terminal by time and amount.</div>' +
+                    '</div>';
+            } else if (s.payment_method === 'split') {
+                html += '<div style="background:var(--surface);border:1px solid var(--border);padding:1rem;margin-bottom:1rem">' +
+                    '<div style="font-weight:600;margin-bottom:0.5rem">Split Payment</div>' +
+                    '<div style="display:flex;justify-content:space-between"><span>Gift Card:</span><span>$' + (s.gift_card_amount || 0).toFixed(2) + '</span></div>' +
+                    '<div style="display:flex;justify-content:space-between"><span>Card TXN:</span><span style="font-family:monospace;font-size:0.85rem">' + escHtml(s.card_transaction_id || 'N/A') + '</span></div>' +
+                    '</div>';
+            } else if (s.payment_method === 'gift_card') {
+                html += '<div style="background:var(--surface);border:1px solid var(--border);padding:1rem;margin-bottom:1rem">' +
+                    '<div style="font-weight:600;margin-bottom:0.5rem">Gift Card Payment</div>' +
+                    '<div style="display:flex;justify-content:space-between"><span>Amount:</span><span>$' + (s.gift_card_amount || 0).toFixed(2) + '</span></div>' +
+                    '<div style="display:flex;justify-content:space-between"><span>Barcode:</span><span>' + escHtml(s.gift_card_barcode || 'N/A') + '</span></div>' +
+                    '</div>';
+            }
+            
+            if (s.items && s.items.length) {
+                html += '<div style="background:var(--surface);border:1px solid var(--border);padding:1rem">' +
+                    '<div style="font-weight:600;margin-bottom:0.5rem">Items</div>';
+                s.items.forEach(function(item) {
+                    html += '<div style="display:flex;justify-content:space-between;font-size:0.9rem;padding:0.25rem 0;border-bottom:1px solid var(--border)">' +
+                        '<span>' + escHtml(item.item_name) + ' × ' + item.quantity + '</span>' +
+                        '<span>$' + item.line_total.toFixed(2) + '</span></div>';
+                });
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            
+            // Show in modal or new window
+            var detailWindow = window.open('', '_blank', 'width=500,height=700');
+            detailWindow.document.write('<html><head><title>Sale #' + s.sale_id + '</title>' +
+                '<style>body{font-family:Roboto,sans-serif;background:var(--bg);color:var(--text);padding:20px}</style>' +
+                '<link rel="stylesheet" href="/static/css/main.css"></head><body>' + html + '</body></html>');
+            detailWindow.document.close();
+        } catch (err) {
+            showToast(err.message || 'Failed to load sale details', 'error');
+        }
     }
 
     function exportCSV() {

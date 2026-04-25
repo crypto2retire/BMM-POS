@@ -329,6 +329,12 @@ async def report_daily_sales(
             "tax": round(float(s.tax_amount), 2),
             "total": round(float(s.total), 2),
             "payment": s.payment_method or "unknown",
+            "payment_method": s.payment_method or "unknown",
+            "card_transaction_id": s.card_transaction_id or "",
+            "cash_tendered": float(s.cash_tendered) if s.cash_tendered else None,
+            "change_given": float(s.change_given) if s.change_given else None,
+            "gift_card_amount": float(s.gift_card_amount) if s.gift_card_amount else None,
+            "gift_card_barcode": s.gift_card_barcode or "",
         })
 
     return {
@@ -388,6 +394,11 @@ async def report_sales(
             "tax_amount": float(s.tax_amount),
             "total": float(s.total),
             "payment_method": s.payment_method,
+            "card_transaction_id": s.card_transaction_id or "",
+            "cash_tendered": float(s.cash_tendered) if s.cash_tendered else None,
+            "change_given": float(s.change_given) if s.change_given else None,
+            "gift_card_amount": float(s.gift_card_amount) if s.gift_card_amount else None,
+            "gift_card_barcode": s.gift_card_barcode or "",
         })
 
     return {
@@ -397,6 +408,61 @@ async def report_sales(
             "total_tax": round(total_tax, 2),
         },
         "sales": sales_list,
+    }
+
+
+@router.get("/sales/{sale_id}/payment-details")
+async def sale_payment_details(
+    sale_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
+):
+    """
+    Returns full payment details for a specific sale.
+    Use this to verify card payments against Poynt terminal by matching
+    time + amount + transaction ID.
+    """
+    from sqlalchemy.orm import selectinload
+
+    result = await db.execute(
+        select(Sale)
+        .options(selectinload(Sale.cashier), selectinload(Sale.items))
+        .where(Sale.id == sale_id)
+    )
+    sale = result.scalar_one_or_none()
+    if not sale:
+        raise HTTPException(status_code=404, detail="Sale not found")
+
+    items_detail = []
+    for si in sale.items:
+        items_detail.append({
+            "item_name": si.item.name if si.item else "Unknown",
+            "sku": si.item.sku if si.item else "",
+            "vendor_name": si.vendor.name if si.vendor else "Unknown",
+            "quantity": si.quantity,
+            "unit_price": float(si.unit_price),
+            "line_total": float(si.line_total),
+        })
+
+    return {
+        "sale_id": sale.id,
+        "date": _to_local(sale.created_at).isoformat() if sale.created_at else None,
+        "date_display": _to_local(sale.created_at).strftime("%Y-%m-%d %I:%M:%S %p") if sale.created_at else "",
+        "cashier": sale.cashier.name if sale.cashier else "Unknown",
+        "payment_method": sale.payment_method,
+        "subtotal": float(sale.subtotal),
+        "tax_amount": float(sale.tax_amount),
+        "total": float(sale.total),
+        "card_transaction_id": sale.card_transaction_id or "",
+        "external_payment_reference": getattr(sale, 'external_payment_reference', None) or "",
+        "cash_tendered": float(sale.cash_tendered) if sale.cash_tendered else None,
+        "change_given": float(sale.change_given) if sale.change_given else None,
+        "gift_card_amount": float(sale.gift_card_amount) if sale.gift_card_amount else None,
+        "gift_card_barcode": sale.gift_card_barcode or "",
+        "receipt_email": sale.receipt_email or "",
+        "is_voided": sale.is_voided,
+        "void_reason": sale.void_reason or "",
+        "items": items_detail,
     }
 
 

@@ -3114,6 +3114,11 @@
                 <span class="right">${paymentLine}</span>
             </div>
             ${changeLine}
+            ${sale.payment_method === 'card' && sale.card_transaction_id ? `
+            <div class="receipt-line" style="font-size:0.75rem;color:var(--text-light);margin-top:4px">
+                <span class="left">TXN ID</span>
+                <span class="right" style="font-family:monospace">${escHtml(sale.card_transaction_id)}</span>
+            </div>` : ''}
             <hr class="receipt-divider">
             <div class="receipt-footer">
                 <p>Thank you for shopping at</p>
