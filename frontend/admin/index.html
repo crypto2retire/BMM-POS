@@ -1715,9 +1715,11 @@
                 var actionBtns = '';
                 if (o.status === 'pending') {
                     actionBtns = '<button onclick="markAdminReady(' + o.id + ')" class="btn btn-sm" id="admin-ready-btn-' + o.id + '" style="background:color-mix(in srgb, var(--info) 50%, var(--bg));color:var(--text);margin-top:4px;font-size:0.75rem;margin-right:4px">Notify Ready</button>'
-                        + '<button onclick="markAdminPickup(' + o.id + ')" class="btn btn-sm" style="background:color-mix(in srgb, var(--success) 45%, var(--bg));color:var(--success-light);margin-top:4px;font-size:0.75rem">Picked Up</button>';
+                        + '<button onclick="markAdminPickup(' + o.id + ')" class="btn btn-sm" style="background:color-mix(in srgb, var(--success) 45%, var(--bg));color:var(--success-light);margin-top:4px;font-size:0.75rem;margin-right:4px">Picked Up</button>'
+                        + '<button onclick="cancelAdminOrder(' + o.id + ')" class="btn btn-sm" style="background:color-mix(in srgb, var(--danger) 45%, var(--bg));color:var(--danger-light);margin-top:4px;font-size:0.75rem">Cancel</button>';
                 } else if (o.status === 'ready') {
-                    actionBtns = '<button onclick="markAdminPickup(' + o.id + ')" class="btn btn-sm" style="background:color-mix(in srgb, var(--success) 45%, var(--bg));color:var(--success-light);margin-top:4px;font-size:0.75rem">Mark Picked Up</button>';
+                    actionBtns = '<button onclick="markAdminPickup(' + o.id + ')" class="btn btn-sm" style="background:color-mix(in srgb, var(--success) 45%, var(--bg));color:var(--success-light);margin-top:4px;font-size:0.75rem;margin-right:4px">Mark Picked Up</button>'
+                        + '<button onclick="cancelAdminOrder(' + o.id + ')" class="btn btn-sm" style="background:color-mix(in srgb, var(--danger) 45%, var(--bg));color:var(--danger-light);margin-top:4px;font-size:0.75rem">Cancel</button>';
                 }
                 var emailLine = o.customer_email ? '<div style="font-size:0.75rem;color:var(--text-muted);margin-top:1px">' + o.customer_email.replace(/</g, '&lt;') + '</div>' : '';
                 return '<div style="background:var(--surface);border:1px solid var(--border);padding:0.75rem;margin-bottom:6px;display:flex;justify-content:space-between;align-items:start">'
@@ -1756,6 +1758,17 @@
             loadAdminOrders('pending');
         } catch (e) {
             showAlert('alert-container', e.message || 'Failed', 'error');
+        }
+    }
+
+    async function cancelAdminOrder(reservationId) {
+        if (!confirm('Cancel this order? Inventory will be released.')) return;
+        try {
+            var result = await apiPost('/api/v1/admin/reports/reservations/' + reservationId + '/cancel', {});
+            showAlert('alert-container', result.message || 'Order cancelled', 'success');
+            loadAdminOrders('pending');
+        } catch (e) {
+            showAlert('alert-container', e.message || 'Failed to cancel', 'error');
         }
     }
 

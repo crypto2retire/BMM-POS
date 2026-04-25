@@ -928,6 +928,41 @@ async def mark_reservation_pickup(
     return {"message": "Reservation marked as picked up"}
 
 
+@router.post("/reservations/{reservation_id}/cancel")
+async def cancel_reservation(
+    reservation_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
+):
+    result = await db.execute(
+        select(Reservation).options(selectinload(Reservation.item))
+        .where(Reservation.id == reservation_id)
+    )
+    reservation = result.scalar_one_or_none()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    if reservation.status == "cancelled":
+        raise HTTPException(status_code=400, detail="Reservation is already cancelled")
+    if reservation.status == "completed":
+        raise HTTPException(status_code=400, detail="Cannot cancel a completed order")
+
+    old_status = reservation.status
+    reservation.status = "cancelled"
+
+    if reservation.item:
+        if old_status == "pending":
+            reservation.item.reserved_quantity = max(0, reservation.item.reserved_quantity - 1)
+        elif old_status == "ready":
+            reservation.item.quantity = reservation.item.quantity + 1
+            if reservation.item.status == "sold":
+                reservation.item.status = "active"
+
+    await db.commit()
+
+    return {"message": "Reservation cancelled", "old_status": old_status}
+
+
 # ---------------------------------------------------------------------------
 # Items Sold — searchable line-item view with vendor reassignment
 # ---------------------------------------------------------------------------

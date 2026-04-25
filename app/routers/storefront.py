@@ -682,6 +682,59 @@ async def payment_confirmed(
     return {"message": f"Payment confirmed! {pending_count} {item_word} reserved."}
 
 
+class CancelReservationRequest(BaseModel):
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+
+@router.post("/reservations/{public_id}/cancel")
+async def cancel_reservation_public(
+    public_id: str,
+    req: CancelReservationRequest = CancelReservationRequest(),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Reservation).options(selectinload(Reservation.item))
+        .where(Reservation.public_id == public_id)
+    )
+    reservation = result.scalar_one_or_none()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    if reservation.status == "cancelled":
+        raise HTTPException(status_code=400, detail="Reservation is already cancelled")
+    if reservation.status == "completed":
+        raise HTTPException(status_code=400, detail="Cannot cancel a completed order")
+
+    # Verify identity via email or phone
+    provided_email = (req.email or "").strip().lower()
+    provided_phone = (req.phone or "").strip()
+    res_email = (reservation.customer_email or "").strip().lower()
+    res_phone = (reservation.customer_phone or "").strip()
+
+    if provided_email and provided_email == res_email:
+        pass
+    elif provided_phone and provided_phone == res_phone:
+        pass
+    else:
+        raise HTTPException(status_code=403, detail="Email or phone does not match this reservation")
+
+    old_status = reservation.status
+    reservation.status = "cancelled"
+
+    if reservation.item:
+        if old_status == "pending":
+            reservation.item.reserved_quantity = max(0, reservation.item.reserved_quantity - 1)
+        elif old_status == "ready":
+            reservation.item.quantity = reservation.item.quantity + 1
+            if reservation.item.status == "sold":
+                reservation.item.status = "active"
+
+    await db.commit()
+
+    return {"message": "Reservation cancelled successfully", "old_status": old_status}
+
+
 # ── Phase 3 SEO endpoints ──────────────────────────────────────────────
 import re as _seo_re
 

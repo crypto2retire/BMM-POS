@@ -4342,11 +4342,15 @@ table { width: 100%; border-collapse: collapse; }
                 let actionBtns = '';
                 if (o.status === 'pending') {
                     actionBtns = `<button class="order-btn-secondary" onclick="markReady(${o.id})" id="ready-btn-${o.id}">Notify Ready</button>`
-                        + `<button class="order-btn-primary" onclick="markPickedUp(${o.id})">Picked Up</button>`;
+                        + `<button class="order-btn-primary" onclick="markPickedUp(${o.id})">Picked Up</button>`
+                        + `<button class="order-btn-ghost" onclick="cancelOrder(${o.id})" style="margin-left:4px">Cancel</button>`;
                 } else if (o.status === 'ready') {
-                    actionBtns = `<button class="order-btn-primary" onclick="markPickedUp(${o.id})">Mark Picked Up</button>`;
+                    actionBtns = `<button class="order-btn-primary" onclick="markPickedUp(${o.id})">Mark Picked Up</button>`
+                        + `<button class="order-btn-ghost" onclick="cancelOrder(${o.id})" style="margin-left:4px">Cancel</button>`;
                 } else if (o.status === 'completed') {
                     actionBtns = `<button class="order-btn-ghost" disabled>Completed</button>`;
+                } else if (o.status === 'cancelled') {
+                    actionBtns = `<button class="order-btn-ghost" disabled>Cancelled</button>`;
                 }
                 const emailLine = o.customer_email ? `<div class="order-card-meta"><span>✉ ${escHtml(o.customer_email)}</span></div>` : '';
                 const phoneDisplay = o.customer_phone ? escHtml(o.customer_phone) : 'No phone';
@@ -4401,6 +4405,17 @@ table { width: 100%; border-collapse: collapse; }
             loadOnlineOrders(ordersCurrentFilter || 'pending');
         } catch (err) {
             showToast(err.message || 'Failed to update order', 'error');
+        }
+    }
+
+    async function cancelOrder(reservationId) {
+        if (!confirm('Cancel this order? Inventory will be released.')) return;
+        try {
+            const result = await apiPost(`/api/v1/admin/reports/reservations/${reservationId}/cancel`, {});
+            showToast(result.message || 'Order cancelled', 'success');
+            loadOnlineOrders(ordersCurrentFilter || 'pending');
+        } catch (err) {
+            showToast(err.message || 'Failed to cancel order', 'error');
         }
     }
 
