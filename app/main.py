@@ -517,10 +517,13 @@ _DEV_MODE = os.environ.get("BMM_DEV_MODE") == "1" or os.environ.get("RAILWAY_ENV
 
 @app.middleware("http")
 async def static_cache_headers(request: Request, call_next):
-    """Add Cache-Control to static assets (CSS, JS, images, fonts)."""
     response = await call_next(request)
     path = request.url.path.lower()
-    if (path.endswith(".css") or path.endswith(".js") or path.endswith(".webp") or
+    if path.endswith(".html") or path == "/" or path.endswith("/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    elif (path.endswith(".css") or path.endswith(".js") or path.endswith(".webp") or
             path.endswith(".png") or path.endswith(".jpg") or path.endswith(".jpeg") or
             path.endswith(".gif") or path.endswith(".svg") or path.endswith(".woff") or
             path.endswith(".woff2") or path.endswith(".ttf") or path.endswith(".ico")):

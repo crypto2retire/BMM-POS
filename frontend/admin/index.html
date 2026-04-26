@@ -950,30 +950,14 @@
         document.querySelectorAll('.main-tab').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
         var ids = ['tab-overview','tab-vendors','tab-analytics','tab-operations','tab-rent-payouts'];
-        var debug = [];
         ids.forEach(function (id) {
             var el = document.getElementById(id);
             if (el) {
-                if (id === 'tab-' + tab) {
-                    el.style.cssText = 'display:block !important;visibility:visible !important;opacity:1 !important';
-                    var cs = window.getComputedStyle(el);
-                    debug.push(id + ': set block, computed=' + cs.display);
-                } else {
-                    el.style.display = 'none';
-                }
-            } else {
-                debug.push(id + ': MISSING FROM DOM');
+                el.style.display = id === 'tab-' + tab ? 'block' : 'none';
             }
         });
-        if (tab === 'rent-payouts') {
-            alert('Tab debug:\n' + debug.join('\n'));
-            var rpEl = document.getElementById('tab-rent-payouts');
-            if (rpEl) alert('RP innerHTML length: ' + rpEl.innerHTML.length + '\nParent: ' + (rpEl.parentElement ? rpEl.parentElement.id || rpEl.parentElement.className : 'NONE'));
-            if (typeof window.loadRPLedger === 'function') {
-                try { window.loadRPLedger(); } catch(e) { alert('loadRPLedger: ' + e.message); }
-            } else {
-                alert('loadRPLedger NOT defined yet');
-            }
+        if (tab === 'rent-payouts' && typeof window.loadRPLedger === 'function') {
+            try { window.loadRPLedger(); } catch(e) { alert('loadRPLedger: ' + e.message); }
         }
     }
     </script>
@@ -1263,11 +1247,10 @@
                 Select a vendor above to preview their landing page
             </div>
         </div>
+    </div><!-- vendor-landing section -->
     </div><!-- #tab-operations -->
 
     <div id="tab-rent-payouts" style="display:none">
-
-        <h2 style="color:red;font-size:24px;padding:20px;background:white;z-index:99999;position:relative">VERSION 3 — If you see this, the new code IS deployed. If blank, the server is serving old HTML.</h2>
 
         <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:0.95rem;color:var(--text-light);margin-bottom:1rem" id="rp-month-label"></div>
 
@@ -2239,11 +2222,6 @@
 </script>
 <script>
 (function () {
-    setTimeout(function() {
-        var el = document.getElementById('tab-rent-payouts');
-        if (!el) { document.title = 'BUG: tab-rent-payouts missing from DOM'; return; }
-        document.title = 'Admin — RP tab OK (' + el.children.length + ' children)';
-    }, 2000);
 
     var _rpData = null;
 
