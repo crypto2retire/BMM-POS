@@ -950,22 +950,30 @@
         document.querySelectorAll('.main-tab').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
         var ids = ['tab-overview','tab-vendors','tab-analytics','tab-operations','tab-rent-payouts'];
+        var debug = [];
         ids.forEach(function (id) {
             var el = document.getElementById(id);
             if (el) {
                 if (id === 'tab-' + tab) {
-                    el.style.display = 'block';
-                    el.style.visibility = 'visible';
-                    el.style.opacity = '1';
+                    el.style.cssText = 'display:block !important;visibility:visible !important;opacity:1 !important';
+                    var cs = window.getComputedStyle(el);
+                    debug.push(id + ': set block, computed=' + cs.display);
                 } else {
                     el.style.display = 'none';
                 }
             } else {
-                console.warn('Tab element missing:', id);
+                debug.push(id + ': MISSING FROM DOM');
             }
         });
-        if (tab === 'rent-payouts' && typeof window.loadRPLedger === 'function') {
-            try { window.loadRPLedger(); } catch(e) { alert('loadRPLedger: ' + e.message); }
+        if (tab === 'rent-payouts') {
+            alert('Tab debug:\n' + debug.join('\n'));
+            var rpEl = document.getElementById('tab-rent-payouts');
+            if (rpEl) alert('RP innerHTML length: ' + rpEl.innerHTML.length + '\nParent: ' + (rpEl.parentElement ? rpEl.parentElement.id || rpEl.parentElement.className : 'NONE'));
+            if (typeof window.loadRPLedger === 'function') {
+                try { window.loadRPLedger(); } catch(e) { alert('loadRPLedger: ' + e.message); }
+            } else {
+                alert('loadRPLedger NOT defined yet');
+            }
         }
     }
     </script>
