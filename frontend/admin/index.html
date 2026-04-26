@@ -1264,9 +1264,11 @@
                 <div class="sum-label">All vendor balances</div>
                 <div style="font-size:0.68rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-top:0.35rem">Sales total</div>
                 <div class="sum-value white" style="font-size:1.15rem;margin-top:0.2rem;line-height:1.2" id="rp-total-sales-balances">&mdash;</div>
-                <div style="font-size:0.68rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-top:0.4rem">Rent total</div>
-                <div class="sum-value" style="font-size:1.15rem;margin-top:0.2rem;line-height:1.2" id="rp-total-rent-balances">&mdash;</div>
-                <div style="font-size:0.68rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-top:0.4rem">Combined</div>
+                <div style="font-size:0.68rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-top:0.4rem">Rent due (unpaid)</div>
+                <div class="sum-value" style="font-size:1.15rem;margin-top:0.2rem;line-height:1.2" id="rp-total-rent-due">&mdash;</div>
+                <div style="font-size:0.68rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-top:0.4rem">Rent credits</div>
+                <div class="sum-value" style="font-size:1.15rem;margin-top:0.2rem;line-height:1.2" id="rp-total-rent-credits">&mdash;</div>
+                <div style="font-size:0.68rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.08em;margin-top:0.4rem">Net = Sales - Rent + Credits</div>
                 <div class="sum-value green" style="font-size:1.35rem;margin-top:0.2rem;line-height:1.2" id="rp-total-balances">&mdash;</div>
             </div>
         </div>
@@ -2282,7 +2284,8 @@
         set('rp-payouts-processed', s.total_payouts_processed);
         set('rp-payouts-pending', s.total_payouts_pending);
         set('rp-total-sales-balances', s.total_sales_balances != null ? s.total_sales_balances : 0);
-        set('rp-total-rent-balances', s.total_rent_balances != null ? s.total_rent_balances : 0);
+        set('rp-total-rent-due', s.total_rent_due != null ? s.total_rent_due : 0);
+        set('rp-total-rent-credits', s.total_rent_credits != null ? s.total_rent_credits : 0);
         set('rp-total-balances', s.total_vendor_balances != null ? s.total_vendor_balances : 0);
     }
 

@@ -1254,15 +1254,12 @@ async def rent_payout_ledger(
         float(p.net_payout) for p in payouts if p.status == "pending"
     )
 
-    total_sales_balances = sum(balances.get(v.id, 0.0) for v in all_vendors)
-    total_rent_balances = round(
-        sum(_admin_display_rent_balance(rent_balances.get(v.id, 0.0), float(v.monthly_rent or 0) + float(v.landing_page_fee or 0), v.id in paid_current_period) for v in all_vendors),
+    total_sales_balances = round(sum(balances.get(v.id, 0.0) for v in all_vendors), 2)
+    total_rent_due = round(
+        sum(float(v.monthly_rent or 0) + float(v.landing_page_fee or 0) for v in all_vendors if v.id not in paid_current_period),
         2,
     )
-    total_balances = round(
-        sum(_admin_effective_balance(balances.get(v.id, 0.0), rent_balances.get(v.id, 0.0)) for v in all_vendors),
-        2,
-    )
+    total_rent_credits = round(sum(rent_balances.get(v.id, 0.0) for v in all_vendors), 2)
 
     # ── Per-vendor balance cards ──
     vendor_cards = []
@@ -1271,10 +1268,7 @@ async def rent_payout_ledger(
         rb = rent_balances.get(v.id, 0.0)
         rent = float(v.monthly_rent or 0) + float(v.landing_page_fee or 0)
         rent_paid = v.id in paid_current_period
-        if rent > 0 and not rent_paid:
-            np = round(sb - rent + rb, 2)
-        else:
-            np = round(sb + rb, 2)
+        np = round(sb - (rent if not rent_paid else 0) + rb, 2)
         vendor_cards.append({
             "id": v.id,
             "name": v.name,
@@ -1286,6 +1280,8 @@ async def rent_payout_ledger(
             "rent_paid_this_month": rent_paid,
         })
 
+    total_vendor_balances = round(sum(c["net_payout"] for c in vendor_cards), 2)
+
     return {
         "summary": {
             "total_rent_owed": round(total_rent_owed, 2),
@@ -1293,9 +1289,10 @@ async def rent_payout_ledger(
             "rent_outstanding": round(rent_outstanding, 2),
             "total_payouts_processed": round(total_payouts_processed, 2),
             "total_payouts_pending": round(total_payouts_pending, 2),
-            "total_vendor_balances": round(total_balances, 2),
-            "total_sales_balances": round(total_sales_balances, 2),
-            "total_rent_balances": round(total_rent_balances, 2),
+            "total_vendor_balances": total_vendor_balances,
+            "total_sales_balances": total_sales_balances,
+            "total_rent_due": total_rent_due,
+            "total_rent_credits": total_rent_credits,
             "month_label": today.strftime("%B %Y"),
         },
         "vendor_cards": vendor_cards,
