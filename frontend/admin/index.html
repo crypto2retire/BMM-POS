@@ -945,6 +945,30 @@
         <button type="button" class="main-tab" onclick="switchMainTab('operations',this)">Operations</button>
         <button type="button" class="main-tab" onclick="switchMainTab('rent-payouts',this)">Rent &amp; Payouts</button>
     </div>
+    <script>
+    function switchMainTab(tab, btn) {
+        document.querySelectorAll('.main-tab').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        var ids = ['tab-overview','tab-vendors','tab-analytics','tab-operations','tab-rent-payouts'];
+        ids.forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) {
+                if (id === 'tab-' + tab) {
+                    el.style.display = 'block';
+                    el.style.visibility = 'visible';
+                    el.style.opacity = '1';
+                } else {
+                    el.style.display = 'none';
+                }
+            } else {
+                console.warn('Tab element missing:', id);
+            }
+        });
+        if (tab === 'rent-payouts' && typeof window.loadRPLedger === 'function') {
+            try { window.loadRPLedger(); } catch(e) { alert('loadRPLedger: ' + e.message); }
+        }
+    }
+    </script>
 
     <div id="tab-overview">
     <div class="period-tabs">
@@ -2205,25 +2229,6 @@
 </script>
 <script>
 (function () {
-    function switchMainTab(tab, btn) {
-        document.querySelectorAll('.main-tab').forEach(function (b) { b.classList.remove('active'); });
-        btn.classList.add('active');
-        var overview = document.getElementById('tab-overview');
-        var vendors = document.getElementById('tab-vendors');
-        var analytics = document.getElementById('tab-analytics');
-        var operations = document.getElementById('tab-operations');
-        var rp = document.getElementById('tab-rent-payouts');
-        if (overview) overview.style.display = tab === 'overview' ? 'block' : 'none';
-        if (vendors) vendors.style.display = tab === 'vendors' ? 'block' : 'none';
-        if (analytics) analytics.style.display = tab === 'analytics' ? 'block' : 'none';
-        if (operations) operations.style.display = tab === 'operations' ? 'block' : 'none';
-        if (rp) rp.style.display = tab === 'rent-payouts' ? 'block' : 'none';
-        if (tab === 'rent-payouts') {
-            try { loadRPLedger(); } catch(e) { alert('loadRPLedger error: ' + e.message); }
-        }
-    }
-    window.switchMainTab = switchMainTab;
-
     setTimeout(function() {
         var el = document.getElementById('tab-rent-payouts');
         if (!el) { document.title = 'BUG: tab-rent-payouts missing from DOM'; return; }
