@@ -48,6 +48,7 @@ from app.services.email import send_email_safe
 from app.services.rate_limit import check_rate_limit
 from app.config import settings
 from app.timezone import STORE_TZ
+from app.routers.notifications import bg_notify_product_sold, bg_notify_order_confirmation
 
 ONLINE_PAYMENT_METHODS = ("cash", "card", "split", "gift_card", "crypto_blackbox")
 
