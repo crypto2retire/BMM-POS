@@ -1442,6 +1442,9 @@
             const sugg = parseAISuggestions(data.reply);
             if (sugg) {
                 showSuggestions(sugg);
+            } else if (/Assistant (error|is temporarily unavailable)/i.test(data.reply)) {
+                statusEl.textContent = 'AI is busy. Please try again in a moment.';
+                setTimeout(() => { statusEl.textContent = ''; }, 4000);
             } else {
                 if (!miniChatOpen) toggleMiniChat();
                 showMiniChatMessage(data.reply, 'assistant');
@@ -1561,7 +1564,11 @@
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || 'Unavailable');
-            showMiniChatMessage(data.reply, 'assistant');
+            if (/Assistant (error|is temporarily unavailable)/i.test(data.reply)) {
+                showMiniChatMessage('AI is busy. Please try again in a moment.', 'assistant');
+            } else {
+                showMiniChatMessage(data.reply, 'assistant');
+            }
         } catch (e) {
             showMiniChatMessage('Assistant is not available right now.', 'assistant');
         }
@@ -1591,7 +1598,12 @@
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                 body: JSON.stringify({ message: 'What is this item? Suggest a name, category, and description.', image_base64: base64, image_mime_type: mime, form_context: formContext }),
             }).then(r => r.json()).then(data => {
-                showMiniChatMessage(data.reply || 'No response.', 'assistant');
+                const reply = data.reply || 'No response.';
+                if (/Assistant (error|is temporarily unavailable)/i.test(reply)) {
+                    showMiniChatMessage('AI is busy. Please try again in a moment.', 'assistant');
+                } else {
+                    showMiniChatMessage(reply, 'assistant');
+                }
             }).catch(() => {
                 showMiniChatMessage('Assistant is not available right now.', 'assistant');
             });

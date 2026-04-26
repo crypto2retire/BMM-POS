@@ -4,7 +4,7 @@ from datetime import date
 from typing import Optional
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,6 +16,7 @@ from app.routers.settings import require_role_feature
 from app.schemas.assistant import AssistantChatRequest, AssistantChatResponse
 from app.services.barcode import generate_sku
 from app.services.llm_gateway import chat_completion
+from app.services.rate_limit import check_rate_limit
 
 router = APIRouter(prefix="/assistant", tags=["assistant"])
 
@@ -584,9 +585,17 @@ async def _call_assistant_llm(
 @router.post("/chat", response_model=AssistantChatResponse)
 async def chat(
     data: AssistantChatRequest,
+    request: Request,
     current_user: Vendor = Depends(require_role_feature("role_view_ai_assistant")),
     db: AsyncSession = Depends(get_db),
 ):
+    check_rate_limit(
+        request,
+        window_name="vendor_assistant",
+        max_requests=20,
+        window_seconds=60,
+        error_message="Too many requests. Please try again later.",
+    )
     if data.image_base64 and data.image_mime_type:
         user_content = [
             {

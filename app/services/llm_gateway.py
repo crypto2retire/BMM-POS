@@ -55,6 +55,8 @@ async def _post_json(url: str, *, headers: dict[str, str], payload: dict[str, An
         except httpx.RequestError as exc:
             raise HTTPException(status_code=502, detail=f"AI network error: {exc}") from exc
 
+    if response.status_code == 429:
+        raise HTTPException(status_code=429, detail="AI rate limit exceeded. Please try again shortly.")
     if response.status_code == 401:
         raise HTTPException(status_code=503, detail="AI credentials are invalid or missing")
     if response.status_code == 404:

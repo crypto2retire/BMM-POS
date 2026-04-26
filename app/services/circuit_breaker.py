@@ -105,7 +105,7 @@ class CircuitBreaker:
 
 # Global breakers per external service
 _square_breaker = CircuitBreaker("square", failure_threshold=5, recovery_timeout=60.0)
-_openrouter_breaker = CircuitBreaker("openrouter", failure_threshold=5, recovery_timeout=60.0)
+_openrouter_breaker = CircuitBreaker("openrouter", failure_threshold=20, recovery_timeout=30.0)
 _poynt_breaker = CircuitBreaker("poynt", failure_threshold=5, recovery_timeout=60.0)
 
 
