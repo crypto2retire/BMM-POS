@@ -2,7 +2,7 @@ import os
 import shutil
 import time
 import uuid
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from typing import List, Optional
 
@@ -27,7 +27,6 @@ from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse, ItemListingRe
 from app.routers.auth import get_current_user
 from app.routers.settings import role_feature_allowed, get_setting
 from app.services.barcode import generate_sku, generate_short_barcode, maybe_upgrade_barcode
-from app.services.upload_security import validate_upload_path
 from app.services.labels import generate_label_pdf, generate_label_pdf_batch
 from app.services import spaces as spaces_svc
 
