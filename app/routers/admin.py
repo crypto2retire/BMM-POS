@@ -554,6 +554,14 @@ async def record_rent_payment(
         notes=f"[rent-ref:{reference_tag}] {receipt_notes}".strip(),
     )
     db.add(rent_payment)
+    await db.flush()
+
+    from app.services.accounting_journal import journal_rent_payment
+    await journal_rent_payment(
+        db=db, payment_id=rent_payment.id, payment_date=date.today(),
+        amount=amount, method=method, created_by=current_user.id,
+    )
+
     await db.commit()
     await db.refresh(rent_payment)
 
@@ -890,6 +898,15 @@ async def process_payouts(
                 + (f", sales: ${float(rent_from_sales):.2f}" if rent_from_sales > 0 else ""),
             )
             db.add(rent_payment)
+
+        await db.flush()
+
+        from app.services.accounting_journal import journal_payout as journal_payout_entry
+        await journal_payout_entry(
+            db=db, payout_id=payout.id, payout_date=date.today(),
+            gross_sales=gross_sales, rent_deducted=total_rent_deducted,
+            net_payout=net, created_by=current_user.id,
+        )
 
         # Update balances
         if bal:

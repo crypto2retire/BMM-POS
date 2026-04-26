@@ -775,6 +775,19 @@ async def pos_create_sale(
             notes=f"Sale #{sale.id}" + (" (split)" if data.payment_method == "split" else ""),
         ))
 
+    from app.services.accounting_journal import journal_sale as journal_sale_entry
+    await journal_sale_entry(
+        db=db,
+        sale_id=sale.id,
+        sale_date=sale.created_at.date(),
+        subtotal=subtotal_after_discount,
+        tax_amount=tax_amount,
+        total=total,
+        payment_method=data.payment_method,
+        gift_card_amount=gc_amount_applied if gc_amount_applied else (total if data.payment_method == "gift_card" else None),
+        created_by=current_user.id,
+    )
+
     await db.commit()
 
     await log_audit(
@@ -1798,6 +1811,13 @@ async def activate_gift_card(
         )
         db.add(txn)
 
+    if data.initial_balance > 0:
+        from app.services.accounting_journal import journal_gift_card_load
+        await journal_gift_card_load(
+            db=db, gc_id=card.id, load_date=date.today(),
+            amount=data.initial_balance, created_by=current_user.id,
+        )
+
     await db.commit()
     await log_audit(
         db=db,
@@ -1900,6 +1920,13 @@ async def load_gift_card(
         notes=data.notes,
     )
     db.add(txn)
+
+    from app.services.accounting_journal import journal_gift_card_load as journal_gc_load
+    await journal_gc_load(
+        db=db, gc_id=card.id, load_date=date.today(),
+        amount=load_amount, created_by=current_user.id,
+    )
+
     await db.commit()
     await log_audit(
         db=db,
@@ -2146,6 +2173,14 @@ async def pos_rent_payment(
         notes=stamp_rent_notes(receipt_notes, reference_tag),
     )
     db.add(rent_payment)
+    await db.flush()
+
+    from app.services.accounting_journal import journal_rent_payment as journal_rent
+    await journal_rent(
+        db=db, payment_id=rent_payment.id, payment_date=today,
+        amount=amount, method=method, created_by=current_user.id,
+    )
+
     await db.commit()
     await db.refresh(rent_payment)
 
