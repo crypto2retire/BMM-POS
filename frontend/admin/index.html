@@ -1256,15 +1256,39 @@
 
         <div class="ornament">&loz;</div>
 
-        <h3 style="font-family:'EB Garamond',serif;font-size:1.1rem;font-weight:500;color:var(--text);margin-bottom:0.5rem;font-style:italic">Vendor Balances</h3>
-        <div class="rp-vendor-cards-row" id="rp-vendor-cards"></div>
-
-        <div class="ornament">&loz;</div>
-
         <div class="rp-action-bar" id="rp-admin-actions">
             <button type="button" class="process-btn" onclick="openRentFromLedger()" style="background:color-mix(in srgb, var(--success-light) 12%, transparent);color:var(--success-light);border:1px solid color-mix(in srgb, var(--success-light) 30%, transparent);padding:0.55rem 1.2rem;font-size:0.78rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em;min-height:44px">Record Rent Payment</button>
             <button type="button" class="process-btn" onclick="window.confirmProcessPayoutsHub()" style="background:color-mix(in srgb, var(--gold) 12%, transparent);color:var(--gold);border:1px solid color-mix(in srgb, var(--gold) 30%, transparent);padding:0.55rem 1.2rem;font-size:0.78rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em;min-height:44px">Process Payouts</button>
         </div>
+
+        <div class="ornament">&loz;</div>
+
+        <h3 style="font-family:'EB Garamond',serif;font-size:1.1rem;font-weight:500;color:var(--text);margin-bottom:0.5rem;font-style:italic">Combined Vendor Summary</h3>
+        <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem">Each vendor&#8217;s sales, rent, and payout activity in one view.</p>
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:0.75rem">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Vendor</th>
+                            <th>Sales</th>
+                            <th>Rent Due</th>
+                            <th>Rent Paid</th>
+                            <th>Rent Balance</th>
+                            <th>Payouts</th>
+                            <th>Net Balance</th>
+                            <th style="width:60px"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="rp-combined-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="ornament">&loz;</div>
+
+        <h3 style="font-family:'EB Garamond',serif;font-size:1.1rem;font-weight:500;color:var(--text);margin-bottom:0.5rem;font-style:italic">Transaction Ledger</h3>
+        <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem">All rent payments and payouts. Click a row to edit or delete.</p>
 
         <div class="rp-filter-bar">
             <input type="search" id="rp-search" placeholder="Search vendor name..." oninput="filterRPLedger()" style="flex:1;min-width:180px;max-width:280px">
@@ -1289,7 +1313,7 @@
                             <th>Method</th>
                             <th>Period</th>
                             <th>Status</th>
-                            <th>Notes</th>
+                            <th style="width:140px">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="rp-ledger-tbody"></tbody>
@@ -1298,6 +1322,43 @@
         </div>
 
     </div><!-- #tab-rent-payouts -->
+
+    <!-- Edit Rent/Payout Transaction Modal -->
+    <div class="modal-overlay" id="rp-edit-modal" style="display:none;position:fixed;inset:0;background:color-mix(in srgb, black 78%, transparent);z-index:1000;align-items:center;justify-content:center;padding:1rem" onclick="if(event.target===this)closeRPEditModal()">
+        <div style="background:var(--surface);border:1px solid var(--warm-border);padding:1.75rem;width:100%;max-width:440px;color:var(--text)" onclick="event.stopPropagation()">
+            <h2 style="font-family:'EB Garamond',serif;font-size:1.35rem;font-weight:500;margin-bottom:0.5rem;color:var(--gold);font-style:italic">Edit Transaction</h2>
+            <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem" id="rp-edit-info"></p>
+            <input type="hidden" id="rp-edit-id">
+            <input type="hidden" id="rp-edit-type">
+            <div style="margin-bottom:0.75rem">
+                <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Amount ($)</label>
+                <input type="number" id="rp-edit-amount" step="0.01" min="0.01" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box">
+            </div>
+            <div style="margin-bottom:0.75rem">
+                <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Status</label>
+                <select id="rp-edit-status" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box">
+                    <option value="paid">Paid</option>
+                    <option value="pending">Pending</option>
+                    <option value="outstanding">Outstanding</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+            <div style="margin-bottom:0.75rem">
+                <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Period</label>
+                <input type="month" id="rp-edit-period" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box">
+            </div>
+            <div style="margin-bottom:0.75rem">
+                <label style="display:block;font-size:0.6rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-light);margin-bottom:0.25rem;font-family:'Roboto',sans-serif">Notes</label>
+                <input type="text" id="rp-edit-notes" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box">
+            </div>
+            <div style="display:flex;gap:0.5rem;margin-top:1rem">
+                <button onclick="deleteRPTransaction()" style="padding:0.7rem 1rem;background:color-mix(in srgb, var(--danger) 18%, var(--surface-2));color:var(--danger);border:1px solid color-mix(in srgb, var(--danger) 25%, transparent);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.06em;text-transform:uppercase" id="rp-edit-delete">Delete</button>
+                <button onclick="closeRPEditModal()" style="flex:1;padding:0.7rem;background:var(--surface-2);color:var(--text-light);border:1px solid var(--border);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Cancel</button>
+                <button onclick="saveRPEdit()" id="rp-edit-save" style="flex:1;padding:0.7rem;background:var(--success);color:var(--white);border:none;cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Save</button>
+            </div>
+        </div>
+    </div>
 
 </div>
 
@@ -2197,7 +2258,7 @@
                 });
             }
             renderRPSummary();
-            renderRPVendorCards();
+            renderRPCombinedSummary();
             renderRPTable();
         } catch (e) {
             if (typeof showAlert === 'function') {
@@ -2226,29 +2287,40 @@
         set('rp-total-balances', s.total_vendor_balances != null ? s.total_vendor_balances : 0);
     }
 
-    function renderRPVendorCards() {
-        var container = document.getElementById('rp-vendor-cards');
-        if (!container || !_rpData) return;
-        container.innerHTML = '';
+    function renderRPCombinedSummary() {
+        var tbody = document.getElementById('rp-combined-tbody');
+        if (!tbody || !_rpData) return;
         var cards = _rpData.vendor_cards || [];
+        tbody.innerHTML = '';
+        if (!cards.length) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-light);padding:2rem">No vendor data available</td></tr>';
+            return;
+        }
         cards.forEach(function (v) {
-            var netPayout = parseFloat(v.net_payout != null ? v.net_payout : 0);
-            if (isNaN(netPayout)) netPayout = 0;
-            var payoutColor = netPayout > 0 ? 'var(--success-light)' : netPayout < 0 ? 'var(--danger)' : 'var(--text-light)';
-            var payoutLabel = netPayout < 0 ? 'Balance Due' : 'Net Payout';
-            var card = document.createElement('div');
-            card.className = 'rp-vendor-card';
-            card.innerHTML =
-                '<div style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.1em">' + escapeHtml(v.booth_number || '—') + '</div>' +
-                '<div style="font-family:\'EB Garamond\',serif;font-size:0.95rem;color:var(--text);margin-top:0.15rem">' + escapeHtml(v.name) + '</div>' +
-                '<div style="margin-top:0.35rem">' +
-                '<div style="font-size:0.75rem;color:var(--text-light)">Sales: ' + rpFmt(v.total_sales) + '</div>' +
-                '<div style="font-size:0.75rem;color:var(--text-light)">Rent: ' + rpFmt(v.rent_due) +
-                (v.rent_paid_this_month ? ' <span style="color:var(--success)">&#10003;</span>' : '') + '</div>' +
-                '<div style="font-size:0.7rem;color:var(--text-light);margin-top:0.2rem">' + payoutLabel + '</div>' +
-                '<div style="font-size:1.1rem;font-weight:600;color:' + payoutColor + ';margin-top:0.05rem">' + rpFmt(netPayout) + '</div>' +
-                '</div>';
-            container.appendChild(card);
+            var sales = parseFloat(v.total_sales) || 0;
+            var rentDue = parseFloat(v.rent_due) || 0;
+            var rentPaidMonth = parseFloat(v.rent_paid_this_month) || 0;
+            var rentBalance = rentDue - rentPaidMonth;
+            var payouts = parseFloat(v.total_payouts) || 0;
+            var netBalance = parseFloat(v.net_payout) || 0;
+            var tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
+            tr.onclick = function () {
+                document.querySelector('.main-tab:nth-child(2)').click();
+                var search = document.getElementById('vendor-search-input');
+                if (search) search.value = v.name;
+                if (typeof window.filterVendorHub === 'function') window.filterVendorHub();
+            };
+            tr.innerHTML =
+                '<td><strong>' + escapeHtml(v.name) + '</strong><br><span style="font-size:0.75rem;color:var(--text-light)">Booth ' + escapeHtml(v.booth_number || '—') + '</span></td>' +
+                '<td style="font-family:\'EB Garamond\',serif">' + rpFmt(sales) + '</td>' +
+                '<td style="font-family:\'EB Garamond\',serif">' + rpFmt(rentDue) + '</td>' +
+                '<td style="font-family:\'EB Garamond\',serif;color:var(--success-light)">' + rpFmt(rentPaidMonth) + '</td>' +
+                '<td style="font-family:\'EB Garamond\',serif;color:' + (rentBalance <= 0 ? 'var(--success-light)' : 'var(--danger)') + '">' + rpFmt(Math.abs(rentBalance)) + (rentBalance < 0 ? ' over' : rentBalance > 0 ? ' due' : '') + '</td>' +
+                '<td style="font-family:\'EB Garamond\',serif">' + rpFmt(payouts) + '</td>' +
+                '<td style="font-family:\'EB Garamond\',serif;font-weight:600;color:' + (netBalance >= 0 ? 'var(--success-light)' : 'var(--danger)') + '">' + (netBalance >= 0 ? '' : '-') + rpFmt(Math.abs(netBalance)) + '</td>' +
+                '<td><span style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em">View &rarr;</span></td>';
+            tbody.appendChild(tr);
         });
     }
 
@@ -2287,6 +2359,7 @@
 
         filtered.forEach(function (t) {
             var tr = document.createElement('tr');
+            tr.style.cursor = 'pointer';
             var typeBadge = '<span class="rp-type-badge ' + (t.type === 'rent' ? 'rent' : 'payout') + '">' + (t.type === 'rent' ? 'Rent' : 'Payout') + '</span>';
             var sc = rpStatusClass(t.status);
             var statusBadge = '<span class="rp-status-badge ' + sc + '">' + escapeHtml(t.status || '') + '</span>';
@@ -2299,7 +2372,14 @@
                 '<td>' + escapeHtml(method) + '</td>' +
                 '<td>' + rpPeriodFmt(t.period) + '</td>' +
                 '<td>' + statusBadge + '</td>' +
-                '<td style="font-size:0.82rem;color:var(--text-light)">' + escapeHtml(t.notes || '') + '</td>';
+                '<td><button class="rp-edit-btn" style="background:var(--surface-2);border:1px solid var(--border);color:var(--text-light);padding:0.25rem 0.6rem;cursor:pointer;font-size:0.72rem;font-family:\'Roboto\',sans-serif;text-transform:uppercase;letter-spacing:0.06em">Edit</button></td>';
+            tr.setAttribute('data-rp-id', t.id);
+            tr.setAttribute('data-rp-type', t.type);
+            tr.setAttribute('data-rp-amount', t.amount);
+            tr.setAttribute('data-rp-notes', t.notes || '');
+            tr.setAttribute('data-rp-status', t.status || 'pending');
+            tr.setAttribute('data-rp-period', t.period || '');
+            tr.setAttribute('data-rp-vendor', t.vendor_name || '');
             tbody.appendChild(tr);
         });
     }
@@ -2308,6 +2388,93 @@
         if (_rpData) renderRPTable();
     }
     window.filterRPLedger = filterRPLedger;
+
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.rp-edit-btn');
+        if (!btn) return;
+        var row = btn.closest('tr');
+        if (!row) return;
+        openRPEditModal(
+            row.getAttribute('data-rp-id'),
+            row.getAttribute('data-rp-type'),
+            parseFloat(row.getAttribute('data-rp-amount')) || 0,
+            row.getAttribute('data-rp-notes') || '',
+            row.getAttribute('data-rp-status') || 'pending',
+            row.getAttribute('data-rp-period') || '',
+            row.getAttribute('data-rp-vendor') || ''
+        );
+    });
+
+    function openRPEditModal(id, type, amount, notes, status, period, vendor) {
+        document.getElementById('rp-edit-id').value = id;
+        document.getElementById('rp-edit-type').value = type;
+        document.getElementById('rp-edit-amount').value = amount;
+        document.getElementById('rp-edit-status').value = status;
+        document.getElementById('rp-edit-period').value = period;
+        document.getElementById('rp-edit-notes').value = notes;
+        document.getElementById('rp-edit-info').textContent = type === 'rent' ? 'Rent — ' + vendor : 'Payout — ' + vendor;
+        var modal = document.getElementById('rp-edit-modal');
+        if (modal) modal.style.display = 'flex';
+    }
+
+    function closeRPEditModal() {
+        var modal = document.getElementById('rp-edit-modal');
+        if (modal) modal.style.display = 'none';
+    }
+
+    async function saveRPEdit() {
+        var id = document.getElementById('rp-edit-id').value;
+        var type = document.getElementById('rp-edit-type').value;
+        var amount = parseFloat(document.getElementById('rp-edit-amount').value);
+        var status = document.getElementById('rp-edit-status').value;
+        var period = document.getElementById('rp-edit-period').value;
+        var notes = document.getElementById('rp-edit-notes').value;
+        if (!id || isNaN(amount) || amount <= 0) {
+            if (typeof showAlert === 'function') showAlert('alert-container', 'Invalid amount.', 'error');
+            return;
+        }
+        var saveBtn = document.getElementById('rp-edit-save');
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving…'; }
+        try {
+            var payload = { amount: amount, status: status, period: period, notes: notes };
+            var endpoint = type === 'rent'
+                ? '/api/v1/admin/rent-payment/' + id
+                : '/api/v1/admin/payout/' + id;
+            await apiPut(endpoint, payload);
+            closeRPEditModal();
+            if (typeof showAlert === 'function') showAlert('alert-container', 'Transaction updated.', 'success');
+            loadRPLedger();
+        } catch (e) {
+            if (typeof showAlert === 'function') showAlert('alert-container', 'Failed to save: ' + (e.message || e), 'error');
+        }
+        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
+    }
+
+    async function deleteRPTransaction() {
+        var id = document.getElementById('rp-edit-id').value;
+        var type = document.getElementById('rp-edit-type').value;
+        if (!id) return;
+        if (!confirm('Delete this ' + (type === 'rent' ? 'rent payment' : 'payout') + '? This cannot be undone.')) return;
+        var delBtn = document.getElementById('rp-edit-delete');
+        if (delBtn) { delBtn.disabled = true; delBtn.textContent = 'Deleting…'; }
+        try {
+            var endpoint = type === 'rent'
+                ? '/api/v1/admin/rent-payment/' + id
+                : '/api/v1/admin/payout/' + id;
+            await apiDelete(endpoint);
+            closeRPEditModal();
+            if (typeof showAlert === 'function') showAlert('alert-container', 'Transaction deleted.', 'success');
+            loadRPLedger();
+        } catch (e) {
+            if (typeof showAlert === 'function') showAlert('alert-container', 'Failed to delete: ' + (e.message || e), 'error');
+            if (delBtn) { delBtn.disabled = false; delBtn.textContent = 'Delete'; }
+        }
+    }
+
+    window.openRPEditModal = openRPEditModal;
+    window.closeRPEditModal = closeRPEditModal;
+    window.saveRPEdit = saveRPEdit;
+    window.deleteRPTransaction = deleteRPTransaction;
 
     function openRentFromLedger() {
         if (!_rpData || !_rpData.vendor_cards || !_rpData.vendor_cards.length) {
@@ -2489,7 +2656,7 @@
 })();
 </script>
 <script src="/static/js/assistant-panel.js"></script>
-<script>initAssistantPanel('The user is an admin at Bowenstreet Market.', { buttonBottom: '70px' });</script>
+<script>initAssistantPanel('The user is an admin at Bowenstreet Market (2837 Bowen St, Oshkosh WI 54901). You can answer questions about vendor balances, sales, rent payments, and payouts. For live data, fetch /api/v1/admin/rent-payout-ledger which returns summary, vendor_cards, and transactions.', { buttonBottom: '70px' });</script>
 <script src="/static/js/admin-badge.js"></script>
 </body>
 </html>

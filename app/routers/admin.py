@@ -1392,6 +1392,146 @@ async def rent_payment_receipt(
     return {"receipt": receipt}
 
 
+class RentPaymentUpdate(BaseModel):
+    amount: float
+    status: str
+    period: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@router.put("/rent-payment/{payment_id}")
+async def update_rent_payment(
+    payment_id: int,
+    body: RentPaymentUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
+):
+    result = await db.execute(
+        select(RentPayment).where(RentPayment.id == payment_id)
+    )
+    rp = result.scalar_one_or_none()
+    if not rp:
+        raise HTTPException(status_code=404, detail="Rent payment not found")
+
+    rp.amount = Decimal(str(body.amount))
+    rp.status = body.status
+    if body.period:
+        try:
+            rp.period_month = date.fromisoformat(body.period + "-01")
+        except (ValueError, TypeError):
+            pass
+    if body.notes is not None:
+        rp.notes = body.notes
+    await db.commit()
+    await log_audit(
+        db,
+        current_user.id,
+        "admin",
+        "update_rent_payment",
+        f"Updated rent payment #{payment_id}: ${body.amount:.2f}, status={body.status}",
+        entity_type="rent_payment",
+        entity_id=payment_id,
+    )
+    return {"status": "ok", "message": "Rent payment updated"}
+
+
+@router.delete("/rent-payment/{payment_id}")
+async def delete_rent_payment(
+    payment_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
+):
+    result = await db.execute(
+        select(RentPayment).where(RentPayment.id == payment_id)
+    )
+    rp = result.scalar_one_or_none()
+    if not rp:
+        raise HTTPException(status_code=404, detail="Rent payment not found")
+
+    await db.delete(rp)
+    await db.commit()
+    await log_audit(
+        db,
+        current_user.id,
+        "admin",
+        "delete_rent_payment",
+        f"Deleted rent payment #{payment_id}",
+        entity_type="rent_payment",
+        entity_id=payment_id,
+    )
+    return {"status": "ok", "message": "Rent payment deleted"}
+
+
+class PayoutUpdate(BaseModel):
+    amount: float
+    status: str
+    period: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@router.put("/payout/{payout_id}")
+async def update_payout(
+    payout_id: int,
+    body: PayoutUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
+):
+    result = await db.execute(
+        select(Payout).where(Payout.id == payout_id)
+    )
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Payout not found")
+
+    p.net_payout = Decimal(str(body.amount))
+    p.status = body.status
+    if body.period:
+        try:
+            p.period_month = date.fromisoformat(body.period + "-01")
+        except (ValueError, TypeError):
+            pass
+    if body.notes is not None:
+        p.notes = body.notes
+    await db.commit()
+    await log_audit(
+        db,
+        current_user.id,
+        "admin",
+        "update_payout",
+        f"Updated payout #{payout_id}: ${body.amount:.2f}, status={body.status}",
+        entity_type="payout",
+        entity_id=payout_id,
+    )
+    return {"status": "ok", "message": "Payout updated"}
+
+
+@router.delete("/payout/{payout_id}")
+async def delete_payout(
+    payout_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
+):
+    result = await db.execute(
+        select(Payout).where(Payout.id == payout_id)
+    )
+    p = result.scalar_one_or_none()
+    if not p:
+        raise HTTPException(status_code=404, detail="Payout not found")
+
+    await db.delete(p)
+    await db.commit()
+    await log_audit(
+        db,
+        current_user.id,
+        "admin",
+        "delete_payout",
+        f"Deleted payout #{payout_id}",
+        entity_type="payout",
+        entity_id=payout_id,
+    )
+    return {"status": "ok", "message": "Payout deleted"}
+
+
 @router.get("/health/backup")
 async def backup_health_check(
     db: AsyncSession = Depends(get_db),
