@@ -1,16 +1,19 @@
-import uuid
 import os
 import shutil
+import time
+import uuid
+from datetime import date, datetime
 from decimal import Decimal
-from datetime import date
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File, Body, Request
+
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, Body, Request, status
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
 from sqlalchemy.orm import selectinload
 from PIL import Image
 import io
+
 from app.database import get_db
 from app.models.item import Item
 from app.models.item_image import ItemImage
@@ -18,14 +21,15 @@ from app.models.item_variable import ItemVariable
 from app.models.item_variant import ItemVariant
 from app.models.vendor import Vendor
 from app.models.sale import SaleItem
+from app.models.store_setting import StoreSetting
 from app.services.audit import log_audit
 from app.schemas.item import ItemCreate, ItemUpdate, ItemResponse, ItemListingResponse, VariantResponse
 from app.routers.auth import get_current_user
 from app.routers.settings import role_feature_allowed, get_setting
 from app.services.barcode import generate_sku, generate_short_barcode, maybe_upgrade_barcode
+from app.services.upload_security import validate_upload_path
 from app.services.labels import generate_label_pdf, generate_label_pdf_batch
 from app.services import spaces as spaces_svc
-from app.models.store_setting import StoreSetting
 
 PHOTO_UPLOAD_DIR = "frontend/static/images/items"
 IMAGE_UPLOAD_DIR = "frontend/static/uploads/items"
@@ -363,7 +367,9 @@ async def create_item(
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(get_current_user),
 ):
+    t0 = time.time()
     await _require_manage_items(db, current_user)
+    t1 = time.time()
 
     if current_user.role == "vendor":
         vendor_id = current_user.id
@@ -373,6 +379,7 @@ async def create_item(
         vendor_id = data.vendor_id
 
     sku = await generate_sku(vendor_id, db)
+    t2 = time.time()
 
     if data.barcode:
         barcode_val = data.barcode
@@ -381,6 +388,7 @@ async def create_item(
             raise HTTPException(status_code=400, detail="Barcode already exists")
     else:
         barcode_val = await generate_short_barcode(db)
+    t3 = time.time()
 
     has_photos = bool(data.photo_urls and len(data.photo_urls) > 0)
     is_online_val = data.is_online if has_photos else False
@@ -420,17 +428,37 @@ async def create_item(
     )
     db.add(item)
     await db.flush()  # flush to get item.id
+    t4 = time.time()
 
     # Save variables and variants if provided
     if data.variables or data.variants:
         await _save_variables_and_variants(db, item, data.variables, data.variants)
+    t5 = time.time()
 
     await db.commit()
+    t6 = time.time()
 
     result = await db.execute(
         select(Item).options(selectinload(Item.vendor), selectinload(Item.variables), selectinload(Item.variants)).where(Item.id == item.id)
     )
     item = result.scalar_one()
+    t7 = time.time()
+
+    total = t7 - t0
+    if total > 2.0:
+        print(
+            f"[SLOW_CREATE_ITEM] vendor_id={vendor_id} user={current_user.email} "
+            f"total={total:.2f}s "
+            f"permissions={t1-t0:.2f}s "
+            f"sku={t2-t1:.2f}s "
+            f"barcode={t3-t2:.2f}s "
+            f"flush={t4-t3:.2f}s "
+            f"variants={t5-t4:.2f}s "
+            f"commit={t6-t5:.2f}s "
+            f"reload={t7-t6:.2f}s",
+            flush=True,
+        )
+
     return item_to_response(item)
 
 

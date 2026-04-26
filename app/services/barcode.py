@@ -12,13 +12,30 @@ BARCODE_LENGTH = 6
 
 
 async def generate_sku(vendor_id: int, db: AsyncSession) -> str:
+    """Generate the next available SKU for a vendor.
+
+    Uses the highest existing sequence number to avoid O(n) looping
+    when bulk imports have created items with high row numbers.
+    """
+    prefix = f"BSM-{vendor_id:04d}-"
     result = await db.execute(
-        select(func.count(Item.id)).where(Item.vendor_id == vendor_id)
+        select(func.max(Item.sku)).where(Item.sku.like(f"{prefix}%"))
     )
-    count = result.scalar() or 0
-    sequence = count + 1
+    max_sku = result.scalar() or ""
+    if max_sku:
+        try:
+            sequence = int(max_sku.replace(prefix, "")) + 1
+        except (ValueError, IndexError):
+            # Fallback: count all items for this vendor
+            result = await db.execute(
+                select(func.count(Item.id)).where(Item.vendor_id == vendor_id)
+            )
+            sequence = (result.scalar() or 0) + 1
+    else:
+        sequence = 1
+
     while True:
-        sku = f"BSM-{vendor_id:04d}-{sequence:06d}"
+        sku = f"{prefix}{sequence:06d}"
         existing = await db.execute(select(Item).where(Item.sku == sku))
         if not existing.scalar_one_or_none():
             return sku

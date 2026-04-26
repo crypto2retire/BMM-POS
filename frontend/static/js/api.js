@@ -81,7 +81,7 @@ async function apiFetch(method, url, body) {
     let res;
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
         options.signal = controller.signal;
         res = await fetch(url, options);
         clearTimeout(timeoutId);
