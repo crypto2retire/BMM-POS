@@ -2249,7 +2249,9 @@
 
     async function loadRPLedger() {
         try {
+            console.log('[Rent&Payouts] Loading ledger...');
             _rpData = await apiGet('/api/v1/admin/rent-payout-ledger');
+            console.log('[Rent&Payouts] Ledger response:', _rpData);
             if (_rpData.transactions && _rpData.transactions.length) {
                 _rpData.transactions.sort(function (a, b) {
                     return new Date(b.date) - new Date(a.date);
@@ -2259,6 +2261,7 @@
             renderRPCombinedSummary();
             renderRPTable();
         } catch (e) {
+            console.error('[Rent&Payouts] Error loading ledger:', e);
             if (typeof showAlert === 'function') {
                 showAlert('alert-container', 'Ledger: ' + (e.message || e), 'error');
             }
