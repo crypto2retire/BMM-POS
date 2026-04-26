@@ -1235,8 +1235,12 @@
 
     <div id="tab-rent-payouts" style="display:none">
 
+        <div style="background:var(--surface-2);border:2px solid var(--danger);padding:1rem;margin-bottom:1rem;color:var(--danger);font-weight:600">
+            DEBUG: If you see this box, the Rent &amp; Payouts tab HTML is loading. <span id="rp-debug-status">Waiting for JS...</span>
+        </div>
+
         <!-- Debug panel -->
-        <div id="rp-debug-panel" style="background:var(--surface-2);border:1px solid var(--border);padding:1rem;margin-bottom:1rem;font-family:'Roboto Mono',monospace;font-size:0.75rem;color:var(--text-light);display:none;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto"></div>
+        <div id="rp-debug-panel" style="background:var(--surface-2);border:1px solid var(--border);padding:1rem;margin-bottom:1rem;font-family:'Roboto Mono',monospace;font-size:0.75rem;color:var(--text-light);display:block;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto">Debug panel active. Clicking this tab should trigger data load...</div>
 
         <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:0.95rem;color:var(--text-light);margin-bottom:1rem" id="rp-month-label"></div>
 
@@ -2252,14 +2256,16 @@
 
     async function loadRPLedger() {
         var debugPanel = document.getElementById('rp-debug-panel');
+        var debugStatus = document.getElementById('rp-debug-status');
+        if (debugStatus) debugStatus.textContent = 'JS running...';
         try {
             _rpData = await apiGet('/api/v1/admin/rent-payout-ledger');
             if (debugPanel) {
-                debugPanel.style.display = 'block';
                 debugPanel.textContent = 'API OK. Summary: ' + JSON.stringify(_rpData.summary || {}, null, 2) +
                     '\n\nVendor cards: ' + (_rpData.vendor_cards ? _rpData.vendor_cards.length : 0) +
                     '\nTransactions: ' + (_rpData.transactions ? _rpData.transactions.length : 0);
             }
+            if (debugStatus) debugStatus.textContent = 'Data loaded!';
             if (_rpData.transactions && _rpData.transactions.length) {
                 _rpData.transactions.sort(function (a, b) {
                     return new Date(b.date) - new Date(a.date);
@@ -2270,9 +2276,9 @@
             renderRPTable();
         } catch (e) {
             if (debugPanel) {
-                debugPanel.style.display = 'block';
                 debugPanel.textContent = 'API ERROR: ' + (e.message || e) + '\n\nStack: ' + (e.stack || 'no stack');
             }
+            if (debugStatus) debugStatus.textContent = 'ERROR - check panel below';
             if (typeof showAlert === 'function') {
                 showAlert('alert-container', 'Ledger: ' + (e.message || e), 'error');
             }
