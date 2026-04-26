@@ -1624,6 +1624,7 @@
     function renderHourlyChart(hourly) {
         var chartEl = document.getElementById('hourly-chart');
         var labelsEl = document.getElementById('hourly-labels');
+        if (!chartEl || !labelsEl) return;
         if (!hourly.length) {
             chartEl.innerHTML = '<div style="color:var(--text-light);font-style:italic;width:100%;text-align:center;align-self:center">No sales data</div>';
             labelsEl.innerHTML = '';
@@ -1643,6 +1644,7 @@
     function renderDailyChart(daily) {
         var chartEl = document.getElementById('daily-chart');
         var labelsEl = document.getElementById('daily-labels');
+        if (!chartEl || !labelsEl) return;
         if (!daily.length) {
             chartEl.innerHTML = '<div style="color:var(--text-light);font-style:italic;width:100%;text-align:center;align-self:center">No sales data</div>';
             labelsEl.innerHTML = '';
@@ -1661,6 +1663,7 @@
 
     function renderTopVendors(vendors) {
         var el = document.getElementById('top-vendors');
+        if (!el) return;
         if (!vendors.length) {
             el.innerHTML = '<div style="color:var(--text-light);font-style:italic;text-align:center;padding:2rem 0">No vendor sales in this period</div>';
             return;
@@ -1677,6 +1680,7 @@
 
     function renderPaymentMethods(methods) {
         var el = document.getElementById('payment-methods');
+        if (!el) return;
         if (!methods.length) {
             el.innerHTML = '<div style="color:var(--text-light);font-style:italic;width:100%;text-align:center;padding:2rem 0">No sales data</div>';
             return;
