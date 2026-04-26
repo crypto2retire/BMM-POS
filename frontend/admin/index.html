@@ -1235,6 +1235,9 @@
 
     <div id="tab-rent-payouts" style="display:none">
 
+        <!-- Debug panel -->
+        <div id="rp-debug-panel" style="background:var(--surface-2);border:1px solid var(--border);padding:1rem;margin-bottom:1rem;font-family:'Roboto Mono',monospace;font-size:0.75rem;color:var(--text-light);display:none;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto"></div>
+
         <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:0.95rem;color:var(--text-light);margin-bottom:1rem" id="rp-month-label"></div>
 
         <div class="store-summary" id="rp-summary-cards">
@@ -2248,10 +2251,15 @@
     }
 
     async function loadRPLedger() {
+        var debugPanel = document.getElementById('rp-debug-panel');
         try {
-            console.log('[Rent&Payouts] Loading ledger...');
             _rpData = await apiGet('/api/v1/admin/rent-payout-ledger');
-            console.log('[Rent&Payouts] Ledger response:', _rpData);
+            if (debugPanel) {
+                debugPanel.style.display = 'block';
+                debugPanel.textContent = 'API OK. Summary: ' + JSON.stringify(_rpData.summary || {}, null, 2) +
+                    '\n\nVendor cards: ' + (_rpData.vendor_cards ? _rpData.vendor_cards.length : 0) +
+                    '\nTransactions: ' + (_rpData.transactions ? _rpData.transactions.length : 0);
+            }
             if (_rpData.transactions && _rpData.transactions.length) {
                 _rpData.transactions.sort(function (a, b) {
                     return new Date(b.date) - new Date(a.date);
@@ -2261,7 +2269,10 @@
             renderRPCombinedSummary();
             renderRPTable();
         } catch (e) {
-            console.error('[Rent&Payouts] Error loading ledger:', e);
+            if (debugPanel) {
+                debugPanel.style.display = 'block';
+                debugPanel.textContent = 'API ERROR: ' + (e.message || e) + '\n\nStack: ' + (e.stack || 'no stack');
+            }
             if (typeof showAlert === 'function') {
                 showAlert('alert-container', 'Ledger: ' + (e.message || e), 'error');
             }
