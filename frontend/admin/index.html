@@ -940,6 +940,7 @@
 
     <div class="main-tabs">
         <button type="button" class="main-tab active" onclick="switchMainTab('overview',this)">Overview</button>
+        <button type="button" class="main-tab" onclick="switchMainTab('vendors',this)">Vendors</button>
         <button type="button" class="main-tab" onclick="switchMainTab('analytics',this)">Analytics</button>
         <button type="button" class="main-tab" onclick="switchMainTab('operations',this)">Operations</button>
         <button type="button" class="main-tab" onclick="switchMainTab('rent-payouts',this)">Rent &amp; Payouts</button>
@@ -990,63 +991,6 @@
                 <strong>Manage Items</strong>
                 <span>Add, edit, or search inventory.</span>
             </a>
-        </div>
-    </div>
-
-    <div id="vendor-hub-section" class="vendor-hub-section section">
-        <div class="section-header" style="flex-wrap:wrap;gap:0.75rem;align-items:center">
-            <h2 class="section-title" style="margin:0"><span id="vendor-period-label">Vendor operations</span></h2>
-            <a href="/admin/vendors.html?open_add=1" class="btn btn-primary btn-sm admin-only-dash" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;min-height:42px">+ Add New Vendor</a>
-        </div>
-        <div class="vendor-action-bar" id="vendor-action-bar">
-            <div class="vendor-action-primary">
-                <span id="vh-processed-badge">Already processed this month</span>
-                <button type="button" id="vh-process-btn" class="process-btn" onclick="window.confirmProcessPayoutsHub()">Process Payouts</button>
-            </div>
-            <button type="button" class="vendor-action-more" id="vendor-action-more" onclick="toggleVendorActionMore()" aria-expanded="false">More Vendor Actions</button>
-            <div class="vendor-action-secondary" id="vendor-hub-admin-actions">
-                <button type="button" class="reminder-btn" id="vh-rent-reminders-btn" onclick="window.sendRentRemindersHub()">Send Rent Reminders</button>
-                <button type="button" class="reminder-btn reminder-btn--green" id="vh-weekly-reports-btn" onclick="window.sendWeeklyReportsHub()">Send Weekly Reports</button>
-            </div>
-        </div>
-        <div class="store-summary" style="margin-bottom:1rem">
-            <div class="sum-card"><div class="sum-label">Gross balances</div><div class="sum-value" id="vh-stat-gross">&mdash;</div></div>
-            <div class="sum-card"><div class="sum-label">Rent collected</div><div class="sum-value green" id="vh-stat-rent-coll">&mdash;</div></div>
-            <div class="sum-card"><div class="sum-label">Rent due</div><div class="sum-value white" id="vh-stat-rent-due">&mdash;</div></div>
-            <div class="sum-card"><div class="sum-label">Net payouts</div><div class="sum-value green" id="vh-stat-net">&mdash;</div></div>
-            <div class="sum-card"><div class="sum-label">Shortfalls</div><div class="sum-value white" id="vh-stat-short">&mdash;</div></div>
-            <div class="sum-card"><div class="sum-label">Vendors</div><div class="sum-value white" id="vh-stat-count">&mdash;</div></div>
-        </div>
-        <div style="margin-bottom:0.75rem">
-            <input type="search" id="vendor-search-input" class="form-control" placeholder="Search by name, email, or booth&hellip;" oninput="window.filterVendorHub()" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="vendor-search" style="max-width:28rem;width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.75rem;font-size:0.88rem;box-sizing:border-box">
-        </div>
-        <div class="vendor-workspace">
-            <aside class="vendor-browser">
-                <div class="vendor-browser-head">
-                    <div class="vendor-browser-kicker">Vendor workspace</div>
-                    <h3 class="vendor-browser-title">Accounts</h3>
-                    <p class="vendor-browser-sub">Select a vendor once. Balances, rent, payouts, notes, recent sales, and history stay in one place.</p>
-                </div>
-                <div id="vendor-hub-browser-list" class="vendor-browser-list">
-                    <div class="vendor-browser-empty" id="vendor-browser-placeholder"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div>
-                </div>
-                <div id="vendor-hub-pagination" class="vendor-browser-footer">
-                    <span id="vendor-hub-page-info"></span>
-                    <div class="pager-buttons">
-                        <button type="button" id="vendor-hub-prev" class="btn btn-sm" style="min-height:40px" onclick="window.vendorHubPage(-1)">Previous</button>
-                        <button type="button" id="vendor-hub-next" class="btn btn-sm" style="min-height:40px" onclick="window.vendorHubPage(1)">Next</button>
-                    </div>
-                </div>
-            </aside>
-            <section class="vendor-inspector" id="vendor-inspector">
-                <div class="vendor-inspector-placeholder">
-                    <div>
-                        <div class="vendor-browser-kicker">Ready</div>
-                        <h3 class="vendor-browser-title" style="margin-top:0.4rem">Select a vendor</h3>
-                        <p class="vendor-browser-sub" style="max-width:32rem;margin:0.55rem auto 0">Use the search on the left to open a single vendor workspace with balances, rent, payout preview, notes, recent sales, and history.</p>
-                    </div>
-                </div>
-            </section>
         </div>
     </div>
 
@@ -1142,6 +1086,69 @@
             </div>
         </div>
     </div><!-- #tab-analytics -->
+
+    <!-- ── VENDORS TAB ── -->
+    <div id="tab-vendors" style="display:none">
+        <div id="vendor-hub-section" class="vendor-hub-section section">
+        <div class="section-header" style="flex-wrap:wrap;gap:0.75rem;align-items:center">
+            <h2 class="section-title" style="margin:0"><span id="vendor-period-label">Vendor operations</span></h2>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+                <a href="/vendor/items.html" class="btn btn-sm" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;min-height:42px;background:var(--surface-2);border:1px solid var(--border);color:var(--text)">&#128230; Inventory</a>
+                <a href="/admin/vendors.html?open_add=1" class="btn btn-primary btn-sm admin-only-dash" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;min-height:42px">+ Add New Vendor</a>
+            </div>
+        </div>
+        <div class="vendor-action-bar" id="vendor-action-bar">
+            <div class="vendor-action-primary">
+                <span id="vh-processed-badge">Already processed this month</span>
+                <button type="button" id="vh-process-btn" class="process-btn" onclick="window.confirmProcessPayoutsHub()">Process Payouts</button>
+            </div>
+            <button type="button" class="vendor-action-more" id="vendor-action-more" onclick="toggleVendorActionMore()" aria-expanded="false">More Vendor Actions</button>
+            <div class="vendor-action-secondary" id="vendor-hub-admin-actions">
+                <button type="button" class="reminder-btn" id="vh-rent-reminders-btn" onclick="window.sendRentRemindersHub()">Send Rent Reminders</button>
+                <button type="button" class="reminder-btn reminder-btn--green" id="vh-weekly-reports-btn" onclick="window.sendWeeklyReportsHub()">Send Weekly Reports</button>
+            </div>
+        </div>
+        <div class="store-summary" style="margin-bottom:1rem">
+            <div class="sum-card"><div class="sum-label">Gross balances</div><div class="sum-value" id="vh-stat-gross">&mdash;</div></div>
+            <div class="sum-card"><div class="sum-label">Rent collected</div><div class="sum-value green" id="vh-stat-rent-coll">&mdash;</div></div>
+            <div class="sum-card"><div class="sum-label">Rent due</div><div class="sum-value white" id="vh-stat-rent-due">&mdash;</div></div>
+            <div class="sum-card"><div class="sum-label">Net payouts</div><div class="sum-value green" id="vh-stat-net">&mdash;</div></div>
+            <div class="sum-card"><div class="sum-label">Shortfalls</div><div class="sum-value white" id="vh-stat-short">&mdash;</div></div>
+            <div class="sum-card"><div class="sum-label">Vendors</div><div class="sum-value white" id="vh-stat-count">&mdash;</div></div>
+        </div>
+        <div style="margin-bottom:0.75rem">
+            <input type="search" id="vendor-search-input" class="form-control" placeholder="Search by name, email, or booth&hellip;" oninput="window.filterVendorHub()" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" name="vendor-search" style="max-width:28rem;width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.75rem;font-size:0.88rem;box-sizing:border-box">
+        </div>
+        <div class="vendor-workspace">
+            <aside class="vendor-browser">
+                <div class="vendor-browser-head">
+                    <div class="vendor-browser-kicker">Vendor workspace</div>
+                    <h3 class="vendor-browser-title">Accounts</h3>
+                    <p class="vendor-browser-sub">Select a vendor once. Balances, rent, payouts, notes, recent sales, and history stay in one place.</p>
+                </div>
+                <div id="vendor-hub-browser-list" class="vendor-browser-list">
+                    <div class="vendor-browser-empty" id="vendor-browser-placeholder"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div>
+                </div>
+                <div id="vendor-hub-pagination" class="vendor-browser-footer">
+                    <span id="vendor-hub-page-info"></span>
+                    <div class="pager-buttons">
+                        <button type="button" id="vendor-hub-prev" class="btn btn-sm" style="min-height:40px" onclick="window.vendorHubPage(-1)">Previous</button>
+                        <button type="button" id="vendor-hub-next" class="btn btn-sm" style="min-height:40px" onclick="window.vendorHubPage(1)">Next</button>
+                    </div>
+                </div>
+            </aside>
+            <section class="vendor-inspector" id="vendor-inspector">
+                <div class="vendor-inspector-placeholder">
+                    <div>
+                        <div class="vendor-browser-kicker">Ready</div>
+                        <h3 class="vendor-browser-title" style="margin-top:0.4rem">Select a vendor</h3>
+                        <p class="vendor-browser-sub" style="max-width:32rem;margin:0.55rem auto 0">Use the search on the left to open a single vendor workspace with balances, rent, payout preview, notes, recent sales, and history.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+        </div>
+    </div><!-- #tab-vendors -->
 
     <!-- ── OPERATIONS TAB ── -->
     <div id="tab-operations" style="display:none">
@@ -2143,10 +2150,12 @@
         document.querySelectorAll('.main-tab').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
         var overview = document.getElementById('tab-overview');
+        var vendors = document.getElementById('tab-vendors');
         var analytics = document.getElementById('tab-analytics');
         var operations = document.getElementById('tab-operations');
         var rp = document.getElementById('tab-rent-payouts');
         if (overview) overview.style.display = tab === 'overview' ? '' : 'none';
+        if (vendors) vendors.style.display = tab === 'vendors' ? '' : 'none';
         if (analytics) analytics.style.display = tab === 'analytics' ? '' : 'none';
         if (operations) operations.style.display = tab === 'operations' ? '' : 'none';
         if (rp) rp.style.display = tab === 'rent-payouts' ? '' : 'none';
