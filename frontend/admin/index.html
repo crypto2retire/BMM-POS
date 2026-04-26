@@ -1273,9 +1273,7 @@
                             <th>Vendor</th>
                             <th>Sales</th>
                             <th>Rent Due</th>
-                            <th>Rent Paid</th>
-                            <th>Rent Balance</th>
-                            <th>Payouts</th>
+                            <th>Rent Status</th>
                             <th>Net Balance</th>
                             <th style="width:60px"></th>
                         </tr>
@@ -2293,31 +2291,30 @@
         var cards = _rpData.vendor_cards || [];
         tbody.innerHTML = '';
         if (!cards.length) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-light);padding:2rem">No vendor data available</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-light);padding:2rem">No vendor data available</td></tr>';
             return;
         }
         cards.forEach(function (v) {
             var sales = parseFloat(v.total_sales) || 0;
             var rentDue = parseFloat(v.rent_due) || 0;
-            var rentPaidMonth = parseFloat(v.rent_paid_this_month) || 0;
-            var rentBalance = rentDue - rentPaidMonth;
-            var payouts = parseFloat(v.total_payouts) || 0;
+            var rentPaid = v.rent_paid_this_month ? true : false;
             var netBalance = parseFloat(v.net_payout) || 0;
             var tr = document.createElement('tr');
             tr.style.cursor = 'pointer';
             tr.onclick = function () {
-                document.querySelector('.main-tab:nth-child(2)').click();
+                var vTab = document.querySelector('.main-tab[onclick*=\'vendors\']');
+                if (vTab) vTab.click();
                 var search = document.getElementById('vendor-search-input');
-                if (search) search.value = v.name;
-                if (typeof window.filterVendorHub === 'function') window.filterVendorHub();
+                if (search) { search.value = v.name; if (typeof window.filterVendorHub === 'function') window.filterVendorHub(); }
             };
+            var rentStatusHtml = rentPaid
+                ? '<span style="color:var(--success-light);font-size:0.78rem">Paid &#10003;</span>'
+                : '<span style="color:var(--danger);font-size:0.78rem">Unpaid</span>';
             tr.innerHTML =
                 '<td><strong>' + escapeHtml(v.name) + '</strong><br><span style="font-size:0.75rem;color:var(--text-light)">Booth ' + escapeHtml(v.booth_number || '—') + '</span></td>' +
                 '<td style="font-family:\'EB Garamond\',serif">' + rpFmt(sales) + '</td>' +
                 '<td style="font-family:\'EB Garamond\',serif">' + rpFmt(rentDue) + '</td>' +
-                '<td style="font-family:\'EB Garamond\',serif;color:var(--success-light)">' + rpFmt(rentPaidMonth) + '</td>' +
-                '<td style="font-family:\'EB Garamond\',serif;color:' + (rentBalance <= 0 ? 'var(--success-light)' : 'var(--danger)') + '">' + rpFmt(Math.abs(rentBalance)) + (rentBalance < 0 ? ' over' : rentBalance > 0 ? ' due' : '') + '</td>' +
-                '<td style="font-family:\'EB Garamond\',serif">' + rpFmt(payouts) + '</td>' +
+                '<td>' + rentStatusHtml + '</td>' +
                 '<td style="font-family:\'EB Garamond\',serif;font-weight:600;color:' + (netBalance >= 0 ? 'var(--success-light)' : 'var(--danger)') + '">' + (netBalance >= 0 ? '' : '-') + rpFmt(Math.abs(netBalance)) + '</td>' +
                 '<td><span style="font-size:0.7rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em">View &rarr;</span></td>';
             tbody.appendChild(tr);
