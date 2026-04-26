@@ -258,6 +258,82 @@ async def lifespan(app: FastAPI):
         print(f"BMM-POS: booth_showcases dedup FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
         _record_startup_failure("booth_showcases_dedup", e)
 
+    # ── Deduplicate accounts and add unique constraint ──
+    try:
+        async with AsyncSessionLocal() as session:
+            # Find duplicates
+            dup_result = await session.execute(text("""
+                SELECT number, array_agg(id ORDER BY id) as ids
+                FROM accounts
+                GROUP BY number
+                HAVING COUNT(*) > 1
+            """))
+            duplicates = dup_result.fetchall()
+            
+            if duplicates:
+                print(
+                    f"BMM-POS: found {len(duplicates)} account number(s) with duplicates — merging...",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                
+                for dup in duplicates:
+                    number = dup[0]
+                    ids = dup[1]
+                    keep_id = ids[0]
+                    delete_ids = ids[1:]
+                    
+                    # Update references to point to the kept account
+                    for del_id in delete_ids:
+                        await session.execute(
+                            text("UPDATE journal_lines SET account_id = :keep WHERE account_id = :del"),
+                            {"keep": keep_id, "del": del_id}
+                        )
+                        await session.execute(
+                            text("UPDATE expenses SET account_id = :keep WHERE account_id = :del"),
+                            {"keep": keep_id, "del": del_id}
+                        )
+                        await session.execute(
+                            text("UPDATE accounts SET parent_id = :keep WHERE parent_id = :del"),
+                            {"keep": keep_id, "del": del_id}
+                        )
+                        await session.execute(
+                            text("DELETE FROM accounts WHERE id = :del"),
+                            {"del": del_id}
+                        )
+                
+                await session.commit()
+                total_deleted = sum(len(dup[1]) - 1 for dup in duplicates)
+                print(
+                    f"BMM-POS: merged {total_deleted} duplicate account(s) — kept first ID of each",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            
+            # Add unique constraint if missing
+            constraint_result = await session.execute(text("""
+                SELECT COUNT(*) FROM pg_constraint
+                WHERE conname = 'uq_accounts_number'
+                AND conrelid = 'accounts'::regclass
+            """))
+            has_constraint = constraint_result.scalar() > 0
+            
+            if not has_constraint:
+                await session.execute(text(
+                    "ALTER TABLE accounts ADD CONSTRAINT uq_accounts_number UNIQUE (number)"
+                ))
+                await session.commit()
+                print(
+                    "BMM-POS: added unique constraint on accounts.number",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            
+        _record_startup_ok("accounts_dedup")
+    except Exception as e:
+        print(f"BMM-POS: accounts dedup FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("accounts_dedup", e)
+
     try:
         if os.environ.get("SEED_DEMO_ACCOUNTS", "").lower() not in ("true", "1", "yes"):
             print(
