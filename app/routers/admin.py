@@ -1147,6 +1147,15 @@ async def rent_payout_ledger(
     payout_result = await db.execute(payout_query)
     payouts = payout_result.scalars().all()
 
+    # ── Legacy Ricochet entries (rent + payout) ──
+    legacy_result = await db.execute(
+        select(LegacyFinancialHistory)
+        .options(selectinload(LegacyFinancialHistory.vendor))
+        .where(LegacyFinancialHistory.entry_type.in_(["rent", "payout"]))
+        .order_by(LegacyFinancialHistory.entry_date.desc().nullslast(), LegacyFinancialHistory.imported_at.desc())
+    )
+    legacy_entries = legacy_result.scalars().all()
+
     # ── Active vendors with rent ──
     vendors_result = await db.execute(
         select(Vendor).where(Vendor.status == "active", Vendor.role == "vendor", Vendor.monthly_rent > 0)
@@ -1202,6 +1211,21 @@ async def rent_payout_ledger(
             "period": p.period_month.strftime("%Y-%m") if p.period_month else "",
             "status": p.status,
             "notes": p.notes or "",
+        })
+
+    for le in legacy_entries:
+        transactions.append({
+            "id": f"legacy-{le.id}",
+            "type": le.entry_type,
+            "date": le.entry_date.isoformat() if le.entry_date else le.imported_at.isoformat() if le.imported_at else None,
+            "vendor_name": le.vendor.name if le.vendor else (le.source_name or "Unknown"),
+            "vendor_id": le.vendor_id,
+            "amount": float(le.amount),
+            "method": "ricochet",
+            "period": le.period_month.strftime("%Y-%m") if le.period_month else "",
+            "status": "completed",
+            "notes": le.description or "",
+            "source": "ricochet",
         })
 
     # Sort by date descending
