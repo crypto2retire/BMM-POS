@@ -19,5 +19,6 @@ from app.models.security_deposit import SecurityDepositLog
 from app.models.audit_log import AuditLog
 from app.models.error_log import ErrorLog
 from app.models.password_reset_code import PasswordResetCode
+from app.models.accounting import Account, JournalEntry, JournalLine, Expense, ExpenseReceipt
 
-__all__ = ["Vendor", "VendorBalance", "Item", "ItemVariable", "ItemVariant", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting", "StudioClass", "ItemImage", "StudioImage", "ClassRegistration", "BoothShowcase", "PoyntPayment", "EodReport", "LegacyFinancialHistory", "SecurityDepositLog", "AuditLog", "ErrorLog", "PasswordResetCode"]
+__all__ = ["Vendor", "VendorBalance", "Item", "ItemVariable", "ItemVariant", "Sale", "SaleItem", "RentPayment", "Payout", "Reservation", "StoreSetting", "StudioClass", "ItemImage", "StudioImage", "ClassRegistration", "BoothShowcase", "PoyntPayment", "EodReport", "LegacyFinancialHistory", "SecurityDepositLog", "AuditLog", "ErrorLog", "PasswordResetCode", "Account", "JournalEntry", "JournalLine", "Expense", "ExpenseReceipt"]

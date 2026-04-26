@@ -67,6 +67,7 @@ try:
     from app.routers import auth, vendors, items, sales, pos, assistant, storefront, storefront_assistant, rent, admin, reports, settings, studio, bulk_import, notifications, booth_showcase, data_sync, ai_writer, security_deposits, errors
     from app.routers.diagnose import router as diagnose_router
     from app.routers.inventory_verify import router as inventory_verify_router
+    from app.routers.accounting import router as accounting_router
     print("BMM-POS: all imports OK", file=sys.stderr, flush=True)
 except Exception as _import_err:
     print(f"BMM-POS FATAL IMPORT ERROR: {type(_import_err).__name__}: {_import_err}", file=sys.stderr, flush=True)
@@ -437,6 +438,52 @@ async def lifespan(app: FastAPI):
     else:
         print("BMM-POS: startup checks all passed", file=sys.stderr, flush=True)
 
+    # ── Seed default chart of accounts ──
+    try:
+        async with AsyncSessionLocal() as session:
+            from app.models.accounting import Account as Acc
+            from sqlalchemy import select as sa_select
+            result = await session.execute(sa_select(Acc).where(Acc.is_system == True))
+            existing = result.scalars().all()
+            if len(existing) < 18:
+                defaults = [
+                    (1000, "Cash on Hand", "asset", True, "Cash in register and petty cash"),
+                    (1010, "Checking Account", "asset", True, "Primary business checking"),
+                    (1100, "Accounts Receivable", "asset", True, "Money owed to you by customers"),
+                    (2000, "Accounts Payable", "liability", True, "Bills you need to pay"),
+                    (2200, "Sales Tax Payable", "liability", True, "Sales tax collected, owed to state"),
+                    (2300, "Gift Card Liability", "liability", True, "Outstanding gift card balances"),
+                    (3000, "Owner's Equity", "equity", True, "Owner's investment and retained earnings"),
+                    (4000, "Sales Revenue — In Store", "income", True, "Revenue from in-store sales"),
+                    (4010, "Sales Revenue — Online", "income", True, "Revenue from online orders"),
+                    (4020, "Class & Event Revenue", "income", True, "Revenue from studio classes and events"),
+                    (5000, "Cost of Goods Sold", "cogs", True, "Direct cost of products sold"),
+                    (6000, "Rent", "expense", True, "Store rent and occupancy costs"),
+                    (6010, "Utilities", "expense", True, "Electric, water, internet, phone"),
+                    (6100, "Payroll & Wages", "expense", True, "Employee wages and related costs"),
+                    (6200, "Supplies & Materials", "expense", True, "Store supplies, packaging, materials"),
+                    (6300, "Marketing & Advertising", "expense", True, "Advertising, promotions, social media"),
+                    (6400, "Insurance", "expense", True, "Business and liability insurance"),
+                    (6500, "Professional Services", "expense", True, "Legal, accounting, consulting"),
+                    (6600, "Bank & Processing Fees", "expense", True, "Credit card fees, bank charges"),
+                    (6700, "Repairs & Maintenance", "expense", True, "Equipment repair and maintenance"),
+                    (6900, "Other Expenses", "expense", True, "Miscellaneous business expenses"),
+                ]
+                existing_nums = {a.number for a in existing}
+                added = 0
+                for num, name, atype, sys, desc in defaults:
+                    if num in existing_nums:
+                        continue
+                    session.add(Acc(number=num, name=name, account_type=atype, is_system=sys, description=desc, is_active=True))
+                    added += 1
+                if added > 0:
+                    await session.commit()
+                    print(f"BMM-POS: seeded {added} default chart of accounts", file=sys.stderr, flush=True)
+        _record_startup_ok("chart_of_accounts_seed")
+    except Exception as e:
+        print(f"BMM-POS: chart of accounts seed FAILED — {type(e).__name__}: {e}", file=sys.stderr, flush=True)
+        _record_startup_failure("chart_of_accounts_seed", e)
+
     yield
 
     # ── Graceful shutdown cleanup ──
@@ -712,7 +759,8 @@ app.include_router(ai_writer.router, prefix="/api/v1")
 app.include_router(diagnose_router, prefix="/api/v1")
 app.include_router(errors.router, prefix="/api/v1")
 
-from app.routers import square_webhook
+app.include_router(accounting_router, prefix="")
+
 app.include_router(square_webhook.router, prefix="/api/v1")
 
 @app.get("/llms.txt", response_class=PlainTextResponse)
