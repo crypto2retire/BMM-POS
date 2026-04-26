@@ -583,7 +583,7 @@ async def request_size_limit(request: Request, call_next):
     """Enforce max request body size for non-upload endpoints."""
     if request.method in ("POST", "PUT", "PATCH"):
         path = request.url.path.lower()
-        is_upload = any(seg in path for seg in ("/photo", "/image", "/upload", "/logo", "/video", "/import", "/bulk"))
+        is_upload = any(seg in path for seg in ("/photo", "/image", "/upload", "/logo", "/video", "/import", "/bulk", "/assistant"))
         max_size = 50 * 1024 * 1024 if is_upload else 1 * 1024 * 1024  # 50MB uploads, 1MB JSON
         content_length = request.headers.get("content-length")
         if content_length and int(content_length) > max_size:

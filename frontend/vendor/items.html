@@ -1450,8 +1450,9 @@
                 showMiniChatMessage(data.reply, 'assistant');
             }
         } catch (e) {
-            statusEl.textContent = 'AI unavailable. Try again.';
-            setTimeout(() => { statusEl.textContent = ''; }, 3000);
+            console.error('[AI Assist Error]', e);
+            statusEl.textContent = e.message || 'AI unavailable. Try again.';
+            setTimeout(() => { statusEl.textContent = ''; }, 5000);
         } finally {
             btn.disabled = false;
             btn.textContent = '✨ Describe with AI';
