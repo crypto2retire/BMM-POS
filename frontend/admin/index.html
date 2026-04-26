@@ -1353,7 +1353,7 @@
                 <input type="text" id="rp-edit-notes" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:0.55rem 0.7rem;font-size:0.875rem;box-sizing:border-box">
             </div>
             <div style="display:flex;gap:0.5rem;margin-top:1rem">
-                <button onclick="deleteRPTransaction()" style="padding:0.7rem 1rem;background:color-mix(in srgb, var(--danger) 18%, var(--surface-2));color:var(--danger);border:1px solid color-mix(in srgb, var(--danger) 25%, transparent);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.06em;text-transform:uppercase" id="rp-edit-delete">Delete</button>
+                <button onclick="archiveRPTransaction()" style="padding:0.7rem 1rem;background:color-mix(in srgb, var(--warning) 18%, var(--surface-2));color:var(--warning);border:1px solid color-mix(in srgb, var(--warning) 25%, transparent);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.06em;text-transform:uppercase" id="rp-edit-delete">Archive</button>
                 <button onclick="closeRPEditModal()" style="flex:1;padding:0.7rem;background:var(--surface-2);color:var(--text-light);border:1px solid var(--border);cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Cancel</button>
                 <button onclick="saveRPEdit()" id="rp-edit-save" style="flex:1;padding:0.7rem;background:var(--success);color:var(--white);border:none;cursor:pointer;font-size:0.78rem;font-family:'Roboto',sans-serif;letter-spacing:0.08em;text-transform:uppercase">Save</button>
             </div>
@@ -2450,31 +2450,31 @@
         if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save'; }
     }
 
-    async function deleteRPTransaction() {
+    async function archiveRPTransaction() {
         var id = document.getElementById('rp-edit-id').value;
         var type = document.getElementById('rp-edit-type').value;
         if (!id) return;
-        if (!confirm('Delete this ' + (type === 'rent' ? 'rent payment' : 'payout') + '? This cannot be undone.')) return;
+        if (!confirm('Archive this ' + (type === 'rent' ? 'rent payment' : 'payout') + '? It will be hidden from the ledger but retained for future reference.')) return;
         var delBtn = document.getElementById('rp-edit-delete');
-        if (delBtn) { delBtn.disabled = true; delBtn.textContent = 'Deleting…'; }
+        if (delBtn) { delBtn.disabled = true; delBtn.textContent = 'Archiving…'; }
         try {
             var endpoint = type === 'rent'
                 ? '/api/v1/admin/rent-payment/' + id
                 : '/api/v1/admin/payout/' + id;
             await apiDelete(endpoint);
             closeRPEditModal();
-            if (typeof showAlert === 'function') showAlert('alert-container', 'Transaction deleted.', 'success');
+            if (typeof showAlert === 'function') showAlert('alert-container', 'Transaction archived.', 'success');
             loadRPLedger();
         } catch (e) {
-            if (typeof showAlert === 'function') showAlert('alert-container', 'Failed to delete: ' + (e.message || e), 'error');
-            if (delBtn) { delBtn.disabled = false; delBtn.textContent = 'Delete'; }
+            if (typeof showAlert === 'function') showAlert('alert-container', 'Failed to archive: ' + (e.message || e), 'error');
+            if (delBtn) { delBtn.disabled = false; delBtn.textContent = 'Archive'; }
         }
     }
 
     window.openRPEditModal = openRPEditModal;
     window.closeRPEditModal = closeRPEditModal;
     window.saveRPEdit = saveRPEdit;
-    window.deleteRPTransaction = deleteRPTransaction;
+    window.archiveRPTransaction = archiveRPTransaction;
 
     function openRentFromLedger() {
         if (!_rpData || !_rpData.vendor_cards || !_rpData.vendor_cards.length) {

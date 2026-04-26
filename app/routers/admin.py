@@ -70,6 +70,8 @@ def _visible_rent_history_rows(payments: list[RentPayment]) -> list[RentPayment]
     }
     visible: list[RentPayment] = []
     for p in payments:
+        if p.status == "archived":
+            continue
         ref = extract_rent_reference(p.notes)
         if p.status == "paid" and ref and ref in receipt_refs:
             continue
@@ -733,7 +735,7 @@ async def payout_preview(
     vendors = vendors_result.scalars().all()
 
     existing_payout = await db.execute(
-        select(Payout).where(Payout.period_month == period).limit(1)
+        select(Payout).where(Payout.period_month == period, Payout.status != "archived").limit(1)
     )
     already_processed = existing_payout.scalar_one_or_none() is not None
 
@@ -800,7 +802,7 @@ async def process_payouts(
     period_label = period.strftime("%B %Y")
 
     existing_payout = await db.execute(
-        select(Payout).where(Payout.period_month == period).limit(1)
+        select(Payout).where(Payout.period_month == period, Payout.status != "archived").limit(1)
     )
     if existing_payout.scalar_one_or_none():
         raise HTTPException(status_code=409, detail=f"Payouts for {period_label} have already been processed.")
@@ -1116,6 +1118,7 @@ async def send_weekly_reports(
 # ─── Rent & Payouts combined transaction ledger ───────────────────────────
 @router.get("/rent-payout-ledger")
 async def rent_payout_ledger(
+    show_archived: bool = Query(False),
     db: AsyncSession = Depends(get_db),
     _: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
 ):
@@ -1138,11 +1141,10 @@ async def rent_payout_ledger(
     visible_rent_payments = _visible_rent_history_rows(rent_payments)
 
     # ── Payouts (all time) ──
-    payout_result = await db.execute(
-        select(Payout)
-        .options(selectinload(Payout.vendor))
-        .order_by(Payout.created_at.desc())
-    )
+    payout_query = select(Payout).options(selectinload(Payout.vendor)).order_by(Payout.created_at.desc())
+    if not show_archived:
+        payout_query = payout_query.where(Payout.status != "archived")
+    payout_result = await db.execute(payout_query)
     payouts = payout_result.scalars().all()
 
     # ── Active vendors with rent ──
@@ -1176,6 +1178,7 @@ async def rent_payout_ledger(
 
     for rp in visible_rent_payments:
         transactions.append({
+            "id": rp.id,
             "type": "rent",
             "date": rp.processed_at.isoformat() if rp.processed_at else None,
             "vendor_name": rp.vendor.name if rp.vendor else "Unknown",
@@ -1189,6 +1192,7 @@ async def rent_payout_ledger(
 
     for p in payouts:
         transactions.append({
+            "id": p.id,
             "type": "payout",
             "date": p.created_at.isoformat() if p.created_at else None,
             "vendor_name": p.vendor.name if p.vendor else "Unknown",
@@ -1294,6 +1298,7 @@ async def rent_payment_history(
     query = (
         select(RentPayment)
         .options(selectinload(RentPayment.vendor))
+        .where(RentPayment.status != "archived")
         .order_by(RentPayment.processed_at.desc())
     )
 
@@ -1436,7 +1441,7 @@ async def update_rent_payment(
 
 
 @router.delete("/rent-payment/{payment_id}")
-async def delete_rent_payment(
+async def archive_rent_payment(
     payment_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
@@ -1448,18 +1453,18 @@ async def delete_rent_payment(
     if not rp:
         raise HTTPException(status_code=404, detail="Rent payment not found")
 
-    await db.delete(rp)
+    rp.status = "archived"
     await db.commit()
     await log_audit(
         db,
         current_user.id,
         "admin",
-        "delete_rent_payment",
-        f"Deleted rent payment #{payment_id}",
+        "archive_rent_payment",
+        f"Archived rent payment #{payment_id}",
         entity_type="rent_payment",
         entity_id=payment_id,
     )
-    return {"status": "ok", "message": "Rent payment deleted"}
+    return {"status": "ok", "message": "Rent payment archived"}
 
 
 class PayoutUpdate(BaseModel):
@@ -1506,7 +1511,7 @@ async def update_payout(
 
 
 @router.delete("/payout/{payout_id}")
-async def delete_payout(
+async def archive_payout(
     payout_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
@@ -1518,18 +1523,18 @@ async def delete_payout(
     if not p:
         raise HTTPException(status_code=404, detail="Payout not found")
 
-    await db.delete(p)
+    p.status = "archived"
     await db.commit()
     await log_audit(
         db,
         current_user.id,
         "admin",
-        "delete_payout",
-        f"Deleted payout #{payout_id}",
+        "archive_payout",
+        f"Archived payout #{payout_id}",
         entity_type="payout",
         entity_id=payout_id,
     )
-    return {"status": "ok", "message": "Payout deleted"}
+    return {"status": "ok", "message": "Payout archived"}
 
 
 @router.get("/health/backup")
