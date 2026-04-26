@@ -25,7 +25,8 @@ async def _get_account_by_number(db: AsyncSession, number: int) -> Optional[Acco
     result = await db.execute(
         select(Account).where(Account.number == number, Account.is_active == True)
     )
-    return result.scalar_one_or_none()
+    # Use first() instead of scalar_one_or_none() to gracefully handle duplicates
+    return result.scalars().first()
 
 
 async def _ensure_account(db: AsyncSession, number: int, name: str, account_type: str) -> Account:
