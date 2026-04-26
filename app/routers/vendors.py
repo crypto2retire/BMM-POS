@@ -94,10 +94,12 @@ def _hydrate_vendor_balance_fields(
 
     Business rules:
     - total_sales = current month sales from sale_items (what vendor earned this month)
-    - rent_due = Vendor.monthly_rent
-    - net_payout = sales_balance - rent_due + carry_over
-      (if rent already paid this month, don't subtract rent again)
-    - carry_over = VendorBalance.rent_balance (positive = prepaid credit, negative = owes)
+    - rent_due = Vendor.monthly_rent + landing_page_fee
+    - net_payout = what the vendor will actually receive:
+      * If rent already paid this month: full sales_balance
+      * If vendor has prepaid rent credit (rent_ledger > 0): full sales_balance
+      * Otherwise: sales_balance - rent_due (capped at $0)
+    - carry_over = VendorBalance.rent_balance (positive = prepaid credit)
     - sales_balance is the running VendorBalance.balance (used for net_payout calc)
     """
     monthly = vendor.monthly_rent or Decimal("0.00")
@@ -115,10 +117,12 @@ def _hydrate_vendor_balance_fields(
     vendor.carry_over = rl.quantize(Decimal("0.01"), ROUND_HALF_UP)
     vendor.rent_paid_this_month = current_month_rent_paid
 
-    if effective_rent > 0 and not current_month_rent_paid:
-        vendor.net_payout = (sb - effective_rent + rl).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    if effective_rent > 0 and not current_month_rent_paid and rl <= 0:
+        # Rent is due and no prepaid credit — deduct rent from payout
+        vendor.net_payout = max(Decimal("0.00"), sb - effective_rent).quantize(Decimal("0.01"), ROUND_HALF_UP)
     else:
-        vendor.net_payout = (sb + rl).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        # Rent already paid or vendor has prepaid credit — full payout
+        vendor.net_payout = sb.quantize(Decimal("0.01"), ROUND_HALF_UP)
 
 
 @router.get("/", response_model=List[VendorResponse])
@@ -290,14 +294,15 @@ async def get_vendor(
 
     today = date.today()
     current_period = date(today.year, today.month, 1)
-    rp_one = await db.execute(
+    rp_result = await db.execute(
         select(RentPayment).where(
             RentPayment.vendor_id == vendor_id,
             RentPayment.period_month == current_period,
-        )
+            RentPayment.status == "paid",
+        ).limit(1)
     )
-    rp_row = rp_one.scalar_one_or_none()
-    rent_paid = rp_row is not None and rp_row.status == "paid"
+    rp_row = rp_result.first()
+    rent_paid = rp_row is not None
 
     # Current month sales for display
     next_month = date(today.year, today.month + 1, 1) if today.month < 12 else date(today.year + 1, 1, 1)
@@ -323,7 +328,7 @@ async def get_vendor(
     # Attach landing page data
     from app.models.booth_showcase import BoothShowcase
     lp_result = await db.execute(
-        select(BoothShowcase).where(BoothShowcase.vendor_id == vendor_id)
+        select(BoothShowcase).where(BoothShowcase.vendor_id == vendor_id).limit(1)
     )
     lp = lp_result.scalar_one_or_none()
     vendor.landing_page_enabled = lp.landing_page_enabled if lp else False
@@ -617,6 +622,7 @@ async def adjust_vendor_balance(
     result = await db.execute(
         select(VendorBalance)
         .where(VendorBalance.vendor_id == vendor_id)
+        .limit(1)
         .with_for_update()
     )
     balance_row = result.scalar_one_or_none()
@@ -627,6 +633,7 @@ async def adjust_vendor_balance(
         await db.execute(
             select(VendorBalance)
             .where(VendorBalance.vendor_id == vendor_id)
+            .limit(1)
             .with_for_update()
         )
 

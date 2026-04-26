@@ -507,6 +507,47 @@
 
     <div class="section">
         <div class="section-header">
+            <h2 class="section-title">Rent Payment History</h2>
+            <p style="font-family:'EB Garamond',serif;font-style:italic;color:var(--text-light);font-size:0.9rem;margin-top:0.25rem">Track all rent payments with vendor, period, method, and reference for verification.</p>
+        </div>
+        <div class="card" style="padding:1.2rem 1.25rem;">
+            <div class="legacy-ref-controls">
+                <div>
+                    <label for="rent-history-month">Month</label>
+                    <input type="month" id="rent-history-month" onchange="loadRentPaymentHistory()">
+                </div>
+                <div>
+                    <label for="rent-history-vendor">Vendor</label>
+                    <select id="rent-history-vendor" onchange="loadRentPaymentHistory()">
+                        <option value="">All vendors</option>
+                    </select>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Vendor</th>
+                            <th>Booth</th>
+                            <th>Period</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>Status</th>
+                            <th>Reference</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rent-history-body">
+                        <tr><td colspan="9" class="loading">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-header">
             <h2 class="section-title">Legacy Reference History</h2>
         </div>
         <div class="card" style="padding:1.2rem 1.25rem;">
@@ -856,6 +897,84 @@
         }
     }
 
+    async function loadRentPaymentHistory() {
+        var month = document.getElementById('rent-history-month').value;
+        var vendorId = document.getElementById('rent-history-vendor').value;
+        var tbody = document.getElementById('rent-history-body');
+        tbody.innerHTML = '<tr><td colspan="9" class="loading">Loading...</td></tr>';
+
+        var qs = new URLSearchParams();
+        qs.set('limit', '200');
+        if (month) qs.set('month', month);
+        if (vendorId) qs.set('vendor_id', vendorId);
+
+        try {
+            var data = await apiGet('/api/v1/admin/rent-payment-history?' + qs.toString());
+            var rows = data.rows || [];
+            if (!rows.length) {
+                tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No rent payments found.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = rows.map(function(r) {
+                var d = new Date(r.processed_at);
+                var dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                var timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                var methodClass = r.method === 'cash' ? 'status-completed' : r.method === 'check' ? 'status-ready' : r.method === 'square' ? 'status-pending' : 'status-completed';
+                return '<tr>'
+                    + '<td>' + escHtml(dateStr + ' ' + timeStr) + '</td>'
+                    + '<td>' + escHtml(r.vendor_name) + '</td>'
+                    + '<td>' + escHtml(r.booth_number || '—') + '</td>'
+                    + '<td>' + escHtml(r.period) + '</td>'
+                    + '<td style="font-weight:600;color:var(--gold)"&gt;$' + Number(r.amount).toFixed(2) + '</td>'
+                    + '<td><span class="status-badge ' + methodClass + '">' + escHtml(r.method) + '</span></td>'
+                    + '<td>' + escHtml(r.status) + '</td>'
+                    + '<td style="font-size:0.75rem;color:var(--text-light)"&gt;' + escHtml(r.reference_tag || r.square_payment_id || '—') + '</td>'
+                    + '<td><button class="btn btn-sm" onclick="printRentReceipt(' + r.id + ')" style="background:transparent;border:1px solid var(--gold);color:var(--gold);font-size:0.75rem;padding:0.25rem 0.5rem"&gt;Receipt</button></td>'
+                    + '</tr>';
+            }).join('');
+        } catch (err) {
+            tbody.innerHTML = '<tr><td colspan="9" class="empty-state">' + escHtml(err.message || 'Failed to load rent payment history.') + '</td></tr>';
+        }
+    }
+
+    async function printRentReceipt(paymentId) {
+        try {
+            var data = await apiGet('/api/v1/admin/rent-payments/' + paymentId + '/receipt');
+            var r = data.receipt;
+            var printWindow = window.open('', '_blank', 'width=400,height=600');
+            var html = '<html><head><title>Rent Receipt</title>' +
+                '<style>body{font-family:monospace;font-size:13px;padding:20px;max-width:360px;margin:0 auto}' +
+                '.center{text-align:center}.bold{font-weight:bold}.line{border-top:1px dashed #000;margin:8px 0}' +
+                '.right{text-align:right}.mt{margin-top:12px}</style></head><body>' +
+                '<div class="center bold">' + r.store_name + '</div>' +
+                '<div class="center">' + r.store_address + '</div>' +
+                '<div class="line"></div>' +
+                '<div class="center bold">' + r.receipt_type + '</div>' +
+                '<div class="line"></div>' +
+                '<div>Date: ' + r.date + '</div>' +
+                '<div>Ref: ' + r.reference_number + '</div>' +
+                '<div class="line"></div>' +
+                '<div>Vendor: ' + r.vendor_name + '</div>' +
+                '<div>Booth: ' + r.booth_number + '</div>' +
+                '<div>Period: ' + r.period + '</div>' +
+                '<div class="line"></div>' +
+                '<div class="bold">Amount: $' + r.amount.toFixed(2) + '</div>' +
+                '<div>Method: ' + r.method + '</div>' +
+                '<div>Status: ' + r.status + '</div>' +
+                (r.notes ? '<div class="mt">Notes: ' + r.notes + '</div>' : '') +
+                '<div class="line"></div>' +
+                '<div class="center mt">Thank you!</div>' +
+                '<div class="center" style="font-size:11px;margin-top:8px">Processed by: ' + r.processed_by + '</div>' +
+                '</body></html>';
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(function() { printWindow.print(); }, 250);
+        } catch (err) {
+            showAlert('alert-container', err.message || 'Failed to load receipt', 'error');
+        }
+    }
+
     var detailVendorId = null;
 
     function escHtml(s) { if (!s) return ''; var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -1108,6 +1227,24 @@
     }
 
     loadRentStatus();
+
+    // Initialize rent payment history
+    (async function() {
+        try {
+            var data = await apiGet('/api/v1/admin/rent-status');
+            var vendors = data.vendors || [];
+            var select = document.getElementById('rent-history-vendor');
+            vendors.forEach(function(v) {
+                var opt = document.createElement('option');
+                opt.value = v.id;
+                opt.textContent = v.name + ' (Booth ' + (v.booth_number || '—') + ')';
+                select.appendChild(opt);
+            });
+        } catch (e) {
+            // ignore
+        }
+        loadRentPaymentHistory();
+    })();
 </script>
 <script src="/static/js/admin-badge.js"></script>
 </body>

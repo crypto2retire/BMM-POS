@@ -27,6 +27,17 @@ def _local_today():
     return datetime.now(STORE_TZ).date()
 
 
+def _mask_payment_field(value: Optional[str], is_admin: bool) -> str:
+    """Mask sensitive payment data for non-admin users."""
+    if not value:
+        return ""
+    if is_admin:
+        return value
+    if len(value) <= 4:
+        return "****"
+    return "****" + value[-4:]
+
+
 def _local_date_to_utc_range(d: date) -> tuple[datetime, datetime]:
     start_local = datetime(d.year, d.month, d.day, tzinfo=STORE_TZ)
     end_local = start_local + timedelta(days=1)
@@ -50,6 +61,85 @@ def _parse_dates(from_date, to_date):
     return start_utc, end_utc
 
 
+@router.get("/sales_tax")
+async def report_sales_tax(
+    from_date: Optional[str] = Query(None, alias="from_date"),
+    to_date: Optional[str] = Query(None, alias="to_date"),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
+):
+    start_dt, end_dt = _parse_dates(from_date, to_date)
+
+    # Positive sales — non-voided sales created in range
+    sales_result = await db.execute(
+        select(Sale.subtotal, Sale.tax_amount, Sale.total)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
+    )
+    sales_rows = sales_result.all()
+
+    # Refunds/returns — voided sales where void happened in range
+    voids_result = await db.execute(
+        select(Sale.subtotal, Sale.tax_amount, Sale.total)
+        .where(Sale.voided_at >= start_dt, Sale.voided_at < end_dt, Sale.is_voided == True)
+    )
+    voids_rows = voids_result.all()
+
+    gross_receipts = Decimal("0.00")
+    exempt_sales = Decimal("0.00")
+    taxable_sales = Decimal("0.00")
+    tax_collected = Decimal("0.00")
+
+    for r in sales_rows:
+        subtotal = r.subtotal or Decimal("0.00")
+        tax = r.tax_amount or Decimal("0.00")
+        gross_receipts += subtotal
+        tax_collected += tax
+        if tax == 0:
+            exempt_sales += subtotal
+        else:
+            taxable_sales += subtotal
+
+    refunds_gross = Decimal("0.00")
+    refunds_exempt = Decimal("0.00")
+    refunds_taxable = Decimal("0.00")
+    refunds_tax = Decimal("0.00")
+
+    for r in voids_rows:
+        subtotal = r.subtotal or Decimal("0.00")
+        tax = r.tax_amount or Decimal("0.00")
+        refunds_gross += subtotal
+        refunds_tax += tax
+        if tax == 0:
+            refunds_exempt += subtotal
+        else:
+            refunds_taxable += subtotal
+
+    # Net amounts after refunds
+    net_gross = gross_receipts - refunds_gross
+    net_exempt = exempt_sales - refunds_exempt
+    net_taxable = taxable_sales - refunds_taxable
+    net_tax_collected = tax_collected - refunds_tax
+
+    tax_rate = Decimal("0.05")
+    tax_due = (net_taxable * tax_rate).quantize(Decimal("0.01"))
+    difference = (tax_due - net_tax_collected).quantize(Decimal("0.01"))
+
+    return {
+        "summary": {
+            "gross_receipts": float(net_gross),
+            "exempt_sales": float(net_exempt),
+            "taxable_amount": float(net_taxable),
+            "tax_due": float(tax_due),
+            "tax_collected": float(net_tax_collected),
+            "difference": float(difference),
+            "transaction_count": len(sales_rows),
+            "refund_count": len(voids_rows),
+            "refund_amount": float(refunds_gross),
+            "refund_tax": float(refunds_tax),
+        }
+    }
+
+
 @router.get("/dashboard")
 async def dashboard_stats(
     period: Optional[str] = Query("today"),
@@ -71,7 +161,7 @@ async def dashboard_stats(
     result = await db.execute(
         select(Sale)
         .options(selectinload(Sale.items))
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .order_by(Sale.created_at.desc())
     )
     sales = result.scalars().all()
@@ -105,7 +195,7 @@ async def dashboard_stats(
         )
         .join(Sale, Sale.id == SaleItem.sale_id)
         .join(Vendor, Vendor.id == SaleItem.vendor_id)
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .group_by(Vendor.name, Vendor.booth_number)
         .order_by(func.sum(SaleItem.line_total).desc())
         .limit(10)
@@ -124,7 +214,7 @@ async def dashboard_stats(
     thirty_start_utc, _ = _local_date_to_utc_range(thirty_ago)
     daily_result = await db.execute(
         select(Sale)
-        .where(Sale.created_at >= thirty_start_utc)
+        .where(Sale.created_at >= thirty_start_utc, Sale.is_voided == False)
         .order_by(Sale.created_at)
     )
     daily_sales_raw = daily_result.scalars().all()
@@ -155,7 +245,7 @@ async def dashboard_stats(
             func.count(Sale.id).label("count"),
             func.coalesce(func.sum(Sale.total), 0).label("total"),
         )
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .group_by(Sale.payment_method)
     )
     payment_methods = [
@@ -226,7 +316,7 @@ async def report_daily_sales(
     result = await db.execute(
         select(Sale)
         .options(selectinload(Sale.cashier), selectinload(Sale.items))
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .order_by(Sale.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -239,6 +329,7 @@ async def report_daily_sales(
     total_items_sold = sum(sum(si.quantity for si in s.items) if s.items else 0 for s in sales)
     avg_transaction = round(total_revenue / total_transactions, 2) if total_transactions > 0 else 0
 
+    is_admin = current_user.role == "admin"
     rows = []
     for s in sales:
         item_count = sum(si.quantity for si in s.items) if s.items else 0
@@ -250,6 +341,12 @@ async def report_daily_sales(
             "tax": round(float(s.tax_amount), 2),
             "total": round(float(s.total), 2),
             "payment": s.payment_method or "unknown",
+            "payment_method": s.payment_method or "unknown",
+            "card_transaction_id": _mask_payment_field(s.card_transaction_id, is_admin),
+            "cash_tendered": float(s.cash_tendered) if s.cash_tendered else None,
+            "change_given": float(s.change_given) if s.change_given else None,
+            "gift_card_amount": float(s.gift_card_amount) if s.gift_card_amount else None,
+            "gift_card_barcode": _mask_payment_field(s.gift_card_barcode, is_admin),
         })
 
     return {
@@ -286,7 +383,7 @@ async def report_sales(
     result = await db.execute(
         select(Sale)
         .options(selectinload(Sale.cashier), selectinload(Sale.items))
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .order_by(Sale.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -297,6 +394,7 @@ async def report_sales(
     total_revenue = sum(float(s.total) for s in sales)
     total_tax = sum(float(s.tax_amount) for s in sales)
 
+    is_admin = current_user.role == "admin"
     sales_list = []
     for s in sales:
         item_count = sum(si.quantity for si in s.items) if s.items else 0
@@ -309,6 +407,11 @@ async def report_sales(
             "tax_amount": float(s.tax_amount),
             "total": float(s.total),
             "payment_method": s.payment_method,
+            "card_transaction_id": _mask_payment_field(s.card_transaction_id, is_admin),
+            "cash_tendered": float(s.cash_tendered) if s.cash_tendered else None,
+            "change_given": float(s.change_given) if s.change_given else None,
+            "gift_card_amount": float(s.gift_card_amount) if s.gift_card_amount else None,
+            "gift_card_barcode": _mask_payment_field(s.gift_card_barcode, is_admin),
         })
 
     return {
@@ -318,6 +421,61 @@ async def report_sales(
             "total_tax": round(total_tax, 2),
         },
         "sales": sales_list,
+    }
+
+
+@router.get("/sales/{sale_id}/payment-details")
+async def sale_payment_details(
+    sale_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_admin),
+):
+    """
+    Returns full payment details for a specific sale.
+    Use this to verify card payments against Poynt terminal by matching
+    time + amount + transaction ID.
+    """
+    from sqlalchemy.orm import selectinload
+
+    result = await db.execute(
+        select(Sale)
+        .options(selectinload(Sale.cashier), selectinload(Sale.items))
+        .where(Sale.id == sale_id)
+    )
+    sale = result.scalar_one_or_none()
+    if not sale:
+        raise HTTPException(status_code=404, detail="Sale not found")
+
+    items_detail = []
+    for si in sale.items:
+        items_detail.append({
+            "item_name": si.item.name if si.item else "Unknown",
+            "sku": si.item.sku if si.item else "",
+            "vendor_name": si.vendor.name if si.vendor else "Unknown",
+            "quantity": si.quantity,
+            "unit_price": float(si.unit_price),
+            "line_total": float(si.line_total),
+        })
+
+    return {
+        "sale_id": sale.id,
+        "date": _to_local(sale.created_at).isoformat() if sale.created_at else None,
+        "date_display": _to_local(sale.created_at).strftime("%Y-%m-%d %I:%M:%S %p") if sale.created_at else "",
+        "cashier": sale.cashier.name if sale.cashier else "Unknown",
+        "payment_method": sale.payment_method,
+        "subtotal": float(sale.subtotal),
+        "tax_amount": float(sale.tax_amount),
+        "total": float(sale.total),
+        "card_transaction_id": sale.card_transaction_id or "",
+        "external_payment_reference": getattr(sale, 'external_payment_reference', None) or "",
+        "cash_tendered": float(sale.cash_tendered) if sale.cash_tendered else None,
+        "change_given": float(sale.change_given) if sale.change_given else None,
+        "gift_card_amount": float(sale.gift_card_amount) if sale.gift_card_amount else None,
+        "gift_card_barcode": sale.gift_card_barcode or "",
+        "receipt_email": sale.receipt_email or "",
+        "is_voided": sale.is_voided,
+        "void_reason": sale.void_reason or "",
+        "items": items_detail,
     }
 
 
@@ -348,7 +506,7 @@ async def report_vendor_performance(
         )
         .join(Sale, Sale.id == SaleItem.sale_id)
         .join(Vendor, Vendor.id == SaleItem.vendor_id)
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .group_by(Vendor.name, Vendor.booth_number)
         .order_by(func.sum(SaleItem.line_total).desc())
         .limit(limit)
@@ -401,7 +559,7 @@ async def report_vendors(
         )
         .join(Sale, Sale.id == SaleItem.sale_id)
         .join(Vendor, Vendor.id == SaleItem.vendor_id)
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .group_by(SaleItem.vendor_id, Vendor.name, Vendor.booth_number)
         .order_by(func.sum(SaleItem.line_total).desc())
     )
@@ -442,7 +600,7 @@ async def report_top_items(
         .join(Sale, Sale.id == SaleItem.sale_id)
         .join(Item, Item.id == SaleItem.item_id)
         .outerjoin(Vendor, Vendor.id == SaleItem.vendor_id)
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .group_by(Item.name, Vendor.name)
         .order_by(func.sum(SaleItem.quantity).desc())
         .limit(50)
@@ -483,7 +641,7 @@ async def report_hourly_sales(
 
     result = await db.execute(
         select(Sale)
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
     )
     sales = result.scalars().all()
 
@@ -530,7 +688,7 @@ async def report_payment_methods(
             func.count(Sale.id).label("count"),
             func.coalesce(func.sum(Sale.total), 0).label("total"),
         )
-        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt)
+        .where(Sale.created_at >= start_dt, Sale.created_at < end_dt, Sale.is_voided == False)
         .group_by(Sale.payment_method)
         .order_by(func.sum(Sale.total).desc())
     )
@@ -602,10 +760,10 @@ async def report_vendor_balances(
         rb = rb_map.get(v.id, 0.0)
         rent = float(v.monthly_rent or 0)
         rent_paid = v.id in paid_ids
-        if rent > 0 and not rent_paid:
-            net_payout = round(sb - rent + rb, 2)
+        if rent > 0 and not rent_paid and rb <= 0:
+            net_payout = round(max(0.0, sb - rent), 2)
         else:
-            net_payout = round(sb + rb, 2)
+            net_payout = round(sb, 2)
         total_net += net_payout
         rows.append({
             "vendor_name": v.name,
@@ -849,6 +1007,41 @@ async def mark_reservation_pickup(
     return {"message": "Reservation marked as picked up"}
 
 
+@router.post("/reservations/{reservation_id}/cancel")
+async def cancel_reservation(
+    reservation_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_staff_feature("role_view_reports")),
+):
+    result = await db.execute(
+        select(Reservation).options(selectinload(Reservation.item))
+        .where(Reservation.id == reservation_id)
+    )
+    reservation = result.scalar_one_or_none()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    if reservation.status == "cancelled":
+        raise HTTPException(status_code=400, detail="Reservation is already cancelled")
+    if reservation.status == "completed":
+        raise HTTPException(status_code=400, detail="Cannot cancel a completed order")
+
+    old_status = reservation.status
+    reservation.status = "cancelled"
+
+    if reservation.item:
+        if old_status == "pending":
+            reservation.item.reserved_quantity = max(0, reservation.item.reserved_quantity - 1)
+        elif old_status == "ready":
+            reservation.item.quantity = reservation.item.quantity + 1
+            if reservation.item.status == "sold":
+                reservation.item.status = "active"
+
+    await db.commit()
+
+    return {"message": "Reservation cancelled", "old_status": old_status}
+
+
 # ---------------------------------------------------------------------------
 # Items Sold — searchable line-item view with vendor reassignment
 # ---------------------------------------------------------------------------
@@ -1010,7 +1203,7 @@ async def reassign_sale_item_vendor(
 
     # 4. Debit old vendor balance
     old_bal_result = await db.execute(
-        select(VendorBalance).where(VendorBalance.vendor_id == old_vendor_id)
+        select(VendorBalance).where(VendorBalance.vendor_id == old_vendor_id).limit(1)
     )
     old_balance_row = old_bal_result.scalar_one_or_none()
     if not old_balance_row:
@@ -1026,7 +1219,7 @@ async def reassign_sale_item_vendor(
 
     # 5. Credit new vendor balance
     new_bal_result = await db.execute(
-        select(VendorBalance).where(VendorBalance.vendor_id == new_vendor_id)
+        select(VendorBalance).where(VendorBalance.vendor_id == new_vendor_id).limit(1)
     )
     new_balance_row = new_bal_result.scalar_one_or_none()
     if new_balance_row:

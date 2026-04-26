@@ -3137,6 +3137,11 @@
                 <span class="right">${paymentLine}</span>
             </div>
             ${changeLine}
+            ${sale.payment_method === 'card' && sale.card_transaction_id ? `
+            <div class="receipt-line" style="font-size:0.75rem;color:var(--text-light);margin-top:4px">
+                <span class="left">TXN ID</span>
+                <span class="right" style="font-family:monospace">${escHtml(sale.card_transaction_id)}</span>
+            </div>` : ''}
             <hr class="receipt-divider">
             <div class="receipt-footer">
                 <p>Thank you for shopping at</p>
@@ -4365,11 +4370,15 @@ table { width: 100%; border-collapse: collapse; }
                 let actionBtns = '';
                 if (o.status === 'pending') {
                     actionBtns = `<button class="order-btn-secondary" onclick="markReady(${o.id})" id="ready-btn-${o.id}">Notify Ready</button>`
-                        + `<button class="order-btn-primary" onclick="markPickedUp(${o.id})">Picked Up</button>`;
+                        + `<button class="order-btn-primary" onclick="markPickedUp(${o.id})">Picked Up</button>`
+                        + `<button class="order-btn-ghost" onclick="cancelOrder(${o.id})" style="margin-left:4px">Cancel</button>`;
                 } else if (o.status === 'ready') {
-                    actionBtns = `<button class="order-btn-primary" onclick="markPickedUp(${o.id})">Mark Picked Up</button>`;
+                    actionBtns = `<button class="order-btn-primary" onclick="markPickedUp(${o.id})">Mark Picked Up</button>`
+                        + `<button class="order-btn-ghost" onclick="cancelOrder(${o.id})" style="margin-left:4px">Cancel</button>`;
                 } else if (o.status === 'completed') {
                     actionBtns = `<button class="order-btn-ghost" disabled>Completed</button>`;
+                } else if (o.status === 'cancelled') {
+                    actionBtns = `<button class="order-btn-ghost" disabled>Cancelled</button>`;
                 }
                 const emailLine = o.customer_email ? `<div class="order-card-meta"><span>✉ ${escHtml(o.customer_email)}</span></div>` : '';
                 const phoneDisplay = o.customer_phone ? escHtml(o.customer_phone) : 'No phone';
@@ -4424,6 +4433,17 @@ table { width: 100%; border-collapse: collapse; }
             loadOnlineOrders(ordersCurrentFilter || 'pending');
         } catch (err) {
             showToast(err.message || 'Failed to update order', 'error');
+        }
+    }
+
+    async function cancelOrder(reservationId) {
+        if (!confirm('Cancel this order? Inventory will be released.')) return;
+        try {
+            const result = await apiPost(`/api/v1/admin/reports/reservations/${reservationId}/cancel`, {});
+            showToast(result.message || 'Order cancelled', 'success');
+            loadOnlineOrders(ordersCurrentFilter || 'pending');
+        } catch (err) {
+            showToast(err.message || 'Failed to cancel order', 'error');
         }
     }
 
@@ -4941,7 +4961,8 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
             msgEl.style.display = 'block';
             msgEl.style.background = 'var(--success)';
             msgEl.style.color = 'var(--success-light)';
-            msgEl.textContent = resp.message || 'Payment recorded';
+            msgEl.innerHTML = (resp.message || 'Payment recorded') +
+                (resp.payment_id ? '<br><button class="btn btn-sm" style="margin-top:8px;background:transparent;border:1px solid var(--success-light);color:var(--success-light)" onclick="printRentReceipt(' + resp.payment_id + ')">Print Receipt</button>' : '');
 
             if (resp.payment_url) {
                 window.open(resp.payment_url, '_blank');
@@ -4964,6 +4985,44 @@ ${cashierRows ? `<div class="section-title">Cashier Breakdown</div><table><thead
     function closeRentModal() {
         document.getElementById('rent-modal').classList.add('hidden');
         _selectedRentVendor = null;
+    }
+
+    async function printRentReceipt(paymentId) {
+        try {
+            var data = await apiGet('/api/v1/admin/rent-payments/' + paymentId + '/receipt');
+            var r = data.receipt;
+            var printWindow = window.open('', '_blank', 'width=400,height=600');
+            var html = '<html><head><title>Rent Receipt</title>' +
+                '<style>body{font-family:monospace;font-size:13px;padding:20px;max-width:360px;margin:0 auto}' +
+                '.center{text-align:center}.bold{font-weight:bold}.line{border-top:1px dashed #000;margin:8px 0}' +
+                '.right{text-align:right}.mt{margin-top:12px}</style></head><body>' +
+                '<div class="center bold">' + r.store_name + '</div>' +
+                '<div class="center">' + r.store_address + '</div>' +
+                '<div class="line"></div>' +
+                '<div class="center bold">' + r.receipt_type + '</div>' +
+                '<div class="line"></div>' +
+                '<div>Date: ' + r.date + '</div>' +
+                '<div>Ref: ' + r.reference_number + '</div>' +
+                '<div class="line"></div>' +
+                '<div>Vendor: ' + r.vendor_name + '</div>' +
+                '<div>Booth: ' + r.booth_number + '</div>' +
+                '<div>Period: ' + r.period + '</div>' +
+                '<div class="line"></div>' +
+                '<div class="bold">Amount: $' + r.amount.toFixed(2) + '</div>' +
+                '<div>Method: ' + r.method + '</div>' +
+                '<div>Status: ' + r.status + '</div>' +
+                (r.notes ? '<div class="mt">Notes: ' + r.notes + '</div>' : '') +
+                '<div class="line"></div>' +
+                '<div class="center mt">Thank you!</div>' +
+                '<div class="center" style="font-size:11px;margin-top:8px">Processed by: ' + r.processed_by + '</div>' +
+                '</body></html>';
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(function() { printWindow.print(); }, 250);
+        } catch (err) {
+            showToast(err.message || 'Failed to load receipt', 'error');
+        }
     }
 
     async function openClassSignupModal() {

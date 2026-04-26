@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import select, func, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -207,7 +207,7 @@ async def vendor_overview(
     for v in vendors:
         sales_balance = balance_map.get(v.id, 0.0)
         rent_bal = rent_balance_map.get(v.id, 0.0)
-        rent = float(v.monthly_rent or 0) + float(v.landing_page_fee or 0) + float(v.landing_page_fee or 0)
+        rent = float(v.monthly_rent or 0) + float(v.landing_page_fee or 0)
         rent_info = rent_map.get(v.id)
         rent_paid = rent_info is not None and rent_info["paid"]
         rent_display = _admin_display_rent_balance(rent_bal, rent, rent_paid)
@@ -224,13 +224,16 @@ async def vendor_overview(
             else:
                 rent_status = "due"
 
-        rent_to_deduct = 0.0 if rent_paid else rent
-        if sales_balance >= rent_to_deduct:
-            net_payout = round(sales_balance - rent_to_deduct, 2)
+        rent_to_deduct = rent if not rent_paid else 0.0
+        if rent_paid or rent <= 0 or rent_bal > 0:
+            net_payout = round(sales_balance, 2)
+            shortfall = 0.0
+        elif sales_balance >= rent:
+            net_payout = round(sales_balance - rent, 2)
             shortfall = 0.0
         else:
             net_payout = 0.0
-            shortfall = round(rent_to_deduct - sales_balance, 2)
+            shortfall = round(rent - sales_balance, 2)
 
         totals["gross"] += sales_balance
         totals["rent_due"] += rent if not rent_paid else 0.0
@@ -540,15 +543,17 @@ async def record_rent_payment(
         receipt_notes = f"{receipt_notes} Applied to {period_labels}."
     if credit_remainder > 0:
         receipt_notes = f"{receipt_notes} Remaining rent credit ${float(credit_remainder):.2f}."
-    db.add(RentPayment(
+    rent_payment = RentPayment(
         vendor_id=vendor.id,
         amount=amount,
         period_month=period,
         method=method,
         status="received",
         notes=f"[rent-ref:{reference_tag}] {receipt_notes}".strip(),
-    ))
+    )
+    db.add(rent_payment)
     await db.commit()
+    await db.refresh(rent_payment)
 
     if applied_periods and credit_remainder > 0:
         message = (
@@ -569,6 +574,7 @@ async def record_rent_payment(
 
     return {
         "success": True,
+        "payment_id": rent_payment.id,
         "message": message,
         "applied_periods": [p.isoformat() for p in applied_periods],
         "credit_remainder": float(credit_remainder),
@@ -1076,13 +1082,17 @@ async def send_weekly_reports(
         bal_result = await db.execute(
             select(VendorBalance.balance, VendorBalance.rent_balance)
             .where(VendorBalance.vendor_id == v.id)
+            .limit(1)
         )
         bal_row = bal_result.one_or_none()
         sb = float(bal_row[0] or 0) if bal_row else 0.0
         rb = float(bal_row[1] or 0) if bal_row else 0.0
         rent = float(v.monthly_rent or 0) + float(v.landing_page_fee or 0)
         # Compute net payout for the email
-        net_payout = round(sb - rent + rb, 2) if rent > 0 else round(sb + rb, 2)
+        if rent > 0 and rb <= 0:
+            net_payout = round(max(0.0, sb - rent), 2)
+        else:
+            net_payout = round(sb, 2)
 
         active_result = await db.execute(
             select(func.count(Item.id)).where(Item.vendor_id == v.id, Item.status == "active")
@@ -1263,6 +1273,123 @@ async def rent_payout_ledger(
         "vendor_cards": vendor_cards,
         "transactions": transactions,
     }
+
+
+@router.get("/rent-payment-history")
+async def rent_payment_history(
+    vendor_id: Optional[int] = Query(None),
+    month: Optional[str] = Query(None),
+    limit: int = Query(200, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
+):
+    """
+    Returns a detailed list of all rent payments for tracking and verification.
+    Includes vendor name, booth, period, amount, method, status, who processed it,
+    reference tag, and Square payment ID.
+    """
+    from sqlalchemy.orm import selectinload
+
+    query = (
+        select(RentPayment)
+        .options(selectinload(RentPayment.vendor))
+        .order_by(RentPayment.processed_at.desc())
+    )
+
+    if vendor_id:
+        query = query.where(RentPayment.vendor_id == vendor_id)
+    if month:
+        try:
+            parts = month.split("-")
+            target_month = date(int(parts[0]), int(parts[1]), 1)
+            query = query.where(RentPayment.period_month == target_month)
+        except (ValueError, IndexError):
+            raise HTTPException(status_code=400, detail="Invalid month format. Use YYYY-MM.")
+
+    count_query = select(func.count()).select_from(query.subquery())
+    count_result = await db.execute(count_query)
+    total_count = count_result.scalar() or 0
+
+    query = query.limit(limit).offset(offset)
+    result = await db.execute(query)
+    payments = result.scalars().all()
+
+    rows = []
+    for rp in payments:
+        vendor_name = rp.vendor.name if rp.vendor else "Unknown"
+        booth = rp.vendor.booth_number if rp.vendor else ""
+        notes = display_rent_notes(rp.notes) or ""
+        ref = extract_rent_reference(rp.notes)
+
+        rows.append({
+            "id": rp.id,
+            "vendor_id": rp.vendor_id,
+            "vendor_name": vendor_name,
+            "booth_number": booth,
+            "period": rp.period_month.strftime("%B %Y") if rp.period_month else "",
+            "amount": float(rp.amount),
+            "method": rp.method,
+            "status": rp.status,
+            "reference_tag": ref or "",
+            "square_payment_id": rp.square_payment_id or "",
+            "processed_at": rp.processed_at.isoformat() if rp.processed_at else None,
+            "notes": notes,
+        })
+
+    return {
+        "total": total_count,
+        "offset": offset,
+        "limit": limit,
+        "rows": rows,
+    }
+
+
+@router.get("/rent-payments/{payment_id}/receipt")
+async def rent_payment_receipt(
+    payment_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(require_any_staff_feature("role_manage_rent", "role_view_reports")),
+):
+    """
+    Returns receipt data for a rent payment (cash, check, card, or square).
+    Can be used to print a receipt at the POS.
+    """
+    from sqlalchemy.orm import selectinload
+
+    result = await db.execute(
+        select(RentPayment)
+        .options(selectinload(RentPayment.vendor))
+        .where(RentPayment.id == payment_id)
+    )
+    rp = result.scalar_one_or_none()
+    if not rp:
+        raise HTTPException(status_code=404, detail="Rent payment not found")
+
+    vendor_name = rp.vendor.name if rp.vendor else "Unknown"
+    booth = rp.vendor.booth_number if rp.vendor else ""
+    notes = display_rent_notes(rp.notes) or ""
+    ref = extract_rent_reference(rp.notes)
+
+    receipt = {
+        "store_name": "Bowenstreet Market",
+        "store_address": "2837 Bowen St, Oshkosh WI 54901",
+        "receipt_type": "RENT PAYMENT RECEIPT",
+        "payment_id": rp.id,
+        "reference_number": ref or f"RP-{rp.id:06d}",
+        "date": rp.processed_at.strftime("%Y-%m-%d %I:%M %p") if rp.processed_at else "",
+        "vendor_name": vendor_name,
+        "booth_number": booth,
+        "period": rp.period_month.strftime("%B %Y") if rp.period_month else "",
+        "amount": float(rp.amount),
+        "method": rp.method.upper() if rp.method else "",
+        "status": rp.status,
+        "notes": notes,
+        "processed_by": current_user.name,
+        "square_payment_id": rp.square_payment_id or "",
+    }
+
+    return {"receipt": receipt}
 
 
 @router.get("/health/backup")

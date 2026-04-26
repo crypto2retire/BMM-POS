@@ -93,7 +93,7 @@ async def rent_status(
         select(RentPayment).where(
             RentPayment.vendor_id == vendor.id,
             RentPayment.period_month == period,
-        )
+        ).limit(1)
     )
     current_payment = existing.scalar_one_or_none()
 
@@ -152,7 +152,7 @@ async def rent_status(
 
 
 class RentConfirmRequest(BaseModel):
-    square_payment_id: Optional[str] = None
+    square_payment_id: str
     amount: Optional[Decimal] = None
     period: Optional[str] = None
 
@@ -207,14 +207,14 @@ async def monthly_report(
             RentPayment.vendor_id == vendor.id,
             RentPayment.period_month == current_period_check,
             RentPayment.status == "paid",
-        )
+        ).limit(1)
     )
     rent_paid_this_month = rp_check.scalar_one_or_none() is not None
 
-    if rent_due_amt > 0 and not rent_paid_this_month:
-        net_payout = round(total_sales - rent_due_amt + carry_over, 2)
+    if rent_due_amt > 0 and not rent_paid_this_month and carry_over <= 0:
+        net_payout = round(max(0.0, total_sales - rent_due_amt), 2)
     else:
-        net_payout = round(total_sales + carry_over, 2)
+        net_payout = round(total_sales, 2)
 
     sales_summary = await db.execute(
         select(
@@ -402,28 +402,44 @@ async def rent_confirmed(
         today = date.today()
         period = date(today.year, today.month, 1)
 
+    # Idempotency: skip if this Square payment was already processed
+    existing_rp = await db.execute(
+        select(RentPayment).where(
+            RentPayment.vendor_id == vendor.id,
+            RentPayment.square_payment_id == body.square_payment_id,
+        ).limit(1)
+    )
+    if existing_rp.scalar_one_or_none():
+        return {
+            "success": True,
+            "message": "Rent payment already recorded.",
+            "applied_periods": [],
+            "credit_remainder": 0.0,
+        }
+
     # Verify Square payment before crediting rent
-    if body.square_payment_id:
-        from app.services.square import _access_token
-        from app.services.circuit_breaker import _square_breaker
-        import httpx
-        token = _access_token()
-        if token:
-            async def _verify():
-                async with httpx.AsyncClient() as client:
-                    return await client.get(
-                        f"https://connect.squareup.com/v2/payments/{body.square_payment_id}",
-                        headers={"Authorization": f"Bearer {token}"}
-                    )
-            resp = await _square_breaker.call_async(_verify)
-            if resp.status_code != 200:
-                raise HTTPException(status_code=400, detail="Payment not found with Square")
-            payment_data = resp.json().get("payment", {})
-            if payment_data.get("status") != "COMPLETED":
-                raise HTTPException(status_code=400, detail="Payment not completed")
+    from app.services.square import _access_token
+    from app.services.circuit_breaker import _square_breaker
+    import httpx
+    token = _access_token()
+    if not token:
+        raise HTTPException(status_code=503, detail="Payment verification unavailable. Please try again later.")
+
+    async def _verify():
+        async with httpx.AsyncClient() as client:
+            return await client.get(
+                f"https://connect.squareup.com/v2/payments/{body.square_payment_id}",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+    resp = await _square_breaker.call_async(_verify)
+    if resp.status_code != 200:
+        raise HTTPException(status_code=400, detail="Payment not found with Square")
+    payment_data = resp.json().get("payment", {})
+    if payment_data.get("status") != "COMPLETED":
+        raise HTTPException(status_code=400, detail="Payment not completed")
 
     reference_tag = secrets.token_hex(4)
-    base_notes = body.square_payment_id or "Square online payment"
+    base_notes = f"Square payment: {body.square_payment_id}"
     allocation = await apply_rent_payment(
         db=db,
         vendor=vendor,
@@ -449,6 +465,7 @@ async def rent_confirmed(
         status="received",
         notes=stamp_rent_notes(receipt_notes, reference_tag),
         reference_tag=reference_tag,
+        square_payment_id=body.square_payment_id,
     ))
     await db.commit()
 

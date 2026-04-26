@@ -112,6 +112,7 @@ async def record_deposit_action(
         bal_result = await db.execute(
             select(VendorBalance)
             .where(VendorBalance.vendor_id == vendor_id)
+            .limit(1)
             .with_for_update()
         )
         vb = bal_result.scalar_one_or_none()

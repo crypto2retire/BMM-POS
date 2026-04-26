@@ -70,7 +70,7 @@ async def apply_rent_payment(
                 RentPayment.vendor_id == vendor.id,
                 RentPayment.reference_tag == reference_tag,
                 RentPayment.status.in_(["paid", "received"]),
-            )
+            ).limit(1)
         )
         if existing.scalar_one_or_none():
             return {
@@ -91,7 +91,7 @@ async def apply_rent_payment(
     paid_periods = {row[0] for row in paid_result.all()}
 
     balance_result = await db.execute(
-        select(VendorBalance).where(VendorBalance.vendor_id == vendor.id).with_for_update()
+        select(VendorBalance).where(VendorBalance.vendor_id == vendor.id).limit(1).with_for_update()
     )
     balance_row = balance_result.scalar_one_or_none()
     if balance_row:

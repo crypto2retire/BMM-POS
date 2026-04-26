@@ -1004,15 +1004,22 @@
     async function checkRentReturn() {
         const params = new URLSearchParams(window.location.search);
         if (params.get('rent_paid') !== 'success') return;
+        const squarePaymentId = params.get('transactionId');
+        if (!squarePaymentId) {
+            showAlert('alert-container', 'Payment ID missing. Contact the office to confirm your rent payment.', 'warning');
+            history.replaceState({}, '', '/vendor/dashboard.html');
+            return;
+        }
         history.replaceState({}, '', '/vendor/dashboard.html');
         try {
             await apiPost('/api/v1/vendor/rent-confirmed', {
+                square_payment_id: squarePaymentId,
                 amount: params.get('rent_amount'),
                 period: params.get('rent_period') ? params.get('rent_period').slice(0, 7) : null,
             });
             showAlert('alert-container', 'Rent payment confirmed. Thank you!', 'success');
         } catch (err) {
-            showAlert('alert-container', 'Payment received. Contact the office if you need confirmation.', 'warning');
+            showAlert('alert-container', err.message || 'Payment confirmation failed. Contact the office if you need help.', 'warning');
         }
     }
 

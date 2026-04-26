@@ -525,13 +525,44 @@ async def create_cart_payment(
     checkout_group_id = str(uuid.uuid4())
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=15)
 
-    reservations: list[Reservation] = []
     total = Decimal("0.00")
     for item in items:
         line_total = _reservation_total_for_item(item, tax_rate)
         total += line_total
 
-        # Reserve inventory so POS can't sell it while payment is pending
+    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
+    scheme = request.headers.get("x-forwarded-proto") or "https"
+    base_url = f"{scheme}://{host}"
+    redirect_url = f"{base_url}/shop/index.html?payment=success&ref={checkout_group_id}"
+
+    # Create Square payment link FIRST — if this fails, we don't hold inventory
+    try:
+        from app.services.square import create_payment_link
+        price_cents = int(total * 100)
+        item_count = len(items)
+        item_name = (items[0].name or "Item")[:60]
+        checkout_name = (
+            f"Reserve: {item_name}" if item_count == 1
+            else f"Reserve {item_count} items at Bowenstreet Market"
+        )
+        link_result = await create_payment_link(
+            name=checkout_name,
+            price_cents=price_cents,
+            redirect_url=redirect_url,
+        )
+        payment_link_id = link_result.get("payment_link_id", "")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Square payment link error: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail="Online checkout is temporarily unavailable. Please try again later or visit the store.",
+        )
+
+    # Only create reservations AFTER Square payment link succeeds
+    reservations: list[Reservation] = []
+    for item in items:
+        line_total = _reservation_total_for_item(item, tax_rate)
         item.reserved_quantity += 1
 
         reservation = Reservation(
@@ -544,6 +575,7 @@ async def create_cart_payment(
             status="pending",
             expires_at=expires_at,
             idempotency_key=req.idempotency_key,
+            square_payment_id=payment_link_id,
         )
         db.add(reservation)
         reservations.append(reservation)
@@ -563,48 +595,14 @@ async def create_cart_payment(
     for reservation in reservations:
         await db.refresh(reservation)
 
-    host = request.headers.get("x-forwarded-host") or request.headers.get("host") or ""
-    scheme = request.headers.get("x-forwarded-proto") or "https"
-    base_url = f"{scheme}://{host}"
-    redirect_url = f"{base_url}/shop/index.html?payment=success&ref={checkout_group_id}"
-
-    try:
-        from app.services.square import create_payment_link
-        price_cents = int(total * 100)
-        item_count = len(items)
-        item_name = (items[0].name or "Item")[:60]
-        checkout_name = (
-            f"Reserve: {item_name}" if item_count == 1
-            else f"Reserve {item_count} items at Bowenstreet Market"
-        )
-        link_result = await create_payment_link(
-            name=checkout_name,
-            price_cents=price_cents,
-            redirect_url=redirect_url,
-        )
-        payment_link_id = link_result.get("payment_link_id", "")
-        for reservation in reservations:
-            reservation.square_payment_id = payment_link_id
-        await db.commit()
-
-        return {
-            "reference_id": checkout_group_id,
-            "reservation_id": reservations[0].public_id,
-            "reservation_count": item_count,
-            "total": float(total),
-            "payment_url": link_result["url"],
-            "message": "Redirecting to secure checkout...",
-        }
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"Square payment link error: {e}")
-        return {
-            "reference_id": checkout_group_id,
-            "reservation_id": reservations[0].public_id,
-            "reservation_count": len(reservations),
-            "total": float(total),
-            "message": "Reservations created. In-store payment required.",
-        }
+    return {
+        "reference_id": checkout_group_id,
+        "reservation_id": reservations[0].public_id,
+        "reservation_count": len(reservations),
+        "total": float(total),
+        "payment_url": link_result["url"],
+        "message": "Redirecting to secure checkout...",
+    }
 
 
 class ConfirmPaymentRequest(BaseModel):
@@ -643,43 +641,72 @@ async def payment_confirmed(
             raise HTTPException(status_code=404, detail="Reservation not found")
         reservations = [reservation]
 
-    # Check if already completed
+    # Security: only the Square webhook can mark reservations as completed.
+    # This endpoint is for UX only — it checks whether the webhook has processed
+    # the payment yet. The webhook verifies the Square signature before completing.
     already_done = all(r.status == "completed" for r in reservations)
     if already_done:
-        return {"message": "Payment already confirmed."}
+        return {"message": "Payment confirmed! Your items are reserved."}
 
-    # Lock items and finalize
-    item_ids = [r.item_id for r in reservations if r.item_id]
-    if item_ids:
-        await db.execute(select(Item).where(Item.id.in_(item_ids)).with_for_update())
+    any_cancelled = any(r.status == "cancelled" for r in reservations)
+    if any_cancelled:
+        raise HTTPException(status_code=400, detail="This reservation has been cancelled.")
 
-    pending_count = 0
-    for reservation in reservations:
-        if reservation.status == "completed":
-            continue
-        reservation.status = "completed"
-        if reservation.item:
-            # Deduct actual inventory and release reservation hold
-            reservation.item.quantity = max(0, reservation.item.quantity - 1)
+    # Payment may still be processing on Square's side.
+    return {"message": "Payment is being processed. Please wait a moment and refresh."}
+
+
+class CancelReservationRequest(BaseModel):
+    email: Optional[str] = None
+    phone: Optional[str] = None
+
+
+@router.post("/reservations/{public_id}/cancel")
+async def cancel_reservation_public(
+    public_id: str,
+    req: CancelReservationRequest = CancelReservationRequest(),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Reservation).options(selectinload(Reservation.item))
+        .where(Reservation.public_id == public_id)
+    )
+    reservation = result.scalar_one_or_none()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Reservation not found")
+
+    if reservation.status == "cancelled":
+        raise HTTPException(status_code=400, detail="Reservation is already cancelled")
+    if reservation.status == "completed":
+        raise HTTPException(status_code=400, detail="Cannot cancel a completed order")
+
+    # Verify identity via email or phone
+    provided_email = (req.email or "").strip().lower()
+    provided_phone = (req.phone or "").strip()
+    res_email = (reservation.customer_email or "").strip().lower()
+    res_phone = (reservation.customer_phone or "").strip()
+
+    if provided_email and provided_email == res_email:
+        pass
+    elif provided_phone and provided_phone == res_phone:
+        pass
+    else:
+        raise HTTPException(status_code=403, detail="Email or phone does not match this reservation")
+
+    old_status = reservation.status
+    reservation.status = "cancelled"
+
+    if reservation.item:
+        if old_status == "pending":
             reservation.item.reserved_quantity = max(0, reservation.item.reserved_quantity - 1)
-            if reservation.item.quantity <= 0:
-                reservation.item.status = "sold"
-        pending_count += 1
+        elif old_status == "ready":
+            reservation.item.quantity = reservation.item.quantity + 1
+            if reservation.item.status == "sold":
+                reservation.item.status = "active"
 
     await db.commit()
 
-    await log_audit(
-        db=db,
-        vendor_id=None,
-        action="payment_confirmed",
-        entity_type="reservation",
-        entity_id=reference_id,
-        details=f"Confirmed {pending_count} reservations",
-        request=request,
-    )
-
-    item_word = "item" if pending_count == 1 else "items"
-    return {"message": f"Payment confirmed! {pending_count} {item_word} reserved."}
+    return {"message": "Reservation cancelled successfully", "old_status": old_status}
 
 
 # ── Phase 3 SEO endpoints ──────────────────────────────────────────────
