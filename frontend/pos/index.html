@@ -1149,7 +1149,6 @@
         </div>
         <div class="pos-navbar-right" class="relative">
             <span id="cashier-name">Loading…</span>
-            <button onclick="toggleDisplayPrefs()" style="background:none; border:none; color:var(--text-light); font-size:1.1rem; cursor:pointer; padding:0.5rem; min-height:44px; min-width:44px" title="Display Settings" aria-label="Open display settings" aria-expanded="false">&#9881;</button>
             <div id="display-prefs-dropdown" style="display:none; position:absolute; right:1rem; top:60px; background:var(--surface); border:1px solid var(--border); padding:1rem; z-index:100; min-width:220px; box-shadow:var(--shadow-md)">
                 <div style="font-size:0.72rem; color:var(--text-light); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; font-family:'Roboto',sans-serif">Theme</div>
                 <div style="display:flex; gap:0; margin-bottom:0.75rem">
@@ -1167,13 +1166,20 @@
             <button class="nav-link" onclick="openGiftCardModal()">Gift Cards</button>
             <button class="nav-link" onclick="openReceiptLookup()">Receipts</button>
             <button class="nav-link" onclick="openEndOfDay()">End of Day</button>
-            <a href="/admin/vendors.html">Vendors</a>
-            <a href="/vendor/items.html">Items</a>
-            <a href="/admin/reports.html" id="reports-link" style="display:none">Reports</a>
-            <a href="/admin/studio.html">Studio</a>
-            <a href="/admin/index.html" id="admin-link" style="display:none">Admin</a>
-            <button class="nav-link" onclick="openPasswordModal()">Password</button>
-            <button class="nav-link" onclick="handleLogout()">Logout</button>
+            <div class="relative" style="position:relative">
+                <button class="nav-link" onclick="togglePosSettings(this)" aria-haspopup="true" aria-expanded="false">Settings</button>
+                <div id="pos-settings-dropdown" style="display:none;position:absolute;right:0;top:100%;background:var(--surface);border:1px solid var(--border);padding:0.5rem 0;z-index:200;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,0.4)">
+                    <a href="/admin/vendors.html" style="display:block;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Vendors</a>
+                    <a href="/vendor/items.html" style="display:block;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Items</a>
+                    <a href="/admin/reports.html" id="reports-link" style="display:none;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Reports</a>
+                    <a href="/admin/studio.html" style="display:block;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Studio</a>
+                    <a href="/admin/index.html" id="admin-link" style="display:none;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Admin</a>
+                    <div style="border-top:1px solid var(--border);margin:0.35rem 0"></div>
+                    <button onclick="toggleDisplayPrefs();togglePosSettings(document.querySelector('[onclick*=togglePosSettings]'))" style="display:block;width:100%;text-align:left;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Display</button>
+                    <button onclick="openPasswordModal();togglePosSettings(document.querySelector('[onclick*=togglePosSettings]'))" style="display:block;width:100%;text-align:left;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Change Password</button>
+                </div>
+            </div>
+            <button class="nav-link" onclick="handleLogout()">Log Out</button>
         </div>
     </nav>
 
@@ -2068,6 +2074,23 @@
         if (dd && dd.style.display !== 'none' && !e.target.closest('#display-prefs-dropdown') && !e.target.closest('[onclick*="toggleDisplayPrefs"]')) {
             dd.style.display = 'none';
             var toggle = document.querySelector('[onclick*="toggleDisplayPrefs"]');
+            if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        }
+    });
+
+    // ── POS Settings dropdown ───────────────────────────────────────────────
+    function togglePosSettings(btn) {
+        var dd = document.getElementById('pos-settings-dropdown');
+        var isOpen = dd.style.display === 'none';
+        dd.style.display = isOpen ? 'block' : 'none';
+        if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+
+    document.addEventListener('click', function(e) {
+        var dd = document.getElementById('pos-settings-dropdown');
+        if (dd && dd.style.display !== 'none' && !e.target.closest('#pos-settings-dropdown') && !e.target.closest('[onclick*="togglePosSettings"]')) {
+            dd.style.display = 'none';
+            var toggle = document.querySelector('[onclick*="togglePosSettings"]');
             if (toggle) toggle.setAttribute('aria-expanded', 'false');
         }
     });

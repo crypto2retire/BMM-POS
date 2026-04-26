@@ -902,28 +902,20 @@
         <span id="user-name">Administrator</span>
         <nav class="navbar-nav">
             <a href="/admin/index.html" class="active">Dashboard</a>
-            <a href="/admin/reports.html">Reports</a>
-            <a href="/admin/eod-reports.html">EOD Reports</a>
             <a href="/admin/studio.html">Studio</a>
-            <a href="/items.html">Items</a>
-            <a href="/admin/settings.html" class="admin-only-nav">Settings</a>
-            <a href="/admin/errors.html">Errors</a>
             <a href="/pos/index.html">POS Terminal</a>
-            <button type="button" onclick="handleLogout()">Logout</button>
+            <a href="/admin/settings.html" class="admin-only-nav">Settings</a>
+            <button type="button" onclick="handleLogout()">Log Out</button>
         </nav>
         <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
     </div>
 </nav>
 <div class="mobile-nav-dropdown" id="mobile-nav">
     <a href="/admin/index.html" class="active">Dashboard</a>
-    <a href="/admin/reports.html">Reports</a>
-    <a href="/admin/eod-reports.html">EOD Reports</a>
     <a href="/admin/studio.html">Studio</a>
-    <a href="/items.html">Items</a>
-    <a href="/admin/settings.html" class="admin-only-nav">Settings</a>
-    <a href="/admin/errors.html">Errors</a>
     <a href="/pos/index.html">POS Terminal</a>
-    <button type="button" onclick="handleLogout()">Logout</button>
+    <a href="/admin/settings.html" class="admin-only-nav">Settings</a>
+    <button type="button" onclick="handleLogout()">Log Out</button>
 </div>
 
 <div class="main-content">
@@ -947,11 +939,13 @@
     </div>
 
     <div class="main-tabs">
-        <button type="button" class="main-tab active" onclick="switchMainTab('dashboard',this)">Dashboard</button>
+        <button type="button" class="main-tab active" onclick="switchMainTab('overview',this)">Overview</button>
+        <button type="button" class="main-tab" onclick="switchMainTab('analytics',this)">Analytics</button>
+        <button type="button" class="main-tab" onclick="switchMainTab('operations',this)">Operations</button>
         <button type="button" class="main-tab" onclick="switchMainTab('rent-payouts',this)">Rent &amp; Payouts</button>
     </div>
 
-    <div id="tab-dashboard">
+    <div id="tab-overview">
     <div class="period-tabs">
         <button class="period-tab active" data-period="today" onclick="switchPeriod('today',this)">Today</button>
         <button class="period-tab" data-period="week" onclick="switchPeriod('week',this)">This Week</button>
@@ -973,6 +967,31 @@
     </div>
 
     <div class="ornament">&loz;</div>
+
+    <!-- Quick Actions -->
+    <div class="section" style="margin-bottom:1.5rem">
+        <div class="section-header">
+            <h2 class="section-title">Quick Actions</h2>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.75rem">
+            <a href="/pos/index.html" class="dashboard-quick-link" style="display:flex">
+                <strong>Open POS</strong>
+                <span>Launch the register and in-store sales tools.</span>
+            </a>
+            <a href="/admin/reports.html" class="dashboard-quick-link" style="display:flex">
+                <strong>Detailed Reports</strong>
+                <span>View hourly trends, top vendors, payment methods, and more.</span>
+            </a>
+            <a href="/admin/eod-reports.html" class="dashboard-quick-link" style="display:flex">
+                <strong>End of Day</strong>
+                <span>Review closing reports and drawer counts.</span>
+            </a>
+            <a href="/items.html" class="dashboard-quick-link" style="display:flex">
+                <strong>Manage Items</strong>
+                <span>Add, edit, or search inventory.</span>
+            </a>
+        </div>
+    </div>
 
     <div id="vendor-hub-section" class="vendor-hub-section section">
         <div class="section-header" style="flex-wrap:wrap;gap:0.75rem;align-items:center">
@@ -1033,36 +1052,6 @@
 
     <div class="ornament">&loz;</div>
 
-    <div class="dash-row">
-        <div class="dash-section">
-            <div class="dash-section-title">Hourly Sales</div>
-            <div class="chart-bars" id="hourly-chart"></div>
-            <div class="chart-labels" id="hourly-labels"></div>
-        </div>
-        <div class="dash-section">
-            <div class="dash-section-title">Payment Methods</div>
-            <div class="payment-pills" id="payment-methods">
-                <div style="color:var(--text-light);font-style:italic;width:100%;text-align:center;padding:2rem 0">No sales data</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="dash-row">
-        <div class="dash-section">
-            <div class="dash-section-title">Daily Sales (Last 30 Days)</div>
-            <div class="daily-chart-bars" id="daily-chart"></div>
-            <div class="chart-labels" id="daily-labels" style="gap:1px"></div>
-        </div>
-        <div class="dash-section">
-            <div class="dash-section-title">Top Vendors</div>
-            <div id="top-vendors">
-                <div style="color:var(--text-light);font-style:italic;text-align:center;padding:2rem 0">No sales data</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="ornament">&loz;</div>
-
     <div class="section" id="online-orders-section">
         <div class="section-header">
             <h2 class="section-title">Online Orders <span id="pending-orders-badge" style="display:none;background:var(--danger);color:var(--white);font-size:0.7rem;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle">0 new</span></h2>
@@ -1110,10 +1099,81 @@
         </div>
     </div>
 
-    </div><!-- #tab-dashboard -->
+    </div><!-- #tab-overview -->
 
-    <!-- ── VENDOR LANDING PAGE PREVIEW ── -->
-    <div class="section admin-only-dash" id="vendor-landing-preview-section">
+    <!-- ── ANALYTICS TAB ── -->
+    <div id="tab-analytics" style="display:none">
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">Analytics &amp; Reports</h2>
+            </div>
+            <p style="font-family:'EB Garamond',serif;font-style:italic;color:var(--text-light);font-size:0.95rem;margin-bottom:1.25rem">
+                Detailed reporting and analytics for store performance.
+            </p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.75rem;margin-bottom:1.5rem">
+                <a href="/admin/reports.html?type=daily_sales&preset=today" class="dashboard-quick-link">
+                    <strong>Daily Sales</strong>
+                    <span>View today&#8217;s sales summary with trends.</span>
+                </a>
+                <a href="/admin/reports.html?type=vendor_performance" class="dashboard-quick-link">
+                    <strong>Vendor Performance</strong>
+                    <span>Compare vendor sales and activity.</span>
+                </a>
+                <a href="/admin/reports.html?type=top_items" class="dashboard-quick-link">
+                    <strong>Top Items</strong>
+                    <span>See best-selling items by quantity and revenue.</span>
+                </a>
+                <a href="/admin/reports.html?type=items_sold" class="dashboard-quick-link">
+                    <strong>Items Sold</strong>
+                    <span>Detailed log of every item transaction.</span>
+                </a>
+                <a href="/admin/reports.html?type=hourly_sales" class="dashboard-quick-link">
+                    <strong>Hourly Sales</strong>
+                    <span>Peak hours and transaction patterns.</span>
+                </a>
+                <a href="/admin/reports.html?type=payment_methods" class="dashboard-quick-link">
+                    <strong>Payment Methods</strong>
+                    <span>Breakdown by cash, card, and gift card.</span>
+                </a>
+                <a href="/admin/reports.html?type=vendor_balances" class="dashboard-quick-link">
+                    <strong>Vendor Balances</strong>
+                    <span>Current balances owed to vendors.</span>
+                </a>
+            </div>
+        </div>
+    </div><!-- #tab-analytics -->
+
+    <!-- ── OPERATIONS TAB ── -->
+    <div id="tab-operations" style="display:none">
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">Store Operations</h2>
+            </div>
+            <p style="font-family:'EB Garamond',serif;font-style:italic;color:var(--text-light);font-size:0.95rem;margin-bottom:1.25rem">
+                Daily operations, inventory management, and system monitoring.
+            </p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.75rem;margin-bottom:1.5rem">
+                <a href="/admin/eod-reports.html" class="dashboard-quick-link">
+                    <strong>End of Day Reports</strong>
+                    <span>Review daily closing reports and drawer counts.</span>
+                </a>
+                <a href="/items.html" class="dashboard-quick-link">
+                    <strong>Items &amp; Inventory</strong>
+                    <span>Manage products, barcodes, and stock.</span>
+                </a>
+                <a href="/admin/errors.html" class="dashboard-quick-link">
+                    <strong>Error Logs</strong>
+                    <span>Monitor system errors and diagnostics.</span>
+                </a>
+                <a href="/admin/vendors.html" class="dashboard-quick-link">
+                    <strong>Vendor Directory</strong>
+                    <span>Manage vendor accounts and settings.</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Vendor Landing Pages moved into Operations -->
+        <div class="section admin-only-dash" id="vendor-landing-preview-section">
         <div class="section-header">
             <h2 class="section-title">Vendor Landing Pages</h2>
         </div>
@@ -1164,7 +1224,7 @@
                 Select a vendor above to preview their landing page
             </div>
         </div>
-    </div>
+    </div><!-- #tab-operations -->
 
     <div id="tab-rent-payouts" style="display:none">
 
@@ -1465,9 +1525,9 @@
 
 <nav class="admin-bottom-nav">
     <a href="/admin/index.html" class="active"><span class="nav-icon">&#127968;</span>Dashboard</a>
-    <a href="/admin/reports.html"><span class="nav-icon">&#128196;</span>Reports</a>
-    <a href="/items.html"><span class="nav-icon">&#127991;&#65039;</span>Items</a>
+    <a href="/admin/studio.html"><span class="nav-icon">&#127912;</span>Studio</a>
     <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
+    <a href="/admin/settings.html"><span class="nav-icon">&#9881;</span>Settings</a>
 </nav>
 
 <script src="/static/js/api.js"></script>
@@ -2065,9 +2125,13 @@
     function switchMainTab(tab, btn) {
         document.querySelectorAll('.main-tab').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
-        var dash = document.getElementById('tab-dashboard');
+        var overview = document.getElementById('tab-overview');
+        var analytics = document.getElementById('tab-analytics');
+        var operations = document.getElementById('tab-operations');
         var rp = document.getElementById('tab-rent-payouts');
-        if (dash) dash.style.display = tab === 'dashboard' ? '' : 'none';
+        if (overview) overview.style.display = tab === 'overview' ? '' : 'none';
+        if (analytics) analytics.style.display = tab === 'analytics' ? '' : 'none';
+        if (operations) operations.style.display = tab === 'operations' ? '' : 'none';
         if (rp) rp.style.display = tab === 'rent-payouts' ? '' : 'none';
         if (tab === 'rent-payouts') loadRPLedger();
     }

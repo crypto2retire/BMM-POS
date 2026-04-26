@@ -254,14 +254,10 @@
         <span id="user-name">Administrator</span>
         <nav class="navbar-nav">
             <a href="/admin/index.html">Dashboard</a>
-            <a href="/admin/reports.html">Reports</a>
-            <a href="/admin/eod-reports.html">EOD Reports</a>
             <a href="/admin/studio.html" class="active">Studio</a>
-            <a href="/vendor/items.html">Items</a>
-            <a href="/admin/settings.html">Settings</a>
-            <a href="/admin/errors.html">Errors</a>
             <a href="/pos/index.html">POS Terminal</a>
-            <button type="button" onclick="handleLogout()">Logout</button>
+            <a href="/admin/settings.html">Settings</a>
+            <button type="button" onclick="handleLogout()">Log Out</button>
         </nav>
         <button class="hamburger-btn" id="hamburger-btn" onclick="toggleMobileNav()" aria-label="Menu">&#9776;</button>
     </div>
@@ -269,12 +265,9 @@
 
 <div class="mobile-nav-dropdown" id="mobile-nav">
     <a href="/admin/index.html">Dashboard</a>
-    <a href="/admin/reports.html">Reports</a>
-    <a href="/admin/eod-reports.html">EOD Reports</a>
     <a href="/admin/studio.html" class="active">Studio</a>
-    <a href="/vendor/items.html">Items</a>
+    <a href="/pos/index.html">POS Terminal</a>
     <a href="/admin/settings.html">Settings</a>
-    <a href="/admin/errors.html">Errors</a>
     <a href="/pos/index.html">POS Terminal</a>
     <button type="button" onclick="handleLogout()">Logout</button>
 </div>
@@ -400,9 +393,9 @@
 
 <nav class="admin-bottom-nav">
     <a href="/admin/index.html"><span class="nav-icon">&#127968;</span>Dashboard</a>
-    <a href="/admin/reports.html"><span class="nav-icon">&#128196;</span>Reports</a>
-    <a href="/vendor/items.html"><span class="nav-icon">&#127991;&#65039;</span>Items</a>
+    <a href="/admin/studio.html" class="active"><span class="nav-icon">&#127912;</span>Studio</a>
     <a href="/pos/index.html"><span class="nav-icon">&#128421;&#65039;</span>POS</a>
+    <a href="/admin/settings.html"><span class="nav-icon">&#9881;</span>Settings</a>
 </nav>
 
 <script src="/static/js/api.js"></script>
