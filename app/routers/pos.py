@@ -776,17 +776,20 @@ async def pos_create_sale(
         ))
 
     from app.services.accounting_journal import journal_sale as journal_sale_entry
-    await journal_sale_entry(
-        db=db,
-        sale_id=sale.id,
-        sale_date=sale.created_at.date(),
-        subtotal=subtotal_after_discount,
-        tax_amount=tax_amount,
-        total=total,
-        payment_method=data.payment_method,
-        gift_card_amount=gc_amount_applied if gc_amount_applied else (total if data.payment_method == "gift_card" else None),
-        created_by=current_user.id,
-    )
+    try:
+        await journal_sale_entry(
+            db=db,
+            sale_id=sale.id,
+            sale_date=datetime.now(timezone.utc).date(),
+            subtotal=subtotal_after_discount,
+            tax_amount=tax_amount,
+            total=total,
+            payment_method=data.payment_method,
+            gift_card_amount=gc_amount_applied if gc_amount_applied else (total if data.payment_method == "gift_card" else None),
+            created_by=current_user.id,
+        )
+    except Exception as journal_exc:
+        logger.exception("Journal entry failed for sale %s: %s", sale.id, journal_exc)
 
     await db.commit()
 
