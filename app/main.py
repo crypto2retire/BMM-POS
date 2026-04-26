@@ -471,10 +471,10 @@ async def lifespan(app: FastAPI):
                 ]
                 existing_nums = {a.number for a in existing}
                 added = 0
-                for num, name, atype, sys, desc in defaults:
+                for num, name, atype, is_system, desc in defaults:
                     if num in existing_nums:
                         continue
-                    session.add(Acc(number=num, name=name, account_type=atype, is_system=sys, description=desc, is_active=True))
+                    session.add(Acc(number=num, name=name, account_type=atype, is_system=is_system, description=desc, is_active=True))
                     added += 1
                 if added > 0:
                     await session.commit()
