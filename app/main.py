@@ -64,7 +64,7 @@ try:
     print("BMM-POS: importing database...", file=sys.stderr, flush=True)
     from app.database import AsyncSessionLocal, engine, Base
     print("BMM-POS: importing routers...", file=sys.stderr, flush=True)
-    from app.routers import auth, vendors, items, sales, pos, assistant, storefront, storefront_assistant, rent, admin, reports, settings, studio, bulk_import, notifications, booth_showcase, data_sync, ai_writer, security_deposits, errors
+    from app.routers import auth, vendors, items, sales, pos, assistant, storefront, storefront_assistant, rent, admin, reports, settings, studio, bulk_import, notifications, booth_showcase, data_sync, ai_writer, security_deposits, errors, square_webhook
     from app.routers.diagnose import router as diagnose_router
     from app.routers.inventory_verify import router as inventory_verify_router
     from app.routers.accounting import router as accounting_router
