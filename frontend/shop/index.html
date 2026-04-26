@@ -2737,6 +2737,7 @@
     const basePrice = hasSale ? parseFloat(item.sale_price) : parseFloat(item.price);
     const totalPrice = basePrice * (1 + SHOP_TAX_RATE);
     const isReserved = reservedIds.has(item.id);
+    const isInCart   = cartHasItem(item.id);
 
     const imgSrc = item.image_path || item.photo_url || null;
     const imgWrap = document.getElementById('detail-image-wrap');
