@@ -236,3 +236,96 @@ async def diagnose_balances(
     ]
 
     return result
+
+
+@router.get("/admin/verify-payouts")
+async def verify_payouts(
+    db: AsyncSession = Depends(get_db),
+    current_user: Vendor = Depends(get_current_user),
+):
+    """Quick payout verification — returns PASS/FAIL with details."""
+    if current_user.role not in ("admin",):
+        return {"error": "Admin only"}
+
+    disc = await db.execute(text("""
+        WITH vendor_credits AS (
+            SELECT si.vendor_id,
+                COALESCE(SUM(si.line_total - COALESCE(si.consignment_amount, 0)), 0) as total_credit
+            FROM sale_items si
+            JOIN sales s ON s.id = si.sale_id AND s.is_voided = false
+            GROUP BY si.vendor_id
+        ),
+        vendor_debits AS (
+            SELECT si.vendor_id,
+                COALESCE(SUM(si.line_total - COALESCE(si.consignment_amount, 0)), 0) as total_debit
+            FROM sale_items si
+            JOIN sales s ON s.id = si.sale_id AND s.is_voided = true
+            GROUP BY si.vendor_id
+        ),
+        payout_totals AS (
+            SELECT vendor_id, COALESCE(SUM(net_payout), 0) as total_payout
+            FROM payouts WHERE status != 'cancelled'
+            GROUP BY vendor_id
+        ),
+        adjustment_totals AS (
+            SELECT vendor_id,
+                COALESCE(SUM(CASE WHEN adjustment_type='credit' THEN amount ELSE -amount END), 0) as net_adj
+            FROM balance_adjustments
+            GROUP BY vendor_id
+        )
+        SELECT v.name, v.booth_number,
+            COALESCE(vb.balance, 0) as stored_balance,
+            COALESCE(vc.total_credit, 0) - COALESCE(vd.total_debit, 0)
+                - COALESCE(pt.total_payout, 0) + COALESCE(at.net_adj, 0) as expected_balance,
+            ABS(COALESCE(vb.balance, 0) - (
+                COALESCE(vc.total_credit, 0) - COALESCE(vd.total_debit, 0)
+                - COALESCE(pt.total_payout, 0) + COALESCE(at.net_adj, 0)
+            )) as discrepancy
+        FROM vendors v
+        LEFT JOIN vendor_balances vb ON vb.vendor_id = v.id
+        LEFT JOIN vendor_credits vc ON vc.vendor_id = v.id
+        LEFT JOIN vendor_debits vd ON vd.vendor_id = v.id
+        LEFT JOIN payout_totals pt ON pt.vendor_id = v.id
+        LEFT JOIN adjustment_totals at ON at.vendor_id = v.id
+        WHERE v.role = 'vendor' AND v.status = 'active'
+          AND (COALESCE(vc.total_credit, 0) > 0 OR COALESCE(vb.balance, 0) != 0)
+        ORDER BY discrepancy DESC
+    """))
+
+    rows = disc.fetchall()
+    issues = []
+    for r in rows:
+        if float(r.discrepancy) > 0.01:
+            issues.append({
+                "name": r.name,
+                "booth": r.booth_number,
+                "stored_balance": round(float(r.stored_balance), 2),
+                "expected_balance": round(float(r.expected_balance), 2),
+                "discrepancy": round(float(r.discrepancy), 2),
+            })
+
+    negative = await db.execute(text("""
+        SELECT v.name, v.booth_number, vb.balance, vb.rent_balance
+        FROM vendors v
+        JOIN vendor_balances vb ON vb.vendor_id = v.id
+        WHERE v.role = 'vendor' AND v.status = 'active'
+          AND (vb.balance < 0 OR vb.rent_balance < 0)
+    """))
+    neg_rows = negative.fetchall()
+    negative_balances = [
+        {"name": r.name, "booth": r.booth_number, "balance": float(r.balance), "rent_balance": float(r.rent_balance)}
+        for r in neg_rows
+    ]
+
+    return {
+        "status": "FAIL" if issues else "PASS",
+        "message": (
+            f"{len(issues)} vendor(s) have balance discrepancies. DO NOT PROCESS PAYOUTS until fixed."
+            if issues else
+            "All vendor balances verified. Safe to process payouts."
+        ),
+        "total_vendors_checked": len(rows),
+        "vendors_with_discrepancies": len(issues),
+        "discrepancies": issues,
+        "negative_balances": negative_balances,
+    }
