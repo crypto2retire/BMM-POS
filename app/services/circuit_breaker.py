@@ -48,15 +48,18 @@ class CircuitBreaker:
     def _before_call(self):
         if self.state == State.OPEN:
             if self.last_failure_time and (time.time() - self.last_failure_time) >= self.recovery_timeout:
+                print(f"[CIRCUIT_BREAKER] {self.name}: OPEN -> HALF_OPEN", flush=True)
                 self.state = State.HALF_OPEN
                 self.half_open_calls = 0
             else:
+                print(f"[CIRCUIT_BREAKER] {self.name}: OPEN - rejecting call", flush=True)
                 raise HTTPException(
                     status_code=503,
                     detail=f"Service '{self.name}' is temporarily unavailable. Please try again later.",
                 )
 
         if self.state == State.HALF_OPEN and self.half_open_calls >= self.half_open_max_calls:
+            print(f"[CIRCUIT_BREAKER] {self.name}: HALF_OPEN - max calls reached, rejecting", flush=True)
             raise HTTPException(
                 status_code=503,
                 detail=f"Service '{self.name}' is temporarily unavailable. Please try again later.",
@@ -67,6 +70,7 @@ class CircuitBreaker:
 
     def _on_success(self):
         if self.state == State.HALF_OPEN:
+            print(f"[CIRCUIT_BREAKER] {self.name}: HALF_OPEN -> CLOSED (recovered)", flush=True)
             self.state = State.CLOSED
             self.failures = []
             self.last_failure_time = None
@@ -78,8 +82,10 @@ class CircuitBreaker:
         self.last_failure_time = now
 
         if self.state == State.HALF_OPEN:
+            print(f"[CIRCUIT_BREAKER] {self.name}: HALF_OPEN -> OPEN (probe failed)", flush=True)
             self.state = State.OPEN
         elif self.state == State.CLOSED and self._is_failure_threshold_reached():
+            print(f"[CIRCUIT_BREAKER] {self.name}: CLOSED -> OPEN ({len(self.failures)} failures)", flush=True)
             self.state = State.OPEN
 
     async def call_async(self, coro: Callable[[], Any]) -> Any:

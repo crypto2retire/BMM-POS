@@ -589,6 +589,14 @@ async def chat(
     current_user: Vendor = Depends(require_role_feature("role_view_ai_assistant")),
     db: AsyncSession = Depends(get_db),
 ):
+    client_ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "unknown")
+    has_image = bool(data.image_base64 and data.image_mime_type)
+    print(
+        f"[ASSISTANT] user={current_user.email} ip={client_ip} "
+        f"has_image={has_image} msg_len={len(data.message)} "
+        f"form_context={'yes' if data.form_context else 'no'}",
+        flush=True,
+    )
     check_rate_limit(
         request,
         window_name="vendor_assistant",
@@ -639,12 +647,14 @@ async def chat(
                 prefer_vision=bool(data.image_base64 and data.image_mime_type),
             )
         except HTTPException as exc:
+            print(f"[ASSISTANT] HTTPException round={_round} status={exc.status_code} detail={exc.detail}", flush=True)
             return AssistantChatResponse(
                 reply=f"Assistant error: {exc.detail}",
                 action_taken=action_taken,
                 item_id=item_id,
             )
         except Exception as exc:
+            print(f"[ASSISTANT] Exception round={_round} type={type(exc).__name__} msg={exc}", flush=True)
             return AssistantChatResponse(
                 reply="Assistant is temporarily unavailable. Please try again.",
                 action_taken=action_taken,

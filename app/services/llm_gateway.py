@@ -56,12 +56,17 @@ async def _post_json(url: str, *, headers: dict[str, str], payload: dict[str, An
             raise HTTPException(status_code=502, detail=f"AI network error: {exc}") from exc
 
     if response.status_code == 429:
+        print(f"[LLM_GATEWAY] OpenRouter 429 - rate limited", flush=True)
         raise HTTPException(status_code=429, detail="AI rate limit exceeded. Please try again shortly.")
     if response.status_code == 401:
+        print(f"[LLM_GATEWAY] OpenRouter 401 - invalid API key", flush=True)
         raise HTTPException(status_code=503, detail="AI credentials are invalid or missing")
     if response.status_code == 404:
+        print(f"[LLM_GATEWAY] OpenRouter 404 - endpoint not found: {url}", flush=True)
         raise HTTPException(status_code=503, detail=f"AI endpoint not found at {url}")
     if not response.is_success:
+        body_preview = response.text[:200] if hasattr(response, 'text') else 'N/A'
+        print(f"[LLM_GATEWAY] OpenRouter error status={response.status_code} body={body_preview}", flush=True)
         raise HTTPException(status_code=502, detail="AI service unavailable")
 
     try:
