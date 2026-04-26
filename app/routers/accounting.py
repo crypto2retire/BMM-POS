@@ -260,12 +260,12 @@ async def create_expense(body: ExpenseCreate, db: AsyncSession = Depends(get_db)
     cash_account_id = await _get_expense_payment_account(db, body.payment_method)
 
     entry = await _create_journal(
-        entry_date=body.date,
-        description=f"Expense: {body.description}",
-        reference_type="expense",
-        reference_id=None,
-        created_by=current_user.id,
-        db=db,
+        body.date,
+        f"Expense: {body.description}",
+        "expense",
+        None,
+        current_user.id,
+        db,
         (body.account_id, body.amount, 0, body.description),
         (cash_account_id, 0, body.amount,
            body.payee or "Cash/AP"),
