@@ -14,7 +14,7 @@ class Account(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    number: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    number: Mapped[int] = mapped_column(Integer, nullable=False, index=True, unique=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     account_type: Mapped[str] = mapped_column(
         String(20), nullable=False

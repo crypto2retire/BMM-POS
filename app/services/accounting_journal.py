@@ -8,6 +8,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.accounting import Account, JournalEntry, JournalLine
@@ -30,15 +31,35 @@ async def _get_account_by_number(db: AsyncSession, number: int) -> Optional[Acco
 
 
 async def _ensure_account(db: AsyncSession, number: int, name: str, account_type: str) -> Account:
-    """Get or create a system account by number."""
+    """Get or create a system account by number. Handles races safely."""
+    # Fast path: account already exists
+    account = await _get_account_by_number(db, number)
+    if account:
+        return account
+
+    # Attempt upsert; if another transaction beat us, ignore and re-fetch
+    try:
+        stmt = (
+            insert(Account)
+            .values(
+                number=number,
+                name=name,
+                account_type=account_type,
+                is_system=True,
+                is_active=True,
+            )
+            .on_conflict_do_nothing(index_elements=["number"])
+        )
+        await db.execute(stmt)
+        await db.flush()
+    except Exception:
+        # Conflict or other error — we will re-fetch below
+        pass
+
+    # Re-fetch after potential concurrent insert
     account = await _get_account_by_number(db, number)
     if not account:
-        account = Account(
-            number=number, name=name, account_type=account_type,
-            is_system=True, is_active=True,
-        )
-        db.add(account)
-        await db.flush()
+        raise RuntimeError(f"Failed to ensure account {number}")
     return account
 
 
