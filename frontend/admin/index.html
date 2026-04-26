@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Admin Dashboard — BMM-POS</title>
     <meta name="description" content="Admin dashboard for Bowenstreet Market POS — vendor management, sales overview, and store operations.">
-    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/main.css?v=2">
     <link rel="icon" type="image/webp" href="/static/images/favicon.webp">
     <style>
         .dash-greeting {
@@ -1235,13 +1235,6 @@
 
     <div id="tab-rent-payouts" style="display:none">
 
-        <div style="background:var(--surface-2);border:2px solid var(--danger);padding:1rem;margin-bottom:1rem;color:var(--danger);font-weight:600">
-            DEBUG: If you see this box, the Rent &amp; Payouts tab HTML is loading. <span id="rp-debug-status">Waiting for JS...</span>
-        </div>
-
-        <!-- Debug panel -->
-        <div id="rp-debug-panel" style="background:var(--surface-2);border:1px solid var(--border);padding:1rem;margin-bottom:1rem;font-family:'Roboto Mono',monospace;font-size:0.75rem;color:var(--text-light);display:block;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto">Debug panel active. Clicking this tab should trigger data load...</div>
-
         <div style="font-family:'EB Garamond',serif;font-style:italic;font-size:0.95rem;color:var(--text-light);margin-bottom:1rem" id="rp-month-label"></div>
 
         <div class="store-summary" id="rp-summary-cards">
@@ -1603,9 +1596,9 @@
     <a href="/admin/settings.html"><span class="nav-icon">&#9881;</span>Settings</a>
 </nav>
 
-<script src="/static/js/api.js"></script>
-<script src="/static/js/auth-bootstrap.js"></script>
-<script src="/static/js/admin-vendor-dashboard.js"></script>
+<script src="/static/js/api.js?v=2"></script>
+<script src="/static/js/auth-bootstrap.js?v=2"></script>
+<script src="/static/js/admin-vendor-dashboard.js?v=2"></script>
 <script>
     function toggleMobileNav() {
         document.getElementById('mobile-nav').classList.toggle('open');
@@ -2220,14 +2213,22 @@
         var analytics = document.getElementById('tab-analytics');
         var operations = document.getElementById('tab-operations');
         var rp = document.getElementById('tab-rent-payouts');
-        if (overview) overview.style.display = tab === 'overview' ? '' : 'none';
-        if (vendors) vendors.style.display = tab === 'vendors' ? '' : 'none';
-        if (analytics) analytics.style.display = tab === 'analytics' ? '' : 'none';
-        if (operations) operations.style.display = tab === 'operations' ? '' : 'none';
-        if (rp) rp.style.display = tab === 'rent-payouts' ? '' : 'none';
-        if (tab === 'rent-payouts') loadRPLedger();
+        if (overview) overview.style.display = tab === 'overview' ? 'block' : 'none';
+        if (vendors) vendors.style.display = tab === 'vendors' ? 'block' : 'none';
+        if (analytics) analytics.style.display = tab === 'analytics' ? 'block' : 'none';
+        if (operations) operations.style.display = tab === 'operations' ? 'block' : 'none';
+        if (rp) rp.style.display = tab === 'rent-payouts' ? 'block' : 'none';
+        if (tab === 'rent-payouts') {
+            try { loadRPLedger(); } catch(e) { alert('loadRPLedger error: ' + e.message); }
+        }
     }
     window.switchMainTab = switchMainTab;
+
+    setTimeout(function() {
+        var el = document.getElementById('tab-rent-payouts');
+        if (!el) { document.title = 'BUG: tab-rent-payouts missing from DOM'; return; }
+        document.title = 'Admin — RP tab OK (' + el.children.length + ' children)';
+    }, 2000);
 
     var _rpData = null;
 
@@ -2255,17 +2256,8 @@
     }
 
     async function loadRPLedger() {
-        var debugPanel = document.getElementById('rp-debug-panel');
-        var debugStatus = document.getElementById('rp-debug-status');
-        if (debugStatus) debugStatus.textContent = 'JS running...';
         try {
             _rpData = await apiGet('/api/v1/admin/rent-payout-ledger');
-            if (debugPanel) {
-                debugPanel.textContent = 'API OK. Summary: ' + JSON.stringify(_rpData.summary || {}, null, 2) +
-                    '\n\nVendor cards: ' + (_rpData.vendor_cards ? _rpData.vendor_cards.length : 0) +
-                    '\nTransactions: ' + (_rpData.transactions ? _rpData.transactions.length : 0);
-            }
-            if (debugStatus) debugStatus.textContent = 'Data loaded!';
             if (_rpData.transactions && _rpData.transactions.length) {
                 _rpData.transactions.sort(function (a, b) {
                     return new Date(b.date) - new Date(a.date);
@@ -2275,10 +2267,6 @@
             renderRPCombinedSummary();
             renderRPTable();
         } catch (e) {
-            if (debugPanel) {
-                debugPanel.textContent = 'API ERROR: ' + (e.message || e) + '\n\nStack: ' + (e.stack || 'no stack');
-            }
-            if (debugStatus) debugStatus.textContent = 'ERROR - check panel below';
             if (typeof showAlert === 'function') {
                 showAlert('alert-container', 'Ledger: ' + (e.message || e), 'error');
             }
