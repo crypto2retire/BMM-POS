@@ -11,7 +11,7 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File, status, Header
 
 # Router defined before other module-level code
 router = APIRouter(prefix="/pos", tags=["pos"])
@@ -98,6 +98,122 @@ async def _get_starting_cash_amount(db: AsyncSession, for_date: date) -> Decimal
         except Exception:
             pass
     return Decimal("150.00")
+
+
+async def _compute_eod_data(db: AsyncSession, target_date: date) -> dict:
+    """Compute End of Day report data for a given date. Returns raw Decimal/JSON-friendly dict."""
+    store_tz = STORE_TZ
+    start_local = datetime(target_date.year, target_date.month, target_date.day, tzinfo=store_tz)
+    end_local = start_local + timedelta(days=1)
+    start_utc = start_local.astimezone(timezone.utc)
+    end_utc = end_local.astimezone(timezone.utc)
+
+    result = await db.execute(
+        select(Sale)
+        .options(selectinload(Sale.cashier), selectinload(Sale.items))
+        .where(Sale.created_at >= start_utc, Sale.created_at < end_utc)
+        .order_by(Sale.created_at)
+    )
+    sales = result.scalars().all()
+
+    total_cash = Decimal("0")
+    total_card = Decimal("0")
+    total_split = Decimal("0")
+    total_gift_card = Decimal("0")
+    total_tax = Decimal("0")
+    total_revenue = Decimal("0")
+    cash_count = 0
+    card_count = 0
+    split_count = 0
+    gift_card_count = 0
+    cashier_breakdown = {}
+
+    voided_count = 0
+    voided_total = Decimal("0")
+    for sale in sales:
+        if sale.is_voided:
+            voided_count += 1
+            voided_total += sale.total
+            continue
+
+        total_revenue += sale.total
+        total_tax += sale.tax_amount
+
+        sale_cash = Decimal("0")
+        sale_card = Decimal("0")
+
+        if sale.payment_method == "cash":
+            sale_cash = sale.total
+            cash_count += 1
+        elif sale.payment_method == "card":
+            sale_card = sale.total
+            card_count += 1
+        elif sale.payment_method == "split":
+            gc_part = sale.gift_card_amount or Decimal("0")
+            remaining = sale.total - gc_part
+            if sale.cash_tendered is not None:
+                split_cash = min(sale.cash_tendered, remaining)
+                sale_cash = split_cash
+                sale_card = max(remaining - split_cash, Decimal("0"))
+            else:
+                sale_card = remaining
+            total_gift_card += gc_part
+            split_count += 1
+        elif sale.payment_method == "gift_card":
+            total_gift_card += sale.total
+            gift_card_count += 1
+
+        total_cash += sale_cash
+        total_card += sale_card
+        total_split += (sale_cash + sale_card) if sale.payment_method == "split" else Decimal("0")
+
+        cashier_name = sale.cashier.name if sale.cashier else "Unknown"
+        cashier_id = sale.cashier_id or 0
+        if cashier_id not in cashier_breakdown:
+            cashier_breakdown[cashier_id] = {
+                "name": cashier_name,
+                "transactions": 0,
+                "cash_total": Decimal("0"),
+                "card_total": Decimal("0"),
+                "gift_card_total": Decimal("0"),
+                "total": Decimal("0"),
+            }
+        cb = cashier_breakdown[cashier_id]
+        cb["transactions"] += 1
+        cb["total"] += sale.total
+        cb["cash_total"] += sale_cash
+        cb["card_total"] += sale_card
+        if sale.payment_method == "gift_card":
+            cb["gift_card_total"] = cb.get("gift_card_total", Decimal("0")) + sale.total
+
+    total_transactions = cash_count + card_count + split_count + gift_card_count
+    items_sold = sum(
+        si.quantity for sale in sales if not sale.is_voided for si in sale.items
+    )
+
+    starting_balance = await _get_starting_cash_amount(db, target_date)
+    expected_cash = (starting_balance + total_cash).quantize(Decimal("0.01"), ROUND_HALF_UP)
+
+    return {
+        "sales": sales,
+        "starting_balance": starting_balance,
+        "expected_cash": expected_cash,
+        "total_revenue": total_revenue,
+        "total_tax": total_tax,
+        "total_transactions": total_transactions,
+        "items_sold": items_sold,
+        "total_cash": total_cash,
+        "cash_count": cash_count,
+        "total_card": total_card,
+        "card_count": card_count,
+        "total_split": total_split,
+        "split_count": split_count,
+        "total_gift_card": total_gift_card,
+        "gift_card_count": gift_card_count,
+        "voided_count": voided_count,
+        "voided_total": voided_total,
+        "cashier_breakdown": cashier_breakdown,
+    }
 
 
 async def _get_starting_cash_verification(db: AsyncSession, for_date: date) -> Optional[dict]:
@@ -1237,96 +1353,7 @@ async def end_of_day_report(
     else:
         target_date = datetime.now(store_tz).date()
 
-    start_local = datetime(target_date.year, target_date.month, target_date.day, tzinfo=store_tz)
-    end_local = start_local + timedelta(days=1)
-    start_utc = start_local.astimezone(timezone.utc)
-    end_utc = end_local.astimezone(timezone.utc)
-
-    result = await db.execute(
-        select(Sale)
-        .options(selectinload(Sale.cashier), selectinload(Sale.items))
-        .where(Sale.created_at >= start_utc, Sale.created_at < end_utc)
-        .order_by(Sale.created_at)
-    )
-    sales = result.scalars().all()
-
-    total_cash = Decimal("0")
-    total_card = Decimal("0")
-    total_split = Decimal("0")
-    total_gift_card = Decimal("0")
-    total_tax = Decimal("0")
-    total_revenue = Decimal("0")
-    cash_count = 0
-    card_count = 0
-    split_count = 0
-    gift_card_count = 0
-    cashier_breakdown = {}
-
-    voided_count = 0
-    voided_total = Decimal("0")
-    for sale in sales:
-        if sale.is_voided:
-            voided_count += 1
-            voided_total += sale.total
-            continue
-
-        total_revenue += sale.total
-        total_tax += sale.tax_amount
-
-        sale_cash = Decimal("0")
-        sale_card = Decimal("0")
-
-        if sale.payment_method == "cash":
-            sale_cash = sale.total
-            cash_count += 1
-        elif sale.payment_method == "card":
-            sale_card = sale.total
-            card_count += 1
-        elif sale.payment_method == "split":
-            gc_part = sale.gift_card_amount or Decimal("0")
-            remaining = sale.total - gc_part
-            if sale.cash_tendered is not None:
-                split_cash = min(sale.cash_tendered, remaining)
-                sale_cash = split_cash
-                sale_card = max(remaining - split_cash, Decimal("0"))
-            else:
-                sale_card = remaining
-            total_gift_card += gc_part
-            split_count += 1
-        elif sale.payment_method == "gift_card":
-            total_gift_card += sale.total
-            gift_card_count += 1
-
-        total_cash += sale_cash
-        total_card += sale_card
-        total_split += (sale_cash + sale_card) if sale.payment_method == "split" else Decimal("0")
-
-        cashier_name = sale.cashier.name if sale.cashier else "Unknown"
-        cashier_id = sale.cashier_id or 0
-        if cashier_id not in cashier_breakdown:
-            cashier_breakdown[cashier_id] = {
-                "name": cashier_name,
-                "transactions": 0,
-                "cash_total": Decimal("0"),
-                "card_total": Decimal("0"),
-                "gift_card_total": Decimal("0"),
-                "total": Decimal("0"),
-            }
-        cb = cashier_breakdown[cashier_id]
-        cb["transactions"] += 1
-        cb["total"] += sale.total
-        cb["cash_total"] += sale_cash
-        cb["card_total"] += sale_card
-        if sale.payment_method == "gift_card":
-            cb["gift_card_total"] = cb.get("gift_card_total", Decimal("0")) + sale.total
-
-    total_transactions = cash_count + card_count + split_count + gift_card_count
-    items_sold = sum(
-        si.quantity for sale in sales if not sale.is_voided for si in sale.items
-    )
-
-    starting_balance = await _get_starting_cash_amount(db, target_date)
-    expected_cash_in_drawer = (starting_balance + total_cash).quantize(Decimal("0.01"), ROUND_HALF_UP)
+    data = await _compute_eod_data(db, target_date)
 
     submitted_report_result = await db.execute(
         select(EodReport).where(EodReport.report_date == target_date)
@@ -1342,17 +1369,17 @@ async def end_of_day_report(
 
     return {
         "date": target_date.isoformat(),
-        "total_revenue": float(total_revenue),
-        "total_tax": float(total_tax),
-        "total_transactions": total_transactions,
-        "items_sold": items_sold,
-        "starting_balance": float(starting_balance),
-        "expected_cash_in_drawer": float(expected_cash_in_drawer),
-        "voided": {"count": voided_count, "total": float(voided_total)},
-        "cash": {"total": float(total_cash), "count": cash_count},
-        "card": {"total": float(total_card), "count": card_count},
-        "split": {"total": float(total_split), "count": split_count},
-        "gift_card": {"total": float(total_gift_card), "count": gift_card_count},
+        "total_revenue": float(data["total_revenue"]),
+        "total_tax": float(data["total_tax"]),
+        "total_transactions": data["total_transactions"],
+        "items_sold": data["items_sold"],
+        "starting_balance": float(data["starting_balance"]),
+        "expected_cash_in_drawer": float(data["expected_cash"]),
+        "voided": {"count": data["voided_count"], "total": float(data["voided_total"])},
+        "cash": {"total": float(data["total_cash"]), "count": data["cash_count"]},
+        "card": {"total": float(data["total_card"]), "count": data["card_count"]},
+        "split": {"total": float(data["total_split"]), "count": data["split_count"]},
+        "gift_card": {"total": float(data["total_gift_card"]), "count": data["gift_card_count"]},
         "submitted_report": submitted_info,
         "cashier_breakdown": [
             {
@@ -1364,7 +1391,7 @@ async def end_of_day_report(
                 "gift_card_total": float(info.get("gift_card_total", Decimal("0"))),
                 "total": float(info["total"]),
             }
-            for cid, info in cashier_breakdown.items()
+            for cid, info in data["cashier_breakdown"].items()
         ],
     }
 
@@ -1580,6 +1607,133 @@ async def submit_eod_report(
         "next_day": next_date.isoformat(),
         "next_day_starting_cash": float(next_starting),
         "submitted_at": report.submitted_at.isoformat() if report.submitted_at else None,
+    }
+
+
+@router.post("/end-of-day/auto-submit")
+async def auto_submit_eod_report(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    x_cron_secret: Optional[str] = Header(None),
+    authorization: Optional[str] = Header(None),
+):
+    """
+    Auto-submit yesterday's End of Day report if it was missed.
+    Intended to be called by a scheduled cron job at midnight store time.
+    Only submits if:
+      - No EOD report exists for yesterday
+      - There was at least one non-voided transaction yesterday
+    Auto-submit assumes exact cash (counted = expected, variance = 0, deposit = 0).
+    """
+    # Auth: accept either a valid cron secret OR admin JWT
+    cron_secret = os.getenv("CRON_SECRET")
+    if x_cron_secret and cron_secret and x_cron_secret == cron_secret:
+        pass  # Cron auth OK
+    elif authorization:
+        from app.routers.auth import get_user_from_authorization_header
+        try:
+            user = await get_user_from_authorization_header(authorization, db)
+            if user.role != "admin":
+                raise HTTPException(status_code=403, detail="Admin only")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    else:
+        raise HTTPException(status_code=401, detail="Auth required: send X-Cron-Secret header or admin Bearer token")
+
+    store_tz = STORE_TZ
+    yesterday = (datetime.now(store_tz) - timedelta(days=1)).date()
+
+    # Check if already submitted
+    existing_result = await db.execute(
+        select(EodReport).where(EodReport.report_date == yesterday)
+    )
+    if existing_result.scalar_one_or_none():
+        return {"status": "skipped", "reason": "EOD already submitted", "date": yesterday.isoformat()}
+
+    # Compute report data
+    data = await _compute_eod_data(db, yesterday)
+
+    # Skip if no transactions
+    if data["total_transactions"] == 0:
+        return {"status": "skipped", "reason": "No transactions", "date": yesterday.isoformat()}
+
+    # Find an admin user to attribute the auto-submit to
+    admin_result = await db.execute(
+        select(Vendor).where(Vendor.role == "admin").order_by(Vendor.id)
+    )
+    admin_user = admin_result.scalar_one_or_none()
+    if not admin_user:
+        return {"status": "error", "reason": "No admin user found to attribute auto-submit", "date": yesterday.isoformat()}
+
+    expected_cash = data["expected_cash"]
+    report = EodReport(
+        report_date=yesterday,
+        submitted_by=admin_user.id,
+        submitted_by_name="Auto (System)",
+        starting_balance=data["starting_balance"],
+        counted_cash=expected_cash,
+        expected_cash=expected_cash,
+        variance=Decimal("0.00"),
+        deposit=Decimal("0.00"),
+        total_revenue=data["total_revenue"],
+        total_tax=data["total_tax"],
+        total_transactions=data["total_transactions"],
+        items_sold=data["items_sold"],
+        cash_total=data["total_cash"],
+        cash_count=data["cash_count"],
+        card_total=data["total_card"],
+        card_count=data["card_count"],
+        gift_card_total=data["total_gift_card"],
+        gift_card_count=data["gift_card_count"],
+        voided_count=data["voided_count"],
+        voided_total=data["voided_total"],
+        cashier_breakdown={
+            str(cid): {
+                "name": info["name"],
+                "transactions": info["transactions"],
+                "cash_total": float(info["cash_total"]),
+                "card_total": float(info["card_total"]),
+                "gift_card_total": float(info.get("gift_card_total", Decimal("0"))),
+                "total": float(info["total"]),
+            }
+            for cid, info in data["cashier_breakdown"].items()
+        },
+        notes="Auto-submitted at midnight. Drawer was not counted — assumed exact.",
+        denomination_counts=None,
+    )
+    db.add(report)
+
+    # Next day's starting cash = counted - deposit = expected_cash
+    next_date = yesterday + timedelta(days=1)
+    next_starting = expected_cash.quantize(Decimal("0.01"), ROUND_HALF_UP)
+    if next_starting < 0:
+        next_starting = Decimal("0.00")
+    key_next = "starting_cash_" + next_date.isoformat()
+    next_setting_result = await db.execute(select(StoreSetting).where(StoreSetting.key == key_next))
+    next_setting = next_setting_result.scalar_one_or_none()
+    if next_setting:
+        next_setting.value = str(next_starting)
+    else:
+        db.add(
+            StoreSetting(
+                key=key_next,
+                value=str(next_starting),
+                description=f"Starting cash for {next_date.isoformat()} (auto-set at midnight EOD)",
+            )
+        )
+
+    await db.commit()
+    await db.refresh(report)
+    return {
+        "status": "submitted",
+        "date": yesterday.isoformat(),
+        "report_id": report.id,
+        "total_revenue": float(data["total_revenue"]),
+        "total_transactions": data["total_transactions"],
+        "next_day": next_date.isoformat(),
+        "next_day_starting_cash": float(next_starting),
     }
 
 
