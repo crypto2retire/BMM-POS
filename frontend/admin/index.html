@@ -972,18 +972,21 @@
     <div class="store-summary" id="store-summary">
         <div class="sum-card"><div class="sum-label">Sales</div><div class="sum-value" id="s-revenue">&mdash;</div></div>
         <div class="sum-card"><div class="sum-label">Transactions</div><div class="sum-value white" id="s-transactions">&mdash;</div></div>
+        <div class="sum-card"><div class="sum-label">Net Sales</div><div class="sum-value green" id="s-net">&mdash;</div></div>
+        <div class="sum-card"><div class="sum-label">Active Vendors</div><div class="sum-value white" id="s-vendors">&mdash;</div></div>
+    </div>
+
+    <div class="store-summary" id="store-summary-more" style="display:none;margin-top:0.75rem">
         <div class="sum-card"><div class="sum-label">Items Sold</div><div class="sum-value white" id="s-items">&mdash;</div></div>
         <div class="sum-card"><div class="sum-label">Avg Transaction</div><div class="sum-value white" id="s-avg">&mdash;</div></div>
         <div class="sum-card"><div class="sum-label">Tax Collected</div><div class="sum-value white" id="s-tax">&mdash;</div></div>
-        <div class="sum-card"><div class="sum-label">Net Sales</div><div class="sum-value green" id="s-net">&mdash;</div></div>
-    </div>
-
-    <div class="store-summary" style="margin-top:0.75rem">
-        <div class="sum-card"><div class="sum-label">Active Vendors</div><div class="sum-value white" id="s-vendors">&mdash;</div></div>
         <div class="sum-card"><div class="sum-label">Inventory Items</div><div class="sum-value white" id="s-inventory">&mdash;</div></div>
     </div>
 
-    <div class="ornament">&loz;</div>
+    <div style="text-align:center;margin:0.5rem 0 1.25rem">
+        <button type="button" id="more-stats-btn" onclick="toggleMoreStats()" style="background:none;border:none;color:var(--text-light);font-size:0.75rem;cursor:pointer;text-transform:uppercase;letter-spacing:0.08em;font-family:'Roboto',sans-serif">Show More Stats ▾</button>
+    </div>
+
 
     <!-- Quick Actions -->
     <div class="section" style="margin-bottom:1.5rem">
@@ -1010,7 +1013,6 @@
         </div>
     </div>
 
-    <div class="ornament">&loz;</div>
 
     <div class="section" id="online-orders-section">
         <div class="section-header">
@@ -1029,7 +1031,6 @@
         </div>
     </div>
 
-    <div class="ornament">&loz;</div>
 
     <div class="section admin-only-dash" id="employees-section">
         <div class="section-header">
@@ -1273,15 +1274,13 @@
             </div>
         </div>
 
-        <div class="ornament">&loz;</div>
-
+    
         <div class="rp-action-bar" id="rp-admin-actions">
             <button type="button" class="process-btn" onclick="openRentFromLedger()" style="background:color-mix(in srgb, var(--success-light) 12%, transparent);color:var(--success-light);border:1px solid color-mix(in srgb, var(--success-light) 30%, transparent);padding:0.55rem 1.2rem;font-size:0.78rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em;min-height:44px">Record Rent Payment</button>
             <button type="button" class="process-btn" onclick="window.confirmProcessPayoutsHub()" style="background:color-mix(in srgb, var(--gold) 12%, transparent);color:var(--gold);border:1px solid color-mix(in srgb, var(--gold) 30%, transparent);padding:0.55rem 1.2rem;font-size:0.78rem;cursor:pointer;font-family:'Roboto',sans-serif;text-transform:uppercase;letter-spacing:0.06em;min-height:44px">Process Payouts</button>
         </div>
 
-        <div class="ornament">&loz;</div>
-
+    
         <h3 style="font-family:'EB Garamond',serif;font-size:1.1rem;font-weight:500;color:var(--text);margin-bottom:0.5rem;font-style:italic">Combined Vendor Summary</h3>
         <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem">Each vendor&#8217;s sales, rent, and payout activity in one view.</p>
         <div class="card" style="padding:0;overflow:hidden;margin-bottom:0.75rem">
@@ -1302,8 +1301,7 @@
             </div>
         </div>
 
-        <div class="ornament">&loz;</div>
-
+    
         <h3 style="font-family:'EB Garamond',serif;font-size:1.1rem;font-weight:500;color:var(--text);margin-bottom:0.5rem;font-style:italic">Transaction Ledger</h3>
         <p style="font-size:0.82rem;color:var(--text-light);margin-bottom:1rem">All rent payments and payouts. Click a row to edit or delete.</p>
 
@@ -1668,6 +1666,14 @@
         var n = typeof v === 'number' ? v : parseFloat(v);
         if (isNaN(n)) n = 0;
         return '$' + n.toFixed(2);
+    }
+    function toggleMoreStats() {
+        var el = document.getElementById('store-summary-more');
+        var btn = document.getElementById('more-stats-btn');
+        if (!el || !btn) return;
+        var isHidden = el.style.display === 'none';
+        el.style.display = isHidden ? '' : 'none';
+        btn.textContent = isHidden ? 'Show Less Stats ▴' : 'Show More Stats ▾';
     }
 
     var currentPeriod = 'today';

@@ -444,6 +444,35 @@
 
         .payment-section { display: flex; flex-direction: column; gap: 0.6rem; margin-top: auto; }
 
+        .pos-actions-primary {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+        .pos-actions-primary .pay-btn { margin: 0; }
+
+        .pos-actions-secondary {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+        .pos-actions-secondary .pay-btn { margin: 0; }
+
+        .pos-actions-tertiary {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+        }
+        .pos-actions-tertiary button {
+            flex: 1 1 calc(33% - 4px);
+            min-height: 36px;
+            padding: 0.4rem 0.5rem;
+            font-size: 0.72rem;
+        }
+
         .pay-btn {
             width: 100%;
             padding: 1.1rem;
@@ -1518,6 +1547,10 @@
                     <a href="/admin/studio.html" style="display:block;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Studio</a>
                     <a href="/admin/index.html" id="admin-link" style="display:none;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Admin</a>
                     <div style="border-top:1px solid var(--border);margin:0.35rem 0"></div>
+                    <button onclick="openTodayTransactions();togglePosSettings(document.querySelector('[onclick*=togglePosSettings]'))" style="display:block;width:100%;text-align:left;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Today's Transactions</button>
+                    <a href="/admin/reports.html?type=top_items&preset=today" style="display:block;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Items Sold Today</a>
+                    <a href="/vendor/items.html?status=archive" style="display:block;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Archived Vendor Items</a>
+                    <div style="border-top:1px solid var(--border);margin:0.35rem 0"></div>
                     <button onclick="toggleDisplayPrefs();togglePosSettings(document.querySelector('[onclick*=togglePosSettings]'))" style="display:block;width:100%;text-align:left;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Display</button>
                     <button onclick="openPasswordModal();togglePosSettings(document.querySelector('[onclick*=togglePosSettings]'))" style="display:block;width:100%;text-align:left;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Change Password</button>
                 </div>
@@ -1550,11 +1583,7 @@
             <button class="manual-entry-btn" onclick="openManualEntry()">+ Manual</button>
             <div class="search-results hidden" id="search-results"></div>
         </div>
-        <div class="service-tools-bar" id="service-tools-bar" style="display:none">
-            <button type="button" onclick="openTodayTransactions()">Today's Transactions</button>
-            <a href="/admin/reports.html?type=top_items&preset=today">Items Sold Today</a>
-            <a href="/vendor/items.html?status=archive">Archived Vendor Items</a>
-        </div>
+
         <div id="offline-mode-banner" style="display:none;margin-bottom:0.8rem;padding:0.8rem 0.95rem;background:color-mix(in srgb, var(--warning) 16%, var(--bg));border:1px solid color-mix(in srgb, var(--warning) 46%, var(--bg));color:var(--text);font-size:0.85rem;line-height:1.45">
             Offline mode is active. Use cash, gift cards, or Crypto / Blackbox.
         </div>
@@ -1596,35 +1625,29 @@
             </div>
         </div>
         <div class="item-count-badge"><span id="item-count">0</span> item(s) in cart</div>
-        <div style="display:flex;gap:6px;margin-bottom:6px">
-            <button class="clear-btn" onclick="clearCart()" style="flex:1;margin:0">✕ Clear</button>
-            <button class="clear-btn" onclick="openCartDiscount()" style="flex:1;margin:0;background:color-mix(in srgb, var(--warning) 58%, var(--bg));color:color-mix(in srgb, var(--warning) 38%, var(--white))">🏷 Discount</button>
-            <button class="clear-btn" onclick="suspendOrder()" id="suspend-btn" style="flex:1;margin:0;background:color-mix(in srgb, var(--warning) 58%, var(--bg));color:color-mix(in srgb, var(--warning) 38%, var(--white))" disabled>⏸ Hold</button>
-        </div>
         <button class="clear-btn" onclick="openResumeModal()" id="resume-btn" style="background:var(--success);color:var(--success-light);margin-bottom:6px;display:none">▶ Resume Held Order (<span id="held-count">0</span>)</button>
-        <div class="payment-section">
-            <button class="pay-btn cash" id="cash-btn" onclick="openCashModal()" disabled>
-                💵 CASH
-            </button>
-            <button class="pay-btn card" id="card-btn" onclick="startCardPayment()" disabled>
-                💳 CARD
-            </button>
+
+        <div class="pos-actions-primary">
+            <button class="pay-btn cash" id="cash-btn" onclick="openCashModal()" disabled>💵 CASH</button>
+            <button class="pay-btn card" id="card-btn" onclick="startCardPayment()" disabled>💳 CARD</button>
         </div>
-        <button class="pay-btn card" id="crypto-btn" onclick="startCryptoPayment()" disabled style="display:none;width:100%;margin-top:6px;background:color-mix(in srgb, var(--gold) 58%, var(--bg));border-color:color-mix(in srgb, var(--gold) 58%, var(--bg))">
-            ₿ CRYPTO / BLACKBOX
-        </button>
-        <button class="pay-btn card" id="gc-pay-btn" onclick="openGcPayModal()" disabled style="width:100%;margin-top:6px;background:var(--pos-payment-gift);border-color:var(--pos-payment-gift)">
-            🎁 GIFT CARD
-        </button>
-        <button class="pay-btn card" id="split-pay-btn" onclick="openSplitModal()" disabled style="width:100%;margin-top:6px;background:var(--info);border-color:var(--info)">
-            ✂ SPLIT PAY
-        </button>
-        <button class="pay-btn cash" onclick="openRentPaymentModal()" style="width:100%;margin-top:6px;background:color-mix(in srgb, var(--warning) 58%, var(--bg));border-color:color-mix(in srgb, var(--warning) 58%, var(--bg))">
-            🏠 RENT PAYMENT
-        </button>
-        <button class="pay-btn card" onclick="openClassSignupModal()" style="width:100%;margin-top:6px;background:color-mix(in srgb, var(--info) 44%, var(--bg));border-color:color-mix(in srgb, var(--info) 44%, var(--bg))">
-            🎨 CLASS SIGNUP
-        </button>
+
+        <div class="pos-actions-secondary">
+            <button class="pay-btn card" id="gc-pay-btn" onclick="openGcPayModal()" disabled style="background:var(--pos-payment-gift);border-color:var(--pos-payment-gift)">🎁 GIFT CARD</button>
+            <button class="pay-btn card" id="split-pay-btn" onclick="openSplitModal()" disabled style="background:var(--info);border-color:var(--info)">✂ SPLIT PAY</button>
+            <button class="pay-btn card" id="crypto-btn" onclick="startCryptoPayment()" disabled style="display:none;background:color-mix(in srgb, var(--gold) 58%, var(--bg));border-color:color-mix(in srgb, var(--gold) 58%, var(--bg))">₿ CRYPTO / BLACKBOX</button>
+        </div>
+
+        <div class="pos-actions-tertiary">
+            <button class="clear-btn" onclick="clearCart()" style="margin:0">✕ Clear</button>
+            <button class="clear-btn" onclick="openCartDiscount()" style="margin:0;background:color-mix(in srgb, var(--warning) 58%, var(--bg));color:color-mix(in srgb, var(--warning) 38%, var(--white))">🏷 Discount</button>
+            <button class="clear-btn" onclick="suspendOrder()" id="suspend-btn" style="margin:0;background:color-mix(in srgb, var(--warning) 58%, var(--bg));color:color-mix(in srgb, var(--warning) 38%, var(--white))" disabled>⏸ Hold</button>
+        </div>
+
+        <div class="pos-actions-tertiary">
+            <button class="clear-btn" onclick="openRentPaymentModal()" style="margin:0">🏠 Rent</button>
+            <button class="clear-btn" onclick="openClassSignupModal()" style="margin:0">🎨 Class</button>
+        </div>
     </div>
 </div>
 
@@ -2504,9 +2527,7 @@
             if (session.canViewReports) {
                 document.getElementById('reports-link').style.display = 'inline';
             }
-            if (session.role === 'admin' || session.role === 'cashier') {
-                document.getElementById('service-tools-bar').style.display = 'flex';
-            }
+            // Service tools moved to Settings dropdown
             window.loadDisplayPrefs();
             await loadPosRuntime();
             await checkStartingCashPrompt();
