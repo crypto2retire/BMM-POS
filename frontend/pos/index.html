@@ -41,56 +41,6 @@
             gap: 0;
         }
 
-        /* ── Category filter bar ──────────────────────────────────────── */
-        .category-bar {
-            display: flex;
-            gap: 0.4rem;
-            padding: 0.5rem 1rem;
-            border-bottom: 1px solid color-mix(in srgb, var(--gold) 8%, transparent);
-            background: color-mix(in srgb, var(--gold) 2%, var(--surface));
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-            align-items: center;
-        }
-        .category-bar::-webkit-scrollbar { display: none; }
-        .category-chip {
-            flex-shrink: 0;
-            padding: 0.35rem 0.75rem;
-            font-size: 0.72rem;
-            font-family: 'Roboto', sans-serif;
-            font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--text-light);
-            background: var(--surface);
-            border: 1px solid var(--border);
-            cursor: pointer;
-            white-space: nowrap;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            min-height: 34px;
-            display: inline-flex;
-            align-items: center;
-            border-radius: 4px;
-        }
-        .category-chip:hover {
-            border-color: var(--warm-border);
-            color: var(--text);
-            background: color-mix(in srgb, var(--gold) 8%, var(--surface));
-            transform: translateY(-1px);
-        }
-        .category-chip.active {
-            background: var(--gold);
-            color: var(--charcoal-deep, #38383B);
-            border-color: var(--gold);
-            box-shadow: 0 2px 8px color-mix(in srgb, var(--gold) 30%, transparent);
-        }
-        .category-chip .cat-count {
-            font-size: 0.6rem;
-            opacity: 0.7;
-            margin-left: 0.35rem;
-        }
-
         /* ── Utility classes ──────────────────────────────────────────── */
         .text-right { text-align: right; }
         .text-center { text-align: center; }
@@ -1600,9 +1550,6 @@
             <button class="manual-entry-btn" onclick="openManualEntry()">+ Manual</button>
             <div class="search-results hidden" id="search-results"></div>
         </div>
-        <div class="category-bar" id="category-bar">
-            <span style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;flex-shrink:0">Categories</span>
-        </div>
         <div class="service-tools-bar" id="service-tools-bar" style="display:none">
             <button type="button" onclick="openTodayTransactions()">Today's Transactions</button>
             <a href="/admin/reports.html?type=top_items&preset=today">Items Sold Today</a>
@@ -2570,7 +2517,6 @@
                 if (e.key === 'Enter') { e.preventDefault(); addByBarcode(); }
             });
             checkCameraAvailable();
-            loadCategories();
             updateMobilePayBar();
             window.addEventListener('resize', updateMobilePayBar);
         });
@@ -2836,37 +2782,6 @@
     // ─── Name / SKU search ────────────────────────────────────────────────────
     let searchTimer = null;
     let searchRequestSeq = 0;
-    let activeCategory = null;
-
-    async function loadCategories() {
-        try {
-            var cats = await apiGet('/api/v1/pos/categories');
-            if (!cats || !cats.length) return;
-            var bar = document.getElementById('category-bar');
-            var html = '<span style="font-size:0.65rem;color:var(--text-light);text-transform:uppercase;letter-spacing:0.06em;flex-shrink:0">Categories</span>';
-            html += '<button class="category-chip active" data-cat="" onclick="selectCategory(this)">All</button>';
-            cats.forEach(function(c) {
-                html += '<button class="category-chip" data-cat="' + escAttr(c.category) + '" onclick="selectCategory(this)">' + escHtml(c.category) + '<span class="cat-count">(' + c.count + ')</span></button>';
-            });
-            bar.innerHTML = html;
-        } catch (e) {
-            // silently fail — categories are nice to have
-        }
-    }
-
-    function selectCategory(btn) {
-        var cat = btn.getAttribute('data-cat');
-        activeCategory = cat || null;
-        // Update active chip
-        var chips = document.querySelectorAll('.category-chip');
-        chips.forEach(function(c) { c.classList.remove('active'); });
-        btn.classList.add('active');
-        // If there's a search query, re-search with category
-        var query = document.getElementById('search-input').value.trim();
-        if (query.length >= 2) {
-            searchItems(query);
-        }
-    }
 
     function escAttr(s) {
         if (!s) return '';
@@ -2887,7 +2802,6 @@
         const requestSeq = ++searchRequestSeq;
         try {
             var url = '/api/v1/pos/search?q=' + encodeURIComponent(q);
-            if (activeCategory) url += '&category=' + encodeURIComponent(activeCategory);
             const results = await apiGet(url);
             if (requestSeq !== searchRequestSeq) return;
             if (document.getElementById('search-input').value.trim() !== q) return;
