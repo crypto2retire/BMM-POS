@@ -960,6 +960,10 @@
             try { window.loadRPLedger(); } catch(e) { alert('loadRPLedger: ' + e.message); }
         }
     }
+    function goToTab(tab) {
+        var btn = document.querySelector('.main-tab[onclick*="switchMainTab(\'' + tab + '\'"]');
+        if (btn) switchMainTab(tab, btn);
+    }
     </script>
 
     <div id="tab-overview">
@@ -1014,49 +1018,26 @@
     </div>
 
 
-    <div class="section" id="online-orders-section">
+    <!-- At a Glance -->
+    <div class="section" style="margin-bottom:1.5rem">
         <div class="section-header">
-            <h2 class="section-title">Online Orders <span id="pending-orders-badge" style="display:none;background:var(--danger);color:var(--white);font-size:0.7rem;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle">0 new</span></h2>
+            <h2 class="section-title">At a Glance</h2>
         </div>
-        <div class="card">
-            <div style="display:flex;gap:8px;margin-bottom:1rem;padding:0.75rem;flex-wrap:wrap">
-                <button onclick="loadAdminOrders('pending')" class="btn btn-sm" id="admin-filter-pending" style="background:color-mix(in srgb, var(--warning) 55%, var(--bg));color:var(--charcoal-deep)">Pending</button>
-                <button onclick="loadAdminOrders('ready')" class="btn btn-sm" id="admin-filter-ready">Ready</button>
-                <button onclick="loadAdminOrders('completed')" class="btn btn-sm" id="admin-filter-completed">Completed</button>
-                <button onclick="loadAdminOrders('')" class="btn btn-sm" id="admin-filter-all">All</button>
-            </div>
-            <div id="admin-orders-list" style="padding:0 0.75rem 0.75rem">
-                <div id="orders-loading"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div>
-            </div>
-        </div>
-    </div>
-
-
-    <div class="section admin-only-dash" id="employees-section">
-        <div class="section-header">
-            <h2 class="section-title">Employees</h2>
-            <button class="btn btn-primary btn-sm" onclick="openAddEmployee()">+ Add Employee</button>
-        </div>
-        <div class="card">
-            <div class="table-wrapper">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Created</th>
-                        </tr>
-                    </thead>
-                    <tbody id="employees-table-body">
-                        <tr><td colspan="5" class="loading">Loading…</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="vendor-cards-mobile" id="employee-cards" style="display:none">
-                <div style="color:var(--text-light);padding:1rem;text-align:center">Loading…</div>
-            </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:0.75rem">
+            <button type="button" class="dashboard-quick-link" style="text-align:left;display:flex;align-items:center;gap:0.75rem;background:none;border:none;cursor:pointer;width:100%" onclick="goToTab('operations')">
+                <span style="font-size:1.5rem">📦</span>
+                <div style="text-align:left">
+                    <strong>Online Orders</strong>
+                    <span style="display:block;margin-top:0.15rem;font-size:0.8rem;color:var(--text-light)"><span id="overview-pending-count">Loading…</span></span>
+                </div>
+            </button>
+            <button type="button" class="dashboard-quick-link" style="text-align:left;display:flex;align-items:center;gap:0.75rem;background:none;border:none;cursor:pointer;width:100%" onclick="goToTab('operations')">
+                <span style="font-size:1.5rem">👥</span>
+                <div style="text-align:left">
+                    <strong>Employees</strong>
+                    <span style="display:block;margin-top:0.15rem;font-size:0.8rem;color:var(--text-light)">Manage staff and roles</span>
+                </div>
+            </button>
         </div>
     </div>
 
@@ -1193,6 +1174,51 @@
                     <strong>Vendor Directory</strong>
                     <span>Manage vendor accounts and settings.</span>
                 </a>
+            </div>
+        </div>
+
+        <div class="section" id="online-orders-section">
+            <div class="section-header">
+                <h2 class="section-title">Online Orders <span id="pending-orders-badge" style="display:none;background:var(--danger);color:var(--white);font-size:0.7rem;padding:2px 8px;border-radius:10px;margin-left:8px;vertical-align:middle">0 new</span></h2>
+            </div>
+            <div class="card">
+                <div style="display:flex;gap:8px;margin-bottom:1rem;padding:0.75rem;flex-wrap:wrap">
+                    <button onclick="loadAdminOrders('pending')" class="btn btn-sm" id="admin-filter-pending" style="background:color-mix(in srgb, var(--warning) 55%, var(--bg));color:var(--charcoal-deep)">Pending</button>
+                    <button onclick="loadAdminOrders('ready')" class="btn btn-sm" id="admin-filter-ready">Ready</button>
+                    <button onclick="loadAdminOrders('completed')" class="btn btn-sm" id="admin-filter-completed">Completed</button>
+                    <button onclick="loadAdminOrders('')" class="btn btn-sm" id="admin-filter-all">All</button>
+                </div>
+                <div id="admin-orders-list" style="padding:0 0.75rem 0.75rem">
+                    <div id="orders-loading"><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div><div class="skeleton skeleton-row"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section admin-only-dash" id="employees-section">
+            <div class="section-header">
+                <h2 class="section-title">Employees</h2>
+                <button class="btn btn-primary btn-sm" onclick="openAddEmployee()">+ Add Employee</button>
+            </div>
+            <div class="card">
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employees-table-body">
+                            <tr><td colspan="5" class="loading">Loading…</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="vendor-cards-mobile" id="employee-cards" style="display:none">
+                    <div style="color:var(--text-light);padding:1rem;text-align:center">Loading…</div>
+                </div>
             </div>
         </div>
 
@@ -1850,11 +1876,13 @@
 
             var pendingCount = (data.reservations || []).filter(function(o) { return o.status === 'pending'; }).length;
             var badge = document.getElementById('pending-orders-badge');
+            var overviewCount = document.getElementById('overview-pending-count');
             if (pendingCount > 0) {
-                badge.textContent = pendingCount + ' pending';
-                badge.style.display = 'inline';
+                if (badge) { badge.textContent = pendingCount + ' pending'; badge.style.display = 'inline'; }
+                if (overviewCount) overviewCount.textContent = pendingCount + ' pending';
             } else {
-                badge.style.display = 'none';
+                if (badge) badge.style.display = 'none';
+                if (overviewCount) overviewCount.textContent = 'No pending orders';
             }
 
             if (!orders.length) {
