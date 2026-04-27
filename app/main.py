@@ -6,7 +6,7 @@ import logging
 import signal
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -411,7 +411,6 @@ async def lifespan(app: FastAPI):
             )
             backup_val = backup_result.scalar_one_or_none()
             if backup_val:
-                from datetime import timezone
                 try:
                     last_backup = datetime.fromisoformat(backup_val.replace("Z", "+00:00"))
                     hours_since = (datetime.now(timezone.utc) - last_backup).total_seconds() / 3600
