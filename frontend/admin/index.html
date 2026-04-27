@@ -941,7 +941,7 @@
     <div class="main-tabs">
         <button type="button" class="main-tab active" onclick="switchMainTab('overview',this)">Overview</button>
         <button type="button" class="main-tab" onclick="switchMainTab('vendors',this)">Vendors</button>
-        <button type="button" class="main-tab" onclick="switchMainTab('analytics',this)">Analytics</button>
+        <button type="button" class="main-tab" onclick="switchMainTab('analytics',this)">Reports</button>
         <button type="button" class="main-tab" onclick="switchMainTab('operations',this)">Operations</button>
         <button type="button" class="main-tab" onclick="switchMainTab('rent-payouts',this)">Rent &amp; Payouts</button>
     </div>
@@ -1047,10 +1047,10 @@
     <div id="tab-analytics" style="display:none">
         <div class="section">
             <div class="section-header">
-                <h2 class="section-title">Analytics &amp; Reports</h2>
+                <h2 class="section-title">Reports</h2>
             </div>
             <p style="font-family:'EB Garamond',serif;font-style:italic;color:var(--text-light);font-size:0.95rem;margin-bottom:1.25rem">
-                Detailed reporting and analytics for store performance.
+                Detailed reporting for store performance.
             </p>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0.75rem;margin-bottom:1.5rem">
                 <a href="/admin/reports.html?type=daily_sales&preset=today" class="dashboard-quick-link">
@@ -1068,6 +1068,10 @@
                 <a href="/admin/reports.html?type=items_sold" class="dashboard-quick-link">
                     <strong>Items Sold</strong>
                     <span>Detailed log of every item transaction.</span>
+                </a>
+                <a href="/admin/reports.html?type=sales_by_vendor" class="dashboard-quick-link">
+                    <strong>Sales by Vendor</strong>
+                    <span>View and export sales history for a specific vendor.</span>
                 </a>
                 <a href="/admin/reports.html?type=hourly_sales" class="dashboard-quick-link">
                     <strong>Hourly Sales</strong>

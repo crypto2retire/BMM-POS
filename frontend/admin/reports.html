@@ -359,10 +359,14 @@
                 <option value="vendor_performance">Vendor Performance</option>
                 <option value="top_items">Top Selling Items</option>
                 <option value="items_sold">Items Sold</option>
+                <option value="sales_by_vendor">Sales by Vendor</option>
                 <option value="hourly_sales">Hourly Sales Pattern</option>
                 <option value="payment_methods">Payment Methods</option>
                 <option value="vendor_balances">Vendor Balances</option>
                 <option value="sales_tax">Sales Tax (WI Step A)</option>
+            </select>
+            <select id="vendorSelect" style="display:none;max-width:280px;" onchange="itemsSoldOffset=0;loadReport();">
+                <option value="">— Select vendor —</option>
             </select>
             <input type="date" id="reportDateFrom">
             <span class="date-sep">to</span>
@@ -488,10 +492,35 @@
     }
 
     function onReportTypeChange() {
-        // Reset search when switching away from items_sold
+        var type = document.getElementById('reportType').value;
+        var vendorSelect = document.getElementById('vendorSelect');
+        if (type === 'sales_by_vendor') {
+            vendorSelect.style.display = '';
+            if (vendorSelect.options.length <= 1) loadVendorOptions();
+        } else {
+            vendorSelect.style.display = 'none';
+        }
+        // Reset search when switching away from items_sold / sales_by_vendor
         itemsSoldSearchQ = '';
         itemsSoldOffset = 0;
         loadReport();
+    }
+
+    async function loadVendorOptions() {
+        var select = document.getElementById('vendorSelect');
+        try {
+            var vendors = await apiGet('/api/v1/vendors/?limit=500');
+            select.innerHTML = '<option value="">— Select vendor —</option>';
+            vendors.forEach(function(v) {
+                if (v.role !== 'vendor') return;
+                var opt = document.createElement('option');
+                opt.value = v.id;
+                opt.textContent = v.name + (v.booth_number ? ' (Booth ' + v.booth_number + ')' : '');
+                select.appendChild(opt);
+            });
+        } catch (e) {
+            select.innerHTML = '<option value="">Failed to load vendors</option>';
+        }
     }
 
     async function loadReport() {
@@ -506,10 +535,19 @@
 
         try {
             var data;
-            if (type === 'items_sold') {
+            if (type === 'items_sold' || type === 'sales_by_vendor') {
                 var url = '/api/v1/admin/reports/items-sold?from_date=' + from + '&to_date=' + to
                     + '&limit=' + itemsSoldLimit + '&offset=' + itemsSoldOffset;
                 if (itemsSoldSearchQ) url += '&q=' + encodeURIComponent(itemsSoldSearchQ);
+                if (type === 'sales_by_vendor') {
+                    var vendorId = document.getElementById('vendorSelect').value;
+                    if (!vendorId) {
+                        document.getElementById('reportContent').innerHTML = '<p class="empty-msg">Please select a vendor</p>';
+                        document.getElementById('summaryCards').innerHTML = '';
+                        return;
+                    }
+                    url += '&vendor_id=' + encodeURIComponent(vendorId);
+                }
                 data = await apiGet(url);
                 currentReportData = data.rows || [];
                 itemsSoldTotal = data.total || 0;
@@ -1011,7 +1049,7 @@
         if (!session) return;
         currentSession = session;
         applyQueryPreset();
-        loadReport();
+        onReportTypeChange();
     }
 
     init();
