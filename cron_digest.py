@@ -1,10 +1,7 @@
 """
 Lightweight cron script for Railway.
-Called with: python cron_digest.py <command>
-
-Commands:
-  daily, weekly, monthly  → send sale digests
-  eod                     → auto-submit yesterday's End of Day report
+Called with: python cron_digest.py <period>
+Where period is: daily, weekly, or monthly
 
 Requires env vars:
   CRON_SECRET  — shared secret matching the one in the app
@@ -17,7 +14,10 @@ import urllib.error
 import json
 
 def main():
-    cmd = sys.argv[1] if len(sys.argv) > 1 else "daily"
+    period = sys.argv[1] if len(sys.argv) > 1 else "daily"
+    if period not in ("daily", "weekly", "monthly"):
+        print(f"Invalid period: {period}")
+        sys.exit(1)
 
     app_url = os.environ.get("APP_URL", "").rstrip("/")
     cron_secret = os.environ.get("CRON_SECRET", "")
@@ -29,14 +29,7 @@ def main():
         print("ERROR: CRON_SECRET env var not set")
         sys.exit(1)
 
-    if cmd in ("daily", "weekly", "monthly"):
-        url = f"{app_url}/api/v1/notifications/send-sale-digests?period={cmd}"
-    elif cmd == "eod":
-        url = f"{app_url}/api/v1/pos/end-of-day/auto-submit"
-    else:
-        print(f"Invalid command: {cmd}. Use daily, weekly, monthly, or eod.")
-        sys.exit(1)
-
+    url = f"{app_url}/api/v1/notifications/send-sale-digests?period={period}"
     print(f"Calling {url} ...")
 
     req = urllib.request.Request(
