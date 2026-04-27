@@ -29,6 +29,20 @@
         .val-gold { color: var(--gold); }
         .val-blue { color: var(--info); }
         .val-red { color: var(--danger); }
+        .auto-badge {
+            display: inline-block;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 2px 7px;
+            border-radius: 4px;
+            background: color-mix(in srgb, var(--warning) 45%, var(--bg));
+            color: var(--charcoal-deep);
+            font-weight: 600;
+            font-family: 'Roboto', sans-serif;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
 
         .detail-view { display: none; }
         .detail-view.active { display: block; }
@@ -250,7 +264,8 @@
             var varPrefix = r.variance > 0 ? '+' : '';
             html += '<div class="report-row" onclick="viewReport(' + r.id + ')">';
             html += '<div><div class="date">' + fmtDate(r.report_date) + '</div></div>';
-            html += '<div class="sub">' + escHtml(r.submitted_by_name || 'Unknown') + '</div>';
+            var autoBadge = r.submitted_by_name === 'Auto (System)' ? '<span class="auto-badge">Auto</span>' : '';
+            html += '<div class="sub">' + escHtml(r.submitted_by_name || 'Unknown') + autoBadge + '</div>';
             html += '<div><div class="val-label">Revenue</div><div class="val val-gold">' + fmt(r.total_revenue) + '</div></div>';
             html += '<div><div class="val-label">Cash</div><div class="val val-green">' + fmt(r.cash_total) + '</div></div>';
             html += '<div><div class="val-label">Card</div><div class="val val-blue">' + fmt(r.card_total) + '</div></div>';
@@ -269,7 +284,8 @@
             }
             var r = await apiGet('/api/v1/pos/end-of-day/reports/' + id);
             document.getElementById('detail-title').textContent = 'End of Day — ' + fmtDate(r.report_date);
-            document.getElementById('detail-subtitle').textContent = 'Submitted by ' + (r.submitted_by_name || 'Unknown') + (r.submitted_at ? ' on ' + new Date(r.submitted_at).toLocaleString() : '');
+            var detailAutoBadge = r.submitted_by_name === 'Auto (System)' ? '<span class="auto-badge">Auto-submitted</span>' : '';
+            document.getElementById('detail-subtitle').innerHTML = 'Submitted by ' + escHtml(r.submitted_by_name || 'Unknown') + detailAutoBadge + (r.submitted_at ? ' on ' + new Date(r.submitted_at).toLocaleString() : '');
             document.getElementById('d-revenue').textContent = fmt(r.total_revenue);
             document.getElementById('d-txns').textContent = r.total_transactions;
             document.getElementById('d-cash').textContent = fmt(r.cash_total);
