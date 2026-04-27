@@ -1492,8 +1492,6 @@
                 </select>
             </div>
             <button class="nav-link" onclick="openOnlineOrdersPanel()" class="relative">Orders <span id="orders-badge" style="display:none;position:absolute;top:-4px;right:-8px;background:var(--danger);color:var(--white);font-size:10px;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 4px">0</span></button>
-            <button class="nav-link" onclick="openGiftCardModal()">Gift Cards</button>
-            <button class="nav-link" onclick="openReceiptLookup()">Receipts</button>
             <button class="nav-link" onclick="openEndOfDay()">End of Day</button>
             <a href="/admin/vendors.html" class="nav-link">Vendors</a>
             <a href="/vendor/items.html" class="nav-link">Items</a>
@@ -1503,6 +1501,9 @@
                     <a href="/admin/reports.html" id="reports-link" style="display:none;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Reports</a>
                     <a href="/admin/studio.html" style="display:block;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Studio</a>
                     <a href="/admin/index.html" id="admin-link" style="display:none;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Admin</a>
+                    <div style="border-top:1px solid var(--border);margin:0.35rem 0"></div>
+                    <button onclick="openGiftCardModal();togglePosSettings(document.querySelector('[onclick*=togglePosSettings]'))" style="display:block;width:100%;text-align:left;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Gift Cards</button>
+                    <button onclick="openReceiptLookup();togglePosSettings(document.querySelector('[onclick*=togglePosSettings]'))" style="display:block;width:100%;text-align:left;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Receipts</button>
                     <div style="border-top:1px solid var(--border);margin:0.35rem 0"></div>
                     <button onclick="openTodayTransactions();togglePosSettings(document.querySelector('[onclick*=togglePosSettings]'))" style="display:block;width:100%;text-align:left;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);background:none;border:none;cursor:pointer;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Today's Transactions</button>
                     <a href="/admin/reports.html?type=top_items&preset=today" style="display:block;padding:0.55rem 1rem;font-size:0.78rem;color:var(--text);text-decoration:none;text-transform:uppercase;letter-spacing:0.06em;font-family:'Roboto',sans-serif;white-space:nowrap">Items Sold Today</a>
